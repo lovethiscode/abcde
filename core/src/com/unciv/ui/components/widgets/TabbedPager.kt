@@ -432,7 +432,10 @@ open class TabbedPager(
                 headerScroll.scrollX = page.buttonX + (page.buttonW - headerScroll.width) / 2
             else
                 // when coming from a tap/click, can we at least ensure no part of it is outside the visible area
-                headerScroll.run { scrollX = scrollX.coerceIn((page.buttonX + page.buttonW - scrollWidth)..page.buttonX) }
+                headerScroll.run {
+                    val minimumScroll = (page.buttonX + page.buttonW - scrollWidth).coerceAtMost(page.buttonX)
+                    scrollX = scrollX.coerceIn(minimumScroll..page.buttonX)
+                }
 
             (page.content as? IPageExtensions)?.activated(index, page.caption, this)
             onSelectionCallback?.invoke(index, page.caption, this)

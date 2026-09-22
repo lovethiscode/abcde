@@ -203,20 +203,28 @@ class ModManagementScreen private constructor(
             add(discoverButton).minWidth(0f).width(if (singleColumn) 180f else 200f).minHeight(58f).padRight(4f)
             add(installedButton).minWidth(0f).width(if (singleColumn) 180f else 200f).minHeight(58f)
         }
-        // Measure translated content before choosing a header row; buttons can also wrap.
-        val linkWidth = ("Download mod from URL".toLabel(fontSize = 22).prefWidth + 40f)
-            .coerceIn(180f, stage.width * 0.3f)
         header.add(closeButton).width(110f).minHeight(58f).padRight(16f)
         header.add(title).left().expandX().padRight(16f)
-        if (singleColumn || stage.width < 1100f * game.settings.fontSizeMultiplier) {
+        if (singleColumn) {
             header.row()
-            val navigation = Table()
-            navigation.add(tabs).minWidth(0f).growX().padRight(12f)
-            navigation.add(headerActions).width(linkWidth)
-            header.add(navigation).colspan(2).growX().padTop(10f)
+            header.add(tabs).colspan(2).growX().minWidth(0f).padTop(10f)
+            header.row()
+            header.add(headerActions).colspan(2).growX().minWidth(0f).padTop(10f)
         } else {
-            header.add(tabs).padRight(16f)
-            header.add(headerActions).width(linkWidth)
+            // Measure translated content before choosing a header row; buttons can also wrap.
+            val maxLinkWidth = stage.width * 0.3f
+            val linkWidth = ("Download mod from URL".toLabel(fontSize = 22).prefWidth + 40f)
+                .coerceIn(minOf(180f, maxLinkWidth), maxLinkWidth)
+            if (stage.width < 1100f * game.settings.fontSizeMultiplier) {
+                header.row()
+                val navigation = Table()
+                navigation.add(tabs).minWidth(0f).growX().padRight(12f)
+                navigation.add(headerActions).width(linkWidth)
+                header.add(navigation).colspan(2).growX().padTop(10f)
+            } else {
+                header.add(tabs).padRight(16f)
+                header.add(headerActions).width(linkWidth)
+            }
         }
         root.add(header).growX().padBottom(12f).row()
         root.add(body).grow().minHeight(0f)
