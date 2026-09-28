@@ -47,8 +47,6 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Clock
-import kotlin.time.Instant
 
 
 /**
@@ -113,7 +111,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
     var turns = 0
     var oneMoreTurnMode = false
     var currentPlayer = ""
-    var currentTurnStartTime = Clock.System.now().toEpochMilliseconds()
+    var currentTurnStartTime = System.currentTimeMillis()
     var gameId = randomGameId()
     var checksum = ""
     private var lastUnitId = 0
@@ -392,8 +390,8 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
         var playerIndex = civilizations.indexOf(player)
 
         if (player.isHuman() && player.isAlive()) {
-            val elapsed = Clock.System.now() - Instant.fromEpochMilliseconds(currentTurnStartTime)
-            player.totalTurnTimeSeconds += elapsed.inWholeSeconds.toInt()
+            val elapsedSeconds = (System.currentTimeMillis() - currentTurnStartTime) / 1000L
+            player.totalTurnTimeSeconds += elapsedSeconds.toInt()
             player.turnsPlayedAsHuman++
         }
 
@@ -504,8 +502,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
 
     private fun updateMinutesBeforeForceResign(player: Civilization, shouldGainTime: Boolean) {
         // Update remaining time before the player who's turn is ending can be forced to resign
-        val turnStart = Instant.fromEpochMilliseconds(currentTurnStartTime)
-        val timeUsed = (Clock.System.now() - turnStart).inWholeMinutes.toInt()
+        val timeUsed = ((System.currentTimeMillis() - currentTurnStartTime) / 60_000L).toInt()
         val timeRegained = if (shouldGainTime) gameParameters.minutesRecoveredPerTurn else 0
         val rawNewTime = player.playerMinutesBeforeForceResign - timeUsed + timeRegained
         val maxNewTime = gameParameters.minutesUntilForceResign
