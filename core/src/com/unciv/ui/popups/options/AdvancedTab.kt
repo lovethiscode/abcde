@@ -1,7 +1,6 @@
 package com.unciv.ui.popups.options
 
 import com.badlogic.gdx.Application
-import com.badlogic.gdx.Files
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.files.FileHandle
@@ -32,6 +31,7 @@ import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.fonts.FontFamilyData
 import com.unciv.ui.components.fonts.Fonts
+import com.unciv.ui.components.fonts.ModFonts
 import com.unciv.ui.components.input.ActivationTypes
 import com.unciv.ui.components.input.ActorAttachments
 import com.unciv.ui.components.input.keyShortcuts
@@ -164,36 +164,13 @@ internal class AdvancedTab(
     }
 
     private fun addFontFamilySelect() {
-        // What both java.awt.Font.createFont and android.graphics.Typeface.createFromFile support:
-        val supportedExtensions = setOf("ttf", "otf")
-
-        /** Build provider for [addAsyncSelectBox]: per-mod scan */
-        fun loadModFonts(mod: FileHandle) = flow {
-            if (!mod.exists() || !mod.isDirectory) return@flow
-            val fontsFolder = mod.child("fonts")
-            if (!fontsFolder.exists() || !fontsFolder.isDirectory) return@flow
-            for (file in fontsFolder.list()) {
-                if (file.extension().lowercase() !in supportedExtensions) continue
-                emit(FontFamilyData(
-                    "${file.nameWithoutExtension()} (${mod.name()})",
-                    file.nameWithoutExtension(),
-                    file.file().absolutePath
-                ))
-            }
-        }.flowOn(Dispatchers.IO)
-
         /** Build provider for [addAsyncSelectBox]: default, mods, system */
         fun loadFonts() = flow {
             // Add default font
             emit(FontFamilyData.default)
             // List mod fonts
-            val modsDir = UncivGame.Current.files.getModsFolder()
-            if (Gdx.app.type != Application.ApplicationType.Android || Gdx.app.version >= 26) {
-                if (modsDir.type() == Files.FileType.External) {
-                    for (mod in modsDir.list())
-                        emitAll(loadModFonts(mod))
-                }
-            }
+            if (Gdx.app.type != Application.ApplicationType.Android || Gdx.app.version >= 26)
+                emitAll(ModFonts.scan(UncivGame.Current.files.getModsFolder()))
             // Add system fonts
             for (font in Fonts.getSystemFonts())
                 emit(font)

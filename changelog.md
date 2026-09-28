@@ -1,3 +1,43 @@
+## 4.22.4
+
+Resolved  - avoid cityscreen update when screen has already been replaced
+
+Fixed victory number formatting bug - see https://discord.com/channels/586194543280390151/1552398135110668399
+
+By SomeTroglodyte:
+- Add a `--log` option to the Linux Unciv.sh launcher to enable logs from the release build 
+- Fix Java 9+ specific method use crashing NextTurn on Java 8 
+
+Fix overview screen column visibility - now per civ - By dangdinhbaohoang12
+
+Fix Units that are intended to lose promotions regaining them on turn start - By SeventhM
+
+## 4.22.3
+
+Massive rendering lag improvement!!
+
+ANRs reduction when switching screens
+
+By SomeTroglodyte:
+- Disallow spectators to rename units
+- Allow unit rename to "reset" to base unit name
+
+## 4.22.2
+
+Spectator deselect sets UI correctly
+.
+Fix defensive pact count motivation clamp - By Angais
+
+By SomeTroglodyte:
+- Fix layout for GPP table  
+- Crash fix for UI race conditions 
+
+fix: discover natural wonders when revealing the entire map - By mvanhorn
+
+Fix mod fonts missing from Font family selection - By ethanstoner
+
+AStar puts correct movement in PathsToTilesWithinTurn - By Ambeco
+
 ## 4.22.1
 
 Fixed crash on "ID from clipboard" when clipboard not set

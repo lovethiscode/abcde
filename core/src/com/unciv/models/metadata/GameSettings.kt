@@ -86,6 +86,7 @@ class GameSettings {
 
     //// Performance
     var continuousRendering = false
+    var disableNewerRendering = false
 
     //// Experimental
     var unitMovementButtonAnimation = false
