@@ -155,6 +155,14 @@ It is probably illegal (no solid sources on this):
 
 Interestingly, [Civilization is a registered trademark](https://tsdr.uspto.gov/#caseNumber=74166752&caseType=SERIAL_NO&searchType=statusSearch), but it looks like it's only *that particular logo* which is trademarked, so technically you could make another game called "Civilization" and it'll stick. In any case we're not going there :) 
 
+## Run with Docker [![Docker](https://github.com/yairm210/Unciv/actions/workflows/dockerPublish.yml/badge.svg)](https://github.com/yairm210/Unciv/actions/workflows/dockerPublish.yml)
+
+`docker run -d -p 6901:6901 -p 5901:5901 ghcr.io/yairm210/unciv`
+Then go to http://localhost:6901/vnc.html?password=headless
+
+For more details, e.g. installing Docker, keeping saves between runs and over image updates, building the image yourself,
+troubleshooting connection issues, or using a native VNC client instead of a browser, see [Building-Locally](https://yairm210.github.io/Unciv/Developers/Building-Locally/#running-via-docker).
+
 ## Licensing and credits
 
 This game is available under the MPL 2.0 (see [LICENSE](LICENSE]). The media
