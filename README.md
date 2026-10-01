@@ -94,7 +94,7 @@ After that, we follow upstream:
 * G&K mechanics - see [upstream #4697](https://www.github.com/yairm210/Unciv/issues/4697)
 * BNW mechanics - trade routes, world congress, etc.
 
-Some things are still missing on iOS: multiplayer chat, push notifications,
+Some things are still missing on iOS: push notifications,
 background polling, and HTTP/LAN multiplayer servers.
 
 ## Contributing
