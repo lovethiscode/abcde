@@ -1,21 +1,19 @@
 package com.unciv.ui.screens.worldscreen.chat
 
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.scenes.scene2d.Touchable
+import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
 import com.unciv.UncivGame
 import com.unciv.logic.AlternatingStateManager
 import com.unciv.logic.multiplayer.chat.ChatStore
 import com.unciv.logic.multiplayer.chat.ChatWebSocket
 import com.unciv.logic.multiplayer.chat.Message
-import com.unciv.ui.components.SmallButtonStyle
-import com.unciv.ui.components.extensions.disable
-import com.unciv.ui.components.extensions.toTextButton
+import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.worldscreen.WorldScreen
-
-private val smallButtonStyle = SmallButtonStyle()
 
 class ChatButton(val worldScreen: WorldScreen) : IconTextButton(
     "Chat", ImageGetter.getImage("OtherIcons/Chat"), 23
@@ -25,11 +23,11 @@ class ChatButton(val worldScreen: WorldScreen) : IconTextButton(
         worldScreen.gameInfo.gameParameters.multiplayerServerUrl,
     )
 
-    private val badge = "".toTextButton(smallButtonStyle).apply {
-        disable()
-        label.setColor(Color.WHITE)
-        label.setAlignment(Align.center)
-        label.setFontScale(0.2f)
+    private val badgeLabel = "".toLabel(fontSize = 16, alignment = Align.center)
+    private val badge = Table().apply {
+        touchable = Touchable.disabled
+        background = ImageGetter.getCircleDrawable().tint(Color.FIREBRICK)
+        add(badgeLabel).pad(4f)
     }
 
     private val flash = AlternatingStateManager(
@@ -44,20 +42,20 @@ class ChatButton(val worldScreen: WorldScreen) : IconTextButton(
     )
 
     private fun updateBadge() {
-        badge.height = height / 3
-        badge.setPosition(
-            width - badge.width / 1.5f,
-            height - badge.height / 1.5f
-        )
-
         badge.isVisible = chat.unreadCount > 0 || ChatStore.hasGlobalMessage
 
         if (badge.isVisible) {
-            var text = chat.unreadCount.toString()
+            var text = if (chat.unreadCount > 0) chat.unreadCount.toString() else ""
             if (ChatStore.hasGlobalMessage) {
                 text += '+'
             }
-            badge.setText(text)
+            badgeLabel.setText(text)
+            val size = (height / 2).coerceAtLeast(28f)
+            badge.setSize((badgeLabel.prefWidth + 8f).coerceAtLeast(size), size)
+            badge.setPosition(
+                width - badge.width / 1.5f,
+                height - badge.height / 1.5f
+            )
         } else flash.stop()
     }
 

@@ -16,13 +16,15 @@ class IOSMultiplayerCapabilitiesTests {
         val capabilities = game.platformCapabilities
 
         assertTrue(capabilities.onlineMultiplayer)
-        assertFalse(capabilities.multiplayerChat)
+        assertTrue(capabilities.multiplayerChat)
         assertTrue(capabilities.onlineModManagement)
         assertTrue(capabilities.multiplayerServerRequiresHttps)
         assertTrue(capabilities.multiplayerApiV1Only)
         assertFalse(capabilities.secureMultiplayerServerPasswords)
         assertFalse(capabilities.oggAudio)
-        assertFalse(capabilities.multiplayerAdvancedActions)
+        assertTrue(capabilities.multiplayerAdvancedActions)
+        assertFalse(capabilities.multiplayerFriends)
         assertTrue(game.createMultiplayerV1Transport() is IOSMultiplayerV1Transport)
+        assertTrue(game.createChatTransport() is IOSChatTransport)
     }
 }

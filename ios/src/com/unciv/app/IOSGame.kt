@@ -5,6 +5,7 @@ import com.unciv.UncivGame
 import com.unciv.logic.files.cloud.CloudSaveSync
 import com.unciv.logic.files.cloud.CloudSyncTrigger
 import com.unciv.logic.multiplayer.storage.MultiplayerV1Transport
+import com.unciv.logic.multiplayer.chat.ChatWebSocket
 import com.unciv.utils.MultiplayerBackgroundTask
 import com.unciv.utils.PlatformCapabilities
 import com.unciv.utils.Display
@@ -31,14 +32,15 @@ class IOSGame @JvmOverloads constructor(
 
     override val platformCapabilities = PlatformCapabilities(
         onlineMultiplayer = true,
-        multiplayerChat = false,
+        multiplayerChat = true,
         defaultMusicDownload = false,
         onlineModManagement = true,
         localModTransfer = true,
         multiplayerServerRequiresHttps = true,
         multiplayerApiV1Only = true,
         secureMultiplayerServerPasswords = runtimeFeatures.secureMultiplayerPasswords,
-        multiplayerAdvancedActions = false,
+        multiplayerAdvancedActions = true,
+        multiplayerFriends = false,
         oggAudio = runtimeFeatures.oggAudioAvailable,
     )
 
@@ -52,6 +54,8 @@ class IOSGame @JvmOverloads constructor(
         IOSMultiplayerV1Transport()
 
     override fun createModHttpClientEngine() = IOSModHttpClientEngine()
+
+    override fun createChatTransport() = IOSChatTransport()
 
     override fun beginMultiplayerUploadBackgroundTask(onExpired: () -> Unit): MultiplayerBackgroundTask =
         IOSMultiplayerBackgroundTask(onExpired)
@@ -70,9 +74,15 @@ class IOSGame @JvmOverloads constructor(
 
     override fun resume() {
         super.resume()
+        ChatWebSocket.resume()
         (Display.platform as IOSDisplay).restoreOrientation()
         cloudSaveService?.requestSync(CloudSyncTrigger.Foreground)
         runtimeFeatures.onForeground()
+    }
+
+    override fun pause() {
+        ChatWebSocket.pause()
+        super.pause()
     }
 
     override fun render() {
@@ -81,6 +91,7 @@ class IOSGame @JvmOverloads constructor(
     }
 
     override fun dispose() {
+        ChatWebSocket.stop()
         files.cloudSaveSync = CloudSaveSync.None
         cloudSaveService?.close()
         cloudSaveService = null

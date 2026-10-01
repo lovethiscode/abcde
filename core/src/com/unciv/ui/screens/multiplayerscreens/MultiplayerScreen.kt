@@ -8,10 +8,15 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.logic.event.EventBus
+import com.unciv.logic.GameInfoPreview
 import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.multiplayer.MultiplayerGameUpdateEnded
 import com.unciv.logic.multiplayer.MultiplayerGameUpdateStarted
 import com.unciv.logic.multiplayer.MultiplayerGamePreview
+import com.unciv.logic.multiplayer.MultiplayerPlayerAction
+import com.unciv.logic.multiplayer.performPlayerAction
+import com.unciv.logic.multiplayer.playerActionError
+import com.unciv.logic.multiplayer.retryPlayerAction
 import com.unciv.logic.multiplayer.storage.MultiplayerAuthException
 import com.unciv.models.ruleset.RulesetCache
 import com.unciv.models.translations.tr
@@ -40,7 +45,6 @@ import com.unciv.utils.Log
 import com.unciv.utils.launchOnGLThread
 import kotlinx.coroutines.CancellationException
 import org.threeten.bp.Duration
-import org.threeten.bp.Instant
 import com.unciv.ui.components.widgets.AutoScrollPane as ScrollPane
 
 internal const val multiplayerTitleFontSize = 28
@@ -58,13 +62,15 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     private var hasCompletedRefresh = false
     private var isDisposed = false
     private var isDownloadingMods = false
-    private var lastRefreshCompleted = game.onlineMultiplayer.games
-        .maxOfOrNull { it.getLastUpdate() }
+    private var playerActionInProgress = false
 
     private val copyGameIdButton = createCopyGameIdButton()
-    private val resignButton = createResignButton()
-    private val forceResignButton = createForceResignButton()
-    private val skipTurnButton = createSkipTurnButton()
+    private val resignButton = createPlayerActionButton(MultiplayerPlayerAction.Resign)
+    private val forceResignButton = createPlayerActionButton(MultiplayerPlayerAction.ForceResign)
+    private val skipTurnButton = createPlayerActionButton(MultiplayerPlayerAction.SkipTurn)
+    private val retryPlayerActionButton = "Retry pending action".toTextButton().apply {
+        onClick { selectedGame?.let { runPlayerAction(it) } }
+    }
     private val deleteButton = createDeleteButton()
     private val renameButton = createRenameButton()
 
@@ -80,9 +86,6 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     private val serverStatusDot = "●".toLabel(Color.LIGHT_GRAY, fontSize = multiplayerSecondaryFontSize)
     private val serverUrlLabel = "".toLabel(fontSize = multiplayerSecondaryFontSize).apply { setEllipsis(true) }
     private val serverStateLabel = "".toLabel(Color.LIGHT_GRAY, fontSize = multiplayerSecondaryFontSize).apply {
-        setEllipsis(true)
-    }
-    private val lastRefreshLabel = "".toLabel(Color.LIGHT_GRAY, fontSize = multiplayerDenseFontSize).apply {
         setEllipsis(true)
     }
 
@@ -309,8 +312,6 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         val activity = Table().apply {
             add(serverStateLabel).growX().minWidth(0f).left()
                 .maxWidth(this@MultiplayerScreen.stage.width * 0.20f)
-            add(lastRefreshLabel).growX().minWidth(0f).left().padLeft(10f)
-                .maxWidth(this@MultiplayerScreen.stage.width * 0.18f)
             add(refreshButton).height(42f).padLeft(8f)
         }
         val singleRow = fitsInOneRow(
@@ -434,7 +435,6 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         events.receive(MultiplayerGameUpdateEnded::class) {
             refreshingGames -= it.name
             if (refreshingGames.isEmpty() && !refreshBatchInProgress) {
-                lastRefreshCompleted = Instant.now()
                 hasCompletedRefresh = true
                 lastRefreshHadFailures = game.onlineMultiplayer.games.any { game -> game.error != null }
             }
@@ -463,7 +463,6 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
                     if (isDisposed) return@launchOnGLThread
                     refreshBatchInProgress = false
                     refreshingGames.clear()
-                    lastRefreshCompleted = Instant.now()
                     hasCompletedRefresh = true
                     lastRefreshHadFailures = requestFailed ||
                         game.onlineMultiplayer.games.any { it.error != null }
@@ -495,13 +494,6 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         }
         serverStateLabel.setFontColor(stateColor)
         serverStatusDot.setFontColor(stateColor)
-        lastRefreshLabel.setText(
-            lastRefreshCompleted?.let {
-                val elapsed = Duration.between(it, Instant.now())
-                val nonNegativeElapsed = if (elapsed.isNegative) Duration.ZERO else elapsed
-                "Last refreshed [${nonNegativeElapsed.formatShort()}] ago".tr()
-            } ?: "Not refreshed yet".tr()
-        )
     }
 
     private fun updateGameCount() {
@@ -520,164 +512,79 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         if (selectedGame?.name == name) refreshSelectedGame()
     }
 
-    private fun createResignButton(): TextButton {
-        val negativeButtonStyle = skin.get("negative", TextButton.TextButtonStyle::class.java)
-        val resignButton = "Resign".toTextButton(negativeButtonStyle).apply { disable() }
-        resignButton.onClick {
-            val civName = selectedGame!!.preview!!.currentPlayer
-            val askPopup = ConfirmPopup(
-                    this,
-                    "Are you sure you ([$civName]) want to resign?",
-                    "Resign",
-            ) {
-                resignPlayer(selectedGame!!, civName, civName)
-            }
-            askPopup.open()
+    private fun createPlayerActionButton(action: MultiplayerPlayerAction): TextButton {
+        val label = when (action) {
+            MultiplayerPlayerAction.Resign -> "Resign"
+            MultiplayerPlayerAction.SkipTurn -> "Skip turn of current player"
+            MultiplayerPlayerAction.ForceResign -> "Force current player to resign"
         }
-        return resignButton
-    }
-    
-    private fun getOurCivNameOrPlayerId(): String {
-        val ourId = game.settings.multiplayer.getUserId()
-        val ourCiv = selectedGame!!.preview!!.getPlayerCiv(ourId)
-        // if we are a non-spectator player, use our civ name, otherwise use player id
-        return if (ourCiv != null && ourCiv.civName != Constants.spectator) ourCiv.civName else ourId
-    }
-
-    private fun createForceResignButton(): TextButton {
-        val negativeButtonStyle = skin.get("negative", TextButton.TextButtonStyle::class.java)
-        val resignButton = "Force current player to resign".toTextButton(negativeButtonStyle).apply { isVisible = false }
-        resignButton.onClick {
-            val currentPlayer = selectedGame!!.preview!!.currentPlayer
-            val askPopup = ConfirmPopup(
-                this,
-                "Are you sure you want to force the current player ([$currentPlayer]) to resign?",
-                "Yes",
-            ) {
-                resignPlayer(selectedGame!!, currentPlayer, getOurCivNameOrPlayerId())
-            }
-            askPopup.open()
-        }
-        return resignButton
-    }
-
-    private fun createSkipTurnButton(): TextButton {
-        val negativeButtonStyle = skin.get("negative", TextButton.TextButtonStyle::class.java)
-        val skipTurnButton = "Skip turn of current player".toTextButton(negativeButtonStyle).apply { isVisible = false }
-        skipTurnButton.onClick {
-            val civName = selectedGame!!.preview!!.currentPlayer
-            val askPopup = ConfirmPopup(
-                this,
-                "Are you sure you want to skip the turn of [$civName]?",
-                "Yes",
-            ) {
-                skipCurrentPlayerTurn(selectedGame!!, civName, getOurCivNameOrPlayerId())
-            }
-            askPopup.open()
-        }
-        return skipTurnButton
-    }
-
-    /**
-     * Permanently turns the current playerCiv into an AI civ and uploads the game afterwards.
-     * 
-     * @param responsibleCivNameOrPlayerId Who caused the player to resign? Can be the name of a civ, or for example a player id
-     */
-    private fun resignPlayer(multiplayerGamePreview: MultiplayerGamePreview, playerCiv: String, responsibleCivNameOrPlayerId: String) {
-        //Create a popup
-        val popup = Popup(this)
-        popup.addGoodSizedLabel(Constants.working).row()
-        popup.open()
-
-        Concurrency.runOnNonDaemonThreadPool("Resign") {
-            try {
-                val errorMessage = game.onlineMultiplayer.resignPlayer(
-                    multiplayerGamePreview,
-                    playerCiv,
-                    responsibleCivNameOrPlayerId
-                )
-
-                launchOnGLThread {
-                    if (errorMessage.isEmpty()) {
-                        popup.close()
-                    } else {
-                        popup.reuseWith(errorMessage, true)
-                    }
+        return label.toTextButton(skin.get("negative", TextButton.TextButtonStyle::class.java)).apply {
+            disable()
+            onClick {
+                val targetGame = selectedGame ?: return@onClick
+                val expected = targetGame.preview ?: return@onClick
+                val civName = expected.civilizations.firstOrNull { it.civID == expected.currentPlayer }?.civName
+                    ?: return@onClick
+                val question = when (action) {
+                    MultiplayerPlayerAction.Resign -> "Are you sure you ([$civName]) want to resign?"
+                    MultiplayerPlayerAction.SkipTurn -> "Are you sure you want to skip the turn of [$civName]?"
+                    MultiplayerPlayerAction.ForceResign -> "Are you sure you want to force the current player ([$civName]) to resign?"
                 }
+                val prompt = if (action == MultiplayerPlayerAction.SkipTurn) question else
+                    question.tr() + "\n\n" + "After resigning, this civilization will be permanently controlled by AI.".tr()
+                ConfirmPopup(this@MultiplayerScreen, prompt, "Yes") {
+                    runPlayerAction(targetGame, expected, action)
+                }.open()
+            }
+        }
+    }
+
+    private fun runPlayerAction(
+        targetGame: MultiplayerGamePreview,
+        expected: GameInfoPreview? = null,
+        action: MultiplayerPlayerAction? = null,
+    ) {
+        if (playerActionInProgress || isDisposed) return
+        playerActionInProgress = true
+        refreshSelectedGame()
+        val popup = Popup(this).apply {
+            addGoodSizedLabel(Constants.working).row()
+            open()
+        }
+        val preview = expected ?: targetGame.preview!!
+        Concurrency.runOnNonDaemonThreadPool("Multiplayer player action") {
+            var failure: Exception? = null
+            try {
+                val multiplayer = game.onlineMultiplayer
+                val pending = multiplayer.pendingTurnUploadStateFor(
+                    preview.gameId, preview.gameParameters.multiplayerServerUrl,
+                ).get()
+                if (action == null || pending?.playerAction != null) multiplayer.retryPlayerAction(targetGame)
+                else multiplayer.performPlayerAction(targetGame, preview, action)
             } catch (ex: Exception) {
-                val (message) = LoadGameScreen.getLoadExceptionMessage(ex)
-
-                if (ex is MultiplayerAuthException) {
-                    launchOnGLThread {
-                        val preview = multiplayerGamePreview.preview ?: return@launchOnGLThread
-                        val multiplayerServer = game.onlineMultiplayer
-                            .serverFor(preview.gameParameters.multiplayerServerUrl)
-                        AuthPopup(
-                            this@MultiplayerScreen,
-                            multiplayerServer,
-                            { success ->
-                                if (success) resignPlayer(multiplayerGamePreview, playerCiv, responsibleCivNameOrPlayerId)
-                            },
-                        ).open(true)
-                    }
-                    return@runOnNonDaemonThreadPool
-                }
-
+                failure = ex
+            } finally {
                 launchOnGLThread {
-                    popup.reuseWith(message, true)
-                }
-            }
-        }
-    }
-
-    /**
-     * Temporarily turns the current playerCiv into an AI civ and uploads the game afterwards.
-     *
-     * @param responsibleCivNameOrPlayerId Who skipped the player's turn? Can be the name of a civ, or for example a player id
-     */
-    private fun skipCurrentPlayerTurn(multiplayerGamePreview: MultiplayerGamePreview, playerToSkip: String, responsibleCivNameOrPlayerId: String) {
-        //Create a popup
-        val popup = Popup(this)
-        popup.addGoodSizedLabel(Constants.working).row()
-        popup.open()
-
-        Concurrency.runOnNonDaemonThreadPool("Skip turn") {
-            try {
-                val skipTurnErrorMessage = game.onlineMultiplayer.skipCurrentPlayerTurn(
-                    multiplayerGamePreview,
-                    playerToSkip,
-                    responsibleCivNameOrPlayerId
-                )
-
-                launchOnGLThread {
-                    if (skipTurnErrorMessage == null) {
-                        popup.close()
-                    } else {
-                        popup.reuseWith(skipTurnErrorMessage, true)
-                    }
+                    playerActionInProgress = false
+                    if (isDisposed) return@launchOnGLThread
                     gameList.update()
-                }
-            } catch (ex: Exception) {
-                val (message) = LoadGameScreen.getLoadExceptionMessage(ex)
-
-                if (ex is MultiplayerAuthException) {
-                    launchOnGLThread {
-                        val preview = multiplayerGamePreview.preview ?: return@launchOnGLThread
-                        val multiplayerServer = game.onlineMultiplayer
-                            .serverFor(preview.gameParameters.multiplayerServerUrl)
-                        AuthPopup(
-                            this@MultiplayerScreen,
-                            multiplayerServer,
-                            { success ->
-                                if (success) skipCurrentPlayerTurn(multiplayerGamePreview, playerToSkip, responsibleCivNameOrPlayerId)
-                            },
-                        ).open(true)
+                    refreshSelectedGame()
+                    val ex = failure
+                    when (ex) {
+                        null, is CancellationException -> popup.close()
+                        is MultiplayerAuthException -> {
+                            popup.close()
+                            AuthPopup(
+                                this@MultiplayerScreen,
+                                game.onlineMultiplayer.serverFor(preview.gameParameters.multiplayerServerUrl),
+                                { success -> if (success) runPlayerAction(targetGame, expected, action) },
+                            ).open(true)
+                        }
+                        else -> {
+                            val (message) = LoadGameScreen.getLoadExceptionMessage(ex)
+                            popup.reuseWith(message, true)
+                        }
                     }
-                    return@runOnNonDaemonThreadPool
-                }
-
-                launchOnGLThread {
-                    popup.reuseWith(message, true)
                 }
             }
         }
@@ -798,22 +705,26 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         resignButton.label.setFontSize(multiplayerDenseFontSize)
         skipTurnButton.label.setFontSize(multiplayerDenseFontSize)
         forceResignButton.label.setFontSize(multiplayerDenseFontSize)
-        listOf(friendsListButton, resignButton, skipTurnButton, forceResignButton).forEach {
+        listOf(friendsListButton, resignButton, skipTurnButton, forceResignButton, retryPlayerActionButton).forEach {
             it.label.setEllipsis(false)
             it.labelCell.minWidth(0f)
         }
 
-        val actions = mutableListOf(friendsListButton)
+        retryPlayerActionButton.label.setFontSize(multiplayerDenseFontSize)
+        val actions = mutableListOf<TextButton>()
+        if (game.platformCapabilities.multiplayerFriends) actions += friendsListButton
         if (selectedGame != null) {
             actions += resignButton
         }
         if (skipTurnButton.isVisible) actions += skipTurnButton
         if (forceResignButton.isVisible) actions += forceResignButton
+        if (retryPlayerActionButton.isVisible) actions += retryPlayerActionButton
         advancedActionsTable.addResponsiveActions(actions, detailsActionWidth, 40f)
     }
 
     private fun unselectGame() {
         selectedGame = null
+        retryPlayerActionButton.isVisible = false
         gameList.select(null)
         rightSideButton.disable()
         for (button in gameSpecificButtons)
@@ -846,35 +757,29 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
 
         val preview = multiplayerGame.preview
         val actionsBlocked = refreshBatchInProgress ||
-            name in refreshingGames || isDownloadingMods
+            name in refreshingGames || isDownloadingMods || playerActionInProgress
         copyGameIdButton.isEnabled = preview != null
         renameButton.isEnabled = preview != null && !actionsBlocked
         deleteButton.isEnabled = !actionsBlocked
         rightSideButton.isEnabled = preview != null && !actionsBlocked
 
-        if (!game.platformCapabilities.multiplayerAdvancedActions) {
-            resignButton.disable()
-            skipTurnButton.isVisible = false
-            forceResignButton.isVisible = false
-        } else {
-            val currentPlayerCiv = preview?.civilizations
-                ?.firstOrNull { it.civID == preview.currentPlayer }
-                ?: preview?.civilizations?.firstOrNull { it.civName == preview.currentPlayer }
-            // is it our turn?
-            val isOurTurn = currentPlayerCiv?.playerId == game.settings.multiplayer.getUserId()
-            resignButton.isEnabled = !actionsBlocked && isOurTurn
-
-            if (actionsBlocked || isOurTurn || preview == null || currentPlayerCiv == null) {
-                skipTurnButton.isVisible = false
-                forceResignButton.isVisible = false
-            } else {
-                val durationInactive = Duration.between(Instant.ofEpochMilli(preview.currentTurnStartTime), Instant.now())
-                val playerDurationBeforeForceResign = Duration.ofMinutes(currentPlayerCiv.playerMinutesBeforeForceResign.toLong())
-                val weAreAPlayer = game.settings.multiplayer.getUserId() in preview.civilizations.map { it.playerId }
-                skipTurnButton.isVisible = weAreAPlayer && durationInactive > Duration.ofMinutes(preview.gameParameters.minutesUntilSkipTurn.toLong())
-                forceResignButton.isVisible = weAreAPlayer && (durationInactive > playerDurationBeforeForceResign)
-            }
+        val pendingState = preview?.let {
+            game.onlineMultiplayer.pendingTurnUploadStateFor(it.gameId, it.gameParameters.multiplayerServerUrl)
         }
+        val userId = game.settings.multiplayer.getUserId()
+        val canAct = game.platformCapabilities.multiplayerAdvancedActions && !actionsBlocked
+            && pendingState?.requiresRecovery() != true
+        resignButton.isEnabled = canAct && preview != null &&
+            playerActionError(MultiplayerPlayerAction.Resign, preview, preview, userId) == null
+        skipTurnButton.isVisible = canAct && preview != null &&
+            playerActionError(MultiplayerPlayerAction.SkipTurn, preview, preview, userId) == null
+        skipTurnButton.isEnabled = skipTurnButton.isVisible
+        forceResignButton.isVisible = canAct && preview != null &&
+            playerActionError(MultiplayerPlayerAction.ForceResign, preview, preview, userId) == null
+        forceResignButton.isEnabled = forceResignButton.isVisible
+        retryPlayerActionButton.isVisible = game.platformCapabilities.multiplayerAdvancedActions &&
+            pendingState?.get()?.let { it.playerAction != null && it.initiatingPlayerId == userId } == true
+        retryPlayerActionButton.isEnabled = !actionsBlocked
 
         updateAdvancedActions()
         updateSelectedGameDetails()

@@ -126,7 +126,11 @@ the CIO engine requires JDK APIs unavailable in RoboVM. Ktor continues to
 handle redirects and progress. The temporary ZIP receiver uses the same safe
 extraction and Mod-folder validation.
 
-Chat, API v2, Dropbox storage, background polling, push notifications, deep
+Foreground chat uses the existing API v1 `/chat` protocol through native
+`NSURLSessionWebSocketTask`. It reconnects and rejoins on foregrounding; messages
+remain in memory only, matching upstream's lack of offline delivery and history.
+
+API v2, Dropbox storage, background polling, push notifications, deep
 links, LAN multiplayer servers, and default music download stay disabled on iOS.
 The Mod Manager can start a temporary local upload server while its receiver is
 open. Foreground multiplayer

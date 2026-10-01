@@ -253,7 +253,7 @@ class MultiplayerServerRoutingTest {
     }
 
     @Test
-    fun `iOS API v1 rejects a full game with a stale checksum`() = runBlocking {
+    fun `iOS API v1 loads server modified games but verified reads reject stale checksums`() = runBlocking {
         val configuredGame = UncivGame.Current
         val testGame = TestGame()
         val player = testGame.addCiv(testGame.ruleset.nations.getValue("Rome"), isPlayer = true)
@@ -273,8 +273,12 @@ class MultiplayerServerRoutingTest {
             networkDispatcher = Dispatchers.Unconfined,
         )
 
+        val downloaded = server.tryDownloadGame(payloadGame.gameId)
+        assertEquals(payloadGame.turns, downloaded.turns)
+        assertEquals(CURRENT_SERVER, downloaded.gameParameters.multiplayerServerUrl)
+
         val exception = try {
-            server.tryDownloadGame(payloadGame.gameId)
+            server.tryDownloadVerifiedGame(payloadGame.gameId)
             throw AssertionError("Expected a stale checksum to be rejected")
         } catch (exception: MultiplayerNetworkException) {
             exception

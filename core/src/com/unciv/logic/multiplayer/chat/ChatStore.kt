@@ -65,6 +65,16 @@ object ChatStore {
 
     var hasGlobalMessage = false
 
+    var passwordRequired = false
+        private set
+
+    fun updatePasswordRequired(required: Boolean) {
+        Gdx.app.postRunnable {
+            passwordRequired = required
+            chatPopup?.refreshPasswordReminder()
+        }
+    }
+
     private var gameIdToChat: MutableMap<ChatKey, Chat> = synchronizedMap(mutableMapOf())
 
     /** When no [ChatPopup] is open to receive these oddities, we keep them here.
@@ -87,6 +97,7 @@ object ChatStore {
     fun clear() {
         gameIdToChat = synchronizedMap(mutableMapOf())
         globalMessages = LinkedList()
+        passwordRequired = false
     }
 
     fun relayChatMessage(incomingChatMsg: Response.Chat, serverUrl: String) {
@@ -119,7 +130,8 @@ object ChatStore {
 
                     }
                     // ensures that you are not getting notified for your own messages
-                    else if (UncivGame.Current.worldScreen?.gameInfo?.currentPlayer != incomingChatMsg.civName) {
+                    else if (UncivGame.Current.gameInfo?.getCivilizationOrNull(incomingChatMsg.civName)?.playerId
+                        != UncivGame.Current.settings.multiplayer.getUserId()) {
                         chat.unreadCount++
                         UncivGame.Current.worldScreen?.chatButton?.triggerChatIndication()
                     }
@@ -139,7 +151,7 @@ object ChatStore {
 
     fun relayGlobalMessage(message: String, civName: String = "System") {
         Gdx.app.postRunnable {
-            if (civName != "System") {
+            if (civName != "System" && civName != "Server") {
                 hasGlobalMessage = chatPopup == null
                 if (hasGlobalMessage) UncivGame.Current.worldScreen?.chatButton?.triggerChatIndication()
             }

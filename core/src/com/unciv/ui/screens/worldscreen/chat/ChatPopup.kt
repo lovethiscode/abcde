@@ -120,6 +120,7 @@ class ChatPopup(
     private val chatTable = Table(skin)
     private val scrollPane = ScrollPane(chatTable, skin)
     private val messageField = UncivTextField(hint = "Type something...")
+    private val passwordReminder = Table(skin)
 
     init {
         ChatStore.chatPopup = this
@@ -155,12 +156,14 @@ class ChatPopup(
             .size(0.5f * worldScreen.stage.width, 0.5f * worldScreen.stage.height)
             .expand().fill().row()
 
+        add(passwordReminder).colspan(2).width(0.5f * worldScreen.stage.width).fillX().row()
         add(messageField).expandX().fillX()
         val sendButton = Button(skin)
         sendButton.add(ImageGetter.getImage("OtherIcons/Send"))
         add(sendButton).size(messageField.height * 1.2f, messageField.height).padLeft(1f).row()
 
         populateChat()
+        refreshPasswordReminder()
 
         sendButton.onClick { sendMessage() }
 
@@ -172,6 +175,17 @@ class ChatPopup(
                 return true
             }
         })
+    }
+
+    fun refreshPasswordReminder() {
+        passwordReminder.clearChildren()
+        if (ChatStore.passwordRequired) {
+            passwordReminder.add(
+                "To use chat, set or check your password in Options → Multiplayer.".toLabel().apply {
+                    wrap = true
+                }
+            ).growX().padBottom(5f)
+        }
     }
 
     fun sendMessage() {

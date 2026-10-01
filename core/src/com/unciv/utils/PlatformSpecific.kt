@@ -1,6 +1,8 @@
 package com.unciv.utils
 
 import com.unciv.logic.multiplayer.storage.MultiplayerV1Transport
+import com.unciv.logic.multiplayer.chat.ChatTransport
+import com.unciv.logic.multiplayer.chat.KtorChatTransport
 import com.unciv.logic.multiplayer.storage.SimpleHttp
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.cio.CIO
@@ -17,6 +19,7 @@ data class PlatformCapabilities(
     val multiplayerApiV1Only: Boolean = false,
     val secureMultiplayerServerPasswords: Boolean = false,
     val multiplayerAdvancedActions: Boolean = true,
+    val multiplayerFriends: Boolean = true,
     val oggAudio: Boolean = true,
 ) {
     override fun hashCode(): Int {
@@ -29,6 +32,7 @@ data class PlatformCapabilities(
         result = 31 * result + (if (multiplayerApiV1Only) 1231 else 1237)
         result = 31 * result + (if (secureMultiplayerServerPasswords) 1231 else 1237)
         result = 31 * result + (if (multiplayerAdvancedActions) 1231 else 1237)
+        result = 31 * result + (if (multiplayerFriends) 1231 else 1237)
         result = 31 * result + (if (oggAudio) 1231 else 1237)
         return result
     }
@@ -93,6 +97,9 @@ interface PlatformSpecific {
 
     /** Creates the platform network transport used by API v1 multiplayer. */
     fun createMultiplayerV1Transport(): MultiplayerV1Transport = SimpleHttp()
+
+    /** WebSocket transport for the existing multiplayer chat protocol. */
+    fun createChatTransport(): ChatTransport = KtorChatTransport()
 
     /** HTTP engine used by the existing GitHub Mod requests and downloads. */
     fun createModHttpClientEngine(): HttpClientEngine = CIO.create()

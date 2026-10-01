@@ -4,26 +4,18 @@ import com.unciv.UncivGame
 import com.unciv.logic.multiplayer.chat.ChatWebSocket.job
 import com.unciv.logic.multiplayer.chat.ChatWebSocket.start
 import com.unciv.utils.Concurrency
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.*
-import io.ktor.websocket.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.ClassDiscriminatorMode
-import kotlinx.serialization.json.Json
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -83,27 +75,17 @@ object ChatWebSocket {
     private val MAX_RECONNECT_TIME = 64.seconds
     private val INITIAL_SESSION_WAIT_FOR_TIME = 5.seconds
 
-    private var isStarted = false
+    @Volatile private var isStarted = false
+    @Volatile private var isPaused = false
 
     private var lastRetry = TimeSource.Monotonic.markNow()
     private var reconnectionAttempts = 0
     private var reconnectTime = INITIAL_RECONNECT_TIME
 
     private var job: Job? = null
-    private var session: DefaultClientWebSocketSession? = null
-
-    @OptIn(ExperimentalSerializationApi::class)
-    private val client = HttpClient(CIO) {
-        install(WebSockets) {
-            pingInterval = 30.seconds
-            contentConverter = KotlinxWebsocketSerializationConverter(Json {
-                classDiscriminator = "type"
-                // DO NOT OMIT
-                // if omitted the "type" field will be missing from all outgoing messages
-                classDiscriminatorMode = ClassDiscriminatorMode.ALL_JSON_OBJECTS
-            })
-        }
-    }
+    private var restartJob: Job? = null
+    @Volatile private var session: ChatConnection? = null
+    private val transport by lazy { UncivGame.Current.createChatTransport() }
 
     private fun resetExponentialBackoff() {
         lastRetry = TimeSource.Monotonic.markNow()
@@ -127,6 +109,7 @@ object ChatWebSocket {
      * Also calls [start] to start the connection in case it was not done beforehand.
      */
     fun requestMessageSend(message: Message) {
+        if (isPaused) return
         start()
         Concurrency.run("MultiplayerChatSendMessage") {
             withTimeoutOrNull(INITIAL_SESSION_WAIT_FOR_TIME) {
@@ -134,21 +117,19 @@ object ChatWebSocket {
                     delay(100.milliseconds)
                 }
             }
+            if (!isStarted || isPaused) return@run
             session?.runCatching {
-                this.sendSerialized(message)
+                this.send(message)
             }
         }
     }
 
     private fun handleWebSocketThrowables(t: Throwable) {
         print("ChatError: ${t.message}. Reconnecting...")
+        ChatStore.updatePasswordRequired(t.message?.contains("401") == true)
 
         if (reconnectionAttempts == 0) {
             lastRetry = TimeSource.Monotonic.markNow()
-            ChatStore.relayGlobalMessage("WebSocket connection closed. Cause: [${t.cause}]")
-            if (t.message?.contains("401") == true) {
-                ChatStore.relayGlobalMessage("Authentication issue detected! You have to set a password to use Chat.")
-            }
         } else {
             print(" (Last retry was ${lastRetry.elapsedNow().toString(DurationUnit.SECONDS, 2)} ago)")
             lastRetry = TimeSource.Monotonic.markNow()
@@ -159,23 +140,21 @@ object ChatWebSocket {
     }
 
     private suspend fun startSession() {
+        var connection: ChatConnection? = null
         try {
             session?.close()
             val serverUrl = UncivGame.Current.onlineMultiplayer.multiplayerServer
                 .getServerUrl().trimEnd('/')
-            session = client.webSocketSession {
-                url(getChatUrl(serverUrl))
-                userAgent(UncivGame.getUserAgent("Chat"))
-                header(
-                    HttpHeaders.Authorization,
-                    UncivGame.Current.settings.multiplayer.getAuthHeader(serverUrl)
-                )
-            }
+            connection = transport.connect(
+                getChatUrl(serverUrl).toString(),
+                UncivGame.Current.settings.multiplayer.getAuthHeader(serverUrl),
+                UncivGame.getUserAgent("Chat"),
+            )
 
-            session!!.runCatching {
+            connection.runCatching {
                 if (isActive) {
                     println("ChatLog: Connected to WebSocket.")
-                    ChatStore.relayGlobalMessage("Successfully connected to WebSocket server!")
+                    ChatStore.updatePasswordRequired(false)
                     resetExponentialBackoff()
                 }
 
@@ -194,10 +173,11 @@ object ChatWebSocket {
                         ?.let { it == currentServer }
                         ?: true
                 }?.gameId?.let(gameIds::add)
-                this.sendSerialized(Message.Join(gameIds.toList()))
+                this.send(Message.Join(gameIds.toList()))
+                session = this
 
                 while (this.isActive) {
-                    val response = receiveDeserialized<Response>()
+                    val response = receive()
                     when (response) {
                         is Response.Chat -> ChatStore.relayChatMessage(response, serverUrl)
 
@@ -210,13 +190,22 @@ object ChatWebSocket {
                 }
             }
                 .onSuccess { restart() }
-                .onFailure { handleWebSocketThrowables(it) }
+                .onFailure {
+                    if (it is CancellationException) throw it
+                    handleWebSocketThrowables(it)
+                }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             handleWebSocketThrowables(e)
+        } finally {
+            if (session === connection) session = null
+            withContext(NonCancellable) { connection?.close() }
         }
     }
 
-    private fun start() {
+    @Synchronized private fun start() {
+        if (isPaused) return
         if (!isStarted) {
             isStarted = true
             job = Concurrency.run("MultiplayerChat") { startSession() }
@@ -226,10 +215,23 @@ object ChatWebSocket {
     /**
      * Stops the socket and clears all type of chat from [ChatStore]
      */
-    fun stop() {
+    @Synchronized fun stop() {
         isStarted = false
+        restartJob?.cancel()
         ChatStore.clear()
         job?.cancel(ChatStopException())
+    }
+
+    /** iOS suspends foreground sockets without discarding the current in-memory chat. */
+    @Synchronized fun pause() {
+        isPaused = true
+        restartJob?.cancel()
+        job?.cancel(ChatStopException())
+    }
+
+    @Synchronized fun resume() {
+        isPaused = false
+        if (isStarted) restart(force = true)
     }
 
     /**
@@ -238,8 +240,9 @@ object ChatWebSocket {
      * This is helpfull when we need to reset [job] due to events.
      */
     @OptIn(DelicateCoroutinesApi::class)
+    @Synchronized
     fun restart(dueToError: Boolean = false, force: Boolean = false) {
-        if (!isStarted) return
+        if (!isStarted || isPaused) return
         if (dueToError) {
             if (++reconnectionAttempts > MAX_RECONNECTION_ATTEMPTS) {
                 return
@@ -248,7 +251,8 @@ object ChatWebSocket {
 
         if (force) println("ChatLog: A force restart seems to be requested!")
 
-        GlobalScope.launch {
+        restartJob?.cancel()
+        restartJob = GlobalScope.launch {
             if (!force) {
                 // exponential backoff same as described here: https://cloud.google.com/memorystore/docs/redis/exponential-backoff
                 delay(Random.nextLong(1000).milliseconds + reconnectTime)
@@ -256,8 +260,11 @@ object ChatWebSocket {
                 if (job?.isActive == true) return@launch
             }
 
-            job?.cancel(ChatRestartException())
-            job = Concurrency.run("MultiplayerChat") { startSession() }
+            synchronized(this@ChatWebSocket) {
+                if (!isStarted || isPaused) return@launch
+                job?.cancel(ChatRestartException())
+                job = Concurrency.run("MultiplayerChat") { startSession() }
+            }
         }
     }
 }

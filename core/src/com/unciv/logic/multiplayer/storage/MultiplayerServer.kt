@@ -175,9 +175,11 @@ class MultiplayerServer(
     }
 
     suspend fun tryDownloadGame(gameId: String): GameInfo {
+        // API v1 servers may add notifications without updating the client's checksum.
+        // Ordinary loads follow upstream behavior; upload reconciliation uses verified reads.
         return tryDownloadGame(
             gameId,
-            requireValidChecksum = currentCapabilities().multiplayerApiV1Only,
+            requireValidChecksum = false,
         )
     }
 

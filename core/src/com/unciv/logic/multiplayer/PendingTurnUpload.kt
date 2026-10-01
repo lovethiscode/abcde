@@ -30,6 +30,8 @@ class PendingTurnUpload private constructor(
     private val originalFingerprint: String,
     val pendingGame: GameInfo,
     val isCreationIntent: Boolean,
+    val playerAction: MultiplayerPlayerAction?,
+    val initiatingPlayerId: String?,
 ) {
     private val pendingState = pendingGame.turnUploadState()
     private val pendingFingerprint: String
@@ -39,18 +41,23 @@ class PendingTurnUpload private constructor(
         originalGame: GameInfo,
         pendingGame: GameInfo,
         isCreationIntent: Boolean = false,
+        playerAction: MultiplayerPlayerAction? = null,
+        initiatingPlayerId: String? = null,
     ) : this(
         originalGame.turnUploadState(),
-        originalGame.checksum,
+        if (playerAction == null) originalGame.checksum else originalGame.playerActionContentFingerprint(),
         pendingGame,
         isCreationIntent,
+        playerAction,
+        initiatingPlayerId,
     )
 
     init {
         // Match the exact full-game representation used by MultiplayerServer.uploadGame().
         pendingGame.version = CompatibilityVersion.CURRENT_COMPATIBILITY_VERSION
-        pendingFingerprint = pendingGame.calculateChecksum()
-        pendingGame.checksum = pendingFingerprint
+        pendingGame.checksum = pendingGame.calculateChecksum()
+        pendingFingerprint = if (playerAction == null) pendingGame.checksum
+            else pendingGame.playerActionContentFingerprint()
         pendingPreviewFingerprint = pendingGame.asPreview().previewFingerprint()
     }
 
@@ -59,10 +66,11 @@ class PendingTurnUpload private constructor(
         serverPreview: GameInfoPreview?,
         checksumVerifiedBeforeSourceStamping: Boolean = false,
     ): PendingTurnUploadResolution {
-        val serverFingerprint = serverGame.checksum
-        if (serverFingerprint.isBlank()
+        val serverFingerprint = if (playerAction == null) serverGame.checksum
+            else serverGame.playerActionContentFingerprint()
+        if (playerAction == null && (serverFingerprint.isBlank()
             || !checksumVerifiedBeforeSourceStamping && serverFingerprint != serverGame.calculateChecksum()
-        ) {
+        )) {
             return PendingTurnUploadResolution.InvalidServerGame
         }
 
@@ -89,6 +97,8 @@ class PendingTurnUpload private constructor(
         it.pendingGameData = UncivFiles.gameInfoToString(pendingGame, forceZip = true)
         it.serverUrl = pendingGame.gameParameters.multiplayerServerUrl.orEmpty()
         it.isCreationIntent = isCreationIntent
+        it.playerAction = playerAction?.name
+        it.initiatingPlayerId = initiatingPlayerId
         // Any process restart makes an in-flight write uncertain, even if no failure was observed.
         it.unconfirmedReason = (reason ?: TurnUploadUnconfirmedReason.UploadFailed).name
     }
@@ -118,6 +128,8 @@ class PendingTurnUpload private constructor(
                 record.originalFingerprint,
                 pendingGame,
                 record.isCreationIntent,
+                record.playerAction?.let { MultiplayerPlayerAction.valueOf(it) },
+                record.initiatingPlayerId,
             )
         }
     }
@@ -151,6 +163,8 @@ class PendingTurnUploadState private constructor(
     fun getOrCreate(
         originalGame: GameInfo,
         isCreationIntent: Boolean = false,
+        playerAction: MultiplayerPlayerAction? = null,
+        initiatingPlayerId: String? = null,
         createPendingGame: () -> GameInfo,
     ): PendingTurnUpload {
         if (recoveryFailed) throw PendingTurnPersistenceException()
@@ -162,7 +176,9 @@ class PendingTurnUploadState private constructor(
             return existing
         }
 
-        val created = PendingTurnUpload(originalGame, createPendingGame(), isCreationIntent)
+        val created = PendingTurnUpload(
+            originalGame, createPendingGame(), isCreationIntent, playerAction, initiatingPlayerId,
+        )
         pendingTurn = created
         if (store != null && !store.save(created, unconfirmedReason)) {
             unconfirmedReason = TurnUploadUnconfirmedReason.UploadFailed
@@ -263,6 +279,8 @@ internal class PendingTurnUploadRecord {
     var pendingGameData = ""
     var serverUrl = ""
     var isCreationIntent = false
+    var playerAction: String? = null
+    var initiatingPlayerId: String? = null
     var unconfirmedReason = TurnUploadUnconfirmedReason.UploadFailed.name
 }
 
