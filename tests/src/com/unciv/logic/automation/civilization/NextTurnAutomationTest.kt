@@ -43,7 +43,7 @@ class NextTurnAutomationTest(private val algorithm: PathfindingAlgorithm) {
     }
 
     @Test
-    fun `automateUnits skips workers captured while founding a city`() {
+    fun `founding a city does not capture workers through forced displacement`() {
         val game = TestGame()
         UncivGame.Current.settings.useAStarPathfinding = (algorithm == AStarPathfinding)
         game.makeHexagonalMap(4)
@@ -53,7 +53,7 @@ class NextTurnAutomationTest(private val algorithm: PathfindingAlgorithm) {
         val settler = game.addUnit("Settler", cityState, game.tileMap[0, 0])
         val worker = game.addUnit("Worker", cityState, game.tileMap[-2, -2])
         val brute = game.addUnit("Brute", barbarians, game.tileMap[-1, -1])
-        // Founding the city expels the brute onto the worker's tile and captures it mid-turn.
+        // The worker's tile must not be a destination for the expelled brute.
         for (tile in brute.currentTile.neighbors) {
             if (tile != settler.currentTile && tile != worker.currentTile)
                 game.setTileTerrain(tile.position, "Mountain")
@@ -63,10 +63,10 @@ class NextTurnAutomationTest(private val algorithm: PathfindingAlgorithm) {
 
         assertEquals(1, cityState.cities.size)
         assertTrue(settler.isDestroyed)
-        assertSame(barbarians, worker.civ)
-        assertSame(worker.currentTile, brute.currentTile)
-        assertEquals(0f, worker.currentMovement)
-        assertTrue(cityState.units.getCivUnits().none { it == worker })
+        assertSame(cityState, worker.civ)
+        assertTrue(cityState.units.getCivUnits().any { it === worker })
+        assertFalse(barbarians.units.getCivUnits().any { it === worker })
+        assertTrue(brute.isDestroyed || brute.currentTile != worker.currentTile)
     }
 
     @Test
