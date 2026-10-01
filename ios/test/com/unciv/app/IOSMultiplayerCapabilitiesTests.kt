@@ -24,6 +24,7 @@ class IOSMultiplayerCapabilitiesTests {
         assertFalse(capabilities.oggAudio)
         assertTrue(capabilities.multiplayerAdvancedActions)
         assertFalse(capabilities.multiplayerFriends)
+        assertTrue(capabilities.multiplayerInviteLinks)
         assertTrue(game.createMultiplayerV1Transport() is IOSMultiplayerV1Transport)
         assertTrue(game.createChatTransport() is IOSChatTransport)
     }

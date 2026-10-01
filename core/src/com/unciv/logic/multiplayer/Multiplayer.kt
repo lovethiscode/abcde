@@ -70,7 +70,7 @@ class Multiplayer(
         Concurrency.run("Multiplayer updater") { runMultiplayerUpdater(forceUpdate) }
     }
 
-    internal fun serverFor(fileStorageIdentifier: String?): MultiplayerServer {
+    fun serverFor(fileStorageIdentifier: String?): MultiplayerServer {
         if (fileStorageIdentifier == null
             && UncivGame.Current.platformCapabilities.multiplayerServerRequiresHttps
         ) {
@@ -306,13 +306,14 @@ class Multiplayer(
      * @throws FileStorageRateLimitReached if the file storage backend can't handle any additional actions for a time
      * @throws MultiplayerFileNotFoundException if the file can't be found
      */
-    suspend fun addGame(gameId: String, gameName: String? = null) {
+    suspend fun addGame(gameId: String, gameName: String? = null, serverUrl: String? = null) {
         val saveFileName = if (gameName.isNullOrBlank()) gameId else gameName
+        val server = if (serverUrl == null) multiplayerServer else serverFor(serverUrl)
         val gamePreview: GameInfoPreview = try {
-            multiplayerServer.tryDownloadGamePreview(gameId)
+            server.tryDownloadGamePreview(gameId)
         } catch (_: MultiplayerFileNotFoundException) {
             // Game is so old that a preview could not be found on dropbox lets try the real gameInfo instead
-            multiplayerServer.tryDownloadGame(gameId).asPreview()
+            server.tryDownloadGame(gameId).asPreview()
         }
         multiplayerFiles.addGame(gamePreview, saveFileName)
     }
@@ -333,6 +334,14 @@ class Multiplayer(
             serverFor(preview.gameParameters.multiplayerServerUrl),
             pendingCreation,
         )
+    }
+
+    /** Downloads and records an invitation without changing the selected global server. */
+    suspend fun downloadInvitedGame(invite: MultiplayerGameInvite): GameInfo {
+        val serverUrl = invite.serverUrl ?: UncivGame.Current.settings.multiplayer.getServer()
+        val latest = serverFor(serverUrl).downloadGame(invite.gameId)
+        persistGamePreviewLocally(latest)
+        return latest
     }
 
     /** Downloads game, and updates it locally

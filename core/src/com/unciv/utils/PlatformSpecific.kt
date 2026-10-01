@@ -20,6 +20,7 @@ data class PlatformCapabilities(
     val secureMultiplayerServerPasswords: Boolean = false,
     val multiplayerAdvancedActions: Boolean = true,
     val multiplayerFriends: Boolean = true,
+    val multiplayerInviteLinks: Boolean = false,
     val oggAudio: Boolean = true,
 ) {
     override fun hashCode(): Int {
@@ -33,6 +34,7 @@ data class PlatformCapabilities(
         result = 31 * result + (if (secureMultiplayerServerPasswords) 1231 else 1237)
         result = 31 * result + (if (multiplayerAdvancedActions) 1231 else 1237)
         result = 31 * result + (if (multiplayerFriends) 1231 else 1237)
+        result = 31 * result + (if (multiplayerInviteLinks) 1231 else 1237)
         result = 31 * result + (if (oggAudio) 1231 else 1237)
         return result
     }
@@ -91,6 +93,9 @@ interface PlatformSpecific {
         get() = false
     fun showAchievements() {}
     fun showAchievementGuide() {}
+
+    /** Opens the native share sheet on platforms with multiplayer invitation links. */
+    fun shareMultiplayerGame(gameName: String, gameId: String, invitationLink: String) {}
 
     /** Notifies player that his multiplayer turn started */
     fun notifyTurnStarted() {}

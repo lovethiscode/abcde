@@ -47,6 +47,15 @@
     <string>${app.build}</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.aishuati.unciv.game-invitation</string>
+            <key>CFBundleURLSchemes</key>
+            <array><string>unciv4ios</string></array>
+        </dict>
+    </array>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>NSLocalNetworkUsageDescription</key>

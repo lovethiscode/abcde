@@ -6,6 +6,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.Constants
 import com.unciv.logic.IdChecker
+import com.unciv.logic.multiplayer.MultiplayerGameInvite
 import com.unciv.logic.multiplayer.rethrowCancellationAfterCleanup
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
@@ -23,7 +24,7 @@ import kotlinx.coroutines.CancellationException
 class AddMultiplayerGamePopup(
     private val multiplayerScreen: MultiplayerScreen,
 ) : Popup(multiplayerScreen, Scrollability.WithoutButtons, 0.8f) {
-    private val gameIdTextField = UncivTextField("Paste the Game ID shared by the creator")
+    private val gameIdTextField = UncivTextField("Paste the Game ID or invitation link")
     private val gameNameTextField = UncivTextField("For example: Weekend game")
 
     init {
@@ -38,8 +39,8 @@ class AddMultiplayerGamePopup(
             color = Color.LIGHT_GRAY,
         ).row()
 
-        add("Game ID".toLabel(fontSize = multiplayerSecondaryFontSize)).left().padTop(8f).row()
-        val pasteButton = "Paste Game ID".toTextButton()
+        add("Game ID or invitation link".toLabel(fontSize = multiplayerSecondaryFontSize)).left().padTop(8f).row()
+        val pasteButton = "Paste ID or link".toTextButton()
         pasteButton.onClick { gameIdTextField.text = Gdx.app.clipboard.contents }
         val gameIdRow = Table().apply {
             add(gameIdTextField).growX().height(46f).padRight(6f)
@@ -57,7 +58,14 @@ class AddMultiplayerGamePopup(
     }
 
     private fun addGame() {
-        val gameId = IdChecker.checkAndReturnUuiId(gameIdTextField.text)
+        val invite = try {
+            if (MultiplayerGameInvite.isCustomLink(gameIdTextField.text))
+                MultiplayerGameInvite.parse(gameIdTextField.text) else null
+        } catch (ex: Exception) {
+            ToastPopup(LoadGameScreen.getLoadExceptionMessage(ex).first, multiplayerScreen)
+            return
+        }
+        val gameId = invite?.gameId ?: IdChecker.checkAndReturnUuiId(gameIdTextField.text)
         if (gameId?.isUUID() != true) {
             ToastPopup("Invalid game ID!", multiplayerScreen)
             return
@@ -72,6 +80,7 @@ class AddMultiplayerGamePopup(
                 multiplayerScreen.game.onlineMultiplayer.addGame(
                     gameId,
                     gameNameTextField.text.trim(),
+                    invite?.serverUrl,
                 )
                 launchOnGLThread {
                     workingPopup.close()

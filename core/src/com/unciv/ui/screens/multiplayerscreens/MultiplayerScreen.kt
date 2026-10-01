@@ -12,6 +12,7 @@ import com.unciv.logic.GameInfoPreview
 import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.multiplayer.MultiplayerGameUpdateEnded
 import com.unciv.logic.multiplayer.MultiplayerGameUpdateStarted
+import com.unciv.logic.multiplayer.MultiplayerGameInvite
 import com.unciv.logic.multiplayer.MultiplayerGamePreview
 import com.unciv.logic.multiplayer.MultiplayerPlayerAction
 import com.unciv.logic.multiplayer.performPlayerAction
@@ -65,6 +66,8 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     private var playerActionInProgress = false
 
     private val copyGameIdButton = createCopyGameIdButton()
+    private val copyInviteButton = createCopyInviteButton()
+    private val shareGameButton = createShareGameButton()
     private val resignButton = createPlayerActionButton(MultiplayerPlayerAction.Resign)
     private val forceResignButton = createPlayerActionButton(MultiplayerPlayerAction.ForceResign)
     private val skipTurnButton = createPlayerActionButton(MultiplayerPlayerAction.SkipTurn)
@@ -74,7 +77,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     private val deleteButton = createDeleteButton()
     private val renameButton = createRenameButton()
 
-    private val gameSpecificButtons = listOf(copyGameIdButton, resignButton, deleteButton, renameButton)
+    private val gameSpecificButtons = listOf(copyGameIdButton, copyInviteButton, shareGameButton, resignButton, deleteButton, renameButton)
 
     private val addGameButton = createAddGameButton()
     private val copyUserIdButton = createCopyUserIdButton()
@@ -381,7 +384,9 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         copyGameIdButton.label.setFontSize(multiplayerSecondaryFontSize)
         renameButton.label.setFontSize(multiplayerSecondaryFontSize)
         deleteButton.label.setFontSize(multiplayerSecondaryFontSize)
-        listOf(copyGameIdButton, renameButton, deleteButton).forEach {
+        copyInviteButton.label.setFontSize(multiplayerSecondaryFontSize)
+        shareGameButton.label.setFontSize(multiplayerSecondaryFontSize)
+        listOf(copyGameIdButton, copyInviteButton, shareGameButton, renameButton, deleteButton).forEach {
             it.label.setEllipsis(false)
             it.labelCell.minWidth(0f)
         }
@@ -406,6 +411,12 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
             add(infoGrid).growX().minWidth(0f).pad(0f, 9f, 4f, 9f).row()
             add(detailNoteLabel).growX().minWidth(0f).left().pad(2f, 12f, 5f, 12f).row()
             add(rightSideButton).growX().minWidth(0f).height(56f).pad(0f, 10f, 5f, 10f).row()
+            if (game.platformCapabilities.multiplayerInviteLinks) {
+                val invitations = Table().apply {
+                    addResponsiveActions(listOf(shareGameButton, copyInviteButton), detailsActionWidth, 44f)
+                }
+                add(invitations).growX().minWidth(0f).pad(0f, 10f, 5f, 10f).row()
+            }
             add(secondaryActions).growX().minWidth(0f).pad(0f, 10f, 8f, 10f).row()
             if (game.platformCapabilities.multiplayerAdvancedActions) {
                 add(advancedActionsTable).growX().minWidth(0f).pad(0f, 10f, 8f, 10f)
@@ -657,6 +668,37 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         return btn
     }
 
+    private fun createCopyInviteButton(): TextButton {
+        return "Copy invitation link".toTextButton().apply {
+            disable()
+            onClick {
+                val preview = selectedGame?.preview ?: return@onClick
+                val server = preview.gameParameters.multiplayerServerUrl ?: return@onClick
+                try {
+                    Gdx.app.clipboard.contents = MultiplayerGameInvite.createLink(preview.gameId, server)
+                    ToastPopup("Game invitation copied. Send it to another iOS player.", this@MultiplayerScreen)
+                } catch (ex: Exception) {
+                    ToastPopup(LoadGameScreen.getLoadExceptionMessage(ex).first, this@MultiplayerScreen)
+                }
+            }
+        }
+    }
+
+    private fun createShareGameButton(): TextButton = "Share game".toTextButton().apply {
+        disable()
+        onClick {
+            val selected = selectedGame ?: return@onClick
+            val preview = selected.preview ?: return@onClick
+            val server = preview.gameParameters.multiplayerServerUrl ?: return@onClick
+            try {
+                game.shareMultiplayerGame(selected.name, preview.gameId,
+                    MultiplayerGameInvite.createLink(preview.gameId, server))
+            } catch (ex: Exception) {
+                ToastPopup(LoadGameScreen.getLoadExceptionMessage(ex).first, this@MultiplayerScreen)
+            }
+        }
+    }
+
     private fun createFriendsListButton(): TextButton {
         val btn = "Friends list".toTextButton()
         btn.onClick {
@@ -759,6 +801,8 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         val actionsBlocked = refreshBatchInProgress ||
             name in refreshingGames || isDownloadingMods || playerActionInProgress
         copyGameIdButton.isEnabled = preview != null
+        copyInviteButton.isEnabled = preview?.gameParameters?.multiplayerServerUrl != null
+        shareGameButton.isEnabled = copyInviteButton.isEnabled
         renameButton.isEnabled = preview != null && !actionsBlocked
         deleteButton.isEnabled = !actionsBlocked
         rightSideButton.isEnabled = preview != null && !actionsBlocked

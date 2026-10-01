@@ -130,8 +130,13 @@ Foreground chat uses the existing API v1 `/chat` protocol through native
 `NSURLSessionWebSocketTask`. It reconnects and rejoins on foregrounding; messages
 remain in memory only, matching upstream's lack of offline delivery and history.
 
-API v2, Dropbox storage, background polling, push notifications, deep
-links, LAN multiplayer servers, and default music download stay disabled on iOS.
+Multiplayer invitations use `unciv4ios://` links with a Game ID and source server.
+The multiplayer details panel can copy a link or open the native share sheet;
+opening a link loads the game using the recipient's existing player identity.
+Android invitation links can be pasted into the Add by Game ID dialog.
+
+API v2, Dropbox storage, background polling, push notifications,
+LAN multiplayer servers, and default music download stay disabled on iOS.
 The Mod Manager can start a temporary local upload server while its receiver is
 open. Foreground multiplayer
 downloads are cancelled on backgrounding; an in-flight turn PUT gets only a
