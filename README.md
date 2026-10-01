@@ -1,3 +1,12 @@
+> [!WARNING]
+> **App Review update — September 28, 2026**
+>
+> Apple rejected TestFlight build **4.22.4 (1307)** under **Guideline 4.3(a) — Spam**. The notice says its binary, metadata, and/or concept is similar to apps submitted by other developers, but does not identify a specific app.
+>
+> The upstream Unciv maintainer has publicly commented on this independent iOS port and its licensing in [upstream issue #15536](https://github.com/yairm210/Unciv/issues/15536#issuecomment-5693779249).
+>
+> An App Review Board appeal regarding the earlier App Store rejection has been submitted, and we are waiting for Apple's response. Build 4.22.4 (1307) cannot be used for TestFlight testing while rejected.
+
 # Unciv4iOS - Civ V remake for iOS
 
 ![](/extraImages/GithubPreviewImage.jpg)
@@ -40,7 +49,8 @@ see [What's the roadmap?](#whats-the-roadmap) for what works today.
 
 ### App Store
 
-Not available yet - the App Store release is planned once the port is stable.
+The app is not currently available on the App Store. See the review update at
+the top of this README.
 
 ### Build from source
 
