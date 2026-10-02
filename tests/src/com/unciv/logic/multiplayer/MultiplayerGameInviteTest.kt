@@ -13,6 +13,7 @@ import com.unciv.utils.PlatformCapabilities
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mockito.*
@@ -20,10 +21,12 @@ import java.nio.file.Files
 
 @RunWith(BaseTestRunner::class)
 class MultiplayerGameInviteTest {
+    @Before fun initializeGameForValidationErrors() { TestGame() }
+
     @Test fun copiedInvitationRetainsGameAndSourceServer() {
         val url = MultiplayerGameInvite.createLink(ID, SERVER)
         assertEquals(MultiplayerGameInvite(ID, SERVER), MultiplayerGameInvite.parse(url))
-        assertFalse(url.contains("https://")) // The nested URL is escaped, not a second link.
+        assertEquals("$PAGE?gameId=$ID&server=https%3A%2F%2Fexample.com", url)
     }
 
     @Test fun serverPathAndPortRoundTripWithoutChangingGlobalServer() {
@@ -40,21 +43,37 @@ class MultiplayerGameInviteTest {
         for (link in listOf(
             IdChecker.uncivUrlPrefix + "P/P-$ID-${IdChecker.getCheckDigit(ID)}?name=friend",
             "unciv4ios://friend/$ID?server=https%3A%2F%2Fexample.com",
+            "unciv4ios://game/$ID?server=https%3A%2F%2Fexample.com",
             "https://other.example/G/$ID", "mailto:friend@example.com",
         )) assertThrows(UncivShowableException::class.java) { MultiplayerGameInvite.parse(link) }
     }
 
     @Test fun malformedGameIdsAndAmbiguousRoutesAreRejected() {
         for (link in listOf(
-            "unciv4ios://game/invalid?server=https%3A%2F%2Fexample.com",
-            "unciv4ios://game/$ID/extra?server=https%3A%2F%2Fexample.com",
-            "unciv4ios://game/$ID?server=https%3A%2F%2Fexample.com&server=https%3A%2F%2Fb.example",
-            "unciv4ios://game/$ID?server=https%3A%2F%2Fexample.com&playerId=$ID",
-            "unciv4ios://game/$ID#fragment", "unciv4ios://game/$ID",
-            "unciv4ios://game:123/$ID?server=https%3A%2F%2Fexample.com",
-            "unciv4ios://user@game/$ID?server=https%3A%2F%2Fexample.com",
-            "unciv4ios://game/%ZZ?server=anything",
+            "$PAGE?gameId=invalid&server=https%3A%2F%2Fexample.com",
+            "$PAGE/extra?gameId=$ID&server=https%3A%2F%2Fexample.com",
+            "$PAGE?gameId=$ID&server=https%3A%2F%2Fexample.com&server=https%3A%2F%2Fb.example",
+            "$PAGE?gameId=$ID&server=https%3A%2F%2Fexample.com&playerId=$ID",
+            "$PAGE?gameId=$ID&gameId=$ID&server=https%3A%2F%2Fexample.com",
+            "$PAGE?gameId=$ID#fragment", "$PAGE?gameId=$ID",
+            "https://jerry8870.github.io:443/Unciv-Wiki/invite.html?gameId=$ID&server=https%3A%2F%2Fexample.com",
+            "https://user@jerry8870.github.io/Unciv-Wiki/invite.html?gameId=$ID&server=https%3A%2F%2Fexample.com",
+            "$PAGE?gameId=%ZZ&server=anything",
+            "$PAGE?gameId=$ID&server=https%3A%2F%2Flocalhost",
+            "$PAGE?gameId=$ID&server=http%3A%2F%2Fexample.com",
+            "$PAGE?gameId=$ID&server=https%3A%2F%2Fexample.com&",
+            "$PAGE?gameId=$ID&server=https%3A%2F%2Fexample.com#fragment",
+            "$PAGE?gameId=$ID&server=https%253A%252F%252Fexample.com",
+            "$PAGE?gameId=$ID&server=",
         )) assertThrows(UncivShowableException::class.java) { MultiplayerGameInvite.parse(link) }
+    }
+
+    @Test fun queryOrderDoesNotChangeInvitationAndUnrelatedHostsAreRejected() {
+        assertEquals(MultiplayerGameInvite(ID, SERVER), MultiplayerGameInvite.parse(
+            "$PAGE?server=https%3A%2F%2Fexample.com&gameId=$ID"))
+        assertThrows(UncivShowableException::class.java) {
+            MultiplayerGameInvite.parse("https://other.example/Unciv-Wiki/invite.html?gameId=$ID&server=https%3A%2F%2Fexample.com")
+        }
     }
 
     @Test fun insecurePrivateOrCredentialBearingServersAreRejected() {
@@ -114,5 +133,6 @@ class MultiplayerGameInviteTest {
     private companion object {
         const val ID = "4e2a8b72-3f04-4fa1-a7a9-81d6e3e0a092"
         const val SERVER = "https://example.com"
+        const val PAGE = "https://jerry8870.github.io/Unciv-Wiki/invite.html"
     }
 }

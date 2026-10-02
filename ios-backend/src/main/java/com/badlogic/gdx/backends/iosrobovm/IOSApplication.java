@@ -10,7 +10,7 @@ import org.robovm.apple.foundation.NSObject;
 import org.robovm.apple.foundation.NSProcessInfo;
 import org.robovm.apple.foundation.NSString;
 import org.robovm.apple.foundation.NSSet;
-import org.robovm.apple.uikit.UIOpenURLContext;
+import org.robovm.apple.foundation.NSUserActivity;
 import org.robovm.apple.uikit.UIApplication;
 import org.robovm.apple.uikit.UIApplicationDelegateAdapter;
 import org.robovm.apple.uikit.UIApplicationLaunchOptions;
@@ -114,17 +114,21 @@ public class IOSApplication implements Application {
 			scene.addStrongRef(this);
 			IOSApplication app = requirePreparedApplication();
 			setWindow(app.connectScene((UIWindowScene)scene));
-			forwardURLs(app, options.getURLContexts());
+			NSSet<NSUserActivity> activities = options.getUserActivities();
+			if (activities != null) {
+				for (NSUserActivity activity : activities) forwardActivity(app, activity);
+			}
 		}
 
 		@Override
-		public void openURLContexts (UIScene scene, NSSet<UIOpenURLContext> contexts) {
-			forwardURLs(requirePreparedApplication(), contexts);
+		public void continueUserActivity (UIScene scene, NSUserActivity activity) {
+			forwardActivity(requirePreparedApplication(), activity);
 		}
 
-		private void forwardURLs (IOSApplication app, NSSet<UIOpenURLContext> contexts) {
-			if (contexts == null) return;
-			for (UIOpenURLContext context : contexts) app.handleOpenURL(context.getURL().getAbsoluteString());
+		private void forwardActivity (IOSApplication app, NSUserActivity activity) {
+			if (activity == null || !"NSUserActivityTypeBrowsingWeb".equals(activity.getActivityType())
+				|| activity.getWebpageURL() == null) return;
+			app.handleOpenURL(activity.getWebpageURL().getAbsoluteString());
 		}
 
 		@Override

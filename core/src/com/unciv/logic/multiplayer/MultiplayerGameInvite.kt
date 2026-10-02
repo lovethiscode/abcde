@@ -10,14 +10,15 @@ import java.net.URLEncoder
 /** The invitation identifies a save, not a player seat or authentication credential. */
 data class MultiplayerGameInvite(val gameId: String, val serverUrl: String?) {
     companion object {
-        const val SCHEME = "unciv4ios"
+        const val INVITATION_HOST = "jerry8870.github.io"
+        const val INVITATION_PATH = "/Unciv-Wiki/invite.html"
 
-        fun isCustomLink(value: String) = value.trim().startsWith("$SCHEME:", ignoreCase = true)
+        fun isLink(value: String) = value.trim().contains("://")
 
         fun createLink(gameId: String, serverUrl: String): String {
             val id = checkedGameId(gameId)
             val server = validatePublicHttpsUrl(serverUrl)
-            return "$SCHEME://game/$id?server=${URLEncoder.encode(server, "UTF-8")}"
+            return "https://$INVITATION_HOST$INVITATION_PATH?gameId=$id&server=${URLEncoder.encode(server, "UTF-8")}"
         }
 
         fun parse(value: String): MultiplayerGameInvite {
@@ -27,16 +28,25 @@ data class MultiplayerGameInvite(val gameId: String, val serverUrl: String?) {
                 val id = IdChecker.checkAndReturnUuiId(text) ?: throw invalidInvite()
                 return MultiplayerGameInvite(id, null) // Upstream links use the selected server.
             }
-            if (!uri.scheme.equals(SCHEME, ignoreCase = true) || !uri.host.equals("game", ignoreCase = true)
+            if (!uri.scheme.equals("https", ignoreCase = true) || !uri.host.equals(INVITATION_HOST, ignoreCase = true)
                 || uri.userInfo != null || uri.port != -1 || uri.rawFragment != null
-                || !uri.rawPath.orEmpty().startsWith("/") || uri.rawPath.substring(1).contains('/')
+                || uri.rawPath != INVITATION_PATH
             ) throw invalidInvite()
-            val id = checkedGameId(uri.rawPath.substring(1))
             val query = uri.rawQuery ?: throw invalidInvite()
-            if (!query.startsWith("server=") || query.contains('&')) throw invalidInvite()
-            val server = try { URLDecoder.decode(query.substringAfter('='), "UTF-8")}
+            val parameters = try {
+                query.split('&').map { field ->
+                    val parts = field.split('=', limit = 2)
+                    if (parts.size != 2) throw invalidInvite()
+                    URLDecoder.decode(parts[0], "UTF-8") to URLDecoder.decode(parts[1], "UTF-8")
+                }
+            } catch (_: Exception) { throw invalidInvite() }
+            if (parameters.size != 2 || parameters.map { it.first }.toSet() != setOf("gameId", "server"))
+                throw invalidInvite()
+            val values = parameters.toMap()
+            val id = checkedGameId(values.getValue("gameId"))
+            val server = try { validatePublicHttpsUrl(values.getValue("server")) }
                 catch (_: Exception) { throw invalidInvite() }
-            return MultiplayerGameInvite(id, validatePublicHttpsUrl(server))
+            return MultiplayerGameInvite(id, server)
         }
 
         private fun checkedGameId(value: String): String {

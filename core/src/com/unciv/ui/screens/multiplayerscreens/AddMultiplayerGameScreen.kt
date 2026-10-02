@@ -59,7 +59,7 @@ class AddMultiplayerGamePopup(
 
     private fun addGame() {
         val invite = try {
-            if (MultiplayerGameInvite.isCustomLink(gameIdTextField.text))
+            if (MultiplayerGameInvite.isLink(gameIdTextField.text))
                 MultiplayerGameInvite.parse(gameIdTextField.text) else null
         } catch (ex: Exception) {
             ToastPopup(LoadGameScreen.getLoadExceptionMessage(ex).first, multiplayerScreen)
