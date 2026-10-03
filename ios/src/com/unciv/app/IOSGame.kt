@@ -46,6 +46,7 @@ class IOSGame @JvmOverloads constructor(
 
     override val voluntarySupportAvailable get() = runtimeFeatures.voluntarySupportAvailable
     override val achievementsAvailable get() = runtimeFeatures.achievementsAvailable
+    override val multiplayerLobbyServerUrl get() = runtimeFeatures.multiplayerLobbyServerUrl
     override fun showAchievements() = runtimeFeatures.showAchievements()
     override fun showAchievementGuide() = runtimeFeatures.showAchievementGuide()
 

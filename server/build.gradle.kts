@@ -103,6 +103,16 @@ tasks.register<Jar>("dist") {
 }
 
 
+tasks.register<Jar>("lobbyDist") {
+    description = "Build the independent room REST API"
+    dependsOn(tasks.getByName("classes"))
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(sourceSets.main.get().output)
+    from({ configurations.runtimeClasspath.get().resolve().map { if (it.isDirectory) it else zipTree(it) } })
+    archiveFileName.set("UncivLobbyServer.jar")
+    manifest { attributes("Main-Class" to "com.unciv.app.server.LobbyServer") }
+}
+
 private val packrDownloadUrl = "https://github.com/libgdx/packr/releases/download/4.0.0/packr-all-4.0.0.jar"
 private val packrLocalName = "packr-all-4.0.0.jar"
 private val cacheDirectory = "../desktop/.jre-cache" // the place for downloaded archives

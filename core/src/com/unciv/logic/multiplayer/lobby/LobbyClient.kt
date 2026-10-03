@@ -11,13 +11,13 @@ import com.unciv.logic.multiplayer.storage.*
 import com.unciv.models.metadata.GameSetupInfo
 import java.net.URLEncoder
 
-class LobbyClient(val serverUrl: String, private val transport: MultiplayerV1Transport = UncivGame.Current.createMultiplayerV1Transport()) {
+class LobbyClient(val roomApiUrl: String, private val transport: MultiplayerV1Transport = UncivGame.Current.createMultiplayerV1Transport()) {
     companion object {
         fun rulesHash() = LobbyProtocol.fingerprint { path -> Gdx.files.internal(path).takeIf { it.exists() }?.readBytes() }
     }
     private suspend fun request(path: String, method: MultiplayerV1HttpMethod, c: LobbyCommand? = null): String {
         val capabilities = UncivGame.Current.platformCapabilities
-        val server = MultiplayerServer.validateServerUrl(serverUrl, capabilities)
+        val server = MultiplayerServer.validateServerUrl(roomApiUrl, capabilities)
         val response = transport.execute(MultiplayerV1Request(method, "$server$path",
             headers = mapOf("Content-Type" to "application/json"), body = c?.let { LobbyProtocol.json().toJson(it) },
             requiresPublicHttps = capabilities.multiplayerServerRequiresHttps))
@@ -26,11 +26,12 @@ class LobbyClient(val serverUrl: String, private val transport: MultiplayerV1Tra
         return response.body
     }
     suspend fun supported(): Boolean = JsonReader().parse(request("/isalive", MultiplayerV1HttpMethod.GET)).getInt("lobbyVersion", 0) >= 1
-    suspend fun configurationSupported(): Boolean = JsonReader().parse(request("/isalive", MultiplayerV1HttpMethod.GET)).getInt("lobbyVersion", 0) >= 2
+    suspend fun configurationSupported(): Boolean = JsonReader().parse(request("/isalive", MultiplayerV1HttpMethod.GET)).getInt("lobbyVersion", 0) >= 3
     suspend fun create(setup: GameSetupInfo, key: String): LobbyRoom {
         val c = LobbyCommand().apply {
             playerId = UncivGame.Current.settings.multiplayer.getUserId(); createKey = key
             rulesHash = rulesHash(); baseRuleset = setup.gameParameters.baseRuleset
+            gameServerUrl = setup.gameParameters.multiplayerServerUrl ?: UncivGame.Current.settings.multiplayer.getServer()
             this.setup = json().toJson(setup)
             seats = ArrayList(setup.gameParameters.players.map { p -> LobbySeat().apply {
                 human = p.playerType == PlayerType.Human; civilization = p.chosenCiv

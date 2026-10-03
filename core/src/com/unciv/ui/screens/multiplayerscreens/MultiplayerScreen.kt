@@ -81,6 +81,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
 
     private val addGameButton = createAddGameButton()
     private val createRoomButton = "Create room".toTextButton().apply {
+        isEnabled = !game.multiplayerLobbyServerUrl.isNullOrBlank()
         onClick { MultiplayerLobbyScreen.openRoom() }
     }
     private val copyUserIdButton = createCopyUserIdButton()

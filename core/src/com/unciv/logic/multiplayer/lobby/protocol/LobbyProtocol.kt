@@ -18,6 +18,7 @@ class LobbySeat {
 }
 
 class LobbyRoom {
+    var gameServerUrl = ""
     var gameId = ""
     var hostId = ""
     var createKey = ""
@@ -31,11 +32,11 @@ class LobbyRoom {
     var startOperation = ""
     var frozenVersion = 0L
     var saveHash = ""
-    var writing = false
     var reason = ""
 }
 
 class LobbyCommand {
+    var gameServerUrl = ""
     var playerId = ""
     var occupancy = ""
     var createKey = ""

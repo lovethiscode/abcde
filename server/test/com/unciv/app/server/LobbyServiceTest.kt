@@ -8,8 +8,6 @@ import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.CountDownLatch
-import java.util.zip.GZIPOutputStream
-import java.util.Base64
 import com.badlogic.gdx.utils.JsonReader
 import com.badlogic.gdx.utils.JsonValue
 import com.badlogic.gdx.utils.JsonWriter
@@ -19,27 +17,33 @@ class LobbyServiceTest {
     private val uri = System.getenv("UNCIV_LOBBY_TEST_MONGO") ?: "mongodb://127.0.0.1:27017"
     private val db = "unciv_lobby_test_" + UUID.randomUUID().toString().replace("-", "")
     private val folder = Files.createTempDirectory("unciv-lobby-test").toFile()
+    private val gameServer = "https://saves.example"
+    private var unreadable = false
+    private fun newService() = LobbyService(uri,db,gameServer,{ r ->
+        if (unreadable) throw LobbyFailure(503,"Save server unavailable")
+        folder.resolve(r.gameId).takeIf { it.exists() }?.readText()
+    }) { now }
     private var now = 1_000_000L
     private lateinit var service: LobbyService
     private val host = UUID.randomUUID().toString()
     private val guest = UUID.randomUUID().toString()
-    @Before fun setup() { Assume.assumeTrue(System.getenv("UNCIV_LOBBY_TEST_MONGO") != null); service = LobbyService(uri,db,folder) { now } }
+    @Before fun setup() { Assume.assumeTrue(System.getenv("UNCIV_LOBBY_TEST_MONGO") != null); service = newService() }
     @After fun cleanup() {
         if (::service.isInitialized) { service.close(); MongoClients.create(uri).use { it.getDatabase(db).drop() } }
         folder.deleteRecursively()
     }
     private fun create(humans: Int = 2): LobbyRoom {
         val c = LobbyCommand().apply {
-            playerId = host; createKey = UUID.randomUUID().toString(); rulesHash = service.rulesHash; baseRuleset = LobbyProtocol.rulesets[1]
+            gameServerUrl = gameServer; playerId = host; createKey = UUID.randomUUID().toString(); rulesHash = service.rulesHash; baseRuleset = LobbyProtocol.rulesets[1]
             seats = ArrayList((0 until humans).map { LobbySeat() })
-            setup = """{"gameParameters":{"isOnlineMultiplayer":true,"baseRuleset":"$baseRuleset","players":[${(0 until humans).joinToString { "{\"playerType\":\"Human\"}" }}]},"mapParameters":{"seed":42}}"""
+            setup = """{"gameParameters":{"isOnlineMultiplayer":true,"multiplayerServerUrl":"$gameServer","baseRuleset":"$baseRuleset","players":[${(0 until humans).joinToString { "{\"playerType\":\"Human\"}" }}]},"mapParameters":{"seed":42}}"""
         }
         val r = service.create(c)
         assertEquals(r.gameId,service.create(c).gameId)
         return r
     }
     private fun c(r: LobbyRoom, id: String) = LobbyCommand().apply {
-        playerId=id; occupancy=r.seats.firstOrNull { it.playerId==id }?.occupancy.orEmpty(); rulesHash=service.rulesHash
+        gameServerUrl=gameServer; playerId=id; occupancy=r.seats.firstOrNull { it.playerId==id }?.occupancy.orEmpty(); rulesHash=service.rulesHash
         startOperation=r.startOperation; frozenVersion=r.frozenVersion; saveHash=r.saveHash; seatRevision=r.seats.firstOrNull { it.playerId==id }?.revision ?: 0L
         configurationVersion=r.configurationVersion
     }
@@ -137,7 +141,7 @@ class LobbyServiceTest {
     }
     @Test fun memberTimeoutIsIndependentAndPersistsAcrossRestart() {
         var r=join(create()); now+=4*60_000
-        r=service.command(r.gameId,"read",c(r,host)); service.close(); service=LobbyService(uri,db,folder) { now }
+        r=service.command(r.gameId,"read",c(r,host)); service.close(); service=newService()
         assertEquals(guest,service.find(r.gameId)!!.seats[1].playerId)
         now+=60_000; r=service.command(r.gameId,"read",c(r,host))
         assertEquals("",r.seats[1].playerId); assertEquals("Random",r.seats[1].civilization)
@@ -180,18 +184,38 @@ class LobbyServiceTest {
         assertEquals("CLOSED",service.command(r.gameId,"close",c(r,host)).state)
         assertThrows(LobbyFailure::class.java) { join(r) }
     }
-    @Test fun uploadFencePreventsTimeoutCloseAndLateCompletionCannotReviveClosedRoom() {
+    @Test fun externalUploadUncertaintyKeepsOriginalStartRecoverable() {
         var r=join(create()); for (id in listOf(host,guest)) r=service.command(r.gameId,"ready",c(r,id).apply { ready=true })
         r=service.command(r.gameId,"start",c(r,host))
         val cmd=c(r,host).apply { saveHash="a".repeat(64) }
-        service.command(r.gameId,"save",cmd)
-        assertTrue(service.beginWrite(r.gameId)); now+=31*60_000
+        service.command(r.gameId,"save",cmd); now+=31*60_000
+        // A remote 404 may mean a PUT is still in flight. It must never close/reopen the room.
+        assertEquals("STARTING",service.command(r.gameId,"read",LobbyCommand()).state)
+        unreadable=true
         assertEquals("STARTING",service.command(r.gameId,"read",LobbyCommand()).state)
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"complete",cmd) }
-        service.endWrite(r.gameId)
-        assertEquals("CLOSED",service.command(r.gameId,"read",LobbyCommand()).state)
+        assertEquals("STARTING",service.find(r.gameId)!!.state)
+        assertEquals(cmd.saveHash,service.find(r.gameId)!!.saveHash)
+        unreadable=false
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"complete",cmd) }
-        assertThrows(LobbyFailure::class.java) { service.beginWrite(r.gameId) }
+    }
+    @Test fun unregisteredTimedOutStartCannotBeRevived() {
+        var r=join(create()); for (id in listOf(host,guest)) r=service.command(r.gameId,"ready",c(r,id).apply { ready=true })
+        r=service.command(r.gameId,"start",c(r,host)); now+=31*60_000
+        assertEquals("CLOSED",service.command(r.gameId,"read",LobbyCommand()).state)
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"save",c(r,host).apply { saveHash="a".repeat(64) }) }
+    }
+    @Test fun configurationCannotPointGameSavesAtTheRoomApi() {
+        val r=create()
+        val update=configuration(r).apply {
+            gameServerUrl="https://rooms.example/unciv-lobby"
+            setup=JsonReader().parse(setup).apply { get("gameParameters").set("multiplayerServerUrl",gameServerUrl) }.toJson(JsonWriter.OutputType.json)
+        }
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"configuration",update) }
+        assertEquals(gameServer,service.find(r.gameId)!!.gameServerUrl)
+        assertEquals(0L,service.find(r.gameId)!!.configurationVersion)
+        update.createKey=UUID.randomUUID().toString()
+        assertThrows(LobbyFailure::class.java) { service.create(update) }
     }
     @Test fun startRegistrationRejectsDifferentSaveAndIncompleteFullSave() {
         var r=join(create()); for (id in listOf(host,guest)) r=service.command(r.gameId,"ready",c(r,id).apply { ready=true })
@@ -200,7 +224,6 @@ class LobbyServiceTest {
         service.command(r.gameId,"save",cmd)
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"save",c(r,host).apply { saveHash="b".repeat(64) }) }
         folder.resolve(r.gameId).writeText("bad save")
-        assertThrows(LobbyFailure::class.java) { service.verifyWrite(r.gameId,"bad save") }
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"complete",cmd) }
     }
 }

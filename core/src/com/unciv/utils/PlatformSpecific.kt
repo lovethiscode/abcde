@@ -70,6 +70,10 @@ interface MultiplayerBackgroundTask {
 
 interface PlatformSpecific {
 
+    /** Room coordination API, independent of the multiplayer save server. */
+    val multiplayerLobbyServerUrl: String?
+        get() = null
+
     /** Public source revision corresponding to this build, when supplied by the platform. */
     val sourceCodeUrl: String
         get() = "${com.unciv.Constants.uncivRepoURL}tree/master/"

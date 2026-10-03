@@ -6,6 +6,7 @@ import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.files.cloud.CloudSaveSync
 
 interface IOSRuntimeFeatures {
+    val multiplayerLobbyServerUrl: String? get() = null
     val voluntarySupportAvailable: Boolean
     val secureMultiplayerPasswords: Boolean
     val oggAudioAvailable: Boolean

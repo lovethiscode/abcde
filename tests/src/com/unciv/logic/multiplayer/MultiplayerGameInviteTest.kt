@@ -40,11 +40,12 @@ class MultiplayerGameInviteTest {
         assertFalse(MultiplayerGameInvite.parse(MultiplayerGameInvite.createLink(ID,"https://example.com")).lobby)
     }
 
-    @Test fun lobbyShareAndJoinUseRoomServerWithoutChangingGlobalSettings() = runBlocking {
+    @Test fun lobbyShareKeepsGameServerAndJoinUsesSeparateApiWithoutChangingGlobalSettings() = runBlocking {
         val settings = UncivGame.Current.settings
         settings.multiplayer.setServer("https://global.example")
-        val roomServer = "https://room.example/unciv"
-        val invite = MultiplayerGameInvite.parse(MultiplayerGameInvite.createLobbyLink(ID, roomServer))
+        val gameServer = "https://save.example"
+        val roomApi = "https://room.example/unciv-lobby"
+        val invite = MultiplayerGameInvite.parse(MultiplayerGameInvite.createLobbyLink(ID, gameServer))
         val requests = mutableListOf<MultiplayerV1Request>()
         val transport = object : MultiplayerV1Transport {
             override suspend fun execute(request: MultiplayerV1Request): MultiplayerV1Response {
@@ -52,10 +53,11 @@ class MultiplayerGameInviteTest {
                 return MultiplayerV1Response(200, """{"gameId":"$ID","state":"WAITING"}""", emptyMap(), request.url)
             }
         }
-        val client = com.unciv.logic.multiplayer.lobby.LobbyClient(invite.serverUrl!!, transport)
+        val client = com.unciv.logic.multiplayer.lobby.LobbyClient(roomApi, transport)
         val room = client.command(invite.gameId, "join", com.unciv.logic.multiplayer.lobby.protocol.LobbyCommand())
+        assertEquals(gameServer, invite.serverUrl)
         assertEquals(ID, room.gameId)
-        assertEquals("$roomServer/lobbies/$ID/join", requests.single().url)
+        assertEquals("$roomApi/lobbies/$ID/join", requests.single().url)
         assertEquals(MultiplayerV1HttpMethod.POST, requests.single().method)
         assertEquals("https://global.example", settings.multiplayer.getServer())
     }

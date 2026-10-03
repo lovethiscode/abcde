@@ -6,15 +6,15 @@ import com.mongodb.MongoWriteException
 import com.mongodb.client.MongoClients
 import com.mongodb.client.model.Filters.*
 import org.bson.Document
-import java.io.File
 import java.util.UUID
 import java.util.Base64
 import java.util.zip.GZIPInputStream
 
 class LobbyFailure(val status: Int, override val message: String) : RuntimeException(message)
 
-/** One document per game ID. Compare-and-replace also fences file publication and close. */
-class LobbyService(uri: String, database: String, private val folder: File,
+/** One document per game ID. Saves remain on the independently deployed game server. */
+class LobbyService(uri: String, database: String, val gameServerUrl: String,
+                   private val loadGameSave: (LobbyRoom) -> String? = RemoteGameSave(gameServerUrl)::read,
                    private val clock: () -> Long = System::currentTimeMillis) : AutoCloseable {
     private val mongo = MongoClients.create(uri)
     private val rooms = mongo.getDatabase(database).getCollection("lobbies")
@@ -34,6 +34,8 @@ class LobbyService(uri: String, database: String, private val folder: File,
         val setup = try { JsonReader().parse(c.setup) } catch (_: Exception) { fail("Invalid game setup", 400) }
         val parameters = setup.get("gameParameters") ?: fail("Missing game parameters", 400)
         val map = setup.get("mapParameters") ?: fail("Missing map parameters", 400)
+        if (c.gameServerUrl != gameServerUrl || parameters.getString("multiplayerServerUrl", "") != gameServerUrl)
+            fail("The game server differs from the room API configuration.", 400)
         if ((parameters.get("mods")?.size ?: 0) != 0 || map.getString("name", "").isNotEmpty()) fail("Rooms require generated maps without mods", 400)
         if (!parameters.getBoolean("isOnlineMultiplayer", false) || parameters.getString("baseRuleset", LobbyProtocol.rulesets[1]) != c.baseRuleset)
             fail("Invalid room configuration", 400)
@@ -54,6 +56,7 @@ class LobbyService(uri: String, database: String, private val folder: File,
         find(gameId)?.let { return it }
         val room = LobbyRoom().apply {
             this.gameId = gameId; hostId = c.playerId; createKey = c.createKey
+            gameServerUrl = this@LobbyService.gameServerUrl
             this.setup = c.setup; baseRuleset = c.baseRuleset; rulesHash = this@LobbyService.rulesHash
             seats = c.seats
         }
@@ -91,11 +94,14 @@ class LobbyService(uri: String, database: String, private val folder: File,
                 .forEach { clear(it) }
         } else if (room.state == "STARTING") {
             val host = room.seats.first { it.playerId == room.hostId }
-            if (clock() - host.lastSeen >= 30 * 60_000 && !room.writing) {
-                val file = File(folder, room.gameId)
-                if (room.saveHash.isNotEmpty() && file.exists() && validSave(room, file.readText())) room.state = "STARTED"
-                else if (!file.exists()) { room.state = "CLOSED"; room.reason = "Start timed out before upload completed" }
-                else room.reason = "Waiting for host to recover the original save"
+            if (clock() - host.lastSeen >= 30 * 60_000) {
+                if (room.saveHash.isEmpty()) { room.state = "CLOSED"; room.reason = "Start timed out before upload was registered" }
+                else {
+                    // A 404 or failed read cannot prove that an external upload is no longer in flight.
+                    val body = try { loadGameSave(room) } catch (_: LobbyFailure) { null }
+                    if (body != null && validSave(room, body)) { room.state = "STARTED"; room.reason = "" }
+                    else room.reason = "Waiting for host to recover the original save"
+                }
             }
         }
     }
@@ -204,10 +210,10 @@ class LobbyService(uri: String, database: String, private val folder: File,
                         r.saveHash = c.saveHash
                     } else {
                         if (c.saveHash != r.saveHash || r.saveHash.isEmpty()) fail("Start save fingerprint does not match")
-                        if (r.writing) fail("Save upload is still in progress")
-                        val file = File(folder,r.gameId)
-                        if (!file.exists() || !validSave(r,file.readText())) fail("The full game save has not been verified")
-                        r.state = "STARTED"
+                        if (r.state == "STARTED") return@mutate
+                        val body = loadGameSave(r)
+                        if (body == null || !validSave(r,body)) fail("The full game save has not been verified on the game server")
+                        r.state = "STARTED"; r.reason = ""
                     }
                 }
                 else -> fail("Unknown room operation",400)
@@ -223,8 +229,11 @@ class LobbyService(uri: String, database: String, private val folder: File,
             val checksum = data.getString("checksum", "")
             val withoutChecksum = JsonReader().parse(plain).apply { remove("checksum") }.toJson(com.badlogic.gdx.utils.JsonWriter.OutputType.json)
             val actualChecksum = Base64.getEncoder().encodeToString(java.security.MessageDigest.getInstance("SHA-1").digest(withoutChecksum.toByteArray(Charsets.UTF_8)))
-            val players = data.get("gameParameters").get("players")
-            checksum.isNotEmpty() && actualChecksum == checksum && data.getString("gameId") == r.gameId && players.size == r.seats.size && r.seats.all { s ->
+            val parameters = data.get("gameParameters")
+            val players = parameters.get("players")
+            parameters.getBoolean("isOnlineMultiplayer",false) && parameters.getString("multiplayerServerUrl", "") == r.gameServerUrl &&
+                parameters.getString("baseRuleset", LobbyProtocol.rulesets[1]) == r.baseRuleset &&
+                checksum.isNotEmpty() && actualChecksum == checksum && data.getString("gameId") == r.gameId && players.size == r.seats.size && r.seats.all { s ->
                 val p = players[s.seatId]
                 p.getString("playerId", "") == s.playerId && (p.getString("playerType", "AI") == "Human") == s.human &&
                     (s.civilization == "Random" || p.getString("chosenCiv", "Random") == s.civilization)
@@ -232,24 +241,4 @@ class LobbyService(uri: String, database: String, private val folder: File,
                 r.seats.filter { it.human }.all { seat -> data.get("civilizations").any { civ -> civ.getString("playerId", "") == seat.playerId } }
         }
     } catch (_: Exception) { false }
-    /** Acquire a durable publication fence before reading a PUT body. STARTED games retain legacy writes. */
-    fun beginWrite(id: String): Boolean {
-        if (find(id) == null) return false
-        var fenced = false
-        mutate(id) { r ->
-            fenced = false
-            if (r.state == "STARTED") return@mutate
-            if (r.state != "STARTING" || r.saveHash.isEmpty() || r.writing) fail("Room does not accept this save upload")
-            r.writing = true; fenced = true
-        }
-        return fenced
-    }
-    fun verifyWrite(id: String, body: String) { val r = find(id) ?: return; if (!validSave(r,body)) fail("Uploaded save differs from the frozen room") }
-    fun endWrite(id: String) { mutate(id) { it.writing = false } }
-    fun recoverWrites() {
-        for (doc in rooms.find()) {
-            val r = decode(doc)
-            if (r.writing) mutate(r.gameId) { it.writing = false; expire(it) }
-        }
-    }
 }

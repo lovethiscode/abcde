@@ -9,11 +9,8 @@ import com.badlogic.gdx.scenes.scene2d.Actor
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.json.json
-import com.unciv.logic.GameStarter
 import com.unciv.logic.UncivShowableException
 import com.unciv.logic.civilization.PlayerType
-import com.unciv.logic.files.SaveFileWriter
-import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.multiplayer.MultiplayerGameInvite
 import com.unciv.logic.multiplayer.lobby.*
 import com.unciv.logic.multiplayer.lobby.protocol.*
@@ -49,7 +46,7 @@ import kotlinx.coroutines.CancellationException
 /** Server-confirmed lobby. Back navigation preserves membership; explicit leave removes it. */
 class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRoom? = null,
                              private val joinOnOpen: Boolean = false) : BaseScreen(), IPreviousScreen {
-    private val client = LobbyClient(session.server)
+    private val client = LobbyClient(session.roomApiUrl)
     private val userId = game.settings.multiplayer.getUserId()
     private var room: LobbyRoom? = initial
     private var busy = false
@@ -84,12 +81,15 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         fun openRoom() {
             val game = UncivGame.Current
             val session = LobbySession.current() ?: LobbySession().apply {
-                server = game.settings.multiplayer.getServer()
+                roomApiUrl = LobbySession.roomApiUrl()
+                gameServerUrl = com.unciv.logic.multiplayer.storage.MultiplayerServer.validateServerUrl(
+                    game.settings.multiplayer.getServer(), game.platformCapabilities)
                 createKey = java.util.UUID.randomUUID().toString()
                 val previous = GameSetupInfo.fromSettings()
                 val source = if (previous.gameParameters.mods.isEmpty() && previous.gameParameters.baseRuleset in LobbyProtocol.rulesets)
                     previous else GameSetupInfo()
                 val draft = NewGameMode.MultiplayerRoom.prepare(source, game.settings.multiplayer.getUserId())
+                draft.gameParameters.multiplayerServerUrl = gameServerUrl
                 draft.mapFile = null; draft.mapParameters.name = ""
                 if (draft.mapParameters.type !in MapType.allValues) draft.mapParameters.type = MapType.pangaea
                 if (draft.mapParameters.seed == 0L) draft.mapParameters.reseed()
@@ -106,21 +106,22 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         fun openInvite(invite: MultiplayerGameInvite) {
             val game = UncivGame.Current
             val current = LobbySession.current()
-            val server = invite.serverUrl ?: game.settings.multiplayer.getServer()
+            val gameServer = invite.serverUrl ?: game.settings.multiplayer.getServer()
+            val roomApi = LobbySession.roomApiUrl()
             (game.getScreen() as? MultiplayerLobbyScreen)?.let { shown ->
-                if (shown.session.gameId == invite.gameId && shown.session.server == server && shown.session.occupancy.isNotEmpty()) return
+                if (shown.session.gameId == invite.gameId && shown.session.gameServerUrl == gameServer && shown.session.roomApiUrl == roomApi && shown.session.occupancy.isNotEmpty()) return
             }
             fun open() {
-                val session = if (current?.gameId == invite.gameId && current.server == server) current else LobbySession().apply {
-                    this.server = server; gameId = invite.gameId
+                val session = if (current?.gameId == invite.gameId && current.gameServerUrl == gameServer && current.roomApiUrl == roomApi) current else LobbySession().apply {
+                    gameServerUrl = gameServer; roomApiUrl = roomApi; gameId = invite.gameId
                 }
                 game.pushScreen { MultiplayerLobbyScreen(session, joinOnOpen = true) }
             }
-            if (current != null && (current.gameId != invite.gameId || current.server != server)) {
+            if (current != null && (current.gameId != invite.gameId || current.gameServerUrl != gameServer || current.roomApiUrl != roomApi)) {
                 ConfirmPopup(game.getScreen()!!, "Leave the current waiting room and join this invitation?", "Leave and join") {
                     Concurrency.run {
                         try {
-                            if (current.gameId.isNotEmpty()) LobbyClient(current.server).command(current.gameId,"leave",LobbyCommand().apply {
+                            if (current.gameId.isNotEmpty()) LobbyClient(current.roomApiUrl).command(current.gameId,"leave",LobbyCommand().apply {
                                 playerId = game.settings.multiplayer.getUserId(); occupancy = current.occupancy
                             })
                             LobbySession.clear()
@@ -170,19 +171,23 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         runRequest {
             configurationSupported = client.configurationSupported()
             if (session.gameId.isEmpty()) {
-                if (!configurationSupported) throw UncivShowableException("This server must be updated before creating editable rooms.")
+                if (!configurationSupported) throw UncivShowableException("The room API must be updated before creating rooms.")
                 client.create(json().fromJson(GameSetupInfo::class.java,session.setup),session.createKey)
-            } else if (joinOnOpen && session.occupancy.isEmpty()) client.command(session.gameId,"join",command())
+            } else if (joinOnOpen && session.occupancy.isEmpty()) {
+                if (client.read(session.gameId,command()).gameServerUrl != session.gameServerUrl)
+                    throw UncivShowableException("The invitation game server differs from this room.")
+                client.command(session.gameId,"join",command())
+            }
             else client.read(session.gameId,command())
         }
     }
     private fun shareInvitation() {
-        try { game.shareMultiplayerGame("Multiplayer room".tr(),session.gameId,MultiplayerGameInvite.createLobbyLink(session.gameId,session.server)) }
+        try { game.shareMultiplayerGame("Multiplayer room".tr(),session.gameId,MultiplayerGameInvite.createLobbyLink(session.gameId,session.gameServerUrl)) }
         catch (e: Exception) { errorPopup(this,e) }
     }
     private fun copyInvitation() {
         try {
-            Gdx.app.clipboard.contents = MultiplayerGameInvite.createLobbyLink(session.gameId,session.server)
+            Gdx.app.clipboard.contents = MultiplayerGameInvite.createLobbyLink(session.gameId,session.gameServerUrl)
             com.unciv.ui.popups.ToastPopup("Invitation copied. Send it to your friends.",this)
         } catch (e: Exception) { errorPopup(this,e) }
     }
@@ -196,6 +201,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     }
     private fun command() = LobbyCommand().apply {
         playerId = userId; occupancy = session.occupancy; rulesHash = LobbyClient.rulesHash()
+        gameServerUrl = session.gameServerUrl
         room?.let { r ->
             startOperation = r.startOperation; frozenVersion = r.frozenVersion; saveHash = r.saveHash
             configurationVersion = r.configurationVersion
@@ -228,6 +234,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         job = Concurrency.run("Lobby request") {
             try {
                 val result = action()
+                if (result.gameServerUrl != session.gameServerUrl)
+                    throw UncivShowableException("The invitation game server differs from this room.")
                 launchOnGLThread {
                     if (disposed) return@launchOnGLThread
                     busy = false; failures = 0; nextPoll = System.currentTimeMillis() + 2000
@@ -358,7 +366,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }
         if (r == null && !busy) footer.add("Retry".toTextButton().apply { onClick {
             runRequest {
-                if (!client.configurationSupported()) throw UncivShowableException("This server must be updated before creating editable rooms.")
+                if (!client.configurationSupported()) throw UncivShowableException("The room API must be updated before creating rooms.")
                 configurationSupported = true
                 client.create(json().fromJson(GameSetupInfo::class.java,session.setup),session.createKey)
             }
@@ -398,7 +406,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private fun saveConfiguration(backAfter: Boolean = false) {
         if (busy || !configurationPending || room?.state != "WAITING") return
         val parameters = gameSetupInfo.gameParameters
-        parameters.multiplayerServerUrl = session.server
+        parameters.multiplayerServerUrl = session.gameServerUrl
         val update = command().apply {
             setup = json().toJson(gameSetupInfo)
             baseRuleset = parameters.baseRuleset
@@ -517,39 +525,13 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }
         runRequest { start() }
     }
-    private suspend fun start(): LobbyRoom {
-        val frozen = client.command(session.gameId,"start",command())
-        room = frozen
-        val save = game.files.getLocalFile("lobby-start-${frozen.gameId}.json.gz")
-        SaveFileWriter.recover(save)
-        var body: String
-        if (save.exists()) body = save.readString("UTF-8")
-        else if (frozen.saveHash.isNotEmpty()) {
-            body = game.onlineMultiplayer.serverFor(session.server).fileStorage().loadFileData(frozen.gameId)
-            if (LobbyProtocol.sha256(body) != frozen.saveHash) throw UncivShowableException("The original start save is unavailable. Recover the previous upload before continuing.")
-            SaveFileWriter.write(save) { it.writeString(body,false,"UTF-8") }
-        } else {
-            val setup = json().fromJson(GameSetupInfo::class.java,frozen.setup)
-            setup.gameParameters.players = ArrayList(frozen.seats.map { s -> Player(s.civilization,if (s.human) PlayerType.Human else PlayerType.AI,s.playerId) })
-            setup.gameParameters.multiplayerServerUrl = session.server
-            val generated = GameStarter.startNewGame(setup, frozen.gameId)
-            body = UncivFiles.gameInfoToString(generated,forceZip = true,updateChecksum = true)
-            SaveFileWriter.write(save) { it.writeString(body,false,"UTF-8") }
-        }
-        val c = command().apply { saveHash = LobbyProtocol.sha256(body) }
-        client.command(session.gameId,"start/save",c)
-        val original = UncivFiles.gameInfoFromString(body,validateChecksumBeforeMigrations = true)
-        val server = game.onlineMultiplayer.serverFor(session.server)
-        server.fileStorage().saveFileData(session.gameId,body)
-        try { server.tryUploadGamePreview(original.asPreview()) } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Full save is enough to enter; the next sync repairs preview. */ }
-        return client.command(session.gameId,"start/complete",c)
-    }
+    private suspend fun start(): LobbyRoom = LobbyGameStarter(session,client).start(command())
     private fun enterGame() {
         if (busy) return
         busy = true; enteringGame = true
         job = Concurrency.run("Enter lobby game") {
             try {
-                val latest = game.onlineMultiplayer.downloadInvitedGame(MultiplayerGameInvite(session.gameId,session.server))
+                val latest = game.onlineMultiplayer.downloadInvitedGame(MultiplayerGameInvite(session.gameId,session.gameServerUrl))
                 game.loadGame(latest)
                 LobbySession.clear()
             } catch (e: CancellationException) { throw e }
