@@ -40,6 +40,26 @@ class MultiplayerGameInviteTest {
         assertFalse(MultiplayerGameInvite.parse(MultiplayerGameInvite.createLink(ID,"https://example.com")).lobby)
     }
 
+    @Test fun lobbyShareAndJoinUseRoomServerWithoutChangingGlobalSettings() = runBlocking {
+        val settings = UncivGame.Current.settings
+        settings.multiplayer.setServer("https://global.example")
+        val roomServer = "https://room.example/unciv"
+        val invite = MultiplayerGameInvite.parse(MultiplayerGameInvite.createLobbyLink(ID, roomServer))
+        val requests = mutableListOf<MultiplayerV1Request>()
+        val transport = object : MultiplayerV1Transport {
+            override suspend fun execute(request: MultiplayerV1Request): MultiplayerV1Response {
+                requests += request
+                return MultiplayerV1Response(200, """{"gameId":"$ID","state":"WAITING"}""", emptyMap(), request.url)
+            }
+        }
+        val client = com.unciv.logic.multiplayer.lobby.LobbyClient(invite.serverUrl!!, transport)
+        val room = client.command(invite.gameId, "join", com.unciv.logic.multiplayer.lobby.protocol.LobbyCommand())
+        assertEquals(ID, room.gameId)
+        assertEquals("$roomServer/lobbies/$ID/join", requests.single().url)
+        assertEquals(MultiplayerV1HttpMethod.POST, requests.single().method)
+        assertEquals("https://global.example", settings.multiplayer.getServer())
+    }
+
     @Test fun upstreamAndroidGameLinkIsRecognizedWithoutGrantingPlayerIdentity() {
         val link = IdChecker.uncivUrlPrefix + "G/G-$ID-${IdChecker.getCheckDigit(ID)}"
         assertEquals(MultiplayerGameInvite(ID, null), MultiplayerGameInvite.parse(link))
