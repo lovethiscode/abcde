@@ -118,6 +118,7 @@ class LobbyService(uri: String, database: String, private val folder: File,
                     }
                 }
                 "leave", "close" -> {
+                    if (verb == "leave" && r.state == "CLOSED") return@mutate
                     waiting(r); val s = member(r,c)
                     if (verb == "close" || c.playerId == r.hostId) { host(r,c); r.state = "CLOSED"; r.reason = "Host closed the room" }
                     else clear(s)

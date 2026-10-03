@@ -79,6 +79,21 @@ class LobbyServiceTest {
         assertEquals("CLOSED",service.command(r.gameId,"read",c(r,guest)).state)
         assertThrows(LobbyFailure::class.java) { join(r) }
     }
+    @Test fun leavingClosedRoomIsIdempotentAndAllowsJoiningAnotherRoom() {
+        val old=join(create())
+        val leave=c(old,guest)
+        now+=30*60_000
+        val closed=service.command(old.gameId,"read",c(old,host))
+        assertEquals("CLOSED",closed.state)
+        repeat(2) {
+            val result=service.command(old.gameId,"leave",leave)
+            assertEquals("CLOSED",result.state)
+            assertEquals(closed.reason,result.reason)
+            assertEquals(closed.seats[1].occupancy,result.seats[1].occupancy)
+        }
+        assertThrows(LobbyFailure::class.java) { join(closed) }
+        assertEquals(guest,join(create()).seats[1].playerId)
+    }
     @Test fun onlyFullReadyRoomCanStartAndFrozenSnapshotCannotChange() {
         var r=create()
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"start",c(r,host)) }
