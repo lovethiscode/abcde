@@ -209,7 +209,7 @@ class Multiplayer(
     /**
      * @throws FileStorageRateLimitReached if the file storage backend can't handle any additional actions for a time
      */
-    suspend fun createGame(newGame: GameInfo) {
+    suspend fun createGame(newGame: GameInfo) = observeMultiplayerOperation(MultiplayerOperation.Create) {
         val serverUrl = multiplayerServer.getValidatedServerUrl()
         newGame.gameParameters.multiplayerServerUrl = serverUrl
         val gameServer = serverFor(serverUrl)
@@ -306,7 +306,7 @@ class Multiplayer(
      * @throws FileStorageRateLimitReached if the file storage backend can't handle any additional actions for a time
      * @throws MultiplayerFileNotFoundException if the file can't be found
      */
-    suspend fun addGame(gameId: String, gameName: String? = null, serverUrl: String? = null) {
+    suspend fun addGame(gameId: String, gameName: String? = null, serverUrl: String? = null) = observeMultiplayerOperation(MultiplayerOperation.Join) {
         val saveFileName = if (gameName.isNullOrBlank()) gameId else gameName
         val server = if (serverUrl == null) multiplayerServer else serverFor(serverUrl)
         val gamePreview: GameInfoPreview = try {
@@ -337,11 +337,11 @@ class Multiplayer(
     }
 
     /** Downloads and records an invitation without changing the selected global server. */
-    suspend fun downloadInvitedGame(invite: MultiplayerGameInvite): GameInfo {
+    suspend fun downloadInvitedGame(invite: MultiplayerGameInvite): GameInfo = observeMultiplayerOperation(MultiplayerOperation.Join) {
         val serverUrl = invite.serverUrl ?: UncivGame.Current.settings.multiplayer.getServer()
         val latest = serverFor(serverUrl).downloadGame(invite.gameId)
         persistGamePreviewLocally(latest)
-        return latest
+        latest
     }
 
     /** Downloads game, and updates it locally

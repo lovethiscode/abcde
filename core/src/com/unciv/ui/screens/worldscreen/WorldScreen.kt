@@ -15,6 +15,8 @@ import com.unciv.logic.civilization.PlayerType
 import com.unciv.logic.civilization.diplomacy.DiplomaticStatus
 import com.unciv.logic.event.EventBus
 import com.unciv.logic.map.HexCoord
+import com.unciv.logic.multiplayer.MultiplayerOperation
+import com.unciv.logic.multiplayer.reportMultiplayerOperation
 import com.unciv.logic.multiplayer.MultiplayerGameUpdated
 import com.unciv.logic.multiplayer.PendingTurnPersistenceException
 import com.unciv.logic.multiplayer.PendingTurnUploadResolution
@@ -744,7 +746,7 @@ class WorldScreen(
                     if (backgroundTaskExpired) TurnUploadUnconfirmedReason.BackgroundTaskExpired
                     else TurnUploadUnconfirmedReason.UploadFailed,
                 )
-                return false
+                return reportTurnUpload(false)
             }
 
             if (backgroundTaskExpired) {
@@ -752,24 +754,31 @@ class WorldScreen(
                     "Turn upload is unconfirmed because its background time expired. Retry after returning to the game.",
                     reason = TurnUploadUnconfirmedReason.BackgroundTaskExpired,
                 )
-                return false
+                return reportTurnUpload(false)
             }
-            if (!needsAuthentication) return true
+            if (!needsAuthentication) return reportTurnUpload(true)
 
             val authenticationSucceeded = try {
                 requestMultiplayerAuthentication(multiplayerServer)
+            } catch (ex: CancellationException) {
+                throw ex
             } catch (ex: Exception) {
                 markTurnUploadUnconfirmed("Could not open authentication. The turn upload is unconfirmed.", ex)
-                return false
+                return reportTurnUpload(false)
             }
             if (!authenticationSucceeded) {
                 markTurnUploadUnconfirmed(
                     "Authentication was cancelled. The turn upload is unconfirmed.",
                     reason = TurnUploadUnconfirmedReason.AuthenticationCancelled,
                 )
-                return false
+                return reportTurnUpload(false)
             }
         }
+    }
+
+    private fun reportTurnUpload(succeeded: Boolean): Boolean {
+        reportMultiplayerOperation(MultiplayerOperation.Turn, succeeded)
+        return succeeded
     }
 
     private suspend fun resolvePendingTurnBeforeRetry(): PendingTurnUploadResolution? {
@@ -884,7 +893,7 @@ class WorldScreen(
                 if (originalGameInfo.gameParameters.isOnlineMultiplayer) {
                     if (existingPendingTurn != null) {
                         when (resolvePendingTurnBeforeRetry() ?: return@runOnNonDaemonThreadPool) {
-                            PendingTurnUploadResolution.Confirmed -> Unit
+                            PendingTurnUploadResolution.Confirmed -> reportTurnUpload(true)
                             PendingTurnUploadResolution.RetryUpload ->
                                 if (!uploadPendingTurn(gameInfoClone)) return@runOnNonDaemonThreadPool
                             PendingTurnUploadResolution.RepairPreview ->
