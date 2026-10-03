@@ -5,6 +5,7 @@ import com.unciv.UncivGame
 import com.unciv.json.json
 import com.unciv.logic.civilization.PlayerType
 import com.unciv.logic.files.UncivFiles
+import com.unciv.logic.files.FileConversions
 import com.unciv.logic.map.MapSize
 import com.unciv.logic.multiplayer.lobby.*
 import com.unciv.logic.multiplayer.lobby.protocol.*
@@ -78,7 +79,7 @@ class LobbyStartIntegrationTest {
         room=LobbyGameStarter(session,client,server).start(command(host))
         assertEquals("STARTED",room.state)
         assertEquals(reservedId,client.command(reservedId,"start/complete",command(host)).gameId)
-        val loaded=server.tryDownloadVerifiedGame(reservedId)
+        val loaded=server.tryDownloadGame(reservedId)
         assertEquals(reservedId,loaded.gameId)
         assertEquals(gameServer,loaded.gameParameters.multiplayerServerUrl)
         assertEquals(listOf(host,guest,third,""),loaded.gameParameters.players.map { it.playerId })
@@ -91,7 +92,7 @@ class LobbyStartIntegrationTest {
         assertTrue(fileRequests.all { it.url.startsWith("$gameServer/files/") })
         assertTrue(requests.filter { it.url.contains("/lobbies") }.all { it.url.startsWith("$source/lobbies") })
         val body=server.fileStorage().loadFileData(reservedId)
-        assertEquals(room.saveHash,LobbyProtocol.sha256(body))
+        assertEquals(room.saveHash,LobbyProtocol.saveFingerprint(FileConversions.unzip(body)))
         val evidence=System.getenv("UNCIV_LOBBY_EVIDENCE")
         if(evidence!=null) File(evidence).apply { mkdirs(); resolve("integration-room.json").writeText(LobbyProtocol.json().toJson(room)); resolve("integration-save.gz").writeText(body)
             resolve("integration-requests.txt").writeText(requests.joinToString("\n") { "${it.method} ${it.url}" }) }

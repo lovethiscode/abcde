@@ -7,6 +7,7 @@ import com.unciv.logic.UncivShowableException
 import com.unciv.logic.civilization.PlayerType
 import com.unciv.logic.files.SaveFileWriter
 import com.unciv.logic.files.UncivFiles
+import com.unciv.logic.files.FileConversions
 import com.unciv.logic.multiplayer.lobby.protocol.*
 import com.unciv.logic.multiplayer.storage.MultiplayerServer
 import com.unciv.models.metadata.GameSetupInfo
@@ -27,7 +28,7 @@ class LobbyGameStarter(private val session: LobbySession, private val client: Lo
         if (save.exists()) body = save.readString("UTF-8")
         else if (frozen.saveHash.isNotEmpty()) {
             body = server.fileStorage().loadFileData(frozen.gameId)
-            if (LobbyProtocol.sha256(body) != frozen.saveHash)
+            if (LobbyProtocol.saveFingerprint(FileConversions.unzip(body)) != frozen.saveHash)
                 throw UncivShowableException("The original start save is unavailable. Recover the previous upload before continuing.")
             SaveFileWriter.write(save) { it.writeString(body,false,"UTF-8") }
         } else {
@@ -38,9 +39,13 @@ class LobbyGameStarter(private val session: LobbySession, private val client: Lo
             SaveFileWriter.write(save) { it.writeString(body,false,"UTF-8") }
         }
         command.startOperation = frozen.startOperation; command.frozenVersion = frozen.frozenVersion
-        command.saveHash = LobbyProtocol.sha256(body)
+        command.saveHash = LobbyProtocol.saveFingerprint(FileConversions.unzip(body))
+        if (frozen.saveHash.isNotEmpty() && frozen.saveHash != command.saveHash)
+            throw UncivShowableException("The original start save is unavailable. Recover the previous upload before continuing.")
+        // First registration validates the original checksum. Recovery is checked by the
+        // pinned content fingerprint because the file server may append notifications.
+        val original = UncivFiles.gameInfoFromString(body,validateChecksumBeforeMigrations = frozen.saveHash.isEmpty())
         client.command(session.gameId,"start/save",command)
-        val original = UncivFiles.gameInfoFromString(body,validateChecksumBeforeMigrations = true)
         server.fileStorage().saveFileData(session.gameId,body)
         try { server.tryUploadGamePreview(original.asPreview()) }
         catch (e: CancellationException) { throw e }

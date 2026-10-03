@@ -222,18 +222,16 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         }
     }
     private fun validSave(r: LobbyRoom, body: String): Boolean = try {
-        if (LobbyProtocol.sha256(body) != r.saveHash) false
-        else {
+        run {
             val plain = GZIPInputStream(Base64.getDecoder().decode(body).inputStream()).use { it.readNBytes(128 * 1024 * 1024) }.toString(Charsets.UTF_8)
             val data = JsonReader().parse(plain)
             val checksum = data.getString("checksum", "")
-            val withoutChecksum = JsonReader().parse(plain).apply { remove("checksum") }.toJson(com.badlogic.gdx.utils.JsonWriter.OutputType.json)
-            val actualChecksum = Base64.getEncoder().encodeToString(java.security.MessageDigest.getInstance("SHA-1").digest(withoutChecksum.toByteArray(Charsets.UTF_8)))
             val parameters = data.get("gameParameters")
             val players = parameters.get("players")
-            parameters.getBoolean("isOnlineMultiplayer",false) && parameters.getString("multiplayerServerUrl", "") == r.gameServerUrl &&
+            LobbyProtocol.saveFingerprint(plain) == r.saveHash &&
+                parameters.getBoolean("isOnlineMultiplayer",false) && parameters.getString("multiplayerServerUrl", "") == r.gameServerUrl &&
                 parameters.getString("baseRuleset", LobbyProtocol.rulesets[1]) == r.baseRuleset &&
-                checksum.isNotEmpty() && actualChecksum == checksum && data.getString("gameId") == r.gameId && players.size == r.seats.size && r.seats.all { s ->
+                checksum.isNotEmpty() && data.getString("gameId") == r.gameId && players.size == r.seats.size && r.seats.all { s ->
                 val p = players[s.seatId]
                 p.getString("playerId", "") == s.playerId && (p.getString("playerType", "AI") == "Human") == s.human &&
                     (s.civilization == "Random" || p.getString("chosenCiv", "Random") == s.civilization)

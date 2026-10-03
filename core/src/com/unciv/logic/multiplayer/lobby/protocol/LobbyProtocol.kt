@@ -66,6 +66,12 @@ object LobbyProtocol {
     fun sha256(value: ByteArray): String = MessageDigest.getInstance("SHA-256")
         .digest(value).joinToString("") { "%02x".format(it.toInt() and 255) }
     fun sha256(value: String) = sha256(value.toByteArray(Charsets.UTF_8))
+    /** The existing game server appends civilization notifications without updating checksum. */
+    fun saveFingerprint(plain: String): String {
+        val data = JsonReader().parse(plain)
+        data.get("civilizations")?.forEach { it.remove("notifications") }
+        return sha256(data.toJson(JsonWriter.OutputType.json))
+    }
     // Both built-in rulesets use the same versioned catalog. Changes to any gameplay JSON
     // invalidate the fingerprint, independently of app build numbers.
     val rulesets = listOf("Civ V - Vanilla", "Civ V - Gods & Kings")

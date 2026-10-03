@@ -5,6 +5,7 @@ import com.unciv.UncivGame
 import com.unciv.json.json
 import com.unciv.logic.UncivShowableException
 import com.unciv.logic.files.UncivFiles
+import com.unciv.logic.files.FileConversions
 import com.unciv.logic.multiplayer.lobby.*
 import com.unciv.logic.multiplayer.lobby.protocol.*
 import com.unciv.logic.multiplayer.storage.*
@@ -47,6 +48,8 @@ class LobbyServerSeparationTest {
         }
         val session=LobbySession().apply { roomApiUrl=api; gameServerUrl=saves; gameId=room.gameId }
         var failUpload=true
+        var interruptPreview=true
+        var uploaded=""
         val requests=mutableListOf<MultiplayerV1Request>()
         val transport=object : MultiplayerV1Transport {
             override suspend fun execute(request: MultiplayerV1Request): MultiplayerV1Response {
@@ -61,6 +64,14 @@ class LobbyServerSeparationTest {
                 }
                 assertTrue(request.url.startsWith("$saves/files/"))
                 if (failUpload) throw MultiplayerNetworkException(MultiplayerNetworkError.CONNECTION)
+                if (request.url.endsWith("_Preview") && interruptPreview) throw kotlinx.coroutines.CancellationException("Interrupted before complete")
+                if (request.method == MultiplayerV1HttpMethod.GET) {
+                    val notified=com.badlogic.gdx.utils.JsonReader().parse(FileConversions.unzip(uploaded))
+                    notified.get("civilizations").first { it.getString("playerId","")==host }
+                        .addChild("notifications",com.badlogic.gdx.utils.JsonReader().parse("""[{"text":"Welcome to UncivServer.xyz!"}]"""))
+                    return MultiplayerV1Response(200,FileConversions.zip(notified.toJson(com.badlogic.gdx.utils.JsonWriter.OutputType.json)),emptyMap(),request.url)
+                }
+                if (!request.url.endsWith("_Preview")) uploaded=request.body!!
                 return MultiplayerV1Response(200,"",emptyMap(),request.url)
             }
         }
@@ -70,9 +81,16 @@ class LobbyServerSeparationTest {
         assertTrue(requests.none { it.url.endsWith("/start/complete") })
         val first=requests.single { it.url=="$saves/files/${room.gameId}" }.body
         failUpload=false
-        assertEquals("STARTED",starter.start(command).state)
+        try { starter.start(command); fail("Completion must be interrupted") } catch (_: kotlinx.coroutines.CancellationException) { }
+        assertTrue(requests.none { it.url.endsWith("/start/complete") })
         assertEquals(listOf(first,first),requests.filter { it.url=="$saves/files/${room.gameId}" }.map { it.body })
-        assertEquals(room.saveHash,LobbyProtocol.sha256(first!!))
+        assertEquals(room.saveHash,LobbyProtocol.saveFingerprint(FileConversions.unzip(first!!)))
+        // Lost local recovery file: accept the same stored game with server-added notifications.
+        UncivGame.Current.files.getLocalFile("lobby-start-${room.gameId}.json.gz").delete()
+        interruptPreview=false
+        assertEquals("STARTED",starter.start(command).state)
+        assertEquals(room.saveHash,LobbyProtocol.saveFingerprint(FileConversions.unzip(uploaded)))
+        assertNotEquals(first,uploaded)
         val count=requests.size
         starter.start(command)
         assertEquals(count+1,requests.size)
