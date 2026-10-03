@@ -80,6 +80,9 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     private val gameSpecificButtons = listOf(copyGameIdButton, copyInviteButton, shareGameButton, resignButton, deleteButton, renameButton)
 
     private val addGameButton = createAddGameButton()
+    private val createRoomButton = "Create room".toTextButton().apply {
+        onClick { MultiplayerLobbyScreen.openRoom() }
+    }
     private val copyUserIdButton = createCopyUserIdButton()
     private val friendsListButton = createFriendsListButton()
     private val refreshButton = createRefreshButton()
@@ -116,13 +119,6 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
 
     init {
         setDefaultCloseAction()
-        com.unciv.logic.multiplayer.lobby.LobbySession.current()?.let { session ->
-            val resumeRoom = "Continue room".toTextButton().apply { onClick {
-                if (session.gameId.isNotEmpty()) game.pushScreen { MultiplayerLobbyScreen(session) }
-                else game.pushScreen { com.unciv.ui.screens.newgamescreen.NewGameScreen() }
-            } }
-            bottomTable.add(resumeRoom).pad(5f)
-        }
         initLandscapeLayout()
         setupRightSideButton()
         setupRefreshEvents()
@@ -253,7 +249,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
 
         closeButton.setText("Back".tr())
         closeButton.label.setFontSize(multiplayerSecondaryFontSize)
-        listOf(helpButton, copyUserIdButton, addGameButton, refreshButton).forEach {
+        listOf(createRoomButton, helpButton, copyUserIdButton, addGameButton, refreshButton).forEach {
             it.label.setFontSize(multiplayerSecondaryFontSize)
             it.labelCell.minWidth(0f)
         }
@@ -293,7 +289,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
             add(title).growX().minWidth(0f).left().row()
             add(subtitle).growX().minWidth(0f).left()
         }
-        val actions = listOf(helpButton, copyUserIdButton, addGameButton)
+        val actions = listOf(createRoomButton, addGameButton, copyUserIdButton, helpButton)
         val actionsWidth = stage.width - 52f - closeButton.prefWidth - title.prefWidth
         val actionGrid = Table()
         val actionGridWidth = actionGrid.addResponsiveActions(actions, actionsWidth, 44f)

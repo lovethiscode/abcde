@@ -23,6 +23,7 @@ class LobbyRoom {
     var createKey = ""
     var state = "WAITING"
     var version = 0L
+    var configurationVersion = 0L
     var setup = ""
     var rulesHash = ""
     var baseRuleset = ""
@@ -40,6 +41,7 @@ class LobbyCommand {
     var createKey = ""
     var rulesHash = ""
     var setup = ""
+    var configurationVersion = -1L
     var baseRuleset = ""
     var seats = arrayListOf<LobbySeat>()
     var seatId = -1

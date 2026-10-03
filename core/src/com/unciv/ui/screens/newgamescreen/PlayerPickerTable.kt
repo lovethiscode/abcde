@@ -98,6 +98,8 @@ class PlayerPickerTable(
                 gameParameters.players.add(0, self)
             }
             self.playerType = Human
+            if (!gameParameters.isOnlineMultiplayer)
+                gameParameters.players.drop(1).forEach { it.playerType = AI }
             if (gameParameters.isOnlineMultiplayer)
                 self.playerId = UncivGame.Current.settings.multiplayer.getUserId()
         }
@@ -228,8 +230,11 @@ class PlayerPickerTable(
         playerTable.add(nationTable).left().growX()
 
         val playerTypeTextButton = player.playerType.name.toTextButton()
-        if (!self)
+        val canChoosePlayerType = !self && (previousScreen !is NewGameScreen || gameParameters.isOnlineMultiplayer)
+        if (canChoosePlayerType)
             playerTable.add(playerTypeTextButton).width(100f).pad(5f).right()
+        else if (!self)
+            playerTable.add("AI".toLabel()).width(100f).pad(5f).right()
         fun updatePlayerTypeButtonEnabled() {
             // This could be written much shorter with logical operators - I think this is readable
             playerTypeTextButton.isEnabled = when {
@@ -251,7 +256,7 @@ class PlayerPickerTable(
             popupNationPicker(player, noRandom)
             updatePlayerTypeButtonEnabled()
         }
-        if (!self) {
+        if (canChoosePlayerType) {
             playerTypeTextButton.onClick {
                 player.playerType = if (player.playerType == AI) Human else AI
                 update()

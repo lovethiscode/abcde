@@ -2,7 +2,10 @@ package com.unciv.ui.screens.multiplayerscreens
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
+import com.badlogic.gdx.scenes.scene2d.Actor
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.json.json
@@ -16,6 +19,8 @@ import com.unciv.logic.multiplayer.lobby.*
 import com.unciv.logic.multiplayer.lobby.protocol.*
 import com.unciv.models.metadata.GameSetupInfo
 import com.unciv.models.metadata.Player
+import com.unciv.models.metadata.NewGameMode
+import com.unciv.models.ruleset.Ruleset
 import com.unciv.models.ruleset.RulesetCache
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.*
@@ -23,6 +28,11 @@ import com.unciv.ui.components.input.onClick
 import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.screens.newgamescreen.NationPickerPopup
+import com.unciv.ui.screens.newgamescreen.IPreviousScreen
+import com.unciv.ui.screens.newgamescreen.GameOptionsTable
+import com.unciv.ui.screens.newgamescreen.MapParametersTable
+import com.unciv.logic.map.MapGeneratedMainType
+import com.unciv.logic.map.MapType
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.keyShortcuts
@@ -38,7 +48,7 @@ import kotlinx.coroutines.CancellationException
 
 /** Server-confirmed lobby. Back navigation preserves membership; explicit leave removes it. */
 class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRoom? = null,
-                             private val joinOnOpen: Boolean = false) : BaseScreen() {
+                             private val joinOnOpen: Boolean = false) : BaseScreen(), IPreviousScreen {
     private val client = LobbyClient(session.server)
     private val userId = game.settings.multiplayer.getUserId()
     private var room: LobbyRoom? = initial
@@ -56,12 +66,43 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private val footer = Table()
     private val startButton = "Start game!".toTextButton(skin.get("positive", com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle::class.java))
     private val inviteButton = "Invite friends".toTextButton()
+    private val copyInvitationButton = "Copy invitation".toTextButton()
     private var detailsOpen = false
     private var renderedState = ""
     private var setup: GameSetupInfo? = null
+    override val gameSetupInfo get() = checkNotNull(setup)
+    override val ruleset = Ruleset()
+    private var configurationSupported = false
+    private var configurationTable: Table? = null
+    private var mapSettings: MapParametersTable? = null
+    private var configurationPending = false
+    private var configurationDue = 0L
+    private var seatSources = arrayListOf<Int>()
     private val status = "Connecting to room...".toLabel()
 
     companion object {
+        fun openRoom() {
+            val game = UncivGame.Current
+            val session = LobbySession.current() ?: LobbySession().apply {
+                server = game.settings.multiplayer.getServer()
+                createKey = java.util.UUID.randomUUID().toString()
+                val previous = GameSetupInfo.fromSettings()
+                val source = if (previous.gameParameters.mods.isEmpty() && previous.gameParameters.baseRuleset in LobbyProtocol.rulesets)
+                    previous else GameSetupInfo()
+                val draft = NewGameMode.MultiplayerRoom.prepare(source, game.settings.multiplayer.getUserId())
+                draft.mapFile = null; draft.mapParameters.name = ""
+                if (draft.mapParameters.type !in MapType.allValues) draft.mapParameters.type = MapType.pangaea
+                if (draft.mapParameters.seed == 0L) draft.mapParameters.reseed()
+                val rules = RulesetCache.getComplexRuleset(draft.gameParameters)
+                draft.gameParameters.players.forEach { if (it.chosenCiv !in rules.nations) it.chosenCiv = Constants.random }
+                draft.gameParameters.victoryTypes.removeAll { it !in rules.victories }
+                if (draft.gameParameters.victoryTypes.isEmpty())
+                    draft.gameParameters.victoryTypes.addAll(rules.selectableVictories().map { it.name })
+                setup = json().toJson(draft)
+                save()
+            }
+            game.pushScreen { MultiplayerLobbyScreen(session) }
+        }
         fun openInvite(invite: MultiplayerGameInvite) {
             val game = UncivGame.Current
             val current = LobbySession.current()
@@ -99,16 +140,20 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     }
     init {
         val back = "Back".toTextButton().apply {
-            onClick { game.popScreen() }
+            onClick { if (configurationPending) saveConfiguration(backAfter = true) else game.popScreen() }
             keyShortcuts.add(KeyCharAndCode.BACK)
         }
         val header = Table().apply {
             add(back).height(44f).padRight(16f)
             add("Multiplayer room".toLabel(fontSize = 28)).left().growX()
-            add(inviteButton).height(44f)
+            if (stage.width < 850f) row()
+            add(inviteButton).height(44f).padRight(8f)
+            add(copyInvitationButton).height(44f)
         }
-        inviteButton.onClick { showInvitation() }
-        startButton.onClick { runRequest { start() } }
+        inviteButton.setText("Share invitation".tr())
+        inviteButton.onClick { shareInvitation() }
+        copyInvitationButton.onClick { copyInvitation() }
+        startButton.onClick { requestStart() }
         status.setWrap(true)
         content.top()
         scroll.setScrollingDisabled(true, false)
@@ -122,27 +167,24 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         stage.addActor(layout)
         drawMembers(force = true)
         if (initial != null) { accept(initial); drawMembers(force = true) }
-        else runRequest { if (joinOnOpen) client.command(session.gameId,"join",command()) else client.read(session.gameId,command()) }
+        runRequest {
+            configurationSupported = client.configurationSupported()
+            if (session.gameId.isEmpty()) {
+                if (!configurationSupported) throw UncivShowableException("This server must be updated before creating editable rooms.")
+                client.create(json().fromJson(GameSetupInfo::class.java,session.setup),session.createKey)
+            } else if (joinOnOpen && session.occupancy.isEmpty()) client.command(session.gameId,"join",command())
+            else client.read(session.gameId,command())
+        }
     }
-    private fun showInvitation() {
-        val popup = Popup(this)
-        popup.addGoodSizedLabel("Invite friends", size = 26).row()
-        popup.addGoodSizedLabel("Share the link. Your friends can join and choose their own civilizations.").row()
-        popup.addButton("Share invitation") {
-            try {
-                val link = MultiplayerGameInvite.createLobbyLink(session.gameId,session.server)
-                game.shareMultiplayerGame("Multiplayer room".tr(),session.gameId,link)
-            } catch (e: Exception) { errorPopup(this,e) }
-        }.row()
-        popup.addButton("Copy invitation") {
-            try {
-                Gdx.app.clipboard.contents = MultiplayerGameInvite.createLobbyLink(session.gameId,session.server)
-                popup.close()
-                com.unciv.ui.popups.ToastPopup("Invitation copied. Send it to your friends.",this)
-            } catch (e: Exception) { errorPopup(this,e) }
-        }.row()
-        popup.addCloseButton()
-        popup.open()
+    private fun shareInvitation() {
+        try { game.shareMultiplayerGame("Multiplayer room".tr(),session.gameId,MultiplayerGameInvite.createLobbyLink(session.gameId,session.server)) }
+        catch (e: Exception) { errorPopup(this,e) }
+    }
+    private fun copyInvitation() {
+        try {
+            Gdx.app.clipboard.contents = MultiplayerGameInvite.createLobbyLink(session.gameId,session.server)
+            com.unciv.ui.popups.ToastPopup("Invitation copied. Send it to your friends.",this)
+        } catch (e: Exception) { errorPopup(this,e) }
     }
     private fun leaveRoom() {
         if (busy) return
@@ -156,16 +198,31 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         playerId = userId; occupancy = session.occupancy; rulesHash = LobbyClient.rulesHash()
         room?.let { r ->
             startOperation = r.startOperation; frozenVersion = r.frozenVersion; saveHash = r.saveHash
+            configurationVersion = r.configurationVersion
             seatRevision = r.seats.firstOrNull { it.playerId == userId && it.occupancy == session.occupancy }?.revision ?: 0L
         }
     }
     private fun accept(latest: LobbyRoom) {
         if (latest.version < (room?.version ?: -1)) return
+        val settingsChanged = room?.configurationVersion != latest.configurationVersion || configurationTable == null
+        if (settingsChanged && !configurationPending) {
+            mapSettings?.cancelBackgroundJobs()
+            configurationTable = null
+            setup = json().fromJson(GameSetupInfo::class.java,latest.setup)
+            ruleset.clear(); ruleset.add(RulesetCache.getComplexRuleset(gameSetupInfo.gameParameters))
+            seatSources = ArrayList(latest.seats.map { it.seatId })
+        }
+        if (!configurationPending) setup?.gameParameters?.players = ArrayList(latest.seats.map {
+            Player(it.civilization,if (it.human) PlayerType.Human else PlayerType.AI,it.playerId)
+        })
         room = latest
+        session.gameId = latest.gameId
+        session.setup = latest.setup
         session.occupancy = latest.seats.firstOrNull { it.playerId == userId }?.occupancy.orEmpty()
         if (latest.state == "CLOSED") LobbySession.clear() else session.save()
     }
-    private fun runRequest(refreshOnly: Boolean = false, action: suspend () -> LobbyRoom) {
+    private fun runRequest(refreshOnly: Boolean = false, configurationWrite: Boolean = false,
+                           backAfter: Boolean = false, action: suspend () -> LobbyRoom) {
         if (busy || disposed) return
         busy = true; if (!refreshOnly) drawMembers()
         job = Concurrency.run("Lobby request") {
@@ -175,7 +232,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     if (disposed) return@launchOnGLThread
                     busy = false; failures = 0; nextPoll = System.currentTimeMillis() + 2000
                     if (leaving) { LobbySession.clear(); game.popScreen(); return@launchOnGLThread }
+                    if (configurationWrite) { configurationPending = false; configurationTable = null }
                     accept(result); drawMembers()
+                    if (backAfter) { game.popScreen(); return@launchOnGLThread }
                     if (result.state == "STARTED" && result.seats.any { it.playerId == userId && it.occupancy == session.occupancy }) enterGame()
                 }
             } catch (e: CancellationException) { throw e }
@@ -183,6 +242,11 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 launchOnGLThread {
                     if (disposed) return@launchOnGLThread
                     busy = false; leaving = false; failures++; nextPoll = System.currentTimeMillis() + listOf(2000,4000,8000,15000)[minOf(failures-1,3)]
+                    if (configurationWrite) {
+                        configurationPending = false; configurationTable = null
+                        room?.let { accept(it) }
+                        errorPopup(this@MultiplayerLobbyScreen,e)
+                    }
                     status.setText((e.message ?: "Connection failed. Retrying...").tr()); drawMembers(updateStatus = false); renderedState = ""
                 }
             }
@@ -191,7 +255,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private fun drawMembers(updateStatus: Boolean = true, force: Boolean = false) {
         val r = room
         // Heartbeats change version/lastSeen but should not replace actors under a player's finger.
-        val signature = "$busy|${r?.state}|${r?.reason}|${r?.seats?.map { listOf(it.seatId,it.playerId,it.occupancy,it.civilization,it.ready) }}"
+        val signature = "$busy|$configurationPending|${r?.configurationVersion}|${r?.state}|${r?.reason}|${r?.seats?.map { listOf(it.seatId,it.playerId,it.occupancy,it.civilization,it.ready) }}"
         if (!force && updateStatus && renderedState == signature) return
         renderedState = signature
         val scrollY = scroll.scrollY
@@ -209,17 +273,21 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             r.state == "STARTING" -> "Starting game. Waiting for the host to finish uploading...".tr()
             r.state == "STARTED" -> "Game started".tr()
             busy -> Constants.working.tr()
+            configurationPending -> "Syncing room settings...".tr()
             joined < humans.size -> "Invite friends to fill the empty seats.".tr()
             ready < humans.size -> "Choose your civilization, then get ready.".tr()
             host -> "Everyone is ready. You can start the game.".tr()
             else -> "Everyone is ready. Waiting for the host to start.".tr()
         })
-        inviteButton.isEnabled = r?.state == "WAITING" && own != null && !busy
+        inviteButton.isEnabled = r?.state == "WAITING" && own != null && !busy && !configurationPending
+        copyInvitationButton.isEnabled = inviteButton.isEnabled
         val width = stage.width - 32f
         if (r != null) {
             val gameSetup = setup ?: json().fromJson(GameSetupInfo::class.java,r.setup).also { setup = it }
-            val landscape = width >= 1000f && stage.width > stage.height
-            val cardsWidth = if (landscape) width - 230f - 16f else width
+            val editable = host && own != null && configurationSupported && r.state == "WAITING"
+            val landscape = width >= 1100f && stage.width > stage.height
+            val settingsWidth = if (editable) width * 2f / 3f else 230f
+            val cardsWidth = if (landscape) width - settingsWidth - 16f else width
             val summary = Table().apply {
                 background = skinStrings.getUiBackground("MultiplayerLobbyScreen/GameSummary", skinStrings.roundedEdgeRectangleSmallShape, Color.valueOf("0d2140"))
                 pad(18f)
@@ -247,6 +315,13 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 if (index % columns == columns-1) grid.row()
             }
             players.add(grid).growX().row()
+            if (editable) players.add("Add player".toTextButton().apply {
+                isEnabled = !busy && !configurationPending && r.seats.size < minOf(64,ruleset.nations.values.count { it.isMajorCiv })
+                onClick {
+                    gameSetupInfo.gameParameters.players.add(Player(playerType = PlayerType.Human))
+                    seatSources.add(-1); markConfigurationChanged()
+                }
+            }).height(44f).padBottom(12f).row()
             val details = ExpanderTab("Room and player information",fontSize = 18, startsOutOpened = detailsOpen,
                 expanderWidth = cardsWidth, onChange = { detailsOpen = !detailsOpen }) { table ->
                 table.add("Game ID".toLabel(Color.LIGHT_GRAY,16)).left().row()
@@ -257,25 +332,81 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 }
             }
             players.add(details).growX()
+            val settings = if (editable) configurationTable ?: buildConfiguration(if(landscape) settingsWidth else width).also { configurationTable = it } else summary
+            settings.touchable = if (busy || r.state != "WAITING") Touchable.disabled else Touchable.childrenOnly
             if (landscape) {
-                content.add(summary).width(230f).top().padRight(16f)
+                content.add(settings).width(settingsWidth).top().padRight(16f)
                 content.add(players).width(cardsWidth).top()
+            } else if (editable) {
+                content.add(settings).width(width).top().row()
+                content.add(players).width(width).padTop(16f)
             } else {
                 content.add(players).width(width).top().row()
                 content.add(summary).width(width).padTop(12f)
             }
         }
-        val leave = "Leave room".toTextButton().apply { onClick { leaveRoom() }; isEnabled = !busy }
+        val leave = (if(r == null) "Cancel" else if(host) "Close room" else "Leave room").toTextButton().apply {
+            onClick { if (r == null) { LobbySession.clear(); game.popScreen() } else leaveRoom() }; isEnabled = !busy
+        }
         footer.add(status).growX().left().padRight(12f)
+        if (stage.width < 850f) footer.row()
         footer.add(leave).height(44f).padRight(if (host) 10f else 0f)
         if (host) {
             startButton.setText((if (r.state == "STARTING") "Retry start" else "Start game!").tr())
-            startButton.isEnabled = !busy && own != null && (r.state == "STARTING" || (r.state == "WAITING" && joined == humans.size && ready == humans.size))
+            startButton.isEnabled = !busy && !configurationPending && failures == 0 && own != null && (r.state == "STARTING" || (r.state == "WAITING" && joined == humans.size && ready == humans.size))
             footer.add(startButton).height(44f)
         }
+        if (r == null && !busy) footer.add("Retry".toTextButton().apply { onClick {
+            runRequest {
+                if (!client.configurationSupported()) throw UncivShowableException("This server must be updated before creating editable rooms.")
+                configurationSupported = true
+                client.create(json().fromJson(GameSetupInfo::class.java,session.setup),session.createKey)
+            }
+        } }).height(44f)
         layout.invalidateHierarchy()
         scroll.layout()
         scroll.scrollY = scrollY
+    }
+    private fun buildConfiguration(width: Float): Table {
+        ImageGetter.setNewRuleset(ruleset)
+        val gameOptions = GameOptionsTable(this, updatePlayerPickerTable = {
+            mapSettings?.generateExampleMap()
+        }, updatePlayerPickerRandomLabel = {}, allowOnlineToggle = false, forInviteRoom = true,
+            onConfigurationChanged = { markConfigurationChanged() })
+        mapSettings = MapParametersTable(this,gameSetupInfo.mapParameters,MapGeneratedMainType.generated)
+        val twoColumns = width >= 700f
+        val columnWidth = if(twoColumns) (width-16f)/2f else width
+        fun column(title: String, options: Table) = Table().apply {
+            add(title.toLabel(fontSize = 24)).left().padBottom(12f).row()
+            add(options).width(columnWidth).top()
+        }
+        return Table().apply {
+            top()
+            add(column("Game Options",gameOptions)).width(columnWidth).top().padRight(if(twoColumns) 16f else 0f)
+            if(!twoColumns) row()
+            add(column("Map Options",mapSettings!!)).width(columnWidth).top().padTop(if(twoColumns) 0f else 16f)
+            addListener(object : ChangeListener() {
+                override fun changed(event: ChangeEvent, actor: Actor) { markConfigurationChanged() }
+            })
+        }
+    }
+    private fun markConfigurationChanged() {
+        configurationPending = true
+        configurationDue = System.currentTimeMillis() + 600L
+        drawMembers()
+    }
+    private fun saveConfiguration(backAfter: Boolean = false) {
+        if (busy || !configurationPending || room?.state != "WAITING") return
+        val parameters = gameSetupInfo.gameParameters
+        parameters.multiplayerServerUrl = session.server
+        val update = command().apply {
+            setup = json().toJson(gameSetupInfo)
+            baseRuleset = parameters.baseRuleset
+            seats = ArrayList(parameters.players.mapIndexed { index, player -> LobbySeat().apply {
+                seatId = seatSources[index]; human = player.playerType == PlayerType.Human; civilization = player.chosenCiv
+            } })
+        }
+        runRequest(configurationWrite = true, backAfter = backAfter) { client.command(session.gameId,"configuration",update) }
     }
     private fun playerCard(r: LobbyRoom, s: LobbySeat, own: LobbySeat?, width: Float): Table {
         val mine = s === own
@@ -296,7 +427,19 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }
         val heading = Table().apply {
             add(title.toLabel(fontSize = 20)).growX().left()
-            if (!empty) add((if (!s.human) "AI" else if (s.ready) "Ready" else "Not ready").toLabel(if (s.ready) Color.GREEN else Color.LIGHT_GRAY,16)).padLeft(8f)
+            if (r.hostId == userId && own != null && configurationSupported && r.state == "WAITING" && !mine && s.playerId.isEmpty()) {
+                add((if(s.human) "Human" else "AI").toTextButton().apply {
+                    isEnabled = !busy && !configurationPending
+                    onClick {
+                        gameSetupInfo.gameParameters.players[s.seatId].apply {
+                            playerType = if(s.human) PlayerType.AI else PlayerType.Human
+                            chosenCiv = Constants.random
+                        }
+                        markConfigurationChanged()
+                    }
+                }).height(44f).padLeft(8f)
+            }
+            if (s.human && !empty) add((if (s.ready) "Ready" else "Not ready").toLabel(if (s.ready) Color.GREEN else Color.LIGHT_GRAY,16)).padLeft(8f)
         }
         card.add(heading).growX().row()
         val civilization = Table().apply {
@@ -308,25 +451,46 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         card.add(civilization).width(width-32f).padTop(16f).padBottom(16f).row()
         val controls = Table()
         when {
-            empty -> controls.add("Invite friends".toTextButton().apply { onClick { showInvitation() }; isEnabled = !busy && own != null && r.state == "WAITING" }).growX().height(44f)
+            empty -> controls.add("Invite friends".toTextButton().apply { onClick { shareInvitation() }; isEnabled = !busy && !configurationPending && own != null && r.state == "WAITING" }).growX().height(44f)
             mine && r.state == "WAITING" -> {
-                controls.add("Choose civilization".toTextButton().apply { onClick { chooseCivilization(s) }; isEnabled = !busy }).growX().height(44f).padRight(8f)
+                controls.add("Choose civilization".toTextButton().apply { onClick { chooseCivilization(s) }; isEnabled = !busy && !configurationPending }).growX().height(44f).padRight(8f)
                 controls.add((if (s.ready) "Cancel ready" else "Ready").toTextButton().apply { onClick {
                     runRequest { client.command(session.gameId,"ready",command().apply { ready = !s.ready }) }
-                }; isEnabled = !busy }).height(44f)
+                }; isEnabled = !busy && !configurationPending }).height(44f)
             }
+            !s.human && r.hostId == userId && own != null && configurationSupported && r.state == "WAITING" ->
+                controls.add("Choose civilization".toTextButton().apply {
+                    isEnabled = !busy && !configurationPending
+                    onClick { chooseAiCivilization(s) }
+                }).growX().height(44f)
             r.hostId == userId && s.human && r.state == "WAITING" -> controls.add("Kick".toTextButton().apply { onClick {
                 ConfirmPopup(this@MultiplayerLobbyScreen,"Remove this player from the room?","Kick") {
                     runRequest { client.command(session.gameId,"kick",command().apply { seatId = s.seatId; targetOccupancy = s.occupancy }) }
                 }.open()
-            }; isEnabled = !busy }).height(44f).right()
+            }; isEnabled = !busy && !configurationPending }).height(44f).right()
             else -> controls.add((if (!s.human) "AI" else if (s.ready) "Ready" else "Choosing civilization...").toLabel(Color.LIGHT_GRAY,18, hideIcons = true)).height(44f)
         }
+        if (r.hostId == userId && own != null && configurationSupported && r.state == "WAITING" && s.playerId.isEmpty() && r.seats.size > 2)
+            controls.add("−".toTextButton().apply {
+                isEnabled = !busy && !configurationPending
+                onClick {
+                    gameSetupInfo.gameParameters.players.removeAt(s.seatId)
+                    seatSources.removeAt(s.seatId); markConfigurationChanged()
+                }
+            }).height(44f).padLeft(8f)
         card.add(controls).growX()
         return card
     }
+    private fun chooseAiCivilization(s: LobbySeat) {
+        val player = gameSetupInfo.gameParameters.players[s.seatId]
+        val available = ruleset.nations.values.filter { it.isMajorCiv && (it.name == s.civilization || room!!.seats.none { seat -> seat.civilization == it.name }) }
+        NationPickerPopup(null,Player(s.civilization,PlayerType.AI),false,screen = this,ruleset = ruleset,availableCivs = available,
+            submit = { civ -> player.chosenCiv = civ; markConfigurationChanged() }).open()
+    }
     override fun resize(width: Int, height: Int) {
         super.resize(width,height)
+        mapSettings?.cancelBackgroundJobs()
+        configurationTable = null
         drawMembers(force = true)
     }
     private fun chooseCivilization(s: LobbySeat) {
@@ -335,6 +499,23 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val available = ruleset.nations.values.filter { it.isMajorCiv && (it.name == s.civilization || r.seats.none { seat -> seat.civilization == it.name }) }
         NationPickerPopup(null,Player(s.civilization,PlayerType.Human),false,screen = this,ruleset = ruleset,availableCivs = available,
             submit = { civ -> runRequest { client.command(session.gameId,"civilization",command().apply { seatId = s.seatId; civilization = civ }) } }).open()
+    }
+    private fun requestStart() {
+        if (room?.state == "WAITING") {
+            if (gameSetupInfo.gameParameters.victoryTypes.isEmpty()) {
+                errorPopup(this,UncivShowableException("No victory conditions were selected!"))
+                return
+            }
+            val map = gameSetupInfo.mapParameters
+            val message = map.mapSize.fixUndesiredSizes(map.worldWrap)
+            if (message != null) {
+                mapSettings?.update()
+                markConfigurationChanged()
+                errorPopup(this,UncivShowableException(message))
+                return
+            }
+        }
+        runRequest { start() }
     }
     private suspend fun start(): LobbyRoom {
         val frozen = client.command(session.gameId,"start",command())
@@ -377,12 +558,14 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     }
     override fun render(delta: Float) {
         super.render(delta)
-        if (!paused && !busy && !disposed && room?.state != "CLOSED" && System.currentTimeMillis() >= nextPoll)
-            runRequest(refreshOnly = true) { client.read(session.gameId,command()) }
+        if (!paused && !busy && !disposed && room != null && room?.state != "CLOSED") {
+            if (configurationPending && System.currentTimeMillis() >= configurationDue) saveConfiguration()
+            else if (System.currentTimeMillis() >= nextPoll) runRequest(refreshOnly = true) { client.read(session.gameId,command()) }
+        }
     }
     override fun pause() { paused = true }
     override fun resume() { paused = false; nextPoll = 0L }
-    override fun hide() { paused = true; if (!enteringGame) job?.cancel(); busy = false }
+    override fun hide() { paused = true; mapSettings?.cancelBackgroundJobs(); if (!enteringGame) job?.cancel(); busy = false }
     override fun show() { super.show(); paused = false; nextPoll = 0L }
-    override fun dispose() { disposed = true; if (!enteringGame) job?.cancel(); super.dispose() }
+    override fun dispose() { disposed = true; mapSettings?.cancelBackgroundJobs(); if (!enteringGame) job?.cancel(); super.dispose() }
 }

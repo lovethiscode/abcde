@@ -58,7 +58,7 @@ class WorldScreenMenuPopup(
             close()
             worldScreen.game.pushScreen{ LoadGameScreen() }
         }.nextColumn()
-        addButton("Start new game", KeyboardBinding.NewGame) {
+        addButton("Singleplayer", KeyboardBinding.NewGame) {
             close()
             worldScreen.openNewGameScreen()
         }.nextColumn()

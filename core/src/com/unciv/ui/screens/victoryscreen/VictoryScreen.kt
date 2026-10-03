@@ -185,7 +185,7 @@ class VictoryScreen(
     private fun displayWonOrLost(vararg descriptions: String) {
         descriptionLabel.setText(descriptions.joinToString("\n") { it.tr() })
 
-        rightSideButton.setText("Start new game".tr())
+        rightSideButton.setText("Singleplayer".tr())
         rightSideButton.enable()
         rightSideButton.onClick {
             val newGameSetupInfo = GameSetupInfo(gameInfo)

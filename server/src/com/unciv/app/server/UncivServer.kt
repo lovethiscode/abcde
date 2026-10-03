@@ -290,7 +290,7 @@ private class UncivServerRunner : CliktCommand() {
         if (!file.exists()) file.mkdirs()
         mongoUri?.let { uri ->
             lobbies = LobbyService(uri, mongoDatabase, file).also { it.recoverWrites() }
-            isAliveInfo = isAliveInfo.copy(lobbyVersion = 1)
+            isAliveInfo = isAliveInfo.copy(lobbyVersion = 2)
         }
         // Load credentials before accepting connections. Starting first left a short window
         // where every valid UUID/password pair was treated as an unregistered account.

@@ -150,7 +150,7 @@ class MapParametersTable(
     internal fun generateExampleMap() {
         cancelBackgroundJobs()
         val generation = ++exampleMapGeneration
-        val ruleset = if (previousScreen is NewGameScreen) previousScreen.ruleset.clone() else RulesetCache.getVanillaRuleset()
+        val ruleset = previousScreen?.ruleset?.clone() ?: RulesetCache.getVanillaRuleset()
         val mapParametersForExample =
             if (forMapEditor) mapParameters
             else mapParameters.clone().apply {

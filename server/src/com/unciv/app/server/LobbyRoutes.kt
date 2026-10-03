@@ -31,6 +31,10 @@ fun Route.lobbyRoutes(service: LobbyService) {
         }
         call.respondRoom { service.command(call.parameters["gameId"]!!, "read", c) }
     }
+    put("/lobbies/{gameId}/configuration") {
+        val c = call.command()
+        call.respondRoom { service.command(call.parameters["gameId"]!!, "configuration", c) }
+    }
     for (verb in listOf("join", "leave", "kick", "ready", "start", "close")) {
         post("/lobbies/{gameId}/$verb") {
             val c = call.command()

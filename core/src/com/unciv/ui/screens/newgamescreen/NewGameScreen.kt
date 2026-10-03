@@ -58,15 +58,16 @@ class NewGameScreen(
     defaultGameSetupInfo: GameSetupInfo? = null
 ): IPreviousScreen, PickerScreen(), RecreateOnResize {
 
-    override val gameSetupInfo = defaultGameSetupInfo ?: GameSetupInfo.fromSettings()
+    override val gameSetupInfo = com.unciv.models.metadata.NewGameMode.SinglePlayer.prepare(
+        defaultGameSetupInfo ?: GameSetupInfo.fromSettings()
+    )
     override val ruleset = Ruleset()  // updateRuleset will clear and add
     private val newGameOptionsTable: GameOptionsTable
     internal val playerPickerTable: PlayerPickerTable
     private val mapOptionsTable: MapOptionsTable
     private var mapOptionsTableInitialized = false
 
-    var useInviteRoom = true
-    private val createKey = java.util.UUID.randomUUID().toString()
+    val useInviteRoom = false
     private val stackedLayout = isNarrowerThan4to3() ||
         (game.platformCapabilities.multiplayerInviteLinks && gameSetupInfo.gameParameters.isOnlineMultiplayer && stage.width < 1000f)
 
@@ -94,7 +95,8 @@ class NewGameScreen(
         newGameOptionsTable = GameOptionsTable(
             this, isPortrait,
             updatePlayerPickerTable = { desiredCiv -> playerPickerTable.update(desiredCiv) },
-            updatePlayerPickerRandomLabel = { playerPickerTable.updateRandomNumberLabel() }
+            updatePlayerPickerRandomLabel = { playerPickerTable.updateRandomNumberLabel() },
+            allowOnlineToggle = false
         )
         mapOptionsTable = MapOptionsTable(this)
         mapOptionsTableInitialized = true
@@ -104,8 +106,8 @@ class NewGameScreen(
         }
         closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
 
-        val heading = "Start new game".toLabel(fontSize = 28)
-        val roomHint = "Set up the match, create a room, then invite your friends.".toLabel(Color.LIGHT_GRAY,18).apply { setWrap(true) }
+        val heading = "Singleplayer".toLabel(fontSize = 28)
+        val roomHint = "Choose the rules, map and civilizations for your game.".toLabel(Color.LIGHT_GRAY,18).apply { setWrap(true) }
         val banner = Table().apply {
             background = skinStrings.getUiBackground("NewGameScreen/RoomHeader",skinStrings.roundedEdgeRectangleSmallShape,Color.valueOf("0d2140"))
             pad(14f)
@@ -142,21 +144,6 @@ class NewGameScreen(
         val startGameButton = "Start game!".toTextButton().apply { color = Color.GREEN }        
         startGameButton.onClick(this::startGameAvoidANRs)
         startGameButton.keyShortcuts.add(KeyCharAndCode.RETURN)
-        if (game.platformCapabilities.multiplayerInviteLinks) {
-            val legacy = com.badlogic.gdx.scenes.scene2d.ui.CheckBox("Use player IDs (legacy)".tr(), skin)
-            legacy.onClick { useInviteRoom = !legacy.isChecked; playerPickerTable.update() }
-            horizontalGroup.addActor(legacy)
-            startGameButton.addAction(com.badlogic.gdx.scenes.scene2d.actions.Actions.forever(
-                com.badlogic.gdx.scenes.scene2d.actions.Actions.sequence(
-                    com.badlogic.gdx.scenes.scene2d.actions.Actions.run {
-                        val roomMode = gameSetupInfo.gameParameters.isOnlineMultiplayer && useInviteRoom
-                        heading.setText((if (roomMode) "Create multiplayer room" else "Start new game").tr())
-                        roomHint.setText((if (roomMode) "Set up the match, create a room, then invite your friends." else "Choose the rules, map and civilizations for your game.").tr())
-                        legacy.isChecked = !useInviteRoom
-                        legacy.isVisible = gameSetupInfo.gameParameters.isOnlineMultiplayer
-                        startGameButton.setText((if (gameSetupInfo.gameParameters.isOnlineMultiplayer && useInviteRoom) "Create room" else "Start game!").tr())
-                    }, com.badlogic.gdx.scenes.scene2d.actions.Actions.delay(0.2f))))
-        }
         horizontalGroup.addActor(startGameButton)
         pickerPane.rightSideButton.remove()
     }
@@ -167,18 +154,7 @@ class NewGameScreen(
         mapOptionsTable.cancelBackgroundJobs()
         Concurrency.run {  // even just *checking* can take time
             try {
-                val roomClient = com.unciv.logic.multiplayer.lobby.LobbyClient(game.settings.multiplayer.getServer())
-                val wantsRoom = gameSetupInfo.gameParameters.isOnlineMultiplayer && useInviteRoom && game.platformCapabilities.multiplayerInviteLinks
-                val inviteRoom = gameSetupInfo.gameParameters.isOnlineMultiplayer && useInviteRoom &&
-                    game.platformCapabilities.multiplayerInviteLinks && roomClient.supported()
-                if (wantsRoom && !inviteRoom) {
-                    Concurrency.runOnGLThread {
-                        useInviteRoom = false; playerPickerTable.update(); Gdx.input.inputProcessor = stage
-                        Popup(this@NewGameScreen).apply { addGoodSizedLabel("This server does not support rooms. Use the legacy player ID flow.").row(); addCloseButton(); open() }
-                    }
-                    return@run
-                }
-                val errorMessage = getErrorMessage(validatePlayerIds = !inviteRoom)
+                val errorMessage = getErrorMessage()
                 if (errorMessage != null){
                     Concurrency.runOnGLThread {
                         val errorPopup = Popup(this@NewGameScreen)
@@ -206,9 +182,7 @@ class NewGameScreen(
                     }
                     return@run
                 }
-                if (inviteRoom) {
-                    createInviteRoom(roomClient)
-                } else startGame()
+                startGame()
             } catch (ex: Exception) {
                 if (ex !is CancellationException) {
                     Concurrency.runOnGLThread {
@@ -277,43 +251,6 @@ class NewGameScreen(
         return null
     }
     
-    private suspend fun createInviteRoom(client: com.unciv.logic.multiplayer.lobby.LobbyClient) {
-        val setup = gameSetupInfo
-        if (setup.gameParameters.mods.isNotEmpty() || setup.gameParameters.baseRuleset !in com.unciv.logic.multiplayer.lobby.protocol.LobbyProtocol.rulesets ||
-            setup.mapFile != null || setup.mapParameters.name.isNotEmpty() || setup.gameParameters.randomNumberOfPlayers || setup.gameParameters.players.any { it.chosenCiv == Constants.spectator }) {
-            Concurrency.runOnGLThread {
-                Popup(this@NewGameScreen).apply { addGoodSizedLabel("Rooms require built-in rules, generated maps and a fixed player count. Use the legacy ID flow for mods, scenarios or spectators.").row(); addCloseButton(); open() }
-                Gdx.input.inputProcessor = stage
-            }
-            return
-        }
-        try {
-            val existing = com.unciv.logic.multiplayer.lobby.LobbySession.current()
-            if (existing != null && existing.gameId.isNotEmpty()) {
-                Concurrency.runOnGLThread { Gdx.input.inputProcessor = stage; game.pushScreen { com.unciv.ui.screens.multiplayerscreens.MultiplayerLobbyScreen(existing) } }
-                return
-            }
-            val session = existing ?: com.unciv.logic.multiplayer.lobby.LobbySession().apply {
-                server = client.serverUrl; createKey = this@NewGameScreen.createKey
-                if (setup.mapParameters.seed == 0L) setup.mapParameters.reseed()
-                this.setup = com.unciv.json.json().toJson(setup)
-                save()
-            }
-            val persisted = com.unciv.json.json().fromJson(GameSetupInfo::class.java,session.setup)
-            val created = com.unciv.logic.multiplayer.lobby.LobbyClient(session.server).create(persisted,session.createKey)
-            session.gameId = created.gameId
-            session.occupancy = created.seats.first { it.playerId == game.settings.multiplayer.getUserId() }.occupancy
-            session.save()
-            Concurrency.runOnGLThread { Gdx.input.inputProcessor = stage; game.pushScreen { com.unciv.ui.screens.multiplayerscreens.MultiplayerLobbyScreen(session,created) } }
-        } catch (e: CancellationException) { throw e }
-        catch (e: Exception) {
-            Concurrency.runOnGLThread {
-                Gdx.input.inputProcessor = stage
-                Popup(this@NewGameScreen).apply { addGoodSizedLabel(e.message ?: "Could not create room. Retry to recover the same room.").row(); addCloseButton(); open() }
-            }
-        }
-    }
-
     private fun startGame() {
 
         Concurrency.runOnGLThread {

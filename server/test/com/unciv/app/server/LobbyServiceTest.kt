@@ -10,6 +10,9 @@ import java.util.concurrent.Executors
 import java.util.concurrent.CountDownLatch
 import java.util.zip.GZIPOutputStream
 import java.util.Base64
+import com.badlogic.gdx.utils.JsonReader
+import com.badlogic.gdx.utils.JsonValue
+import com.badlogic.gdx.utils.JsonWriter
 
 /** Integration tests use a separate real MongoDB database per test, never the live game database. */
 class LobbyServiceTest {
@@ -38,6 +41,69 @@ class LobbyServiceTest {
     private fun c(r: LobbyRoom, id: String) = LobbyCommand().apply {
         playerId=id; occupancy=r.seats.firstOrNull { it.playerId==id }?.occupancy.orEmpty(); rulesHash=service.rulesHash
         startOperation=r.startOperation; frozenVersion=r.frozenVersion; saveHash=r.saveHash; seatRevision=r.seats.firstOrNull { it.playerId==id }?.revision ?: 0L
+        configurationVersion=r.configurationVersion
+    }
+    private fun configuration(r: LobbyRoom) = c(r,host).apply {
+        setup=r.setup; baseRuleset=r.baseRuleset
+        seats=ArrayList(r.seats.map { old -> LobbySeat().apply { seatId=old.seatId; human=old.human; civilization=old.civilization } })
+    }
+    private fun JsonValue.set(key: String, value: String) { remove(key); addChild(key,JsonValue(value)) }
+    @Test fun configurationUpdatesKeepMembersAndInvalidatePreviouslyPreparedRequests() {
+        var r=join(create())
+        for(id in listOf(host,guest)) r=service.command(r.gameId,"ready",c(r,id).apply { ready=true })
+        val oldReady=c(r,guest).apply { ready=true }
+        val occupancy=r.seats.map { it.occupancy }
+        val update=configuration(r).apply {
+            setup=JsonReader().parse(setup).apply { get("gameParameters").set("difficulty","King") }.toJson(JsonWriter.OutputType.json)
+        }
+        r=service.command(r.gameId,"configuration",update)
+        assertEquals(1L,r.configurationVersion)
+        assertEquals(occupancy,r.seats.map { it.occupancy })
+        assertEquals(listOf(host,guest),r.seats.map { it.playerId })
+        assertTrue(r.seats.none { it.ready })
+        assertEquals("King",JsonReader().parse(r.setup).get("gameParameters").getString("difficulty"))
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"ready",oldReady) }
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"configuration",update) }
+    }
+    @Test fun removingAnEmptySeatReindexesMembersWithoutReplacingTheirOccupancy() {
+        var r=join(create(3))
+        val third=UUID.randomUUID().toString()
+        r=join(r,third)
+        r=service.command(r.gameId,"leave",c(r,guest))
+        val old=r.seats[2].occupancy
+        val update=configuration(r).apply {
+            seats.removeAt(1)
+            setup=JsonReader().parse(setup).apply { get("gameParameters").get("players").remove(1) }.toJson(JsonWriter.OutputType.json)
+        }
+        r=service.command(r.gameId,"configuration",update)
+        assertEquals(listOf(0,1),r.seats.map { it.seatId })
+        assertEquals(third,r.seats[1].playerId)
+        assertEquals(old,r.seats[1].occupancy)
+        assertEquals(third,JsonReader().parse(r.setup).get("gameParameters").get("players")[1].getString("playerId"))
+        assertTrue(service.command(r.gameId,"ready",c(r,third).apply { ready=true }).seats[1].ready)
+    }
+    @Test fun configurationCannotReplaceAPlayerWhoJoinedWhileTheHostWasEditing() {
+        val r=create()
+        val update=configuration(r).apply {
+            seats[1].human=false
+            setup=JsonReader().parse(setup).apply { get("gameParameters").get("players")[1].set("playerType","AI") }.toJson(JsonWriter.OutputType.json)
+        }
+        val joined=join(r)
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"configuration",update) }
+        assertEquals(joined.seats[1].occupancy,service.find(r.gameId)!!.seats[1].occupancy)
+        assertEquals(0L,service.find(r.gameId)!!.configurationVersion)
+    }
+    @Test fun onlyHostCanUpdateAndConfigurationCannotChangeFrozenStart() {
+        var r=join(create())
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"configuration",configuration(r).apply {
+            playerId=guest; occupancy=r.seats[1].occupancy
+        }) }
+        for(id in listOf(host,guest)) r=service.command(r.gameId,"ready",c(r,id).apply { ready=true })
+        val update=configuration(r)
+        val frozen=service.command(r.gameId,"start",c(r,host))
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"configuration",update) }
+        assertEquals(frozen.setup,service.find(r.gameId)!!.setup)
+        assertEquals(frozen.frozenVersion,service.find(r.gameId)!!.frozenVersion)
     }
     private fun join(r: LobbyRoom,id: String=guest) = service.command(r.gameId,"join",c(r,id))
     @Test fun simultaneousLastSeatHasOneWinnerAndDuplicateJoinIsIdempotent() {

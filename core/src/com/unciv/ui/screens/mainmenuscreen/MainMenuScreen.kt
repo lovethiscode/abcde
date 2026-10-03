@@ -163,7 +163,7 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
             { quickstartNewGame() }
         column1.add(quickstartTable).row()
 
-        val newGameButton = getMenuButton("Start new game", "OtherIcons/New", KeyboardBinding.StartNewGame) {
+        val newGameButton = getMenuButton("Singleplayer", "OtherIcons/New", KeyboardBinding.StartNewGame) {
             game.pushScreen{ NewGameScreen() } 
         }
         column1.add(newGameButton).row()

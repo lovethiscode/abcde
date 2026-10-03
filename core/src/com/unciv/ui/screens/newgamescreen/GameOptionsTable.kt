@@ -44,7 +44,10 @@ class GameOptionsTable(
     private val previousScreen: IPreviousScreen,
     private val isPortrait: Boolean = false,
     private val updatePlayerPickerTable: (desiredCiv: String) -> Unit,
-    private val updatePlayerPickerRandomLabel: () -> Unit
+    private val updatePlayerPickerRandomLabel: () -> Unit,
+    private val allowOnlineToggle: Boolean = true,
+    private val forInviteRoom: Boolean = false,
+    private val onConfigurationChanged: (() -> Unit)? = null
 ) : Table(BaseScreen.skin) {
     private var gameParameters = previousScreen.gameSetupInfo.gameParameters
     private var ruleset = previousScreen.ruleset
@@ -110,7 +113,7 @@ class GameOptionsTable(
 
         val checkboxTable = Table().apply { defaults().left().pad(2.5f) }
         val selectBoxTable = Table()
-        checkboxTable.addIsOnlineMultiplayerCheckbox()
+        if (allowOnlineToggle) checkboxTable.addIsOnlineMultiplayerCheckbox()
         if (gameParameters.isOnlineMultiplayer){
             checkboxTable.addAnyoneCanSpectateCheckbox()
             selectBoxTable.addDurationSelectBox("Time until skip turn:", GameParameters::minutesUntilSkipTurn, 1, 0, 0)
@@ -134,7 +137,7 @@ class GameOptionsTable(
             it.addNuclearWeaponsCheckbox()
             it.addEnableEspionageCheckbox()
             it.addNoStartBiasCheckbox()
-            it.addRandomPlayersCheckbox()
+            if (!forInviteRoom) it.addRandomPlayersCheckbox()
             it.addRandomCityStatesCheckbox()
             it.addRandomNationsPoolCheckbox()
             if (gameParameters.enableRandomNationsPool) {
@@ -155,7 +158,7 @@ class GameOptionsTable(
         }
         add(expander).pad(10f).row()
 
-        if (!isPortrait)
+        if (!isPortrait && !forInviteRoom)
             add(modCheckboxes).padTop(0f).row()
 
         pack()
@@ -268,6 +271,7 @@ class GameOptionsTable(
                     gameParameters.enableRandomNationsPool = false
                     randomNationsPoolCheckbox?.isChecked = false
                 }
+                onConfigurationChanged?.invoke()
             }
             popup.open()
             popup.update()
@@ -454,7 +458,9 @@ class GameOptionsTable(
             return null
         }
 
-        val sortedBaseRulesets = RulesetCache.getSortedBaseRulesets()
+        val sortedBaseRulesets = RulesetCache.getSortedBaseRulesets().filter {
+            !forInviteRoom || it in com.unciv.logic.multiplayer.lobby.protocol.LobbyProtocol.rulesets
+        }
         if (sortedBaseRulesets.size < 2) return
         baseRulesetSelectBox = addSelectBox("{Base Ruleset}:", sortedBaseRulesets, gameParameters.baseRuleset)
             { InputDisabling.withInputDisabled { onBaseRulesetSelected(it) } }

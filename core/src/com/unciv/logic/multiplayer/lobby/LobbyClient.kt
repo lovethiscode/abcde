@@ -26,6 +26,7 @@ class LobbyClient(val serverUrl: String, private val transport: MultiplayerV1Tra
         return response.body
     }
     suspend fun supported(): Boolean = JsonReader().parse(request("/isalive", MultiplayerV1HttpMethod.GET)).getInt("lobbyVersion", 0) >= 1
+    suspend fun configurationSupported(): Boolean = JsonReader().parse(request("/isalive", MultiplayerV1HttpMethod.GET)).getInt("lobbyVersion", 0) >= 2
     suspend fun create(setup: GameSetupInfo, key: String): LobbyRoom {
         val c = LobbyCommand().apply {
             playerId = UncivGame.Current.settings.multiplayer.getUserId(); createKey = key
@@ -40,7 +41,7 @@ class LobbyClient(val serverUrl: String, private val transport: MultiplayerV1Tra
     suspend fun command(gameId: String, action: String, c: LobbyCommand): LobbyRoom {
         val path = if (action == "civilization") "/seats/${c.seatId}/civilization" else "/$action"
         return LobbyProtocol.json().fromJson(LobbyRoom::class.java,request("/lobbies/$gameId$path",
-            if (action == "civilization") MultiplayerV1HttpMethod.PUT else MultiplayerV1HttpMethod.POST,c))
+            if (action == "civilization" || action == "configuration") MultiplayerV1HttpMethod.PUT else MultiplayerV1HttpMethod.POST,c))
     }
     suspend fun read(gameId: String, c: LobbyCommand): LobbyRoom = LobbyProtocol.json().fromJson(LobbyRoom::class.java,
         request("/lobbies/$gameId?playerId=${URLEncoder.encode(c.playerId,"UTF-8")}&occupancy=${URLEncoder.encode(c.occupancy,"UTF-8")}",MultiplayerV1HttpMethod.GET))

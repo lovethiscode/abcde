@@ -29,9 +29,7 @@ class LobbyService(uri: String, database: String, private val folder: File,
         .append("payload", LobbyProtocol.json().toJson(room))
     fun find(id: String): LobbyRoom? = rooms.find(eq("_id", id)).first()?.let { decode(it) }
     private fun checkRules(c: LobbyCommand) { if (c.rulesHash != rulesHash) fail("The room rules differ from this app. Update the app or server.") }
-    fun create(c: LobbyCommand): LobbyRoom {
-        if (!uuid(c.playerId) || !uuid(c.createKey)) fail("Invalid player or creation ID", 400)
-        checkRules(c)
+    private fun validateConfiguration(c: LobbyCommand): com.badlogic.gdx.utils.JsonValue {
         if (c.baseRuleset !in LobbyProtocol.rulesets) fail("Rooms support built-in rules only", 400)
         val setup = try { JsonReader().parse(c.setup) } catch (_: Exception) { fail("Invalid game setup", 400) }
         val parameters = setup.get("gameParameters") ?: fail("Missing game parameters", 400)
@@ -41,6 +39,17 @@ class LobbyService(uri: String, database: String, private val folder: File,
             fail("Invalid room configuration", 400)
         val players = parameters.get("players") ?: fail("Missing players", 400)
         if (players.size != c.seats.size || c.seats.size !in 2..64 || c.seats.none { it.human }) fail("Invalid room capacity", 400)
+        for ((index, seat) in c.seats.withIndex())
+            if (seat.human != (players[index].getString("playerType", "AI") == "Human")) fail("Seat type differs from setup", 400)
+        if (parameters.getBoolean("randomNumberOfPlayers", false) || players.any { it.getString("chosenCiv", "Random") == "Spectator" })
+            fail("Rooms require a fixed player count without spectators", 400)
+        return setup
+    }
+    fun create(c: LobbyCommand): LobbyRoom {
+        if (!uuid(c.playerId) || !uuid(c.createKey)) fail("Invalid player or creation ID", 400)
+        checkRules(c)
+        val setup = validateConfiguration(c)
+        val players = setup.get("gameParameters").get("players")
         val gameId = UUID.nameUUIDFromBytes((c.playerId + ":" + c.createKey).toByteArray()).toString()
         find(gameId)?.let { return it }
         val room = LobbyRoom().apply {
@@ -101,11 +110,46 @@ class LobbyService(uri: String, database: String, private val folder: File,
         val allowDuplicates = JsonReader().parse(r.setup).get("gameParameters").getBoolean("allowDuplicateCivilizations", false)
         if (!allowDuplicates && r.seats.any { it !== s && it.civilization == civ }) fail("Civilization is already selected")
     }
+    private fun updateConfiguration(r: LobbyRoom, c: LobbyCommand) {
+        waiting(r); host(r,c); checkRules(c)
+        if (c.configurationVersion != r.configurationVersion) fail("Room settings changed. Refresh and retry.")
+        val setup = validateConfiguration(c)
+        val existingIds = c.seats.filter { it.seatId >= 0 }.map { it.seatId }
+        if (existingIds.distinct().size != existingIds.size || existingIds.any { id -> r.seats.none { it.seatId == id } })
+            fail("Invalid room seats", 400)
+        val hostSeat = r.seats.first { it.playerId == r.hostId }
+        if (c.seats.first().seatId != hostSeat.seatId || !c.seats.first().human) fail("Cannot remove or replace the host")
+        for (occupied in r.seats.filter { it.playerId.isNotEmpty() })
+            if (c.seats.none { it.seatId == occupied.seatId && it.human })
+                fail("Remove the player before changing an occupied seat")
+        val nations = LobbyProtocol.civilizations(c.baseRuleset, readAsset)
+        val players = setup.get("gameParameters").get("players")
+        val next = ArrayList(c.seats.mapIndexed { index, requested ->
+            val old = r.seats.firstOrNull { it.seatId == requested.seatId }
+            LobbySeat().apply {
+                seatId = index; human = requested.human
+                if (human && old?.playerId?.isNotEmpty() == true) {
+                    playerId = old.playerId; occupancy = old.occupancy; lastSeen = old.lastSeen
+                    civilization = old.civilization.takeIf { it == "Random" || it in nations } ?: "Random"
+                } else civilization = if (human) "Random" else requested.civilization
+                revision = (old?.revision ?: 0L) + 1L
+                val player = players[index]
+                for ((key,value) in mapOf("playerId" to playerId, "chosenCiv" to civilization, "playerType" to if(human) "Human" else "AI")) {
+                    player.remove(key); player.addChild(key,com.badlogic.gdx.utils.JsonValue(value))
+                }
+            }
+        })
+        r.seats = next; r.baseRuleset = c.baseRuleset
+        r.setup = setup.toJson(com.badlogic.gdx.utils.JsonWriter.OutputType.json)
+        next.forEach { checkCiv(r,it,it.civilization) }
+        r.configurationVersion++
+    }
     fun command(id: String, verb: String, c: LobbyCommand): LobbyRoom {
         // Persist expiry before rejecting the requested action.
         mutate(id) { expire(it) }
         return mutate(id) { r ->
             when (verb) {
+                "configuration" -> updateConfiguration(r,c)
                 "read" -> if (c.occupancy.isNotEmpty() && r.state != "CLOSED") r.seats.firstOrNull { it.playerId == c.playerId && it.occupancy == c.occupancy }?.let { it.lastSeen = clock() }
                 "join" -> {
                     checkRules(c)
@@ -145,6 +189,8 @@ class LobbyService(uri: String, database: String, private val folder: File,
                     host(r,c); checkRules(c)
                     if (r.state == "STARTING" || r.state == "STARTED") return@mutate
                     waiting(r)
+                    if (c.configurationVersion >= 0L && c.configurationVersion != r.configurationVersion)
+                        fail("Room settings changed. Refresh and retry.")
                     if (r.seats.any { it.human && (it.playerId.isEmpty() || !it.ready) }) fail("All human seats must be occupied and ready")
                     r.state = "STARTING"; r.startOperation = UUID.randomUUID().toString(); r.frozenVersion = r.version + 1
                 }
