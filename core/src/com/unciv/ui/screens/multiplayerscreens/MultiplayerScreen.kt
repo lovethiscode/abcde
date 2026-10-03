@@ -347,7 +347,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
             setScrollingDisabled(true, false)
             setOverscroll(false, false)
         }
-        val footer = "Create new games from Home → New game → Online multiplayer"
+        val footer = "Create a room here, then invite players to join"
             .toLabel(Color.LIGHT_GRAY, fontSize = multiplayerDenseFontSize)
             .apply { setEllipsis(true) }
         return Table().apply {

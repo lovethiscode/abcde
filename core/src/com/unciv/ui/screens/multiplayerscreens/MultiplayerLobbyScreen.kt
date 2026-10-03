@@ -147,7 +147,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val header = Table().apply {
             add(back).height(44f).padRight(16f)
             add("Multiplayer room".toLabel(fontSize = 28)).left().growX()
-            if (stage.width < 850f) row()
+            if (this@MultiplayerLobbyScreen.stage.width < 850f) row()
             add(inviteButton).height(44f).padRight(8f)
             add(copyInvitationButton).height(44f)
         }
