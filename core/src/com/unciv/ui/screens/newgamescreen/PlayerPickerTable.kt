@@ -89,6 +89,19 @@ class PlayerPickerTable(
         playerListTable.clear()
         val ruleset = previousScreen.ruleset // the mod picking changes this ruleset
 
+        if (previousScreen is NewGameScreen) {
+            val self = gameParameters.players.firstOrNull { it.playerType == Human }
+                ?: gameParameters.players.firstOrNull()
+                ?: Player(playerType = Human)
+            if (gameParameters.players.firstOrNull() !== self) {
+                gameParameters.players.remove(self)
+                gameParameters.players.add(0, self)
+            }
+            self.playerType = Human
+            if (gameParameters.isOnlineMultiplayer)
+                self.playerId = UncivGame.Current.settings.multiplayer.getUserId()
+        }
+
         reassignRemovedModReferences()
 
         fun isChoosable(nation: Nation) = (nation.isMajorCiv || nation.isSpectator) && !nation.hasUnique(UniqueType.WillNotBeChosenForNewGames)
@@ -196,10 +209,12 @@ class PlayerPickerTable(
 
         val roomMode = gameParameters.isOnlineMultiplayer && UncivGame.Current.platformCapabilities.multiplayerInviteLinks &&
             (previousScreen as? NewGameScreen)?.useInviteRoom == true
+        val self = previousScreen is NewGameScreen && gameParameters.players.firstOrNull() === player
         val host = gameParameters.players.firstOrNull { it.playerType == Human } === player
         val invitedHuman = roomMode && player.playerType == Human && !host
-        if (roomMode) {
+        if (roomMode || self) {
             val seatLabel = when {
+                self && !roomMode -> "You"
                 player.playerType != Human -> "AI"
                 host -> "Host · You"
                 else -> "Waiting for player"
@@ -213,7 +228,8 @@ class PlayerPickerTable(
         playerTable.add(nationTable).left().growX()
 
         val playerTypeTextButton = player.playerType.name.toTextButton()
-        playerTable.add(playerTypeTextButton).width(100f).pad(5f).right()
+        if (!self)
+            playerTable.add(playerTypeTextButton).width(100f).pad(5f).right()
         fun updatePlayerTypeButtonEnabled() {
             // This could be written much shorter with logical operators - I think this is readable
             playerTypeTextButton.isEnabled = when {
@@ -235,12 +251,14 @@ class PlayerPickerTable(
             popupNationPicker(player, noRandom)
             updatePlayerTypeButtonEnabled()
         }
-        playerTypeTextButton.onClick {
-            player.playerType = if (player.playerType == AI) Human else AI
-            update()
+        if (!self) {
+            playerTypeTextButton.onClick {
+                player.playerType = if (player.playerType == AI) Human else AI
+                update()
+            }
         }
 
-        if (!locked) {
+        if (!locked && !self) {
             playerTable.add("-".toLabel(ImageGetter.CHARCOAL, 30, Align.center)
                 .surroundWithCircle(40f)
                 .onClick {
@@ -250,7 +268,7 @@ class PlayerPickerTable(
             ).pad(5f).right()
         }
 
-        if (gameParameters.isOnlineMultiplayer && player.playerType == PlayerType.Human &&
+        if (gameParameters.isOnlineMultiplayer && player.playerType == PlayerType.Human && !self &&
             !(UncivGame.Current.platformCapabilities.multiplayerInviteLinks && (previousScreen as? NewGameScreen)?.useInviteRoom == true))
             playerTable.addPlayerTableMultiplayerControls(player)
 
