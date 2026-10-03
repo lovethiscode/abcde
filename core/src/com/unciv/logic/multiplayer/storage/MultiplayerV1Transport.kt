@@ -6,6 +6,7 @@ import java.net.URI
 
 enum class MultiplayerV1HttpMethod(val wireName: String) {
     GET("GET"),
+    POST("POST"),
     PUT("PUT"),
     DELETE("DELETE"),
 }

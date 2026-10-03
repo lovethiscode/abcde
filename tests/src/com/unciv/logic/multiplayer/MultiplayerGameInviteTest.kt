@@ -34,6 +34,12 @@ class MultiplayerGameInviteTest {
         assertEquals(server, MultiplayerGameInvite.parse(MultiplayerGameInvite.createLink(ID, server)).serverUrl)
     }
 
+    @Test fun lobbyInviteRoutesSeparatelyFromGameAndPreservesServer() {
+        val link = MultiplayerGameInvite.createLobbyLink(ID,"https://example.com")
+        assertEquals(MultiplayerGameInvite(ID,"https://example.com",lobby=true),MultiplayerGameInvite.parse(link))
+        assertFalse(MultiplayerGameInvite.parse(MultiplayerGameInvite.createLink(ID,"https://example.com")).lobby)
+    }
+
     @Test fun upstreamAndroidGameLinkIsRecognizedWithoutGrantingPlayerIdentity() {
         val link = IdChecker.uncivUrlPrefix + "G/G-$ID-${IdChecker.getCheckDigit(ID)}"
         assertEquals(MultiplayerGameInvite(ID, null), MultiplayerGameInvite.parse(link))

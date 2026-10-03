@@ -8,7 +8,7 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 
 /** The invitation identifies a save, not a player seat or authentication credential. */
-data class MultiplayerGameInvite(val gameId: String, val serverUrl: String?) {
+data class MultiplayerGameInvite(val gameId: String, val serverUrl: String?, val lobby: Boolean = false) {
     companion object {
         const val INVITATION_HOST = "jerry8870.github.io"
         const val INVITATION_PATH = "/Unciv-Wiki/invite.html"
@@ -21,9 +21,16 @@ data class MultiplayerGameInvite(val gameId: String, val serverUrl: String?) {
             return "https://$INVITATION_HOST$INVITATION_PATH?gameId=$id&server=${URLEncoder.encode(server, "UTF-8")}"
         }
 
+        const val LOBBY_PATH = "/Unciv-Wiki/lobby.html"
+        fun createLobbyLink(gameId: String, serverUrl: String) =
+            createLink(gameId, serverUrl).replace(INVITATION_PATH, LOBBY_PATH)
+
         fun parse(value: String): MultiplayerGameInvite {
             val text = value.trim()
             val uri = try { URI(text) } catch (_: Exception) { throw invalidInvite() }
+            if (uri.rawPath == LOBBY_PATH) {
+                return parse(text.replace(LOBBY_PATH, INVITATION_PATH)).copy(lobby = true)
+            }
             if (uri.scheme.equals("https", ignoreCase = true) && IdChecker.isGameDeepLink(text)) {
                 val id = IdChecker.checkAndReturnUuiId(text) ?: throw invalidInvite()
                 return MultiplayerGameInvite(id, null) // Upstream links use the selected server.

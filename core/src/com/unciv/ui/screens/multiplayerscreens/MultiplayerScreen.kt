@@ -116,6 +116,13 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
 
     init {
         setDefaultCloseAction()
+        com.unciv.logic.multiplayer.lobby.LobbySession.current()?.let { session ->
+            val resumeRoom = "Continue room".toTextButton().apply { onClick {
+                if (session.gameId.isNotEmpty()) game.pushScreen { MultiplayerLobbyScreen(session) }
+                else game.pushScreen { com.unciv.ui.screens.newgamescreen.NewGameScreen() }
+            } }
+            bottomTable.add(resumeRoom).pad(5f)
+        }
         initLandscapeLayout()
         setupRightSideButton()
         setupRefreshEvents()

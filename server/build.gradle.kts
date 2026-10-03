@@ -8,8 +8,19 @@ plugins {
 sourceSets {
     main {
         java.srcDir("src/")
+        java.srcDir("../core/src/com/unciv/logic/multiplayer/lobby/protocol")
+        resources.srcDir("../android/assets")
+        resources.include("jsons/Civ V - Vanilla/*.json", "jsons/Civ V - Gods & Kings/*.json")
     }
 }
+
+dependencies {
+    implementation(rootProject.libs.gdx)
+    implementation("io.ktor:ktor-server-status-pages:3.2.3")
+    implementation("org.mongodb:mongodb-driver-sync:5.2.1")
+    testImplementation(rootProject.libs.junit)
+}
+sourceSets.test { java.srcDir("test") }
 
 kotlin {
     compilerOptions {

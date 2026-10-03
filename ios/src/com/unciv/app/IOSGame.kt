@@ -34,6 +34,7 @@ import java.util.Locale
 
 class IOSGame @JvmOverloads constructor(
     private val runtimeFeatures: IOSRuntimeFeatures = DefaultIOSRuntimeFeatures,
+    private val multiplayerTransport: MultiplayerV1Transport? = null,
 ) : UncivGame() {
     private var cloudSaveService: CloudSaveSync? = null
     private val gameInvites = IOSGameInviteQueue()
@@ -78,7 +79,7 @@ class IOSGame @JvmOverloads constructor(
         runtimeFeatures.setMultiplayerPassword(serverUrl, password)
 
     override fun createMultiplayerV1Transport(): MultiplayerV1Transport =
-        IOSMultiplayerV1Transport()
+        multiplayerTransport ?: IOSMultiplayerV1Transport()
 
     override fun createModHttpClientEngine() = IOSModHttpClientEngine()
 
@@ -165,6 +166,11 @@ class IOSGame @JvmOverloads constructor(
             }
         }
         val invitation = gameInvites.take() ?: return
+        if (invitation.lobby) {
+            com.unciv.ui.screens.multiplayerscreens.MultiplayerLobbyScreen.openInvite(invitation)
+            gameInvites.finish()
+            return
+        }
         val serverUrl = invitation.serverUrl ?: settings.multiplayer.getServer()
         val pinnedInvite = invitation.copy(serverUrl = serverUrl)
         gameInfo?.let { files.autosaves.requestAutoSave(it) }

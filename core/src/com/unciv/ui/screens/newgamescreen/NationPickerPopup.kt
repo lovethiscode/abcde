@@ -36,10 +36,14 @@ import kotlin.math.PI
 import kotlin.math.cos
 
 internal class NationPickerPopup(
-    private val playerPicker: PlayerPickerTable,
+    private val playerPicker: PlayerPickerTable?,
     private val player: Player,
-    private val noRandom: Boolean
-) : Popup(playerPicker.previousScreen as BaseScreen, Scrollability.None) {
+    private val noRandom: Boolean,
+    screen: BaseScreen = playerPicker!!.previousScreen as BaseScreen,
+    private val ruleset: com.unciv.models.ruleset.Ruleset = playerPicker!!.previousScreen.ruleset,
+    private val availableCivs: List<Nation>? = null,
+    private val submit: ((String) -> Unit)? = null,
+) : Popup(screen, Scrollability.None) {
     companion object {
         // Note - innerTable has pad(20f) and defaults().pad(5f), so content bottomLeft is at x=25/y=25
         // These are used for the Close/OK buttons in the lower left/right corners:
@@ -57,14 +61,12 @@ internal class NationPickerPopup(
         const val iconViewPadHorz = iconViewSpacing / 2  // a little empiric
     }
 
-    private val previousScreen = playerPicker.previousScreen
-    private val ruleset = previousScreen.ruleset
     private val settings = GUI.getSettings()
 
     // This Popup's body has two halves of same size, either side by side or arranged vertically
     // depending on screen proportions - determine height for one of those
     private val partHeight = stageToShowOn.height * (if (stageToShowOn.isNarrowerThan4to3()) 0.45f else 0.8f)
-    private val civBlocksWidth = playerPicker.civBlocksWidth
+    private val civBlocksWidth = playerPicker?.civBlocksWidth ?: minOf(300f, stageToShowOn.width * 0.43f)
 
     private val nationListTable = Table()
     private val nationListScroll = AutoScrollPane(nationListTable)
@@ -141,11 +143,16 @@ internal class NationPickerPopup(
 
         UncivGame.Current.musicController.chooseTrack(selectedNation.name, MusicMood.themeOrPeace, MusicTrackChooserFlags.setSelectNation)
 
+        if (submit != null) {
+            close()
+            submit.invoke(selectedNation.name)
+            return
+        }
         player.chosenCiv = selectedNation.name
         player.chosenNation = selectedNation
         
         close()
-        playerPicker.update()
+        playerPicker!!.update()
     }
 
     private data class NationIterationElement(
@@ -262,12 +269,12 @@ internal class NationPickerPopup(
                 }
                 yield(NationIterationElement(random))
             }
-            val spectator = previousScreen.ruleset.nations[Constants.spectator]
-            if (spectator != null && player.playerType != PlayerType.AI)  // only humans can spectate, sorry robots
+            val spectator = ruleset.nations[Constants.spectator]
+            if (submit == null && spectator != null && player.playerType != PlayerType.AI)  // only humans can spectate, sorry robots
                 yield(NationIterationElement(spectator))
         }
         // Then what PlayerPickerTable says we should display - see its doc
-        val part2 = playerPicker.getAvailablePlayerCivs(player.chosenCiv)
+        val part2 = (availableCivs ?: playerPicker!!.getAvailablePlayerCivs(player.chosenCiv).toList())
             .map { NationIterationElement(it) }
         // Combine and Sort
         return part1 +

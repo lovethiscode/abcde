@@ -46,7 +46,7 @@ internal object UncivServer {
 }
 
 @Serializable
-data class IsAliveInfo(val authVersion: Int, val chatVersion: Int)
+data class IsAliveInfo(val authVersion: Int, val chatVersion: Int, val lobbyVersion: Int = 0)
 
 @Serializable
 sealed class Message {
@@ -197,6 +197,10 @@ private class UncivServerRunner : CliktCommand() {
         help = "Display each operation archive request IP to assist management personnel"
     ).flag("-no-Identify", default = false)
 
+    private val mongoUri by option("--mongo-uri", envvar = "UncivServerMongoUri")
+    private val mongoDatabase by option("--mongo-database", envvar = "UncivServerMongoDatabase").default("unciv")
+    private var lobbies: LobbyService? = null
+
     lateinit var isAliveInfo: IsAliveInfo
 
     override fun run() {
@@ -284,6 +288,10 @@ private class UncivServerRunner : CliktCommand() {
         val file = File(fileFolderName)
         echo("Starting UncivServer for ${file.absolutePath} on http://localhost$portStr")
         if (!file.exists()) file.mkdirs()
+        mongoUri?.let { uri ->
+            lobbies = LobbyService(uri, mongoDatabase, file).also { it.recoverWrites() }
+            isAliveInfo = isAliveInfo.copy(lobbyVersion = 1)
+        }
         // Load credentials before accepting connections. Starting first left a short window
         // where every valid UUID/password pair was treated as an unregistered account.
         if (authV1Enabled) loadAuthFile()
@@ -317,7 +325,14 @@ private class UncivServerRunner : CliktCommand() {
                 })
             }
 
+            install(io.ktor.server.plugins.statuspages.StatusPages) {
+                exception<LobbyFailure> { call, cause ->
+                    call.respondText(cause.message, status = HttpStatusCode.fromValue(cause.status))
+                }
+            }
+
             routing {
+                lobbies?.let { lobbyRoutes(it) }
                 get("/isalive") {
                     call.application.log.info("Received isalive request from ${call.request.local.remoteHost}")
                     call.respond(isAliveInfo)
@@ -349,13 +364,17 @@ private class UncivServerRunner : CliktCommand() {
                         val file = File(fileFolderName, fileName)
                         if (!validateGameAccess(file, authInfo)) return@put call.respond(HttpStatusCode.Unauthorized)
 
-                        val written = withContext(Dispatchers.IO) {
+                        val fenced = if (fileName.endsWith(previewSuffix)) false else withContext(Dispatchers.IO) {
+                            lobbies?.beginWrite(fileName) ?: false
+                        }
+                        val written = try { withContext(Dispatchers.IO) {
                             val temporaryFile = File.createTempFile(".upload-", ".tmp", file.parentFile)
                             try {
                                 call.request.receiveChannel().toInputStream().use { input ->
                                     temporaryFile.outputStream().use { output -> copyGameFile(input, output) }
                                 }.also { completed ->
                                     if (completed) {
+                                        if (fenced) lobbies!!.verifyWrite(fileName, temporaryFile.readText())
                                         Files.move(
                                             temporaryFile.toPath(), file.toPath(),
                                             StandardCopyOption.REPLACE_EXISTING
@@ -367,6 +386,7 @@ private class UncivServerRunner : CliktCommand() {
                                 temporaryFile.delete()
                             }
                         }
+                        } finally { if (fenced) withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO) { lobbies!!.endWrite(fileName) } }
                         if (!written) return@put call.respond(HttpStatusCode.PayloadTooLarge, "Game file is too large!")
                         call.respond(HttpStatusCode.OK)
                     }

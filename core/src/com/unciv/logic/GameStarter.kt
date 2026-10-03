@@ -36,17 +36,18 @@ import yairm210.purity.annotations.Readonly
  *  is fully random per game.
  */
 class GameStarter private constructor(
-    private val gameSetupInfo: GameSetupInfo
+    private val gameSetupInfo: GameSetupInfo,
+    reservedGameId: String? = null
 ) {
     companion object {
         // temporary instrumentation while tuning/debugging
         private const val consoleTimings = false
 
-        fun startNewGame(gameSetupInfo: GameSetupInfo): GameInfo =
-            GameStarter(gameSetupInfo).gameInfo
+        fun startNewGame(gameSetupInfo: GameSetupInfo, reservedGameId: String? = null): GameInfo =
+            GameStarter(gameSetupInfo, reservedGameId).gameInfo
     }
 
-    private val gameInfo = GameInfo()
+    private val gameInfo = GameInfo().apply { reservedGameId?.let { gameId = it } }
     private val rng = GameContext(gameInfo = gameInfo).stateBasedRandom("GameStarter")
     private val ruleset: Ruleset
     private lateinit var tileMap: TileMap

@@ -15,6 +15,7 @@ private class MockitoAgentArgumentProvider(
 
 dependencies {
     testImplementation(libs.junit)
+    testImplementation(kotlin("reflect"))
     @Suppress("AvoidDuplicateDependencies") // false positive
     testImplementation(libs.mockito)
     @Suppress("AvoidDuplicateDependencies")

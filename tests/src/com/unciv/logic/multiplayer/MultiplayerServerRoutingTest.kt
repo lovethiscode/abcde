@@ -21,7 +21,7 @@ import com.unciv.logic.multiplayer.storage.MultiplayerV1Transport
 import com.unciv.logic.multiplayer.storage.MultiplayerServer
 import com.unciv.logic.multiplayer.ServerFeatureSet
 import com.unciv.models.metadata.GameSettings
-import com.unciv.testing.BaseTestRunner
+import com.unciv.testing.GdxTestRunner
 import com.unciv.testing.TestGame
 import com.unciv.utils.PlatformCapabilities
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +40,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.concurrent.CopyOnWriteArrayList
 
-@RunWith(BaseTestRunner::class)
+@RunWith(GdxTestRunner::class)
 class MultiplayerServerRoutingTest {
     private val transport = FailingTransport()
     private lateinit var multiplayer: Multiplayer

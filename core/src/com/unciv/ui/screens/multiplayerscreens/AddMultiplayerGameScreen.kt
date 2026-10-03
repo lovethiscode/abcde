@@ -65,6 +65,11 @@ class AddMultiplayerGamePopup(
             ToastPopup(LoadGameScreen.getLoadExceptionMessage(ex).first, multiplayerScreen)
             return
         }
+        if (invite?.lobby == true) {
+            close()
+            MultiplayerLobbyScreen.openInvite(invite)
+            return
+        }
         val gameId = invite?.gameId ?: IdChecker.checkAndReturnUuiId(gameIdTextField.text)
         if (gameId?.isUUID() != true) {
             ToastPopup("Invalid game ID!", multiplayerScreen)

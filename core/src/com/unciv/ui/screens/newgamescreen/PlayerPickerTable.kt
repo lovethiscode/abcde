@@ -235,7 +235,8 @@ class PlayerPickerTable(
             ).pad(5f).right()
         }
 
-        if (gameParameters.isOnlineMultiplayer && player.playerType == PlayerType.Human)
+        if (gameParameters.isOnlineMultiplayer && player.playerType == PlayerType.Human &&
+            !(UncivGame.Current.platformCapabilities.multiplayerInviteLinks && (previousScreen as? NewGameScreen)?.useInviteRoom == true))
             playerTable.addPlayerTableMultiplayerControls(player)
 
         return playerTable
