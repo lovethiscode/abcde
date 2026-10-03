@@ -50,6 +50,9 @@ class LobbyStartIntegrationTest {
         assertTrue(client.configurationSupported())
         var room=client.create(setup,UUID.randomUUID().toString())
         val reservedId=room.gameId
+        assertEquals(room.gameId,client.read(reservedId,LobbyCommand().apply {
+            playerId=host; occupancy=room.seats.first().occupancy
+        }).gameId)
         assertEquals("Random",room.seats[1].civilization)
         assertEquals("Random",room.seats[2].civilization)
         fun command(id: String) = LobbyCommand().apply {

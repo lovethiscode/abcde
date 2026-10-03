@@ -9,7 +9,6 @@ import com.unciv.logic.civilization.PlayerType
 import com.unciv.logic.multiplayer.lobby.protocol.*
 import com.unciv.logic.multiplayer.storage.*
 import com.unciv.models.metadata.GameSetupInfo
-import java.net.URLEncoder
 
 class LobbyClient(val roomApiUrl: String, private val transport: MultiplayerV1Transport = UncivGame.Current.createMultiplayerV1Transport()) {
     companion object {
@@ -44,6 +43,6 @@ class LobbyClient(val roomApiUrl: String, private val transport: MultiplayerV1Tr
         return LobbyProtocol.json().fromJson(LobbyRoom::class.java,request("/lobbies/$gameId$path",
             if (action == "civilization" || action == "configuration") MultiplayerV1HttpMethod.PUT else MultiplayerV1HttpMethod.POST,c))
     }
-    suspend fun read(gameId: String, c: LobbyCommand): LobbyRoom = LobbyProtocol.json().fromJson(LobbyRoom::class.java,
-        request("/lobbies/$gameId?playerId=${URLEncoder.encode(c.playerId,"UTF-8")}&occupancy=${URLEncoder.encode(c.occupancy,"UTF-8")}",MultiplayerV1HttpMethod.GET))
+    // Heartbeats renew membership; their identity belongs in the body, not the URL.
+    suspend fun read(gameId: String, c: LobbyCommand): LobbyRoom = command(gameId,"read",c)
 }
