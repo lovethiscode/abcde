@@ -30,11 +30,11 @@ class AddMultiplayerGamePopup(
     init {
         defaults().growX().pad(4f)
         addGoodSizedLabel(
-            "Add game by Game ID",
+            "Join by invitation or Game ID",
             size = multiplayerTitleFontSize,
         ).row()
         addGoodSizedLabel(
-            "This downloads an existing game; it does not create a new multiplayer game.",
+            "Paste an invitation to join a waiting room, or a Game ID to add an existing game.",
             size = multiplayerSecondaryFontSize,
             color = Color.LIGHT_GRAY,
         ).row()
@@ -53,7 +53,7 @@ class AddMultiplayerGamePopup(
 
         addCloseButton("Cancel")
         val positiveButtonStyle = skin.get("positive", TextButton.TextButtonStyle::class.java)
-        addButton("Add to list", KeyCharAndCode.RETURN, positiveButtonStyle) { addGame() }
+        addButton("Join or add game", KeyCharAndCode.RETURN, positiveButtonStyle) { addGame() }
         showListeners += { stageToShowOn.keyboardFocus = gameIdTextField }
     }
 

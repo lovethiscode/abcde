@@ -194,7 +194,22 @@ class PlayerPickerTable(
             tintColor = BaseScreen.skinStrings.skinConfig.baseColor.darken(0.8f)
         )
 
-        val nationTable = getNationTable(player)
+        val roomMode = gameParameters.isOnlineMultiplayer && UncivGame.Current.platformCapabilities.multiplayerInviteLinks &&
+            (previousScreen as? NewGameScreen)?.useInviteRoom == true
+        val host = gameParameters.players.firstOrNull { it.playerType == Human } === player
+        val invitedHuman = roomMode && player.playerType == Human && !host
+        if (roomMode) {
+            val seatLabel = when {
+                player.playerType != Human -> "AI"
+                host -> "Host · You"
+                else -> "Waiting for player"
+            }
+            playerTable.add(seatLabel.toLabel(if (host) Color.GOLD else Color.LIGHT_GRAY,18)).colspan(3).left().padBottom(6f).row()
+        }
+        val nationTable = if (invitedHuman) Table().apply {
+            add(ImageGetter.getRandomNationPortrait(40f)).size(40f).pad(5f)
+            add("Invite after creating".toLabel(fontSize = 18))
+        } else getNationTable(player)
         playerTable.add(nationTable).left()
 
         val playerTypeTextButton = player.playerType.name.toTextButton()
@@ -214,7 +229,7 @@ class PlayerPickerTable(
         updatePlayerTypeButtonEnabled()
 
         nationTable.onClick {
-            if (locked) return@onClick
+            if (locked || invitedHuman) return@onClick
             val noRandom = noRandom ||
                     gameParameters.randomNumberOfPlayers && player.playerType == PlayerType.AI
             popupNationPicker(player, noRandom)

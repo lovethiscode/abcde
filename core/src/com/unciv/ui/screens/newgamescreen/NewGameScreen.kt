@@ -2,6 +2,7 @@ package com.unciv.ui.screens.newgamescreen
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.HorizontalGroup
 import com.unciv.Constants
 import com.unciv.UncivGame
@@ -101,6 +102,16 @@ class NewGameScreen(
         }
         closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
 
+        val heading = "Start new game".toLabel(fontSize = 28)
+        val roomHint = "Set up the match, create a room, then invite your friends.".toLabel(Color.LIGHT_GRAY,18).apply { setWrap(true) }
+        val banner = Table().apply {
+            background = skinStrings.getUiBackground("NewGameScreen/RoomHeader",skinStrings.roundedEdgeRectangleSmallShape,Color.valueOf("0d2140"))
+            pad(14f)
+            add(heading).left().growX().row()
+            add(roomHint).left().growX().padTop(6f)
+        }
+        if (game.platformCapabilities.multiplayerInviteLinks)
+            topTable.add(banner).colspan(if (isPortrait) 1 else 5).width(stage.width-20f).padBottom(12f).row()
         if (isPortrait) initPortrait()
         else initLandscape()
         bottomTable.background = skinStrings.getUiBackground("NewGameScreen/BottomTable", tintColor = skinStrings.skinConfig.clearColor)
@@ -135,6 +146,9 @@ class NewGameScreen(
             startGameButton.addAction(com.badlogic.gdx.scenes.scene2d.actions.Actions.forever(
                 com.badlogic.gdx.scenes.scene2d.actions.Actions.sequence(
                     com.badlogic.gdx.scenes.scene2d.actions.Actions.run {
+                        val roomMode = gameSetupInfo.gameParameters.isOnlineMultiplayer && useInviteRoom
+                        heading.setText((if (roomMode) "Create multiplayer room" else "Start new game").tr())
+                        roomHint.setText((if (roomMode) "Set up the match, create a room, then invite your friends." else "Choose the rules, map and civilizations for your game.").tr())
                         legacy.isChecked = !useInviteRoom
                         legacy.isVisible = gameSetupInfo.gameParameters.isOnlineMultiplayer
                         startGameButton.setText((if (gameSetupInfo.gameParameters.isOnlineMultiplayer && useInviteRoom) "Create room" else "Start game!").tr())

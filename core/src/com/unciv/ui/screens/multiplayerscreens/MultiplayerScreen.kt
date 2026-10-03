@@ -233,7 +233,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
 
     private fun createAddGameButton(): TextButton {
         val positiveButtonStyle = skin.get("positive", TextButton.TextButtonStyle::class.java)
-        val btn = "Add by Game ID".toTextButton(positiveButtonStyle)
+        val btn = "Join by invitation".toTextButton(positiveButtonStyle)
         btn.onClick {
             AddMultiplayerGamePopup(this).open()
         }
