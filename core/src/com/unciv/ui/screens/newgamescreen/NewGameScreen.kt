@@ -67,9 +67,11 @@ class NewGameScreen(
 
     var useInviteRoom = true
     private val createKey = java.util.UUID.randomUUID().toString()
+    private val stackedLayout = isNarrowerThan4to3() ||
+        (game.platformCapabilities.multiplayerInviteLinks && gameSetupInfo.gameParameters.isOnlineMultiplayer && stage.width < 1000f)
 
     init {
-        val isPortrait = isNarrowerThan4to3()
+        val isPortrait = stackedLayout
 
         // The mods loaded here may come from the last-started game (see GameSetupInfo.fromSettings) -
         // if that combination is now broken (e.g. a mod was updated/removed), silently fall back to
@@ -139,6 +141,7 @@ class NewGameScreen(
 
         val startGameButton = "Start game!".toTextButton().apply { color = Color.GREEN }        
         startGameButton.onClick(this::startGameAvoidANRs)
+        startGameButton.keyShortcuts.add(KeyCharAndCode.RETURN)
         if (game.platformCapabilities.multiplayerInviteLinks) {
             val legacy = com.badlogic.gdx.scenes.scene2d.ui.CheckBox("Use player IDs (legacy)".tr(), skin)
             legacy.onClick { useInviteRoom = !legacy.isChecked; playerPickerTable.update() }
@@ -328,7 +331,7 @@ class NewGameScreen(
     /** Subtables may need an upper limit to their width - they can ask this function. */
     // In sync with isPortrait in init, here so UI details need not know about 3-column vs 1-column layout
     internal fun getColumnWidth() = floor(
-        if (isNarrowerThan4to3()) stage.width
+        if (stackedLayout) stage.width
         else (stage.width - 2f) / 3f
     )
 

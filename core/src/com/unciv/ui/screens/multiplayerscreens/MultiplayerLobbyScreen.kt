@@ -110,8 +110,10 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         inviteButton.onClick { showInvitation() }
         startButton.onClick { runRequest { start() } }
         status.setWrap(true)
+        content.top()
         scroll.setScrollingDisabled(true, false)
         scroll.setOverscroll(false, false)
+        layout.background = skinStrings.getUiBackground("MultiplayerLobbyScreen/Background", tintColor = Color.valueOf("08172d"))
         layout.setFillParent(true)
         layout.pad(16f)
         layout.add(header).growX().padBottom(16f).row()
@@ -206,6 +208,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             own == null -> "You have left this room or were removed. Open the invitation to rejoin.".tr()
             r.state == "STARTING" -> "Starting game. Waiting for the host to finish uploading...".tr()
             r.state == "STARTED" -> "Game started".tr()
+            busy -> Constants.working.tr()
             joined < humans.size -> "Invite friends to fill the empty seats.".tr()
             ready < humans.size -> "Choose your civilization, then get ready.".tr()
             host -> "Everyone is ready. You can start the game.".tr()
@@ -215,7 +218,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val width = stage.width - 32f
         if (r != null) {
             val gameSetup = setup ?: json().fromJson(GameSetupInfo::class.java,r.setup).also { setup = it }
-            val landscape = width >= 850f && stage.width > stage.height
+            val landscape = width >= 1000f && stage.width > stage.height
             val cardsWidth = if (landscape) width - 230f - 16f else width
             val summary = Table().apply {
                 background = skinStrings.getUiBackground("MultiplayerLobbyScreen/GameSummary", skinStrings.roundedEdgeRectangleSmallShape, Color.valueOf("0d2140"))
@@ -247,10 +250,10 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             val details = ExpanderTab("Room and player information",fontSize = 18, startsOutOpened = detailsOpen,
                 expanderWidth = cardsWidth, onChange = { detailsOpen = !detailsOpen }) { table ->
                 table.add("Game ID".toLabel(Color.LIGHT_GRAY,16)).left().row()
-                table.add(r.gameId.toLabel(fontSize = 16).apply { setWrap(true) }).growX().row()
+                table.add(r.gameId.toLabel(fontSize = 16).apply { setText(r.gameId); setWrap(true) }).growX().row()
                 for (seat in r.seats.filter { it.playerId.isNotEmpty() }) {
                     table.add("Player [${seat.seatId+1}]".toLabel(Color.LIGHT_GRAY,16)).left().padTop(8f).row()
-                    table.add(seat.playerId.toLabel(fontSize = 16).apply { setWrap(true) }).growX().row()
+                    table.add(seat.playerId.toLabel(fontSize = 16).apply { setText(seat.playerId); setWrap(true) }).growX().row()
                 }
             }
             players.add(details).growX()
@@ -300,7 +303,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             val ruleset = RulesetCache.getComplexRuleset(setup!!.gameParameters)
             val nation = ruleset.nations[s.civilization]
             add(if (nation == null) ImageGetter.getRandomNationPortrait(44f) else ImageGetter.getNationPortrait(nation,44f)).size(44f).padRight(12f)
-            add((if (empty) "Your friend chooses their civilization" else s.civilization).toLabel(fontSize = if (empty) 18 else 22).apply { setWrap(true) }).growX().left()
+            add((if (empty) "Your friend chooses their civilization" else s.civilization).toLabel(fontSize = if (empty) 18 else 22, hideIcons = true).apply { setWrap(true) }).growX().left()
         }
         card.add(civilization).width(width-32f).padTop(16f).padBottom(16f).row()
         val controls = Table()
@@ -317,7 +320,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     runRequest { client.command(session.gameId,"kick",command().apply { seatId = s.seatId; targetOccupancy = s.occupancy }) }
                 }.open()
             }; isEnabled = !busy }).height(44f).right()
-            else -> controls.add((if (!s.human) "AI" else if (s.ready) "Ready" else "Choosing civilization...").toLabel(Color.LIGHT_GRAY,18)).height(44f)
+            else -> controls.add((if (!s.human) "AI" else if (s.ready) "Ready" else "Choosing civilization...").toLabel(Color.LIGHT_GRAY,18, hideIcons = true)).height(44f)
         }
         card.add(controls).growX()
         return card

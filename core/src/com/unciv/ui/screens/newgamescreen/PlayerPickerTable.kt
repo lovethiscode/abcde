@@ -208,9 +208,9 @@ class PlayerPickerTable(
         }
         val nationTable = if (invitedHuman) Table().apply {
             add(ImageGetter.getRandomNationPortrait(40f)).size(40f).pad(5f)
-            add("Invite after creating".toLabel(fontSize = 18))
+            add("Invite after creating".toLabel(fontSize = 18).apply { setWrap(true) }).growX()
         } else getNationTable(player)
-        playerTable.add(nationTable).left()
+        playerTable.add(nationTable).left().growX()
 
         val playerTypeTextButton = player.playerType.name.toTextButton()
         playerTable.add(playerTypeTextButton).width(100f).pad(5f).right()
