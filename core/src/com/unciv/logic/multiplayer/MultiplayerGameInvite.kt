@@ -9,6 +9,9 @@ import java.net.URLEncoder
 
 /** The invitation identifies a save, not a player seat or authentication credential. */
 data class MultiplayerGameInvite(val gameId: String, val serverUrl: String?, val lobby: Boolean = false) {
+    // RoboVM 2.3.26 does not provide Boolean.hashCode(boolean).
+    override fun hashCode(): Int = 31 * (31 * gameId.hashCode() + (serverUrl?.hashCode() ?: 0)) + if (lobby) 1231 else 1237
+
     companion object {
         const val INVITATION_HOST = "jerry8870.github.io"
         const val INVITATION_PATH = "/Unciv-Wiki/invite.html"

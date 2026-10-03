@@ -39,6 +39,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private var busy = false
     private var paused = false
     private var disposed = false
+    private var enteringGame = false
+    private var leaving = false
     private var nextPoll = 0L
     private var failures = 0
     private var job: Job? = null
@@ -98,9 +100,11 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         } }
         bottomTable.add(share).pad(5f); bottomTable.add(copy).pad(5f)
         val leave = "Leave room".toTextButton().apply { onClick {
+            if (busy) return@onClick
             ConfirmPopup(this@MultiplayerLobbyScreen,
                 if (room?.hostId == userId) "Leaving closes the room for everyone." else "Leave this waiting room?","Leave room") {
-                runRequest { client.command(session.gameId,"leave",command()).also { LobbySession.clear() } }
+                leaving = true
+                runRequest { client.command(session.gameId,"leave",command()) }
             }.open()
         } }
         bottomTable.add(leave).pad(5f)
@@ -131,6 +135,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 launchOnGLThread {
                     if (disposed) return@launchOnGLThread
                     busy = false; failures = 0; nextPoll = System.currentTimeMillis() + 2000
+                    if (leaving) { LobbySession.clear(); game.popScreen(); return@launchOnGLThread }
                     accept(result); drawMembers()
                     if (result.state == "STARTED" && result.seats.any { it.playerId == userId && it.occupancy == session.occupancy }) enterGame()
                 }
@@ -138,7 +143,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             catch (e: Exception) {
                 launchOnGLThread {
                     if (disposed) return@launchOnGLThread
-                    busy = false; failures++; nextPoll = System.currentTimeMillis() + listOf(2000,4000,8000,15000)[minOf(failures-1,3)]
+                    busy = false; leaving = false; failures++; nextPoll = System.currentTimeMillis() + listOf(2000,4000,8000,15000)[minOf(failures-1,3)]
                     status.setText((e.message ?: "Connection failed. Retrying...").tr()); drawMembers(updateStatus = false)
                 }
             }
@@ -226,14 +231,14 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     }
     private fun enterGame() {
         if (busy) return
-        busy = true
+        busy = true; enteringGame = true
         job = Concurrency.run("Enter lobby game") {
             try {
                 val latest = game.onlineMultiplayer.downloadInvitedGame(MultiplayerGameInvite(session.gameId,session.server))
                 game.loadGame(latest)
                 LobbySession.clear()
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { launchOnGLThread { if (!disposed) { busy = false; errorPopup(this@MultiplayerLobbyScreen,e) } } }
+            catch (e: Exception) { launchOnGLThread { if (!disposed) { busy = false; enteringGame = false; errorPopup(this@MultiplayerLobbyScreen,e) } } }
         }
     }
     override fun render(delta: Float) {
@@ -243,7 +248,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     }
     override fun pause() { paused = true }
     override fun resume() { paused = false; nextPoll = 0L }
-    override fun hide() { paused = true; job?.cancel(); busy = false }
+    override fun hide() { paused = true; if (!enteringGame) job?.cancel(); busy = false }
     override fun show() { super.show(); paused = false; nextPoll = 0L }
-    override fun dispose() { disposed = true; job?.cancel(); super.dispose() }
+    override fun dispose() { disposed = true; if (!enteringGame) job?.cancel(); super.dispose() }
 }
