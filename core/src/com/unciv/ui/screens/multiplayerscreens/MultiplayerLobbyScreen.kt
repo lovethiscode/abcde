@@ -485,29 +485,14 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             if (s.human && !empty) add((if (s.ready) "Ready" else "Not ready").toLabel(if (s.ready) Color.GREEN else Color.LIGHT_GRAY,16)).padLeft(8f)
         }
         card.add(heading).growX().row()
-        val civilization = Table().apply {
-            val ruleset = RulesetCache.getComplexRuleset(setup!!.gameParameters)
-            val nation = ruleset.nations[s.civilization]
-            val portrait = if (nation == null) ImageGetter.getRandomNationPortrait(44f) else ImageGetter.getNationPortrait(nation,44f)
-            if (r.state == "WAITING" && (mine || (!s.human && r.hostId == userId && own != null && configurationSupported))) {
-                portrait.touchable = Touchable.enabled
-                portrait.onClick {
-                    if (busy || configurationPending) return@onClick
-                    if (mine) chooseCivilization(s) else chooseAiCivilization(s)
-                }
-            }
-            add(portrait).size(44f).padRight(12f)
-            add((if (empty) "Your friend chooses their civilization" else s.civilization).toLabel(fontSize = if (empty) 18 else 22, hideIcons = true).apply { setWrap(true) }).minWidth(0f).growX().left()
-        }
         val controls = Table()
         when {
-            empty -> controls.add("Invite friends".toTextButton().apply { onClick { shareInvitation() }; isEnabled = connected && !busy && !configurationPending && own != null && r.state == "WAITING" }).growX().height(44f)
             mine && r.state == "WAITING" -> {
                 if (r.hostId != userId) controls.add((if (s.ready) "Cancel ready" else "Ready").toTextButton().apply { onClick {
                     runRequest { client.command(session.gameId,"ready",command().apply { ready = !s.ready }) }
                 }; isEnabled = connected && !busy && !configurationPending }).height(44f)
             }
-            r.hostId == userId && s.human && r.state == "WAITING" -> controls.add("Kick".toTextButton().apply { onClick {
+            r.hostId == userId && s.human && !empty && r.state == "WAITING" -> controls.add("Kick".toTextButton().apply { onClick {
                 ConfirmPopup(this@MultiplayerLobbyScreen,"Remove this player from the room?","Kick") {
                     runRequest { client.command(session.gameId,"kick",command().apply { seatId = s.seatId; targetOccupancy = s.occupancy }) }
                 }.open()
@@ -522,9 +507,22 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 }
             }).height(44f).padLeft(8f)
         if (empty) {
-            card.add(civilization).width(width-32f).padTop(12f).padBottom(12f).row()
-            card.add(controls).growX()
+            if (controls.hasChildren()) heading.add(controls).padLeft(8f)
         } else {
+            val civilization = Table().apply {
+                val ruleset = RulesetCache.getComplexRuleset(setup!!.gameParameters)
+                val nation = ruleset.nations[s.civilization]
+                val portrait = if (nation == null) ImageGetter.getRandomNationPortrait(44f) else ImageGetter.getNationPortrait(nation,44f)
+                if (r.state == "WAITING" && (mine || (!s.human && r.hostId == userId && own != null && configurationSupported))) {
+                    portrait.touchable = Touchable.enabled
+                    portrait.onClick {
+                        if (busy || configurationPending) return@onClick
+                        if (mine) chooseCivilization(s) else chooseAiCivilization(s)
+                    }
+                }
+                add(portrait).size(44f).padRight(12f)
+                add(s.civilization.toLabel(fontSize = 22, hideIcons = true).apply { setWrap(true) }).minWidth(0f).growX().left()
+            }
             if (controls.hasChildren()) civilization.add(controls).padLeft(8f)
             card.add(civilization).width(width-32f).padTop(12f)
         }
