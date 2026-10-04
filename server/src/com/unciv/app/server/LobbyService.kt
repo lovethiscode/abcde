@@ -5,6 +5,7 @@ import com.badlogic.gdx.utils.JsonReader
 import com.mongodb.MongoWriteException
 import com.mongodb.client.MongoClients
 import com.mongodb.client.model.Filters.*
+import com.mongodb.client.model.Indexes
 import org.bson.Document
 import java.util.UUID
 import java.util.Base64
@@ -20,13 +21,41 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
     private val rooms = mongo.getDatabase(database).getCollection("lobbies")
     private val readAsset: (String) -> ByteArray? = { javaClass.classLoader.getResourceAsStream(it)?.use { s -> s.readBytes() } }
     val rulesHash = LobbyProtocol.fingerprint(readAsset)
-    init { mongo.getDatabase(database).runCommand(Document("ping", 1)) }
+    init {
+        mongo.getDatabase(database).runCommand(Document("ping", 1))
+        rooms.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("nextMaintenanceAt")))
+        rooms.find(exists("state", false)).batchSize(100).iterator().use { cursor ->
+            for (doc in cursor) {
+                val r = decode(doc)
+                rooms.replaceOne(and(eq("_id", r.gameId), eq("version", r.version)), document(r))
+            }
+        }
+        // All old sockets died with the process. Do not carry their ready state into a new one.
+        rooms.find(eq("state", "WAITING")).batchSize(100).iterator().use { cursor ->
+            for (doc in cursor) mutate(doc.getString("_id")) { r ->
+                expire(r)
+                r.seats.filter { it.playerId != r.hostId && it.ready }.forEach { it.ready = false; it.revision++ }
+            }
+        }
+    }
     override fun close() = mongo.close()
     private fun fail(message: String, status: Int = 409): Nothing = throw LobbyFailure(status, message)
     private fun uuid(id: String) = try { UUID.fromString(id).toString() == id } catch (_: Exception) { false }
     private fun decode(doc: Document) = LobbyProtocol.json().fromJson(LobbyRoom::class.java, doc.getString("payload"))
-    private fun document(room: LobbyRoom) = Document("_id", room.gameId).append("version", room.version)
-        .append("payload", LobbyProtocol.json().toJson(room))
+    private fun document(room: LobbyRoom): Document {
+        val host = room.seats.firstOrNull { it.playerId == room.hostId }
+        val deadline = (host?.lastSeen ?: 0L) + 30 * 60_000L
+        val next = when (room.state) {
+            "WAITING" -> minOf(deadline, room.seats.filter { it.playerId.isNotEmpty() && it.playerId != room.hostId }
+                .minOfOrNull { it.lastSeen + 5 * 60_000L } ?: deadline)
+            "STARTING" -> if (room.saveHash.isEmpty() || deadline > clock()) deadline
+                else maxOf(room.nextMaintenanceAt, clock() + 30_000L)
+            else -> Long.MAX_VALUE
+        }
+        return Document("_id", room.gameId).append("version", room.version)
+            .append("state", room.state).append("nextMaintenanceAt", next)
+            .append("payload", LobbyProtocol.json().toJson(room))
+    }
     fun find(id: String): LobbyRoom? = rooms.find(eq("_id", id)).first()?.let { decode(it) }
     private fun checkRules(c: LobbyCommand) { if (c.rulesHash != rulesHash) fail("The room rules differ from this app. Update the app or server.") }
     private fun validateConfiguration(c: LobbyCommand): com.badlogic.gdx.utils.JsonValue {
@@ -40,7 +69,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         if (!parameters.getBoolean("isOnlineMultiplayer", false) || parameters.getString("baseRuleset", LobbyProtocol.rulesets[1]) != c.baseRuleset)
             fail("Invalid room configuration", 400)
         val players = parameters.get("players") ?: fail("Missing players", 400)
-        if (players.size != c.seats.size || c.seats.size !in 2..64 || c.seats.none { it.human }) fail("Invalid room capacity", 400)
+        if (players.size != c.seats.size || c.seats.size !in 2..64 || !c.seats.first().human) fail("Invalid room capacity", 400)
         for ((index, seat) in c.seats.withIndex())
             if (seat.human != (players[index].getString("playerType", "AI") == "Human")) fail("Seat type differs from setup", 400)
         if (parameters.getBoolean("randomNumberOfPlayers", false) || players.any { it.getString("chosenCiv", "Random") == "Spectator" })
@@ -81,8 +110,10 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         repeat(100) {
             val room = find(id) ?: fail("Room not found", 404)
             val before = room.version
+            val beforePayload = LobbyProtocol.json().toJson(room)
             action(room)
             room.seats.first { it.playerId == room.hostId }.ready = true
+            if (LobbyProtocol.json().toJson(room) == beforePayload) return room
             room.version++
             if (rooms.replaceOne(and(eq("_id", id), eq("version", before)), document(room)).matchedCount == 1L) return room
         }
@@ -98,14 +129,46 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
             val host = room.seats.first { it.playerId == room.hostId }
             if (clock() - host.lastSeen >= 30 * 60_000) {
                 if (room.saveHash.isEmpty()) { room.state = "CLOSED"; room.reason = "Start timed out before upload was registered" }
-                else {
-                    // A 404 or failed read cannot prove that an external upload is no longer in flight.
-                    val body = try { loadGameSave(room) } catch (_: LobbyFailure) { null }
-                    if (body != null && validSave(room, body)) { room.state = "STARTED"; room.reason = "" }
-                    else room.reason = "Waiting for host to recover the original save"
-                }
             }
         }
+    }
+    fun maintain(id: String): LobbyRoom = mutate(id) { expire(it) }
+    fun dueRooms(limit: Int = 100): List<String> = listOf("WAITING","STARTING").flatMap { state ->
+        rooms.find(and(eq("state", state),lte("nextMaintenanceAt", clock()))).limit(limit).map { it.getString("_id") }.toList()
+    }
+    fun verifyStart(room: LobbyRoom): Boolean = try {
+        val body = loadGameSave(room)
+        body != null && validSave(room, body)
+    } catch (_: Exception) { false }
+    fun completionRoom(id: String, c: LobbyCommand): LobbyRoom {
+        val r = find(id) ?: fail("Room not found",404)
+        host(r,c)
+        if (r.state !in listOf("STARTING","STARTED") || c.startOperation != r.startOperation || c.frozenVersion != r.frozenVersion)
+            fail("Start operation no longer matches this room")
+        if (r.saveHash.isEmpty() || c.saveHash != r.saveHash) fail("Start save fingerprint does not match")
+        return r
+    }
+    fun maintainStart(id: String, original: LobbyRoom, verified: Boolean): LobbyRoom = mutate(id) { r ->
+        if (r.state != "STARTING" || r.startOperation != original.startOperation || r.saveHash != original.saveHash) return@mutate
+        if (verified) { r.state = "STARTED"; r.reason = "" }
+        else {
+            r.reason = "Waiting for host to recover the original save"
+            r.nextMaintenanceAt = clock() + r.maintenanceDelayMillis
+            r.maintenanceDelayMillis = (r.maintenanceDelayMillis * 2).coerceAtMost(10 * 60_000L)
+        }
+    }
+    fun disconnected(id: String, player: String, occupancy: String): LobbyRoom = mutate(id) { r ->
+        if (r.state == "WAITING") r.seats.firstOrNull { it.playerId == player && it.occupancy == occupancy && player != r.hostId }
+            ?.let { if (it.ready) { it.ready = false; it.revision++ } }
+    }
+    private fun syncSeats(r: LobbyRoom) {
+        val setup = JsonReader().parse(r.setup)
+        val players = setup.get("gameParameters").get("players")
+        for (s in r.seats) for ((key, value) in mapOf("playerType" to if (s.human) "Human" else "AI",
+            "playerId" to s.playerId, "chosenCiv" to s.civilization)) {
+            players[s.seatId].remove(key); players[s.seatId].addChild(key, com.badlogic.gdx.utils.JsonValue(value))
+        }
+        r.setup = setup.toJson(com.badlogic.gdx.utils.JsonWriter.OutputType.json)
     }
     private fun clear(s: LobbySeat) { s.playerId = ""; s.occupancy = ""; s.ready = false; s.civilization = "Random"; s.lastSeen = 0; s.revision++ }
     private fun waiting(r: LobbyRoom) { if (r.state != "WAITING") fail("Room is no longer waiting") }
@@ -152,21 +215,51 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         next.forEach { checkCiv(r,it,it.civilization) }
         r.configurationVersion++
     }
-    fun command(id: String, verb: String, c: LobbyCommand): LobbyRoom {
+    fun command(id: String, verb: String, c: LobbyCommand, verifiedSave: Boolean? = null): LobbyRoom {
         // Persist expiry before rejecting the requested action.
         mutate(id) { expire(it) }
+        val verified = if (verb == "complete" && verifiedSave == null) {
+            val r = completionRoom(id,c)
+            r.state == "STARTED" || verifyStart(r)
+        } else verifiedSave == true
         return mutate(id) { r ->
             when (verb) {
                 "configuration" -> updateConfiguration(r,c)
-                "read" -> if (c.occupancy.isNotEmpty() && r.state != "CLOSED") r.seats.firstOrNull { it.playerId == c.playerId && it.occupancy == c.occupancy }?.let { it.lastSeen = clock() }
+                "resume", "heartbeat" -> if (r.state != "CLOSED") member(r,c).lastSeen = clock()
+                "recoverJoin" -> {
+                    checkRules(c)
+                    if (c.gameServerUrl != r.gameServerUrl) fail("The invitation game server differs from this room.",400)
+                    val receipt = r.joinReceipts.firstOrNull { it.requestId == c.originalRequestId && it.playerId == c.playerId }
+                        ?: fail("The join result is unavailable. Open the invitation to join again.",410)
+                    if (r.state == "CLOSED" || r.seats.none { it.playerId == c.playerId && it.occupancy == receipt.occupancy })
+                        fail("You have left this room or were removed. Open the invitation to rejoin.",410)
+                    r.seats.first { it.occupancy == receipt.occupancy }.lastSeen = clock()
+                }
                 "join" -> {
                     checkRules(c)
+                    if (c.gameServerUrl != r.gameServerUrl) fail("The invitation game server differs from this room.",400)
+                    val receipt = r.joinReceipts.firstOrNull { it.requestId == c.requestId && c.requestId.isNotEmpty() }
+                    if (receipt != null) {
+                        if (receipt.playerId != c.playerId || receipt.requestHash != LobbyProtocol.sha256(LobbyProtocol.json().toJson(c)))
+                            fail("This room request conflicts with a previous request. Please retry.",400)
+                        if (r.state == "CLOSED" || r.seats.none { it.playerId == c.playerId && it.occupancy == receipt.occupancy })
+                            fail("You have left this room or were removed. Open the invitation to rejoin.",410)
+                        return@mutate
+                    }
                     val existing = r.seats.firstOrNull { it.playerId == c.playerId && it.human }
                     if (existing != null && r.state != "CLOSED") existing.lastSeen = clock()
                     else {
                         waiting(r); if (!uuid(c.playerId)) fail("Invalid player ID", 400)
                         val s = r.seats.firstOrNull { it.human && it.playerId.isEmpty() } ?: fail("Room is full")
                         s.playerId = c.playerId; s.occupancy = UUID.randomUUID().toString(); s.lastSeen = clock()
+                    }
+                    if (c.requestId.isNotEmpty()) {
+                        r.joinReceipts.removeAll { clock() - it.createdAt >= 30 * 60_000L }
+                        while (r.joinReceipts.size >= 64) r.joinReceipts.removeAt(0)
+                        r.joinReceipts.add(LobbyJoinReceipt().apply {
+                            requestId = c.requestId; playerId = c.playerId; requestHash = LobbyProtocol.sha256(LobbyProtocol.json().toJson(c))
+                            occupancy = r.seats.first { it.playerId == c.playerId }.occupancy; createdAt = clock()
+                        })
                     }
                 }
                 "leave", "close" -> {
@@ -180,7 +273,8 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                     val s = r.seats.firstOrNull { it.seatId == c.seatId && it.occupancy == c.targetOccupancy && it.playerId.isNotEmpty() }
                         ?: fail("This seat has changed. Refresh and retry.")
                     if (s.playerId == r.hostId) fail("Cannot remove the host")
-                    clear(s)
+                    clear(s); s.human = false; r.configurationVersion++
+                    syncSeats(r)
                 }
                 "civilization" -> {
                     waiting(r); val s = member(r,c); if (s.seatId != c.seatId) fail("You can choose only your own civilization",403)
@@ -190,6 +284,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                 }
                 "ready" -> {
                     waiting(r); val s = member(r,c)
+                    if (c.configurationVersion != r.configurationVersion) fail("Room settings changed. Refresh and retry.")
                     if (s.revision != c.seatRevision) fail("Your seat changed. Refresh and retry.")
                     val ready = s.playerId == r.hostId || c.ready
                     if (s.ready != ready) { s.ready = ready; s.revision++ }
@@ -201,6 +296,12 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                     if (c.configurationVersion >= 0L && c.configurationVersion != r.configurationVersion)
                         fail("Room settings changed. Refresh and retry.")
                     if (r.seats.any { it.human && (it.playerId.isEmpty() || !it.ready) }) fail("All human seats must be occupied and ready")
+                    val setup = JsonReader().parse(r.setup)
+                    val map = setup.get("mapParameters")
+                    if (map.getLong("seed",0L) == 0L) {
+                        map.remove("seed"); map.addChild("seed", com.badlogic.gdx.utils.JsonValue(clock().coerceAtLeast(1L)))
+                        r.setup = setup.toJson(com.badlogic.gdx.utils.JsonWriter.OutputType.json)
+                    }
                     r.state = "STARTING"; r.startOperation = UUID.randomUUID().toString(); r.frozenVersion = r.version + 1
                 }
                 "save", "complete" -> {
@@ -214,8 +315,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                     } else {
                         if (c.saveHash != r.saveHash || r.saveHash.isEmpty()) fail("Start save fingerprint does not match")
                         if (r.state == "STARTED") return@mutate
-                        val body = loadGameSave(r)
-                        if (body == null || !validSave(r,body)) fail("The full game save has not been verified on the game server")
+                        if (!verified) fail("The full game save has not been verified on the game server")
                         r.state = "STARTED"; r.reason = ""
                     }
                 }

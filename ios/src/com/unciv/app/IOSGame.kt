@@ -86,6 +86,8 @@ class IOSGame @JvmOverloads constructor(
 
     override fun createChatTransport() = IOSChatTransport()
 
+    override fun createLobbyTransport() = IOSLobbyTransport()
+
     override fun beginMultiplayerUploadBackgroundTask(onExpired: () -> Unit): MultiplayerBackgroundTask =
         IOSMultiplayerBackgroundTask(onExpired)
 

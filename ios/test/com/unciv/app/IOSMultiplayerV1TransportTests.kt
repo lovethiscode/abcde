@@ -17,22 +17,6 @@ import org.junit.Test
 
 class IOSMultiplayerV1TransportTests {
     @Test
-    fun `room heartbeat crosses native HTTPS validation and preserves membership`() = runBlocking {
-        com.unciv.UncivGame.Current = com.unciv.UncivGame()
-        val url = "https://rooms.example/unciv-lobby/lobbies/test-game/read"
-        val adapter = FakeAdapter(IOSURLSessionResult.Success(200, """{"gameId":"test-game"}""", emptyMap(), url))
-        val client = com.unciv.logic.multiplayer.lobby.LobbyClient("https://rooms.example/unciv-lobby", IOSMultiplayerV1Transport(adapter))
-        val command = com.unciv.logic.multiplayer.lobby.protocol.LobbyCommand().apply { playerId="test-player"; occupancy="test-occupancy" }
-        assertEquals("test-game", client.read("test-game", command).gameId)
-        assertEquals(url, adapter.request?.url)
-        assertEquals(MultiplayerV1HttpMethod.POST, adapter.request?.method)
-        val sent = com.unciv.logic.multiplayer.lobby.protocol.LobbyProtocol.json()
-            .fromJson(com.unciv.logic.multiplayer.lobby.protocol.LobbyCommand::class.java, adapter.request?.body)
-        assertEquals(command.playerId, sent.playerId)
-        assertEquals(command.occupancy, sent.occupancy)
-    }
-
-    @Test
     fun `request and response cross the adapter without losing API v1 fields`() = runBlocking {
         val adapter = FakeAdapter(
             IOSURLSessionResult.Success(

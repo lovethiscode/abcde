@@ -221,6 +221,14 @@ class MultiplayerLobbyLocalizationTest {
             "The full game save has not been verified on the game server",
             "Start timed out before upload was registered",
             "Unknown room operation",
+            "The room connection version does not match. Please try again later.",
+            "The join result is unavailable. Open the invitation to join again.",
+            "This room request conflicts with a previous request. Please retry.",
+            "Leave the current waiting room before joining another.",
+            "A player disconnected. Wait for them to reconnect and get ready, or remove them.",
+            "This room connection was replaced. Reopen the room to continue.",
+            "Invalid room request",
+            "Room request is too large",
         )
     }
 }

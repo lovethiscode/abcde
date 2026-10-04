@@ -44,7 +44,7 @@ class LobbyServerSeparationTest {
                 gameParameters.victoryTypes.add("Domination")
                 mapParameters.seed=42
             })
-            seats=arrayListOf(LobbySeat().apply { playerId=host; civilization="Rome" },LobbySeat().apply { human=false; civilization="Greece" })
+            seats=arrayListOf(LobbySeat().apply { playerId=host; civilization="Rome" },LobbySeat().apply { seatId=1; human=false; civilization="Greece" })
         }
         val session=LobbySession().apply { roomApiUrl=api; gameServerUrl=saves; gameId=room.gameId }
         var failUpload=true
@@ -54,14 +54,6 @@ class LobbyServerSeparationTest {
         val transport=object : MultiplayerV1Transport {
             override suspend fun execute(request: MultiplayerV1Request): MultiplayerV1Response {
                 requests+=request
-                if (request.url.startsWith(api)) {
-                    assertFalse(request.url.contains("/files/"))
-                    when {
-                        request.url.endsWith("/start/save") -> room.saveHash=LobbyProtocol.json().fromJson(LobbyCommand::class.java,request.body).saveHash
-                        request.url.endsWith("/start/complete") -> room.state="STARTED"
-                    }
-                    return MultiplayerV1Response(200,LobbyProtocol.json().toJson(room),emptyMap(),request.url)
-                }
                 assertTrue(request.url.startsWith("$saves/files/"))
                 if (failUpload) throw MultiplayerNetworkException(MultiplayerNetworkError.CONNECTION)
                 if (request.url.endsWith("_Preview") && interruptPreview) throw kotlinx.coroutines.CancellationException("Interrupted before complete")
@@ -75,26 +67,38 @@ class LobbyServerSeparationTest {
                 return MultiplayerV1Response(200,"",emptyMap(),request.url)
             }
         }
-        val starter=LobbyGameStarter(session,LobbyClient(api,transport),MultiplayerServer(saves,transport=transport))
+        val socket = com.unciv.testing.TestLobbyTransport(saves) { request ->
+            when (request.action) {
+                "save" -> room.saveHash = request.command!!.saveHash
+                "complete" -> room.state = "STARTED"
+            }
+            LobbyProtocol.snapshot(room)
+        }
+        val client = LobbyClient(api,socket)
+        client.open(session)
+        val starter=LobbyGameStarter(session,client,MultiplayerServer(saves,transport=transport))
         val command=LobbyCommand().apply { playerId=host }
         try { starter.start(command); fail("Upload must fail") } catch (_: MultiplayerNetworkException) { }
-        assertTrue(requests.none { it.url.endsWith("/start/complete") })
+        assertTrue(socket.requests.none { it.action == "complete" })
         val first=requests.single { it.url=="$saves/files/${room.gameId}" }.body
         failUpload=false
         try { starter.start(command); fail("Completion must be interrupted") } catch (_: kotlinx.coroutines.CancellationException) { }
-        assertTrue(requests.none { it.url.endsWith("/start/complete") })
+        assertTrue(socket.requests.none { it.action == "complete" })
         assertEquals(listOf(first,first),requests.filter { it.url=="$saves/files/${room.gameId}" }.map { it.body })
         assertEquals(room.saveHash,LobbyProtocol.saveFingerprint(FileConversions.unzip(first!!)))
         // Lost local recovery file: accept the same stored game with server-added notifications.
-        UncivGame.Current.files.getLocalFile("lobby-start-${room.gameId}.json.gz").delete()
+        UncivGame.Current.files.getLocalFile("lobby-start-${room.gameId}-${room.startOperation}.json.gz").delete()
         interruptPreview=false
         assertEquals("STARTED",starter.start(command).state)
         assertEquals(room.saveHash,LobbyProtocol.saveFingerprint(FileConversions.unzip(uploaded)))
         assertNotEquals(first,uploaded)
         val count=requests.size
         starter.start(command)
-        assertEquals(count+1,requests.size)
+        assertEquals(count,requests.size)
+        assertEquals("wss://rooms.example/unciv-lobby/ws",socket.urls.single())
+        assertTrue(requests.all { it.url.startsWith("$saves/files/") })
         assertEquals("https://global.example",UncivGame.Current.settings.multiplayer.getServer())
+        client.close()
     }
     @Test fun sessionPersistsBothAddressesAndArchivesLegacySingleServerRooms() {
         val old=UncivGame.Current.files.getLocalFile("multiplayer-lobby.json")

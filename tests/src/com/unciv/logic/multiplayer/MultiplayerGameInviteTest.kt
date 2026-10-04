@@ -46,20 +46,25 @@ class MultiplayerGameInviteTest {
         val gameServer = "https://save.example"
         val roomApi = "https://room.example/unciv-lobby"
         val invite = MultiplayerGameInvite.parse(MultiplayerGameInvite.createLobbyLink(ID, gameServer))
-        val requests = mutableListOf<MultiplayerV1Request>()
-        val transport = object : MultiplayerV1Transport {
-            override suspend fun execute(request: MultiplayerV1Request): MultiplayerV1Response {
-                requests += request
-                return MultiplayerV1Response(200, """{"gameId":"$ID","state":"WAITING"}""", emptyMap(), request.url)
+        val transport = com.unciv.testing.TestLobbyTransport(gameServer) {
+            com.unciv.logic.multiplayer.lobby.protocol.LobbyRoom().apply {
+                gameId = ID; gameServerUrl = gameServer
+                seats.add(com.unciv.logic.multiplayer.lobby.protocol.LobbySeat().apply {
+                    playerId = settings.multiplayer.getUserId(); occupancy = "joined"
+                })
             }
         }
         val client = com.unciv.logic.multiplayer.lobby.LobbyClient(roomApi, transport)
-        val room = client.command(invite.gameId, "join", com.unciv.logic.multiplayer.lobby.protocol.LobbyCommand())
+        val session = com.unciv.logic.multiplayer.lobby.LobbySession().apply { roomApiUrl = roomApi; gameServerUrl = gameServer; gameId = ID }
+        UncivGame.Current.files = UncivFiles(Gdx.files, Files.createTempDirectory("unciv-invite-wss").toString())
+        session.save()
+        val room = client.open(session,join = true)
         assertEquals(gameServer, invite.serverUrl)
         assertEquals(ID, room.gameId)
-        assertEquals("$roomApi/lobbies/$ID/join", requests.single().url)
-        assertEquals(MultiplayerV1HttpMethod.POST, requests.single().method)
+        assertEquals("wss://room.example/unciv-lobby/ws", transport.urls.single())
+        assertEquals("join", transport.requests.single().action)
         assertEquals("https://global.example", settings.multiplayer.getServer())
+        client.close(); session.clearIfCurrent()
     }
 
     @Test fun upstreamAndroidGameLinkIsRecognizedWithoutGrantingPlayerIdentity() {

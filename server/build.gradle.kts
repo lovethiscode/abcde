@@ -104,7 +104,7 @@ tasks.register<Jar>("dist") {
 
 
 tasks.register<Jar>("lobbyDist") {
-    description = "Build the independent room REST API"
+    description = "Build the independent room WebSocket server"
     dependsOn(tasks.getByName("classes"))
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(sourceSets.main.get().output)

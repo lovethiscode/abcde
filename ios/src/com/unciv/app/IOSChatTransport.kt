@@ -119,6 +119,7 @@ class IOSChatTransport internal constructor(
 }
 
 internal interface IOSChatSocket {
+    fun limitMessageSize(bytes: Long) {}
     fun open(completion: (Result<Unit>) -> Unit)
     fun send(message: String, completion: (Result<Unit>) -> Unit)
     fun receive(completion: (Result<String>) -> Unit)
@@ -155,7 +156,7 @@ internal class NativeIOSChatSocket(url: String, authentication: String, userAgen
         NSURL(url), NSURLRequestCachePolicy.ReloadIgnoringLocalCacheData, 60.0,
     ).apply {
         setShouldHandleHTTPCookies(false)
-        setHTTPHeaderField("Authorization", authentication)
+        if (authentication.isNotEmpty()) setHTTPHeaderField("Authorization", authentication)
         setHTTPHeaderField("User-Agent", userAgent)
     })
 
@@ -163,6 +164,7 @@ internal class NativeIOSChatSocket(url: String, authentication: String, userAgen
         opening = completion
         task.resume()
     }
+    override fun limitMessageSize(bytes: Long) { task.maximumMessageSize = bytes }
 
     private fun finishOpening(result: Result<Unit>) {
         val completion = opening ?: return

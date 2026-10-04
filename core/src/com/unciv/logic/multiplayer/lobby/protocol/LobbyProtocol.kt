@@ -33,9 +33,22 @@ class LobbyRoom {
     var frozenVersion = 0L
     var saveHash = ""
     var reason = ""
+    var joinReceipts = arrayListOf<LobbyJoinReceipt>()
+    var nextMaintenanceAt = 0L
+    var maintenanceDelayMillis = 30_000L
+}
+
+class LobbyJoinReceipt {
+    var requestId = ""
+    var playerId = ""
+    var requestHash = ""
+    var occupancy = ""
+    var createdAt = 0L
 }
 
 class LobbyCommand {
+    var requestId = ""
+    var originalRequestId = ""
     var gameServerUrl = ""
     var playerId = ""
     var occupancy = ""
@@ -55,13 +68,46 @@ class LobbyCommand {
     var saveHash = ""
 }
 
+/** A single JSON text envelope for native iOS, JVM clients and the independent room server. */
+class LobbyMessage {
+    var type = ""
+    var protocolVersion = 1
+    var requestId = ""
+    var action = ""
+    var gameId = ""
+    var command: LobbyCommand? = null
+    var room: LobbyRoom? = null
+    var gameServerUrl = ""
+    var rulesHash = ""
+    var code = ""
+    var message = ""
+    var checkId = ""
+}
+
 object LobbyProtocol {
+    const val VERSION = 1
+    const val MAX_MESSAGE_BYTES = 512 * 1024
+    const val HEARTBEAT_MILLIS = 10_000L
+    const val CONNECTION_TIMEOUT_MILLIS = 30_000L
+    val actions = setOf("create", "join", "recoverJoin", "resume", "heartbeat", "configuration",
+        "civilization", "ready", "leave", "kick", "close", "start", "save", "complete")
     fun json() = Json().apply {
         setOutputType(JsonWriter.OutputType.json)
         setUsePrototypes(false)
         setIgnoreUnknownFields(true)
         setElementType(LobbyRoom::class.java, "seats", LobbySeat::class.java)
         setElementType(LobbyCommand::class.java, "seats", LobbySeat::class.java)
+        setElementType(LobbyRoom::class.java, "joinReceipts", LobbyJoinReceipt::class.java)
+    }
+    fun encode(message: LobbyMessage): String = json().toJson(message).also {
+        require(it.toByteArray(Charsets.UTF_8).size <= MAX_MESSAGE_BYTES) { "Room request is too large" }
+    }
+    fun decode(text: String): LobbyMessage {
+        require(text.toByteArray(Charsets.UTF_8).size <= MAX_MESSAGE_BYTES) { "Room request is too large" }
+        return json().fromJson(LobbyMessage::class.java, text)
+    }
+    fun snapshot(room: LobbyRoom): LobbyRoom = json().fromJson(LobbyRoom::class.java, json().toJson(room)).apply {
+        joinReceipts.clear(); nextMaintenanceAt = 0L; maintenanceDelayMillis = 30_000L
     }
     fun sha256(value: ByteArray): String = MessageDigest.getInstance("SHA-256")
         .digest(value).joinToString("") { "%02x".format(it.toInt() and 255) }

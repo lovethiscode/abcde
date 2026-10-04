@@ -110,6 +110,10 @@ interface PlatformSpecific {
     /** WebSocket transport for the existing multiplayer chat protocol. */
     fun createChatTransport(): ChatTransport = KtorChatTransport()
 
+    /** Room coordination uses its own socket and server, independently of chat and saves. */
+    fun createLobbyTransport(): com.unciv.logic.multiplayer.lobby.LobbyTransport =
+        com.unciv.logic.multiplayer.lobby.KtorLobbyTransport()
+
     /** HTTP engine used by the existing GitHub Mod requests and downloads. */
     fun createModHttpClientEngine(): HttpClientEngine = CIO.create()
 

@@ -15,7 +15,7 @@ import com.badlogic.gdx.utils.JsonWriter
 /** Integration tests use a separate real MongoDB database per test, never the live game database. */
 class LobbyServiceTest {
     private val uri = System.getenv("UNCIV_LOBBY_TEST_MONGO") ?: "mongodb://127.0.0.1:27017"
-    private val db = "unciv_lobby_test_" + UUID.randomUUID().toString().replace("-", "")
+    private val db = "uws_" + UUID.randomUUID().toString().replace("-", "")
     private val folder = Files.createTempDirectory("unciv-lobby-test").toFile()
     private val gameServer = "https://saves.example"
     private var unreadable = false
@@ -124,7 +124,7 @@ class LobbyServiceTest {
         assertTrue(r.seats.all { it.ready })
         assertEquals("STARTING",service.command(r.gameId,"start",c(r,host)).state)
     }
-    @Test fun readingLegacyUnreadyHostPersistsDefaultReadyAcrossRestart() {
+    @Test fun unreadyHostPersistsDefaultReadyAcrossRestart() {
         val r=create()
         r.seats[0].ready=false
         MongoClients.create(uri).use { client ->
@@ -132,7 +132,7 @@ class LobbyServiceTest {
                 org.bson.Document("_id",r.gameId),
                 org.bson.Document("\$set",org.bson.Document("payload",LobbyProtocol.json().toJson(r))))
         }
-        assertTrue(service.command(r.gameId,"read",c(r,host)).seats[0].ready)
+        assertTrue(service.command(r.gameId,"resume",c(r,host)).seats[0].ready)
         service.close(); service=newService()
         assertTrue(service.find(r.gameId)!!.seats[0].ready)
     }
@@ -146,14 +146,15 @@ class LobbyServiceTest {
         } finally { pool.shutdownNow() }
     }
     @Test fun kickRejoinRejectsStaleLeaveAndStaleKick() {
-        val r=join(create()); val old=c(r,guest)
+        val r=join(create(3)); val old=c(r,guest)
         val kick=c(r,host).apply { seatId=1; targetOccupancy=r.seats[1].occupancy }
         var latest=service.command(r.gameId,"kick",kick)
         assertEquals("",latest.seats[1].playerId); assertEquals("Random",latest.seats[1].civilization)
-        latest=join(latest); assertNotEquals(old.occupancy,latest.seats[1].occupancy)
+        assertFalse(latest.seats[1].human)
+        latest=join(latest); assertNotEquals(old.occupancy,latest.seats[2].occupancy)
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"leave",old) }
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"kick",kick) }
-        assertEquals(guest,service.find(r.gameId)!!.seats[1].playerId)
+        assertEquals(guest,service.find(r.gameId)!!.seats[2].playerId)
     }
     @Test fun civilizationChangeResetsOnlyOwnReadyAndNonMemberCannotChangeIt() {
         var r=join(create())
@@ -167,19 +168,19 @@ class LobbyServiceTest {
     }
     @Test fun memberTimeoutIsIndependentAndPersistsAcrossRestart() {
         var r=join(create()); now+=4*60_000
-        r=service.command(r.gameId,"read",c(r,host)); service.close(); service=newService()
+        r=service.command(r.gameId,"resume",c(r,host)); service.close(); service=newService()
         assertEquals(guest,service.find(r.gameId)!!.seats[1].playerId)
-        now+=60_000; r=service.command(r.gameId,"read",c(r,host))
+        now+=60_000; r=service.command(r.gameId,"resume",c(r,host))
         assertEquals("",r.seats[1].playerId); assertEquals("Random",r.seats[1].civilization)
         now+=30*60_000
-        assertEquals("CLOSED",service.command(r.gameId,"read",c(r,guest)).state)
+        assertEquals("CLOSED",service.command(r.gameId,"resume",c(r,guest)).state)
         assertThrows(LobbyFailure::class.java) { join(r) }
     }
     @Test fun leavingClosedRoomIsIdempotentAndAllowsJoiningAnotherRoom() {
         val old=join(create())
         val leave=c(old,guest)
         now+=30*60_000
-        val closed=service.command(old.gameId,"read",c(old,host))
+        val closed=service.command(old.gameId,"resume",c(old,host))
         assertEquals("CLOSED",closed.state)
         repeat(2) {
             val result=service.command(old.gameId,"leave",leave)
@@ -201,7 +202,7 @@ class LobbyServiceTest {
         assertEquals(frozen.startOperation,service.command(r.gameId,"start",c(frozen,host)).startOperation)
         for (verb in listOf("leave","ready","kick","civilization")) assertThrows(LobbyFailure::class.java) { service.command(r.gameId,verb,c(frozen,guest)) }
         now+=6*60_000
-        assertEquals(guest,service.command(r.gameId,"read",c(frozen,host)).seats[1].playerId)
+        assertEquals(guest,service.command(r.gameId,"resume",c(frozen,host)).seats[1].playerId)
     }
     @Test fun closeAndRulesMismatchAreRejectedWithoutReopeningRoom() {
         val r=create()
@@ -216,9 +217,9 @@ class LobbyServiceTest {
         val cmd=c(r,host).apply { saveHash="a".repeat(64) }
         service.command(r.gameId,"save",cmd); now+=31*60_000
         // A remote 404 may mean a PUT is still in flight. It must never close/reopen the room.
-        assertEquals("STARTING",service.command(r.gameId,"read",LobbyCommand()).state)
+        assertEquals("STARTING",service.maintain(r.gameId).state)
         unreadable=true
-        assertEquals("STARTING",service.command(r.gameId,"read",LobbyCommand()).state)
+        assertEquals("STARTING",service.maintain(r.gameId).state)
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"complete",cmd) }
         assertEquals("STARTING",service.find(r.gameId)!!.state)
         assertEquals(cmd.saveHash,service.find(r.gameId)!!.saveHash)
@@ -228,7 +229,7 @@ class LobbyServiceTest {
     @Test fun unregisteredTimedOutStartCannotBeRevived() {
         var r=join(create()); for (id in listOf(host,guest)) r=service.command(r.gameId,"ready",c(r,id).apply { ready=true })
         r=service.command(r.gameId,"start",c(r,host)); now+=31*60_000
-        assertEquals("CLOSED",service.command(r.gameId,"read",LobbyCommand()).state)
+        assertEquals("CLOSED",service.maintain(r.gameId).state)
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"save",c(r,host).apply { saveHash="a".repeat(64) }) }
     }
     @Test fun configurationCannotPointGameSavesAtTheRoomApi() {

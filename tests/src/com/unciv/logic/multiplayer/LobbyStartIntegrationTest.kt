@@ -22,82 +22,69 @@ import java.io.File
 
 @RunWith(BaseTestRunner::class)
 class LobbyStartIntegrationTest {
-    @Test fun threeHumansAndAiUseFrozenCivilizationsAndReservedIdThroughRealHttpSave() = runBlocking {
-        val source = System.getenv("UNCIV_LOBBY_TEST_SERVER")
-        val gameServer = System.getenv("UNCIV_LOBBY_TEST_GAME_SERVER")
-        Assume.assumeNotNull(source,gameServer)
-        assertNotEquals(source,gameServer)
-        val directory=java.nio.file.Files.createTempDirectory("unciv-live-dual-server").toFile()
-        RulesetCache.loadRulesets(noMods=true)
-        val host=UUID.randomUUID().toString(); val guest=UUID.randomUUID().toString(); val third=UUID.randomUUID().toString()
-        UncivGame.Current=UncivGame().apply { files=UncivFiles(Gdx.files,directory.path); settings=GameSettings().apply { multiplayer.setUserId(host); multiplayer.setServer(gameServer!!) } }
-        val setup=GameSetupInfo().apply {
-            gameParameters.isOnlineMultiplayer=true
-            gameParameters.multiplayerServerUrl=gameServer
-            gameParameters.players=arrayListOf(Player("Rome",PlayerType.Human),Player("Egypt",PlayerType.Human),Player("India",PlayerType.Human),Player("England",PlayerType.AI))
-            gameParameters.victoryTypes.add("Domination")
-            gameParameters.numberOfCityStates=0
-            mapParameters.mapSize=MapSize.Tiny; mapParameters.seed=42L
+    @Test fun threeRealWebSocketsFreezeAndUploadTheSameGameToTheIndependentSaveServer() = runBlocking<Unit> {
+        val api = System.getenv("UNCIV_LOBBY_TEST_SERVER")
+        val saves = System.getenv("UNCIV_LOBBY_TEST_GAME_SERVER")
+        Assume.assumeNotNull(api,saves)
+        assertNotEquals(api,saves)
+        val directory = java.nio.file.Files.createTempDirectory("unciv-live-wss").toFile()
+        RulesetCache.loadRulesets(noMods = true)
+        val ids = List(3) { UUID.randomUUID().toString() }
+        UncivGame.Current = UncivGame().apply {
+            files = UncivFiles(Gdx.files,directory.path)
+            settings = GameSettings().apply { multiplayer.setUserId(ids[0]); multiplayer.setServer(saves!!) }
         }
-        val requests=mutableListOf<MultiplayerV1Request>()
-        val transport=object : MultiplayerV1Transport {
-            val http=SimpleHttp()
+        val setup = GameSetupInfo().apply {
+            gameParameters.isOnlineMultiplayer = true; gameParameters.multiplayerServerUrl = saves
+            gameParameters.players = arrayListOf(Player("Rome",PlayerType.Human),Player("Random",PlayerType.Human),
+                Player("Random",PlayerType.Human),Player("England",PlayerType.AI))
+            gameParameters.victoryTypes.add("Domination"); gameParameters.numberOfCityStates = 0
+            mapParameters.mapSize = MapSize.Tiny; mapParameters.seed = 42L
+        }
+        val sessions = ids.map { id -> LobbySession().apply { roomApiUrl = api!!; gameServerUrl = saves!!; playerId = id } }
+        sessions[0].apply { createKey = UUID.randomUUID().toString(); this.setup = json().toJson(setup); save() }
+        val clients = ids.map { LobbyClient(api!!) }
+        val requests = mutableListOf<MultiplayerV1Request>()
+        val http = object : MultiplayerV1Transport {
+            val transport = SimpleHttp()
             override suspend fun execute(request: MultiplayerV1Request): MultiplayerV1Response {
-                requests+=request
-                return http.execute(request)
+                requests += request; return transport.execute(request)
             }
         }
-        val client=LobbyClient(source!!,transport)
-        assertTrue(client.configurationSupported())
-        var room=client.create(setup,UUID.randomUUID().toString())
-        assertTrue(room.seats[0].ready)
-        val reservedId=room.gameId
-        assertEquals(room.gameId,client.read(reservedId,LobbyCommand().apply {
-            playerId=host; occupancy=room.seats.first().occupancy
-        }).gameId)
-        assertEquals("Random",room.seats[1].civilization)
-        assertEquals("Random",room.seats[2].civilization)
-        fun command(id: String) = LobbyCommand().apply {
-            gameServerUrl=gameServer!!; playerId=id; occupancy=room.seats.firstOrNull { it.playerId==id }?.occupancy.orEmpty(); rulesHash=LobbyClient.rulesHash()
-            configurationVersion=room.configurationVersion; startOperation=room.startOperation; frozenVersion=room.frozenVersion; saveHash=room.saveHash; seatRevision=room.seats.firstOrNull { it.playerId==id }?.revision ?: 0L
-        }
-        room=client.command(reservedId,"join",command(guest))
-        val oldGuest=command(guest)
-        room=client.command(reservedId,"kick",command(host).apply { seatId=1; targetOccupancy=room.seats[1].occupancy })
-        assertEquals("",room.seats[1].playerId)
-        room=client.command(reservedId,"join",command(guest))
-        assertNotEquals(oldGuest.occupancy,room.seats[1].occupancy)
-        try { client.command(reservedId,"leave",oldGuest); fail("Stale leave must fail") } catch (_: com.unciv.logic.UncivShowableException) { }
-        room=client.command(reservedId,"leave",command(guest))
-        assertEquals("",room.seats[1].playerId)
-        room=client.command(reservedId,"join",command(guest))
-        room=client.command(reservedId,"join",command(third))
-        room=client.command(reservedId,"civilization",command(guest).apply { seatId=1; civilization="Greece" })
-        room=client.command(reservedId,"civilization",command(third).apply { seatId=2; civilization="Russia" })
-        for(id in listOf(guest,third)) room=client.command(reservedId,"ready",command(id).apply { ready=true })
-        val server=MultiplayerServer(fileStorageIdentifier=gameServer,transport=transport)
-        val session=LobbySession().apply { roomApiUrl=source; gameServerUrl=gameServer!!; gameId=reservedId }
-        room=LobbyGameStarter(session,client,server).start(command(host))
-        assertEquals("STARTED",room.state)
-        assertEquals(reservedId,client.command(reservedId,"start/complete",command(host)).gameId)
-        val loaded=server.tryDownloadGame(reservedId)
-        assertEquals(reservedId,loaded.gameId)
-        assertEquals(gameServer,loaded.gameParameters.multiplayerServerUrl)
-        assertEquals(listOf(host,guest,third,""),loaded.gameParameters.players.map { it.playerId })
-        assertEquals(listOf("Rome","Greece","Russia","England"),loaded.gameParameters.players.map { it.chosenCiv })
-        assertEquals(setOf(host,guest,third),loaded.civilizations.filter { it.isHuman() }.map { it.playerId }.toSet())
-        assertEquals(gameServer,UncivGame.Current.settings.multiplayer.getServer())
-        assertEquals(gameServer,room.gameServerUrl)
-        val fileRequests=requests.filter { it.url.contains("/files/") }
-        assertTrue(fileRequests.isNotEmpty())
-        assertTrue(fileRequests.all { it.url.startsWith("$gameServer/files/") })
-        assertTrue(requests.filter { it.url.contains("/lobbies") }.all { it.url.startsWith("$source/lobbies") })
-        val body=server.fileStorage().loadFileData(reservedId)
-        assertEquals(room.saveHash,LobbyProtocol.saveFingerprint(FileConversions.unzip(body)))
-        val evidence=System.getenv("UNCIV_LOBBY_EVIDENCE")
-        if(evidence!=null) File(evidence).apply { mkdirs(); resolve("integration-room.json").writeText(LobbyProtocol.json().toJson(room)); resolve("integration-save.gz").writeText(body)
-            resolve("integration-requests.txt").writeText(requests.joinToString("\n") { "${it.method} ${it.url}" }) }
-        directory.deleteRecursively()
-        Unit
+        try {
+            var room = clients[0].open(sessions[0])
+            val reserved = room.gameId
+            fun command(index: Int) = LobbyCommand().apply {
+                gameServerUrl = saves!!; playerId = ids[index]; occupancy = sessions[index].occupancy; rulesHash = LobbyClient.rulesHash()
+                configurationVersion = room.configurationVersion; startOperation = room.startOperation
+                frozenVersion = room.frozenVersion; saveHash = room.saveHash
+                seatRevision = room.seats.firstOrNull { it.playerId == playerId }?.revision ?: 0L
+            }
+            for (index in 1..2) { sessions[index].gameId = reserved; room = clients[index].open(sessions[index],join = true) }
+            assertTrue(room.seats[0].ready)
+            for ((index,civ) in listOf(1 to "Greece",2 to "Russia")) {
+                room = clients[index].command(reserved,"civilization",command(index).apply { seatId = index; civilization = civ })
+                room = clients[index].command(reserved,"ready",command(index).apply { ready = true })
+            }
+            val server = MultiplayerServer(saves,transport = http)
+            room = LobbyGameStarter(sessions[0],clients[0],server).start(command(0))
+            assertEquals("STARTED",room.state)
+            assertEquals(reserved,clients[0].command(reserved,"complete",command(0)).gameId)
+            val loaded = server.tryDownloadGame(reserved)
+            assertEquals(reserved,loaded.gameId)
+            assertEquals(saves,loaded.gameParameters.multiplayerServerUrl)
+            assertEquals(ids + "",loaded.gameParameters.players.map { it.playerId })
+            assertEquals(listOf("Rome","Greece","Russia","England"),loaded.gameParameters.players.map { it.chosenCiv })
+            assertTrue(requests.isNotEmpty())
+            assertTrue(requests.all { it.url.startsWith("$saves/files/") })
+            assertEquals(saves,UncivGame.Current.settings.multiplayer.getServer())
+            val body = server.fileStorage().loadFileData(reserved)
+            assertEquals(room.saveHash,LobbyProtocol.saveFingerprint(FileConversions.unzip(body)))
+            System.getenv("UNCIV_LOBBY_EVIDENCE")?.let { path -> File(path).apply {
+                mkdirs(); resolve("integration-room.json").writeText(LobbyProtocol.json().toJson(room))
+                resolve("integration-save.gz").writeText(body)
+                resolve("integration-http-requests.txt").writeText(requests.joinToString("\n") { "${it.method} ${it.url}" })
+            } }
+        } finally { clients.forEach { it.close() }; directory.deleteRecursively() }
     }
 }

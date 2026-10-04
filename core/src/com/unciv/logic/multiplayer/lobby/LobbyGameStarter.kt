@@ -13,17 +13,35 @@ import com.unciv.logic.multiplayer.storage.MultiplayerServer
 import com.unciv.models.metadata.GameSetupInfo
 import com.unciv.models.metadata.Player
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+class LobbyStartSave {
+    var gameId = ""
+    var startOperation = ""
+    var frozenVersion = 0L
+    var saveHash = ""
+}
 
 /** Room commands use the API; the complete save and preview use only the pinned game server. */
 class LobbyGameStarter(private val session: LobbySession, private val client: LobbyClient,
                        private val server: MultiplayerServer = UncivGame.Current.onlineMultiplayer.serverFor(session.gameServerUrl)) {
-    suspend fun start(command: LobbyCommand): LobbyRoom {
+    companion object { private val startMutex = Mutex() }
+    suspend fun start(command: LobbyCommand): LobbyRoom = startMutex.withLock { startOnce(command) }
+    private suspend fun startOnce(command: LobbyCommand): LobbyRoom {
         val frozen = client.command(session.gameId,"start",command)
         if (frozen.gameServerUrl != session.gameServerUrl)
             throw UncivShowableException("The invitation game server differs from this room.")
         if (frozen.state == "STARTED") return frozen
-        val save = UncivGame.Current.files.getLocalFile("lobby-start-${frozen.gameId}.json.gz")
+        val save = UncivGame.Current.files.getLocalFile("lobby-start-${frozen.gameId}-${frozen.startOperation}.json.gz")
+        val metadata = save.sibling(save.name() + ".meta.json")
         SaveFileWriter.recover(save)
+        SaveFileWriter.recover(metadata)
+        if (metadata.exists()) {
+            val binding = LobbyProtocol.json().fromJson(LobbyStartSave::class.java,metadata)
+            if (binding.gameId != frozen.gameId || binding.startOperation != frozen.startOperation || binding.frozenVersion != frozen.frozenVersion)
+                throw UncivShowableException("The original start save is unavailable. Recover the previous upload before continuing.")
+        }
         val body: String
         if (save.exists()) body = save.readString("UTF-8")
         else if (frozen.saveHash.isNotEmpty()) {
@@ -45,6 +63,16 @@ class LobbyGameStarter(private val session: LobbySession, private val client: Lo
         // First registration validates the original checksum. Recovery is checked by the
         // pinned content fingerprint because the file server may append notifications.
         val original = UncivFiles.gameInfoFromString(body,validateChecksumBeforeMigrations = frozen.saveHash.isEmpty())
+        val frozenSetup = json().fromJson(GameSetupInfo::class.java,frozen.setup)
+        if (original.gameId != frozen.gameId || original.tileMap.mapParameters.seed != frozenSetup.mapParameters.seed ||
+            original.gameParameters.multiplayerServerUrl != frozen.gameServerUrl || original.gameParameters.players.size != frozen.seats.size ||
+            frozen.seats.any { s -> original.gameParameters.players[s.seatId].let {
+                it.playerId != s.playerId || (it.playerType == PlayerType.Human) != s.human || (s.civilization != "Random" && it.chosenCiv != s.civilization)
+            } } || (metadata.exists() && LobbyProtocol.json().fromJson(LobbyStartSave::class.java,metadata).saveHash != command.saveHash))
+            throw UncivShowableException("The original start save is unavailable. Recover the previous upload before continuing.")
+        SaveFileWriter.write(metadata) { it.writeString(LobbyProtocol.json().toJson(LobbyStartSave().apply {
+            gameId = frozen.gameId; startOperation = frozen.startOperation; frozenVersion = frozen.frozenVersion; saveHash = command.saveHash
+        }),false,"UTF-8") }
         client.command(session.gameId,"start/save",command)
         server.fileStorage().saveFileData(session.gameId,body)
         try { server.tryUploadGamePreview(original.asPreview()) }
