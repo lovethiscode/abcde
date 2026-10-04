@@ -157,8 +157,11 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
                 }
             })
         } catch (_: Exception) {
-            peer.send(LobbyMessage().apply { type = "result"; requestId = request.requestId; code = "RETRY"; message = "Room request failed. Please retry." })
-            if (peer.gameId.isNotEmpty()) inRoom(peer.gameId) { state -> state.peers.values.toList().forEach { it.stop() } }
+            try {
+                peer.send(LobbyMessage().apply { type = "result"; requestId = request.requestId; code = "RETRY"; message = "Room request failed. Please retry." })
+            } finally {
+                if (peer.gameId.isNotEmpty()) inRoom(peer.gameId) { state -> state.peers.values.toList().forEach { it.stop() } }
+            }
         }
     }
     private fun sameStart(a: LobbyRoom, b: LobbyRoom): Boolean = a.configurationVersion == b.configurationVersion &&

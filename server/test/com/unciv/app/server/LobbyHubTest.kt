@@ -21,7 +21,11 @@ class LobbyHubTest {
         val messages = Channel<LobbyMessage>(Channel.UNLIMITED)
         val history = java.util.concurrent.CopyOnWriteArrayList<LobbyMessage>()
         var stopped = false
-        val socket = LobbyPeer({ history.add(it); messages.trySend(it).isSuccess }, { stopped = true })
+        var publicationFailure = false
+        val socket = LobbyPeer({
+            check(!publicationFailure) { "Injected publication failure" }
+            history.add(it); messages.trySend(it).isSuccess
+        }, { stopped = true })
     }
     @Before fun setup() {
         Assume.assumeTrue(uri.isNotEmpty())
@@ -206,5 +210,20 @@ class LobbyHubTest {
         }
         assertEquals("COMMAND_FAILED",issue(Peer(),changed).code)
         assertEquals(1,service.find(room.gameId)!!.seats.count { it.playerId == guest })
+    }
+    @Test fun committedWriteWithBrokenPublicationClosesEveryAffectedConnection() = runBlocking {
+        val room = create(); val hostPeer = connect(room,host)
+        val guest = UUID.randomUUID().toString(); val guestPeer = connect(room,guest,true)
+        guestPeer.publicationFailure = true
+        assertTrue(runCatching { hub.handle(guestPeer.socket,message(service.find(room.gameId)!!,guest,"ready").apply {
+            command!!.ready = true
+        }) }.isFailure)
+        assertTrue(service.find(room.gameId)!!.seats[1].ready)
+        assertTrue(hostPeer.stopped); assertTrue(guestPeer.stopped)
+        // Route cleanup follows socket cancellation, independently of the failed writer.
+        hub.detach(guestPeer.socket); hub.detach(hostPeer.socket)
+        val restored = connect(service.find(room.gameId)!!,guest)
+        assertEquals(guestPeer.socket.occupancy,restored.socket.occupancy)
+        assertFalse(service.find(room.gameId)!!.seats[1].ready)
     }
 }
