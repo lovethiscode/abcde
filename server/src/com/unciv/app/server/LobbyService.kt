@@ -67,6 +67,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
             seat.seatId = index; seat.playerId = ""; seat.occupancy = ""; seat.ready = false; seat.lastSeen = 0
             if (seat.human && !hostBound) {
                 seat.playerId = c.playerId; seat.occupancy = UUID.randomUUID().toString(); seat.lastSeen = clock(); hostBound = true
+                seat.ready = true
             } else if (seat.human) seat.civilization = "Random"
             if (!seat.human || seat.playerId.isNotEmpty()) {
                 if (seat.civilization != player.getString("chosenCiv", "Random")) fail("Civilization differs from setup", 400)
@@ -81,6 +82,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
             val room = find(id) ?: fail("Room not found", 404)
             val before = room.version
             action(room)
+            room.seats.first { it.playerId == room.hostId }.ready = true
             room.version++
             if (rooms.replaceOne(and(eq("_id", id), eq("version", before)), document(room)).matchedCount == 1L) return room
         }
@@ -189,7 +191,8 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                 "ready" -> {
                     waiting(r); val s = member(r,c)
                     if (s.revision != c.seatRevision) fail("Your seat changed. Refresh and retry.")
-                    if (s.ready != c.ready) { s.ready = c.ready; s.revision++ }
+                    val ready = s.playerId == r.hostId || c.ready
+                    if (s.ready != ready) { s.ready = ready; s.revision++ }
                 }
                 "start" -> {
                     host(r,c); checkRules(c)

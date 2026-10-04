@@ -64,7 +64,8 @@ class LobbyServiceTest {
         assertEquals(1L,r.configurationVersion)
         assertEquals(occupancy,r.seats.map { it.occupancy })
         assertEquals(listOf(host,guest),r.seats.map { it.playerId })
-        assertTrue(r.seats.none { it.ready })
+        assertTrue(r.seats[0].ready)
+        assertFalse(r.seats[1].ready)
         assertEquals("King",JsonReader().parse(r.setup).get("gameParameters").getString("difficulty"))
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"ready",oldReady) }
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"configuration",update) }
@@ -110,6 +111,31 @@ class LobbyServiceTest {
         assertEquals(frozen.frozenVersion,service.find(r.gameId)!!.frozenVersion)
     }
     private fun join(r: LobbyRoom,id: String=guest) = service.command(r.gameId,"join",c(r,id))
+    @Test fun hostIsAlwaysReadyAndChangingTheirCivilizationKeepsGuestsReady() {
+        var r=create()
+        assertTrue(r.seats[0].ready)
+        val revision=r.seats[0].revision
+        r=service.command(r.gameId,"ready",c(r,host).apply { ready=false })
+        assertTrue(r.seats[0].ready)
+        assertEquals(revision,r.seats[0].revision)
+        r=join(r)
+        r=service.command(r.gameId,"ready",c(r,guest).apply { ready=true })
+        r=service.command(r.gameId,"civilization",c(r,host).apply { seatId=0; civilization="Rome" })
+        assertTrue(r.seats.all { it.ready })
+        assertEquals("STARTING",service.command(r.gameId,"start",c(r,host)).state)
+    }
+    @Test fun readingLegacyUnreadyHostPersistsDefaultReadyAcrossRestart() {
+        val r=create()
+        r.seats[0].ready=false
+        MongoClients.create(uri).use { client ->
+            client.getDatabase(db).getCollection("lobbies").updateOne(
+                org.bson.Document("_id",r.gameId),
+                org.bson.Document("\$set",org.bson.Document("payload",LobbyProtocol.json().toJson(r))))
+        }
+        assertTrue(service.command(r.gameId,"read",c(r,host)).seats[0].ready)
+        service.close(); service=newService()
+        assertTrue(service.find(r.gameId)!!.seats[0].ready)
+    }
     @Test fun simultaneousLastSeatHasOneWinnerAndDuplicateJoinIsIdempotent() {
         val r=create(); val start=CountDownLatch(1); val pool=Executors.newFixedThreadPool(8)
         try {
@@ -167,9 +193,9 @@ class LobbyServiceTest {
     @Test fun onlyFullReadyRoomCanStartAndFrozenSnapshotCannotChange() {
         var r=create()
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"start",c(r,host)) }
-        r=join(r); r=service.command(r.gameId,"ready",c(r,guest).apply { ready=true })
+        r=join(r)
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"start",c(r,host)) }
-        r=service.command(r.gameId,"ready",c(r,host).apply { ready=true })
+        r=service.command(r.gameId,"ready",c(r,guest).apply { ready=true })
         val frozen=service.command(r.gameId,"start",c(r,host))
         assertEquals("STARTING",frozen.state)
         assertEquals(frozen.startOperation,service.command(r.gameId,"start",c(frozen,host)).startOperation)

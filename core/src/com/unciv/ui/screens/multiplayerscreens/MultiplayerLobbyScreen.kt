@@ -286,6 +286,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             busy -> Constants.working.tr()
             configurationPending -> "Syncing room settings...".tr()
             joined < humans.size -> "Invite friends to fill the empty seats.".tr()
+            ready < humans.size && host -> "Waiting for other players to get ready.".tr()
             ready < humans.size -> "Choose your civilization, then get ready.".tr()
             host -> "Everyone is ready. You can start the game.".tr()
             else -> "Everyone is ready. Waiting for the host to start.".tr()
@@ -464,8 +465,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         when {
             empty -> controls.add("Invite friends".toTextButton().apply { onClick { shareInvitation() }; isEnabled = !busy && !configurationPending && own != null && r.state == "WAITING" }).growX().height(44f)
             mine && r.state == "WAITING" -> {
-                controls.add("Choose civilization".toTextButton().apply { onClick { chooseCivilization(s) }; isEnabled = !busy && !configurationPending }).growX().height(44f).padRight(8f)
-                controls.add((if (s.ready) "Cancel ready" else "Ready").toTextButton().apply { onClick {
+                controls.add("Choose civilization".toTextButton().apply { onClick { chooseCivilization(s) }; isEnabled = !busy && !configurationPending }).growX().height(44f).padRight(if (r.hostId == userId) 0f else 8f)
+                if (r.hostId != userId) controls.add((if (s.ready) "Cancel ready" else "Ready").toTextButton().apply { onClick {
                     runRequest { client.command(session.gameId,"ready",command().apply { ready = !s.ready }) }
                 }; isEnabled = !busy && !configurationPending }).height(44f)
             }

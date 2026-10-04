@@ -50,6 +50,7 @@ class LobbyStartIntegrationTest {
         val client=LobbyClient(source!!,transport)
         assertTrue(client.configurationSupported())
         var room=client.create(setup,UUID.randomUUID().toString())
+        assertTrue(room.seats[0].ready)
         val reservedId=room.gameId
         assertEquals(room.gameId,client.read(reservedId,LobbyCommand().apply {
             playerId=host; occupancy=room.seats.first().occupancy
@@ -73,7 +74,7 @@ class LobbyStartIntegrationTest {
         room=client.command(reservedId,"join",command(third))
         room=client.command(reservedId,"civilization",command(guest).apply { seatId=1; civilization="Greece" })
         room=client.command(reservedId,"civilization",command(third).apply { seatId=2; civilization="Russia" })
-        for(id in listOf(host,guest,third)) room=client.command(reservedId,"ready",command(id).apply { ready=true })
+        for(id in listOf(guest,third)) room=client.command(reservedId,"ready",command(id).apply { ready=true })
         val server=MultiplayerServer(fileStorageIdentifier=gameServer,transport=transport)
         val session=LobbySession().apply { roomApiUrl=source; gameServerUrl=gameServer!!; gameId=reservedId }
         room=LobbyGameStarter(session,client,server).start(command(host))
