@@ -43,6 +43,12 @@ import com.unciv.utils.launchOnGLThread
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 
+fun lobbyStartButtonText(roomState: String, busy: Boolean): String = when {
+    roomState == "STARTED" || (roomState == "STARTING" && busy) -> "Starting game..."
+    roomState == "STARTING" -> "Retry start"
+    else -> "Start game!"
+}
+
 /** Server-confirmed lobby. Back navigation preserves membership; explicit leave removes it. */
 class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRoom? = null,
                              private val joinOnOpen: Boolean = false) : BaseScreen(), IPreviousScreen {
@@ -393,7 +399,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         if (stage.width < 850f) footer.row()
         footer.add(leave).height(44f).padRight(if (host) 10f else 0f)
         if (host) {
-            startButton.setText((if (r.state == "STARTING") "Retry start" else "Start game!").tr())
+            startButton.setText(lobbyStartButtonText(r.state,busy).tr())
             startButton.isEnabled = connected && !busy && !configurationPending && own != null && (r.state == "STARTING" || (r.state == "WAITING" && joined == humans.size && ready == humans.size))
             footer.add(startButton).height(44f)
         }
@@ -568,13 +574,14 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private fun enterGame() {
         if (busy || enteringGame) return
         busy = true; enteringGame = true
+        drawMembers()
         job = Concurrency.run("Enter lobby game") {
             try {
                 val latest = game.onlineMultiplayer.downloadInvitedGame(MultiplayerGameInvite(session.gameId,session.gameServerUrl))
                 game.loadGame(latest)
                 session.clearIfCurrent()
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { launchOnGLThread { if (!disposed) { busy = false; enteringGame = false; errorPopup(this@MultiplayerLobbyScreen,e) } } }
+            catch (e: Exception) { launchOnGLThread { if (!disposed) { busy = false; enteringGame = false; drawMembers(); errorPopup(this@MultiplayerLobbyScreen,e) } } }
         }
     }
     override fun render(delta: Float) {

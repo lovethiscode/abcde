@@ -70,6 +70,7 @@ class MultiplayerLobbyLocalizationTest {
         assertEquals("玩家 2", "Player [2]".tr(hideIcons = true))
         assertEquals("添加玩家", "Add player".tr(hideIcons = true))
         assertEquals("房间已满", "Room is full".tr(hideIcons = true))
+        assertEquals("正在开始游戏…", "Starting game...".tr(hideIcons = true))
         assertEquals("点击文明头像选择文明，然后点击准备。",
             "Choose your civilization, then get ready.".tr(hideIcons = true))
     }
@@ -168,6 +169,7 @@ class MultiplayerLobbyLocalizationTest {
             "Rejoin room",
             "You have left this room or were removed. Open the invitation to rejoin.",
             "Retry start",
+            "Starting game...",
             "Game started",
             "Starting game. Waiting for the host to finish uploading...",
             "Host closed the room",
