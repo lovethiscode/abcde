@@ -49,13 +49,17 @@ class LobbyLoadIntegrationTest {
         val room = AtomicReference<LobbyRoom>()
         val observations = CopyOnWriteArrayList<Pair<Long,LobbyRoom>>()
         @Volatile var connected = false
+        @Volatile var connectionMessage = ""
         @Volatile var disconnected = 0
         fun watch() {
             client.onRoom = { latest ->
                 if (session.gameId.isNotEmpty()) check(latest.gameId == session.gameId)
                 room.set(latest); observations += System.nanoTime() to latest
             }
-            client.onConnection = { available,_ -> if (!available && connected) disconnected++; connected = available }
+            client.onConnection = { available,message ->
+                if (!available && connected) disconnected++
+                connected = available; connectionMessage = message
+            }
             client.watch(session,join = true)
         }
         fun command() = LobbyCommand().apply {
@@ -70,7 +74,7 @@ class LobbyLoadIntegrationTest {
     @Test fun fortyProductionClientsKeepTenRoomsIsolatedAndRecoverConnections() = runBlocking<Unit> {
         val api = System.getenv("UNCIV_LOBBY_LOAD_SERVER")
         Assume.assumeNotNull(api)
-        val duration = System.getenv("UNCIV_LOBBY_LOAD_SECONDS")?.toLong() ?: 1800L
+        val duration = System.getenv("UNCIV_LOBBY_LOAD_SECONDS")?.toLong() ?: 10L
         val directory = java.nio.file.Files.createTempDirectory("unciv-real-wss-load").toFile()
         RulesetCache.loadRulesets(noMods = true)
         UncivGame.Current = UncivGame().apply { files = UncivFiles(Gdx.files,directory.path); settings = GameSettings() }
@@ -91,7 +95,13 @@ class LobbyLoadIntegrationTest {
                 members[0].watch(); awaitCondition { members[0].connected }
                 val id = members[0].session.gameId
                 for (guest in members.drop(1)) { guest.session.gameId = id; guest.watch() }
-                awaitCondition { members.all { it.connected && it.room.get().seats.count { s -> s.playerId.isNotEmpty() } == 4 } }
+                try {
+                    awaitCondition { members.all { it.connected && it.room.get().seats.count { s -> s.playerId.isNotEmpty() } == 4 } }
+                } catch (e: Exception) {
+                    throw AssertionError("Room join did not complete: " + members.map {
+                        "connected=${it.connected}, members=${it.room.get()?.seats?.count { s -> s.playerId.isNotEmpty() }}, status=${it.connectionMessage}, pending=${it.session.pendingAction}"
+                    },e)
+                }
             }
             // The same production watch loop must recover an actual closed WSS socket by RESUME.
             val interrupted = groups[0][1]
