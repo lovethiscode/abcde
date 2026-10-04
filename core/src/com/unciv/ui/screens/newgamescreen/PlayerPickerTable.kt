@@ -211,10 +211,11 @@ class PlayerPickerTable(
 
         val roomMode = gameParameters.isOnlineMultiplayer && UncivGame.Current.platformCapabilities.multiplayerInviteLinks &&
             (previousScreen as? NewGameScreen)?.useInviteRoom == true
+        val singlePlayer = previousScreen is NewGameScreen && !gameParameters.isOnlineMultiplayer
         val self = previousScreen is NewGameScreen && gameParameters.players.firstOrNull() === player
         val host = gameParameters.players.firstOrNull { it.playerType == Human } === player
         val invitedHuman = roomMode && player.playerType == Human && !host
-        if (roomMode || self) {
+        if (roomMode || self && !singlePlayer) {
             val seatLabel = when {
                 self && !roomMode -> "You"
                 player.playerType != Human -> "AI"
@@ -227,12 +228,15 @@ class PlayerPickerTable(
             add(ImageGetter.getRandomNationPortrait(40f)).size(40f).pad(5f)
             add("Invite after creating".toLabel(fontSize = 18).apply { setWrap(true) }).growX()
         } else getNationTable(player)
+        if (singlePlayer) nationTable.left()
         playerTable.add(nationTable).left().growX()
 
         val playerTypeTextButton = player.playerType.name.toTextButton()
         val canChoosePlayerType = !self && (previousScreen !is NewGameScreen || gameParameters.isOnlineMultiplayer)
         if (canChoosePlayerType)
             playerTable.add(playerTypeTextButton).width(100f).pad(5f).right()
+        else if (self && singlePlayer)
+            playerTable.add("You".toLabel(Color.GOLD)).width(100f).pad(5f).right()
         else if (!self)
             playerTable.add("AI".toLabel()).width(100f).pad(5f).right()
         fun updatePlayerTypeButtonEnabled() {
@@ -271,7 +275,8 @@ class PlayerPickerTable(
                     update()
                 }
             ).pad(5f).right()
-        }
+        } else if (!locked && self && singlePlayer)
+            playerTable.add().size(40f).pad(5f)
 
         if (gameParameters.isOnlineMultiplayer && player.playerType == PlayerType.Human && !self &&
             !(UncivGame.Current.platformCapabilities.multiplayerInviteLinks && (previousScreen as? NewGameScreen)?.useInviteRoom == true))
