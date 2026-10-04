@@ -81,6 +81,14 @@ class LobbyServerSeparationTest {
         try { starter.start(command); fail("Upload must fail") } catch (_: MultiplayerNetworkException) { }
         assertTrue(socket.requests.none { it.action == "complete" })
         val first=requests.single { it.url=="$saves/files/${room.gameId}" }.body
+        val metadata=UncivGame.Current.files.getLocalFile("lobby-start-${room.gameId}-${room.startOperation}.json.gz.meta.json")
+        val originalMetadata=metadata.readString()
+        val wrong=com.badlogic.gdx.utils.JsonReader().parse(originalMetadata)
+        wrong.remove("frozenVersion"); wrong.addChild("frozenVersion",com.badlogic.gdx.utils.JsonValue(room.frozenVersion+1))
+        metadata.writeString(wrong.toJson(com.badlogic.gdx.utils.JsonWriter.OutputType.json),false)
+        try { starter.start(command); fail("Wrong recovery-file binding must be rejected") } catch (_: UncivShowableException) { }
+        assertEquals(1,requests.size)
+        metadata.writeString(originalMetadata,false)
         failUpload=false
         try { starter.start(command); fail("Completion must be interrupted") } catch (_: kotlinx.coroutines.CancellationException) { }
         assertTrue(socket.requests.none { it.action == "complete" })

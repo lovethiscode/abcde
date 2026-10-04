@@ -226,4 +226,27 @@ class LobbyHubTest {
         assertEquals(guestPeer.socket.occupancy,restored.socket.occupancy)
         assertFalse(service.find(room.gameId)!!.seats[1].ready)
     }
+    @Test fun slowExternalSaveVerificationDoesNotBlockRoomHeartbeat() = runBlocking {
+        val verifying = CompletableDeferred<Unit>(); val release = CompletableDeferred<Unit>()
+        hub.close(); service.close()
+        service = LobbyService(uri,database,saves,{
+            verifying.complete(Unit); runBlocking { release.await() }; null
+        }) { now }
+        hub = LobbyHub(service,{ now },1_000)
+        val room = create(); val h = connect(room,host)
+        val guest = UUID.randomUUID().toString(); val g = connect(room,guest,true); ready(g)
+        val starting = async { issue(h,message(service.find(room.gameId)!!,host,"start")) }
+        reply(h); reply(g); val frozen = starting.await().room!!
+        val registered = issue(h,message(frozen,host,"save").apply { command!!.saveHash = "a".repeat(64) }).room!!
+        val completing = async { issue(h,message(registered,host,"complete")) }
+        try {
+            withTimeout(3_000) { verifying.await() }
+            val heartbeat = message(registered,guest,"heartbeat")
+            hub.handle(g.socket,heartbeat)
+            assertEquals("pong",g.history.last { it.requestId == heartbeat.requestId }.type)
+            assertFalse(completing.isCompleted)
+        } finally { release.complete(Unit) }
+        assertEquals("COMMAND_FAILED",completing.await().code)
+        assertEquals("STARTING",service.find(room.gameId)!!.state)
+    }
 }
