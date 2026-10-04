@@ -53,7 +53,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private var paused = false
     private var disposed = false
     private var enteringGame = false
-    private var leaving = false
+    private val pendingRequests = java.util.ArrayDeque<() -> Unit>()
     private var nextPoll = 0L
     private var failures = 0
     private var job: Job? = null
@@ -195,8 +195,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         if (busy) return
         ConfirmPopup(this,
             if (room?.hostId == userId) "Leaving closes the room for everyone." else "Leave this waiting room?","Leave room") {
-            leaving = true
-            runRequest { client.command(session.gameId,"leave",command()) }
+            runRequest(leaveAfter = true) { client.command(session.gameId,"leave",command()) }
         }.open()
     }
     private fun command() = LobbyCommand().apply {
@@ -228,8 +227,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         if (latest.state == "CLOSED") LobbySession.clear() else session.save()
     }
     private fun runRequest(refreshOnly: Boolean = false, configurationWrite: Boolean = false,
-                           backAfter: Boolean = false, action: suspend () -> LobbyRoom) {
-        if (busy || disposed) return
+                           backAfter: Boolean = false, leaveAfter: Boolean = false, action: suspend () -> LobbyRoom) {
+        if (disposed) return
+        if (busy) {
+            if (!refreshOnly) pendingRequests.add { runRequest(refreshOnly,configurationWrite,backAfter,leaveAfter,action) }
+            return
+        }
         busy = true; if (!refreshOnly) drawMembers()
         job = Concurrency.run("Lobby request") {
             try {
@@ -239,7 +242,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 launchOnGLThread {
                     if (disposed) return@launchOnGLThread
                     busy = false; failures = 0; nextPoll = System.currentTimeMillis() + 2000
-                    if (leaving) { LobbySession.clear(); game.popScreen(); return@launchOnGLThread }
+                    if (leaveAfter) { LobbySession.clear(); game.popScreen(); return@launchOnGLThread }
                     if (configurationWrite) { configurationPending = false; configurationTable = null }
                     accept(result); drawMembers()
                     if (backAfter) { game.popScreen(); return@launchOnGLThread }
@@ -249,7 +252,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             catch (e: Exception) {
                 launchOnGLThread {
                     if (disposed) return@launchOnGLThread
-                    busy = false; leaving = false; failures++; nextPoll = System.currentTimeMillis() + listOf(2000,4000,8000,15000)[minOf(failures-1,3)]
+                    busy = false; failures++; nextPoll = System.currentTimeMillis() + listOf(2000,4000,8000,15000)[minOf(failures-1,3)]
                     if (configurationWrite) {
                         configurationPending = false; configurationTable = null
                         room?.let { accept(it) }
@@ -540,9 +543,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     }
     override fun render(delta: Float) {
         super.render(delta)
-        if (!paused && !busy && !disposed && room != null && room?.state != "CLOSED") {
-            if (configurationPending && System.currentTimeMillis() >= configurationDue) saveConfiguration()
-            else if (System.currentTimeMillis() >= nextPoll) runRequest(refreshOnly = true) { client.read(session.gameId,command()) }
+        if (!paused && !busy && !disposed) {
+            if (pendingRequests.isNotEmpty()) pendingRequests.removeFirst().invoke()
+            else if (room != null && room?.state != "CLOSED") {
+                if (configurationPending && System.currentTimeMillis() >= configurationDue) saveConfiguration()
+                else if (System.currentTimeMillis() >= nextPoll) runRequest(refreshOnly = true) { client.read(session.gameId,command()) }
+            }
         }
     }
     override fun pause() { paused = true }
