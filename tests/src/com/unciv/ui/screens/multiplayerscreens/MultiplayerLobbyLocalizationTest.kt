@@ -1,0 +1,226 @@
+package com.unciv.ui.screens.multiplayerscreens
+
+import com.badlogic.gdx.Gdx
+import com.unciv.UncivGame
+import com.unciv.models.metadata.GameSettings
+import com.unciv.models.translations.TranslationFileReader
+import com.unciv.models.translations.getPlaceholderText
+import com.unciv.models.translations.squareBraceRegex
+import com.unciv.models.translations.tr
+import com.unciv.testing.BaseTestRunner
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(BaseTestRunner::class)
+class MultiplayerLobbyLocalizationTest {
+    private fun translations(language: String) =
+        TranslationFileReader.read(Gdx.files.internal("jsons/translations/$language.properties"))
+
+    @Test
+    fun selectedLanguagesCoverRoomAndGameListMessagesWithoutLosingParameters() {
+        for (language in languages) {
+            val entries = translations(language)
+            val keyCounts = Gdx.files.internal("jsons/translations/$language.properties").readString("UTF-8")
+                .lineSequence().filter { !it.startsWith('#') && it.contains(" = ") }
+                .map { it.substringBefore(" = ").getPlaceholderText() }.groupingBy { it }.eachCount()
+            for (source in messages) {
+                assertEquals("$language has conflicting entries for $source", 1, keyCounts[source.getPlaceholderText()])
+                val translated = entries[source]
+                assertNotNull("$language is missing $source", translated)
+                assertFalse("$language has blank $source", translated.isNullOrBlank())
+                assertEquals("$language changed parameters in $source",
+                    squareBraceRegex.findAll(source).map { it.value }.toList().sorted(),
+                    squareBraceRegex.findAll(translated!!).map { it.value }.toList().sorted())
+            }
+        }
+    }
+
+    @Test
+    fun playerNumbersAndReadyCountsUseTheSelectedLanguageAtRuntime() {
+        for (language in languages) {
+            UncivGame.Current = UncivGame()
+            UncivGame.Current.settings = GameSettings().apply { this.language = language }
+            val entries = translations(language)
+            UncivGame.Current.translations.createTranslations(language, entries, noDiacritics = true)
+            assertEquals(entries.getValue("Player [number]").replace("[number]", "2"),
+                "Player [2]".tr(hideIcons = true))
+            val source = "[\$joined]/[\$total] joined · [\$ready]/[\$total] ready"
+            assertEquals(entries.getValue(source).replace("[\$joined]", "2")
+                .replace("[\$total]", "3").replace("[\$ready]", "1"),
+                "[2]/[3] joined · [1]/[3] ready".tr(hideIcons = true))
+            assertEquals(entries.getValue("Room is full"), "Room is full".tr(hideIcons = true))
+            assertEquals(entries.getValue("[count] games").replace("[count]", "3"),
+                "[3] games".tr(hideIcons = true))
+            assertEquals(entries.getValue("Remaining [duration]").replace("[duration]", "5"),
+                "Remaining [5]".tr(hideIcons = true))
+            assertEquals(entries.getValue("Last updated [duration] ago").replace("[duration]", "5"),
+                "Last updated [5] ago".tr(hideIcons = true))
+        }
+    }
+
+    @Test
+    fun chineseRoomCopyDoesNotFallBackToEnglish() {
+        UncivGame.Current = UncivGame()
+        UncivGame.Current.settings = GameSettings().apply { language = "Simplified_Chinese" }
+        UncivGame.Current.translations.createTranslations("Simplified_Chinese",
+            translations("Simplified_Chinese"), noDiacritics = true)
+        assertEquals("玩家 2", "Player [2]".tr(hideIcons = true))
+        assertEquals("添加玩家", "Add player".tr(hideIcons = true))
+        assertEquals("房间已满", "Room is full".tr(hideIcons = true))
+        assertEquals("点击文明头像选择文明，然后点击准备。",
+            "Choose your civilization, then get ready.".tr(hideIcons = true))
+    }
+
+    companion object {
+        private val languages = listOf(
+            "English", "Simplified_Chinese", "Traditional_Chinese", "Spanish", "French", "German", "Brazilian_Portuguese", "Russian", "Japanese", "Korean",
+        )
+        private val messages = listOf(
+            "Add player",
+            "Player [number]",
+            "Game ID or invitation link",
+            "Multiplayer",
+            "Asynchronous turn-based · Download the latest save when it's your turn to continue playing",
+            "My multiplayer games",
+            "Current selection",
+            "Current server:",
+            "Create room",
+            "Join by invitation",
+            "Copy my Player ID",
+            "How multiplayer works",
+            "Create a room here, then invite players to join",
+            "Refresh all games",
+            "Refreshing...",
+            "Some games failed to refresh",
+            "Refresh complete",
+            "Connection not checked",
+            "[count] games",
+            "Current turn",
+            "This turn has lasted",
+            "My civilization",
+            "Time remaining",
+            "No game selected",
+            "Select a game from the list to see its details.",
+            "No mods",
+            "Your turn",
+            "Waiting for opponent",
+            "Refresh failed",
+            "Unavailable",
+            "Game details are unavailable.",
+            "Refresh failed. Showing the latest saved details.",
+            "Last updated [duration] ago",
+            "Remaining [duration]",
+            "Download latest save and enter",
+            "View latest game state",
+            "Share game",
+            "Copy invitation link",
+            "Game invitation copied. Send it to another iOS player.",
+            "Delete local record",
+            "Are you sure you want to delete this local multiplayer record?",
+            "Retry pending action",
+            "After resigning, this civilization will be permanently controlled by AI.",
+            "Join by invitation or Game ID",
+            "Paste an invitation to join a waiting room, or a Game ID to add an existing game.",
+            "Paste the Game ID or invitation link",
+            "Paste ID or link",
+            "Local display name (optional)",
+            "For example: Weekend game",
+            "Join or add game",
+            "Multiplayer in three steps",
+            "Invite players with a link. They choose their civilizations and get ready in the room.",
+            "1. Tap Create room, choose the rules and map, then share the invitation.",
+            "2. Players open the invitation, tap their civilization portrait to choose, then tap Ready. The host is ready automatically.",
+            "3. When everyone is ready, the host starts the game. Download the latest save when it is your turn.",
+            "Multiplayer room",
+            "Continue room",
+            "Connecting to room...",
+            "Share invitation",
+            "Copy invitation",
+            "Invite friends",
+            "Invitation copied. Send it to your friends.",
+            "Players",
+            "Host",
+            "Host · You",
+            "Waiting for player",
+            "Your friend chooses their civilization",
+            "[\$joined]/[\$total] joined · [\$ready]/[\$total] ready",
+            "Not ready",
+            "Ready",
+            "Cancel ready",
+            "Choose civilization",
+            "Choose your civilization, then get ready.",
+            "Waiting for other players to get ready.",
+            "Invite friends to fill the empty seats.",
+            "Everyone is ready. You can start the game.",
+            "Everyone is ready. Waiting for the host to start.",
+            "Room and player information",
+            "Game setup",
+            "Syncing room settings...",
+            "Close room",
+            "Leave room",
+            "Leaving closes the room for everyone.",
+            "Leave this waiting room?",
+            "Kick",
+            "Remove this player from the room?",
+            "Rejoin room",
+            "You have left this room or were removed. Open the invitation to rejoin.",
+            "Retry start",
+            "Game started",
+            "Starting game. Waiting for the host to finish uploading...",
+            "Host closed the room",
+            "Host timed out",
+            "Leave the current waiting room and join this invitation?",
+            "Leave and join",
+            "Save the current game and open this room invitation?",
+            "Save and open",
+            "Connection failed. Retrying...",
+            "Room request failed. Please retry.",
+            "The room API is not configured in this build.",
+            "The room API must be updated before creating rooms.",
+            "The invitation game server differs from this room.",
+            "The game server differs from the room API configuration.",
+            "The original start save is unavailable. Recover the previous upload before continuing.",
+            "The room rules differ from this app. Update the app or server.",
+            "Rooms support built-in rules only",
+            "Invalid game setup",
+            "Missing game parameters",
+            "Missing map parameters",
+            "Rooms require generated maps without mods",
+            "Invalid room configuration",
+            "Missing players",
+            "Invalid room capacity",
+            "Seat type differs from setup",
+            "Rooms require a fixed player count without spectators",
+            "Invalid player or creation ID",
+            "Civilization differs from setup",
+            "Room not found",
+            "Room is busy. Please retry.",
+            "Waiting for host to recover the original save",
+            "Room is no longer waiting",
+            "Only the host can do this",
+            "Civilization is unavailable",
+            "Civilization is already selected",
+            "Room settings changed. Refresh and retry.",
+            "Invalid room seats",
+            "Cannot remove or replace the host",
+            "Remove the player before changing an occupied seat",
+            "Invalid player ID",
+            "Room is full",
+            "This seat has changed. Refresh and retry.",
+            "Cannot remove the host",
+            "You can choose only your own civilization",
+            "Your seat changed. Refresh and retry.",
+            "All human seats must be occupied and ready",
+            "Start operation no longer matches this room",
+            "Invalid save fingerprint",
+            "Recover the original save instead of generating another one",
+            "Start save fingerprint does not match",
+            "The full game save has not been verified on the game server",
+            "Start timed out before upload was registered",
+            "Unknown room operation",
+        )
+    }
+}

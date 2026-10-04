@@ -727,18 +727,18 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
             size = multiplayerTitleFontSize,
         ).row()
         helpPopup.addGoodSizedLabel(
-            "There is no waiting lobby; the game starts as soon as the creator finishes setup.",
+            "Invite players with a link. They choose their civilizations and get ready in the room.",
             size = multiplayerSecondaryFontSize,
             color = Color.LIGHT_GRAY,
         ).row()
         helpPopup.addGoodSizedLabel(
-            "1. Each player copies their Player ID and sends it to the game creator.",
+            "1. Tap Create room, choose the rules and map, then share the invitation.",
         ).padTop(8f).row()
         helpPopup.addGoodSizedLabel(
-            "2. The creator opens New game, enables online multiplayer, and assigns each human civilization its Player ID.",
+            "2. Players open the invitation, tap their civilization portrait to choose, then tap Ready. The host is ready automatically.",
         ).row()
         helpPopup.addGoodSizedLabel(
-            "3. The creator shares the Game ID; other players add it here and download the latest save.",
+            "3. When everyone is ready, the host starts the game. Download the latest save when it is your turn.",
         ).row()
         helpPopup.addCloseButton("Got it")
         helpPopup.open()

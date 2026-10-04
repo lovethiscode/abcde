@@ -457,30 +457,30 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val civilization = Table().apply {
             val ruleset = RulesetCache.getComplexRuleset(setup!!.gameParameters)
             val nation = ruleset.nations[s.civilization]
-            add(if (nation == null) ImageGetter.getRandomNationPortrait(44f) else ImageGetter.getNationPortrait(nation,44f)).size(44f).padRight(12f)
-            add((if (empty) "Your friend chooses their civilization" else s.civilization).toLabel(fontSize = if (empty) 18 else 22, hideIcons = true).apply { setWrap(true) }).growX().left()
+            val portrait = if (nation == null) ImageGetter.getRandomNationPortrait(44f) else ImageGetter.getNationPortrait(nation,44f)
+            if (r.state == "WAITING" && (mine || (!s.human && r.hostId == userId && own != null && configurationSupported))) {
+                portrait.touchable = Touchable.enabled
+                portrait.onClick {
+                    if (busy || configurationPending) return@onClick
+                    if (mine) chooseCivilization(s) else chooseAiCivilization(s)
+                }
+            }
+            add(portrait).size(44f).padRight(12f)
+            add((if (empty) "Your friend chooses their civilization" else s.civilization).toLabel(fontSize = if (empty) 18 else 22, hideIcons = true).apply { setWrap(true) }).minWidth(0f).growX().left()
         }
-        card.add(civilization).width(width-32f).padTop(16f).padBottom(16f).row()
         val controls = Table()
         when {
             empty -> controls.add("Invite friends".toTextButton().apply { onClick { shareInvitation() }; isEnabled = !busy && !configurationPending && own != null && r.state == "WAITING" }).growX().height(44f)
             mine && r.state == "WAITING" -> {
-                controls.add("Choose civilization".toTextButton().apply { onClick { chooseCivilization(s) }; isEnabled = !busy && !configurationPending }).growX().height(44f).padRight(if (r.hostId == userId) 0f else 8f)
                 if (r.hostId != userId) controls.add((if (s.ready) "Cancel ready" else "Ready").toTextButton().apply { onClick {
                     runRequest { client.command(session.gameId,"ready",command().apply { ready = !s.ready }) }
                 }; isEnabled = !busy && !configurationPending }).height(44f)
             }
-            !s.human && r.hostId == userId && own != null && configurationSupported && r.state == "WAITING" ->
-                controls.add("Choose civilization".toTextButton().apply {
-                    isEnabled = !busy && !configurationPending
-                    onClick { chooseAiCivilization(s) }
-                }).growX().height(44f)
             r.hostId == userId && s.human && r.state == "WAITING" -> controls.add("Kick".toTextButton().apply { onClick {
                 ConfirmPopup(this@MultiplayerLobbyScreen,"Remove this player from the room?","Kick") {
                     runRequest { client.command(session.gameId,"kick",command().apply { seatId = s.seatId; targetOccupancy = s.occupancy }) }
                 }.open()
             }; isEnabled = !busy && !configurationPending }).height(44f).right()
-            else -> controls.add((if (!s.human) "AI" else if (s.ready) "Ready" else "Choosing civilization...").toLabel(Color.LIGHT_GRAY,18, hideIcons = true)).height(44f)
         }
         if (r.hostId == userId && own != null && configurationSupported && r.state == "WAITING" && s.playerId.isEmpty() && r.seats.size > 2)
             controls.add("−".toTextButton().apply {
@@ -490,7 +490,13 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     seatSources.removeAt(s.seatId); markConfigurationChanged()
                 }
             }).height(44f).padLeft(8f)
-        card.add(controls).growX()
+        if (empty) {
+            card.add(civilization).width(width-32f).padTop(12f).padBottom(12f).row()
+            card.add(controls).growX()
+        } else {
+            if (controls.hasChildren()) civilization.add(controls).padLeft(8f)
+            card.add(civilization).width(width-32f).padTop(12f)
+        }
         return card
     }
     private fun chooseAiCivilization(s: LobbySeat) {
