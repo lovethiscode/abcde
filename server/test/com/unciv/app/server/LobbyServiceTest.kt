@@ -146,15 +146,45 @@ class LobbyServiceTest {
         } finally { pool.shutdownNow() }
     }
     @Test fun kickRejoinRejectsStaleLeaveAndStaleKick() {
-        val r=join(create(3)); val old=c(r,guest)
+        var r=join(create())
+        r=service.command(r.gameId,"civilization",c(r,guest).apply { seatId=1; civilization="Rome" })
+        r=service.command(r.gameId,"ready",c(r,guest).apply { ready=true })
+        val old=c(r,guest)
         val kick=c(r,host).apply { seatId=1; targetOccupancy=r.seats[1].occupancy }
         var latest=service.command(r.gameId,"kick",kick)
         assertEquals("",latest.seats[1].playerId); assertEquals("Random",latest.seats[1].civilization)
-        assertFalse(latest.seats[1].human)
-        latest=join(latest); assertNotEquals(old.occupancy,latest.seats[2].occupancy)
+        assertTrue(latest.seats[1].human); assertFalse(latest.seats[1].ready)
+        assertEquals("",latest.seats[1].occupancy)
+        val player=JsonReader().parse(latest.setup).get("gameParameters").get("players")[1]
+        assertEquals("Human",player.getString("playerType")); assertEquals("",player.getString("playerId"))
+        assertEquals("Random",player.getString("chosenCiv"))
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"start",c(latest,host)) }
+        latest=join(latest); assertNotEquals(old.occupancy,latest.seats[1].occupancy)
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"leave",old) }
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"kick",kick) }
-        assertEquals(guest,service.find(r.gameId)!!.seats[2].playerId)
+        assertEquals(guest,service.find(r.gameId)!!.seats[1].playerId)
+        assertFalse(latest.seats[1].ready)
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"start",c(latest,host)) }
+        latest=service.command(r.gameId,"ready",c(latest,guest).apply { ready=true })
+        assertEquals("STARTING",service.command(r.gameId,"start",c(latest,host)).state)
+    }
+    @Test fun kickedLastSeatHasOneJoinWinnerWithoutReplacingItsOccupancy() {
+        val joined=join(create())
+        val kicked=service.command(joined.gameId,"kick",c(joined,host).apply { seatId=1; targetOccupancy=joined.seats[1].occupancy })
+        val start=CountDownLatch(1); val pool=Executors.newFixedThreadPool(2)
+        try {
+            val results=listOf(guest,UUID.randomUUID().toString()).map { id -> pool.submit<String?> {
+                start.await()
+                try { join(kicked,id).seats[1].playerId } catch (e: LobbyFailure) { assertEquals("Room is full",e.message); null }
+            } }
+            start.countDown()
+            val winners=results.mapNotNull { it.get() }
+            assertEquals(1,winners.size)
+            val latest=service.find(joined.gameId)!!
+            assertEquals(winners.single(),latest.seats[1].playerId)
+            assertNotEquals(joined.seats[1].occupancy,latest.seats[1].occupancy)
+            assertEquals(latest.seats[1].occupancy,join(latest,winners.single()).seats[1].occupancy)
+        } finally { pool.shutdownNow() }
     }
     @Test fun civilizationChangeResetsOnlyOwnReadyAndNonMemberCannotChangeIt() {
         var r=join(create())

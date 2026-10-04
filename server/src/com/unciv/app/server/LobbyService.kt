@@ -273,7 +273,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                     val s = r.seats.firstOrNull { it.seatId == c.seatId && it.occupancy == c.targetOccupancy && it.playerId.isNotEmpty() }
                         ?: fail("This seat has changed. Refresh and retry.")
                     if (s.playerId == r.hostId) fail("Cannot remove the host")
-                    clear(s); s.human = false; r.configurationVersion++
+                    clear(s); s.human = true; r.configurationVersion++
                     syncSeats(r)
                 }
                 "civilization" -> {

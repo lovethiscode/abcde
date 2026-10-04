@@ -93,7 +93,7 @@ class LobbyHubTest {
         assertEquals(disconnected.seats[1].occupancy,restored.socket.occupancy)
         assertFalse(service.find(room.gameId)!!.seats[1].ready)
     }
-    @Test fun kickChangesSeatToAiPreservesOtherReadyAndHostCanStart() = runBlocking {
+    @Test fun kickLeavesHumanVacancyPreservesOtherReadyAndExplicitRejoinCanStart() = runBlocking {
         val room = create(3); val h = connect(room,host)
         val ids = List(2) { UUID.randomUUID().toString() }
         val guests = ids.map { connect(room,it,true) }; guests.forEach { ready(it) }
@@ -101,10 +101,16 @@ class LobbyHubTest {
         val result = issue(h,message(before,host,"kick").apply { command!!.seatId = 1; command!!.targetOccupancy = before.seats[1].occupancy })
         assertEquals("",result.code)
         val kicked = result.room!!
-        assertFalse(kicked.seats[1].human); assertEquals("",kicked.seats[1].playerId); assertTrue(kicked.seats[2].ready)
-        assertEquals("AI",com.badlogic.gdx.utils.JsonReader().parse(kicked.setup).get("gameParameters").get("players")[1].getString("playerType"))
-        val starting = async { issue(h,message(kicked,host,"start")) }
-        reply(h); reply(guests[1])
+        assertTrue(kicked.seats[1].human); assertEquals("",kicked.seats[1].playerId); assertTrue(kicked.seats[2].ready)
+        assertEquals("Human",com.badlogic.gdx.utils.JsonReader().parse(kicked.setup).get("gameParameters").get("players")[1].getString("playerType"))
+        assertTrue(guests[0].history.any { it.type == "terminated" && it.code == "MEMBERSHIP_EXPIRED" })
+        assertEquals("COMMAND_FAILED",issue(h,message(kicked,host,"start")).code)
+        val rejoined = connect(kicked,ids[0],true)
+        assertNotEquals(before.seats[1].occupancy,rejoined.socket.occupancy)
+        assertFalse(service.find(room.gameId)!!.seats[1].ready)
+        ready(rejoined)
+        val starting = async { issue(h,message(service.find(room.gameId)!!,host,"start")) }
+        reply(h); reply(rejoined); reply(guests[1])
         val frozen = starting.await().room!!
         assertEquals("STARTING",frozen.state)
         assertNotEquals(0L,com.badlogic.gdx.utils.JsonReader().parse(frozen.setup).get("mapParameters").getLong("seed"))
@@ -160,7 +166,7 @@ class LobbyHubTest {
         assertFalse(after.seats[1].ready); assertEquals(guest,after.seats[1].playerId); assertTrue(g.stopped)
         assertEquals("WAITING",after.state)
     }
-    @Test fun firstJoinReceiptSurvivesRestartAndCannotRejoinAfterKick() = runBlocking {
+    @Test fun firstJoinReceiptSurvivesRestartButCannotRecoverAfterKick() = runBlocking {
         val room = create(); val h = connect(room,host)
         val guest = UUID.randomUUID().toString(); val g = Peer()
         val join = message(room,guest,"join")
@@ -173,7 +179,11 @@ class LobbyHubTest {
         service = LobbyService(uri,database,saves,{ null }) { now }; hub = LobbyHub(service,{ now },1_000)
         val recovery = message(service.find(room.gameId)!!,guest,"recoverJoin").apply { command!!.originalRequestId = join.requestId }
         assertEquals("MEMBERSHIP_EXPIRED",issue(Peer(),recovery).code)
-        assertFalse(service.find(room.gameId)!!.seats[1].human)
+        val vacant = service.find(room.gameId)!!
+        assertTrue(vacant.seats[1].human); assertEquals("",vacant.seats[1].playerId)
+        val rejoined = connect(vacant,guest,true)
+        assertNotEquals(g.socket.occupancy,rejoined.socket.occupancy)
+        assertFalse(service.find(room.gameId)!!.seats[1].ready)
     }
     @Test fun expiryRunsWithoutSubscribersAndDoesNotRenewOldTimestamps() = runBlocking {
         val room = create(); val h = connect(room,host)

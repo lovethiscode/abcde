@@ -94,7 +94,7 @@ class LobbyClientTest {
         delay(30); assertEquals(other.sessionId,LobbySession.current()!!.sessionId)
         client.close()
     }
-    @Test fun terminalEventStopsReconnectAndHeartbeat() = runBlocking {
+    @Test fun terminalEventStopsAutomaticReconnectButExplicitRejoinWorks() = runBlocking {
         session.occupancy = "seat"
         val socket = TestLobbyTransport(saves) { room }
         val client = LobbyClient(api,socket,heartbeatMillis = 20)
@@ -105,6 +105,18 @@ class LobbyClientTest {
         socket.sockets.last().emit(LobbyMessage().apply { type = "terminated"; code = "MEMBERSHIP_EXPIRED"; message = "removed" })
         withTimeout(2_000) { ended.await() }
         delay(100); assertEquals(1,socket.urls.size); assertNull(LobbySession.current())
+        assertEquals(0,socket.requests.count { it.action == "join" })
+        session.occupancy = ""; session.save()
+        socket.reply = { request ->
+            assertEquals("join",request.action)
+            assertEquals("",request.command!!.occupancy)
+            LobbyProtocol.snapshot(room).apply { version++; seats[0].occupancy = "new seat"; seats[0].ready = false }
+        }
+        client.watch(session,join = true)
+        withTimeout(2_000) { while (session.occupancy != "new seat") delay(5) }
+        assertEquals(2,socket.urls.size)
+        assertEquals(1,socket.requests.count { it.action == "join" })
+        assertEquals("new seat",LobbySession.current()!!.occupancy)
         client.close()
     }
     @Test fun snapshotOmitsInternalReceiptsAndBoundsUtf8Bytes() {
