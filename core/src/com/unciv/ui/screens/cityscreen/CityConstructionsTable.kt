@@ -184,6 +184,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
             val constructionName = queue[selectedQueueEntry]
 
             val raiseButton = getRaisePriorityButton(selectedQueueEntry, constructionName)
+            raiseButton.name = "ui-construction-raise-selected"
             raiseButton.setEnabled(cityScreen.canCityBeChanged() && selectedQueueEntry > 0)
             buttonsTable.add(raiseButton).padRight(5f)
 
