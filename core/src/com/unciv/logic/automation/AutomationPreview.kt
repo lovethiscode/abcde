@@ -111,6 +111,12 @@ object AutomationPreview {
         val current = session.get() ?: return
         if (current.game === civ.gameInfo) current.sink.choice(civ, action, json().toJson(request), null, null, null)
     }
+    fun counterTradeChoice(civ: Civilization, request: com.unciv.logic.trade.TradeRequest,
+                          counteroffer: com.unciv.logic.trade.TradeRequest) {
+        val current = session.get() ?: return
+        if (current.game === civ.gameInfo) current.sink.choice(civ, "counter_trade",
+            json().toJson(arrayOf(request, counteroffer)), null, null, null)
+    }
     fun checkpoint(civ: Civilization) {
         val current = session.get() ?: return
         if (current.game === civ.gameInfo) current.sink.checkpoint(civ)

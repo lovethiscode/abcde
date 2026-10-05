@@ -110,7 +110,7 @@ class TradePopup(worldScreen: WorldScreen) : Popup(worldScreen) {
                 )
             }
             worldScreen.shouldUpdate = true
-        }.row()
+        }.apply { actor.name = "ui-trade-counter" }.row()
     }
 
     override fun close() {

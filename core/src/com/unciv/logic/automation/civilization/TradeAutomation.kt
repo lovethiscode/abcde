@@ -45,6 +45,7 @@ object TradeAutomation {
             } else {
                 val counteroffer = getCounteroffer(civInfo, tradeRequest)
                 if (counteroffer != null) {
+                    com.unciv.logic.automation.AutomationPreview.counterTradeChoice(civInfo, tradeRequest, counteroffer)
                     otherCiv.addNotification("[${civInfo.civName}] has made a counteroffer to your trade request", NotificationCategory.Trade, NotificationIcon.Trade, civInfo.civName)
                     otherCiv.tradeRequests.add(counteroffer)
                 } else{
