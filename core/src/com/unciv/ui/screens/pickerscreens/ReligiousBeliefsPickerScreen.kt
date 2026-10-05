@@ -51,6 +51,12 @@ class ReligiousBeliefsPickerScreen (
 
     private var leftSelection = Selection()
     private var leftSelectedIndex = -1
+    val selectedBeliefSlot: Int get() = leftSelectedIndex
+    val selectedBeliefNames: List<String> get() = beliefsToChoose.mapNotNull { it.belief?.name }
+    val selectedReligionIcon: String? get() = religionName
+    fun unchosenBeliefSlot(type: BeliefType): Int = beliefsToChoose.indexOfFirst {
+        it.belief == null && (it.type == type || it.type == BeliefType.Any)
+    }
     private var rightSelection = Selection()
 
     private val currentReligion = choosingCiv.religionManager.religion
@@ -156,6 +162,7 @@ class ReligiousBeliefsPickerScreen (
             if (religionName == this.religionName)
                 scrollTo = iconsTable.packIfNeeded().prefWidth
             val button = Button(ImageGetter.getReligionPortrait(religionName, 60f), skin)
+            button.name = "ui-religion-icon:$religionName"
             buttonSetup(button, religionName)
             if (religionName == this.religionName) button.disable(Color(greenDisableColor))
             else if (gameInfo.religions.keys.any { it == religionName }) button.disable(
@@ -204,6 +211,7 @@ class ReligiousBeliefsPickerScreen (
 
         for (belief in availableBeliefs) {
             val beliefButton = getBeliefButton(belief)
+            beliefButton.name = "ui-belief:${belief.name}"
             when {
                 beliefsToChoose[leftButtonIndex].belief == belief -> {
                     selectedButtonY = rightBeliefsToChoose.packIfNeeded().prefHeight
@@ -256,6 +264,7 @@ class ReligiousBeliefsPickerScreen (
 
     private fun addChoosableBeliefButton(belief: Belief?, beliefType: BeliefType, index: Int) {
         val newBeliefButton = getBeliefButton(belief, beliefType)
+        newBeliefButton.name = "ui-belief-slot:$index"
 
         if (index == leftSelectedIndex) {
             leftSelection.switch(newBeliefButton)

@@ -430,6 +430,8 @@ object ReligionAutomation {
         // Should probably be changed later, but it works for now.
         val chosenPantheon = pickBeliefOfType(civInfo, BeliefType.Pantheon)
             ?: return // panic!
+        com.unciv.logic.automation.AutomationPreview.choice(civInfo, "religion:pantheon",
+            com.unciv.json.json().toJson(listOf("", chosenPantheon.name)))
         civInfo.religionManager.chooseBeliefs(
             listOf(chosenPantheon),
             useFreeBeliefs = civInfo.religionManager.usingFreeBeliefs()
@@ -449,23 +451,34 @@ object ReligionAutomation {
             ?: availableReligions.randomOrNull(rng)
             ?: return // Wait what? How did we pass the checking when using a great prophet but not this?
 
+        // The human picker still requires a pantheon when founding directly with a prophet.
+        val previewBeliefs = if (com.unciv.logic.automation.AutomationPreview.active)
+            civInfo.religionManager.getBeliefsToChooseAtFounding() else null
         civInfo.religionManager.foundReligion(chosenReligion, chosenReligion)
 
-        val chosenBeliefs = chooseBeliefs(civInfo, civInfo.religionManager.getBeliefsToChooseAtFounding()).toList()
+        val chosenBeliefs = chooseBeliefs(civInfo, previewBeliefs ?: civInfo.religionManager.getBeliefsToChooseAtFounding()).toList()
+        com.unciv.logic.automation.AutomationPreview.choice(civInfo, "religion:found",
+            com.unciv.json.json().toJson(listOf(chosenReligion) + chosenBeliefs.map { it.name }))
         civInfo.religionManager.chooseBeliefs(chosenBeliefs)
     }
 
     private fun enhanceReligion(civInfo: Civilization) {
         if (civInfo.religionManager.religionState != ReligionState.EnhancingReligion) return
+        val chosenBeliefs = chooseBeliefs(civInfo, civInfo.religionManager.getBeliefsToChooseAtEnhancing()).toList()
+        com.unciv.logic.automation.AutomationPreview.choice(civInfo, "religion:enhance",
+            com.unciv.json.json().toJson(listOf(civInfo.religionManager.religion!!.name) + chosenBeliefs.map { it.name }))
         civInfo.religionManager.chooseBeliefs(
-            chooseBeliefs(civInfo, civInfo.religionManager.getBeliefsToChooseAtEnhancing()).toList()
+            chosenBeliefs
         )
     }
 
     private fun chooseFreeBeliefs(civInfo: Civilization) {
         if (!civInfo.religionManager.hasFreeBeliefs()) return
+        val chosenBeliefs = chooseBeliefs(civInfo, civInfo.religionManager.freeBeliefsAsEnums()).toList()
+        com.unciv.logic.automation.AutomationPreview.choice(civInfo, "religion:free",
+            com.unciv.json.json().toJson(listOf(civInfo.religionManager.religion?.name.orEmpty()) + chosenBeliefs.map { it.name }))
         civInfo.religionManager.chooseBeliefs(
-            chooseBeliefs(civInfo, civInfo.religionManager.freeBeliefsAsEnums()).toList(),
+            chosenBeliefs,
             useFreeBeliefs = true
         )
     }

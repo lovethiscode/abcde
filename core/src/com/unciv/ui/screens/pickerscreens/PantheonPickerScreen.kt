@@ -19,6 +19,7 @@ class PantheonPickerScreen(
         for (belief in ruleset.beliefs.values) {
             if (belief.type != BeliefType.Pantheon) continue
             val beliefButton = getBeliefButton(belief, withTypeLabel = false)
+            beliefButton.name = "ui-belief:${belief.name}"
             if (choosingCiv.religionManager.getReligionWithBelief(belief) == null && beliefIsAllowed(belief, choosingCiv)) {
                 beliefButton.onClickSelect(selection, belief) {
                     selectedPantheon = belief
