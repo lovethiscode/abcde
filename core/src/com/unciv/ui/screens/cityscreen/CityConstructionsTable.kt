@@ -113,6 +113,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
             startsOutOpened = false,
             expanderHeight = miniQueueHeight
         )
+        queueExpander.header.name = "ui-construction-queue-expand"
 
         upperTable.defaults().left().top()
 
@@ -431,7 +432,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
         if (isFirstConstructionOfItsKind) table.add(getProgressBar(constructionName)).minWidth(5f)
         else table.add().minWidth(5f)
         table.add(ImageGetter.getConstructionPortrait(constructionName, 40f)).padRight(10f)
-        table.add(text.toLabel()).expandX().fillX().left()
+        table.add(text.toLabel().apply { name = "ui-construction-queue:$constructionName" }).expandX().fillX().left()
 
         if (queueExpander.isOpen) {
             if (constructionQueueIndex > 0 && cityScreen.canCityBeChanged()){
