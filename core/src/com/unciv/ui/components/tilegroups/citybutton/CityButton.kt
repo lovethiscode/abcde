@@ -45,6 +45,7 @@ class CityButton(val foreignCityView: ForeignCityView, private val tileGroup: Ti
     }
 
     init {
+        name = "ui-city-label:${foreignCityView.getCity().id}"
         touchable = Touchable.disabled // setButtonActions will override this
     }
 

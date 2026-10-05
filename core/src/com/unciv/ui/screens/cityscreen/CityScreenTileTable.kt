@@ -64,7 +64,7 @@ class CityScreenTileTable(private val cityScreen: CityScreen) : Table() {
 
         if (cityView.canBuyTile(tileView)) {
             val goldCostOfTile = cityView.getGoldCostOfTile(tileView)
-            val buyTileButton = "Buy for [$goldCostOfTile] gold".toTextButton()
+            val buyTileButton = "Buy for [$goldCostOfTile] gold".toTextButton().apply { name = "ui-buy-tile" }
             buyTileButton.onActivation(binding = KeyboardBinding.BuyTile) {
                 buyTileButton.disable()
                 cityScreen.askToBuyTile(tileView)

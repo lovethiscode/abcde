@@ -108,6 +108,7 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
             selectUnit()
             worldScreen.shouldUpdate = true
         }
+        closeButton.name = "ui-unit-clear"
         closeButton.keyShortcuts.clear() // This is the only place we don't want the BACK keyshortcut getCloseButton assigns
 
         add(Table().apply {

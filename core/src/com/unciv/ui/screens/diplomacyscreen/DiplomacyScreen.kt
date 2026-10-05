@@ -81,7 +81,7 @@ class DiplomacyScreen(
 
     private val splitPane = SplitPaneCenteringLeftSide()
 
-    private val closeButton = getCloseButton(closeButtonSize) { game.popScreen() }
+    private val closeButton = getCloseButton(closeButtonSize) { game.popScreen() }.apply { name = "ui-diplomacy-close" }
 
     internal fun isNotPlayersTurn() = !GUI.isAllowedChangeState()
 
@@ -190,6 +190,7 @@ class DiplomacyScreen(
 
             // The wrapper serves only to highlight the selected civ better
             val civButton = Table().apply {
+                name = "ui-diplomacy-civ:${civ.civID}"
                 defaults().pad(nationIconPad)
                 add(civIndicator).row()
                 add(civNameLabel).row()
@@ -317,7 +318,7 @@ class DiplomacyScreen(
         diplomacyManager: DiplomacyManager,
         otherCiv: Civilization
     ): TextButton {
-        val declareWarButton = "Declare war".toTextButton(skin.get("negative", TextButton.TextButtonStyle::class.java))
+        val declareWarButton = "Declare war".toTextButton(skin.get("negative", TextButton.TextButtonStyle::class.java)).apply { name = "ui-declare-war:${otherCiv.civID}" }
         val turnsToPeaceTreaty = diplomacyManager.turnsToPeaceTreaty()
         if (turnsToPeaceTreaty > 0) {
             declareWarButton.disable()

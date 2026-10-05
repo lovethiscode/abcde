@@ -127,7 +127,7 @@ class TradePopup(worldScreen: WorldScreen) : Popup(worldScreen) {
                 worldScreen.shouldUpdate = true
                 // in all cases, worldScreen.shouldUpdate should be set to true when we remove the last of the popups
                 // in order for the next trade to appear immediately
-            }
+            }.actor.name = "ui-trade-thanks"
             open()
         }
     }

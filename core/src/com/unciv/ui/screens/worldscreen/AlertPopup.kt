@@ -83,7 +83,7 @@ class AlertPopup(
 
     // This redirects all addCloseButton uses with only text and no action to accept the space key
     private fun addCloseButton(text: String = Constants.close) =
-        addCloseButton(text, KeyboardBinding.NextTurnAlternate, null)
+        addCloseButton(text, KeyboardBinding.NextTurnAlternate, null).apply { actor.name = "ui-alert-close" }
 
     init {
         var shouldOpen = true
