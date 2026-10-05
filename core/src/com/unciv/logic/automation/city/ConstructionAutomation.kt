@@ -176,6 +176,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
 
         if (!civInfo.isAIOrAutoPlaying()) modifier /= 2 // Players prefer to make their own unit choices usually
         modifier *= personality.modifierFocus(PersonalityValue.Military, .3f)
+        if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)) modifier *= 3f
         addChoice(relativeCostEffectiveness, militaryUnit, modifier)
     }
 
