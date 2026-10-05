@@ -25,6 +25,7 @@ internal class PromotionButton(
 
     init {
 
+        name = "ui-promotion:${node.promotion.name}"
         touchable = Touchable.enabled
         borderSize = 5f
 

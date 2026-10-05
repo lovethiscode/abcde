@@ -19,6 +19,13 @@ object TradeAutomation {
     fun respondToTradeRequests(civInfo: Civilization, tradeAndChangeState: Boolean) {
         for (tradeRequest in civInfo.tradeRequests.toList()) {
             val otherCiv = civInfo.gameInfo.getCivilization(tradeRequest.requestingCiv)
+            if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)
+                && com.unciv.logic.automation.AutomationPreview.includesPeace(tradeRequest.trade)) {
+                com.unciv.logic.automation.AutomationPreview.choice(civInfo, "reject_trade", tradeRequest.requestingCiv)
+                civInfo.tradeRequests.remove(tradeRequest)
+                tradeRequest.decline(civInfo)
+                continue
+            }
             // Treat 'no trade' state as if all trades are invalid - thus AIs will not update its "turns to offer"
             if (!tradeAndChangeState || !TradeEvaluation().isTradeValid(tradeRequest.trade, civInfo, otherCiv))
                 continue
@@ -32,6 +39,7 @@ object TradeAutomation {
              */
             civInfo.tradeRequests.remove(tradeRequest)
             if (TradeEvaluation().isTradeAcceptable(tradeLogic.currentTrade, civInfo, otherCiv)) {
+                com.unciv.logic.automation.AutomationPreview.choice(civInfo, "accept_trade", otherCiv.civID)
                 tradeLogic.acceptTrade()
                 otherCiv.addNotification("[${civInfo.civName}] has accepted your trade request", NotificationCategory.Trade, NotificationIcon.Trade, civInfo.civName)
             } else {
@@ -40,6 +48,7 @@ object TradeAutomation {
                     otherCiv.addNotification("[${civInfo.civName}] has made a counteroffer to your trade request", NotificationCategory.Trade, NotificationIcon.Trade, civInfo.civName)
                     otherCiv.tradeRequests.add(counteroffer)
                 } else{
+                    com.unciv.logic.automation.AutomationPreview.choice(civInfo, "reject_trade", otherCiv.civID)
                     otherCiv.addNotification("[${civInfo.civName}] has denied your trade request", NotificationCategory.Trade, civInfo.civName, NotificationIcon.Trade)
                     tradeRequest.decline(civInfo)
                 }

@@ -987,7 +987,7 @@ class WorldScreen(
     }
     
     @Readonly
-    internal fun isNextTurnUpdateRunning(): Boolean {
+    fun isNextTurnUpdateRunning(): Boolean {
         return pendingTurnUploadState.isTurnProcessing()
     }
 

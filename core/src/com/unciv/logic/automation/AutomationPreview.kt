@@ -1,5 +1,9 @@
 package com.unciv.logic.automation
 
+import yairm210.purity.annotations.Readonly
+import com.unciv.json.json
+import com.unciv.models.ruleset.nation.Personality
+import com.unciv.models.ruleset.tech.Technology
 import com.unciv.logic.GameInfo
 import com.unciv.logic.battle.ICombatant
 import com.unciv.logic.civilization.Civilization
@@ -16,16 +20,49 @@ object AutomationPreview {
         fun finished(unit: MapUnit)
         fun checkpoint(civ: Civilization)
     }
-    private class Session(val game: GameInfo, val sink: Sink, var unit: MapUnit? = null)
+    private class Session(val game: GameInfo, val sink: Sink, val militaryVictory: String?,
+                          val personality: Personality?, var unit: MapUnit? = null)
     private class SelectedAction : RuntimeException()
     private val session = ThreadLocal<Session>()
     val active: Boolean get() = session.get() != null
 
-    fun capture(game: GameInfo, sink: Sink, block: () -> Unit) {
+    fun capture(game: GameInfo, sink: Sink, militaryVictory: String? = null, block: () -> Unit) {
         check(!active) { "Nested AI preview" }
-        session.set(Session(game, sink))
+        val personality = if (militaryVictory == null) null else {
+            val original = game.getCurrentPlayerCivilization().getPersonality()
+            json().fromJson(Personality::class.java, json().toJson(original)).apply {
+                military = 9f
+                aggressive = 9f
+                declareWar = 9f
+                production = production.coerceAtLeast(7f)
+                science = science.coerceAtLeast(7f)
+                happiness = happiness.coerceAtLeast(7f)
+                preferredVictoryType = militaryVictory
+            }
+        }
+        session.set(Session(game, sink, militaryVictory, personality))
         try { block() } finally { session.remove() }
     }
+    @Readonly private fun militarySession(civ: Civilization): Session? = session.get()?.takeIf {
+        it.militaryVictory != null && it.game === civ.gameInfo && it.game.currentPlayer == civ.civID
+    }
+    fun militaryGoal(civ: Civilization): Boolean = militarySession(civ) != null
+    fun includesPeace(trade: com.unciv.logic.trade.Trade): Boolean =
+        (trade.ourOffers + trade.theirOffers).any {
+            it.type == com.unciv.logic.trade.TradeOfferType.PeaceProposal ||
+                (it.type == com.unciv.logic.trade.TradeOfferType.Treaty && it.name == com.unciv.Constants.peaceTreaty)
+        }
+    @Readonly fun personality(civ: Civilization): Personality? = militarySession(civ)?.personality
+    @Readonly fun preferredVictory(civ: Civilization): String? = militarySession(civ)?.militaryVictory
+    fun researchWeight(civ: Civilization, tech: Technology): Float {
+        val weight = tech.getWeightForAiDecision(civ.state)
+        if (!militaryGoal(civ)) return weight
+        val unlocksMilitary = civ.gameInfo.ruleset.units.values.any {
+            it.requiredTech == tech.name && it.isMilitary
+        }
+        return weight * if (unlocksMilitary) 3f else 1f
+    }
+
     fun withUnit(unit: MapUnit, reportIdle: Boolean = true, block: () -> Unit) {
         val current = session.get()
         if (current == null || current.game !== unit.civ.gameInfo) { block(); return }

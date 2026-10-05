@@ -43,7 +43,7 @@ open class ConfirmPopup(
         addCloseButton(Constants.cancel, KeyboardBinding.Cancel, action = restoreDefault)
         val confirmStyleName = if (isConfirmPositive) "positive" else "negative"
         val confirmStyle = BaseScreen.skin.get(confirmStyleName, TextButtonStyle::class.java)
-        addOKButton(confirmText, KeyboardBinding.Confirm, confirmStyle, action = action)
+        addOKButton(confirmText, KeyboardBinding.Confirm, confirmStyle, action = action).actor.name = "ui-confirm"
         equalizeLastTwoButtonWidths()
     }
 

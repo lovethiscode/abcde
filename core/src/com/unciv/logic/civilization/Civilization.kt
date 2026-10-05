@@ -506,6 +506,7 @@ class Civilization : IsPartOfGameInfoSerialization, Json.Serializable {
 
     @Readonly
     fun getPreferredVictoryTypes(): List<String> {
+        com.unciv.logic.automation.AutomationPreview.preferredVictory(this)?.let { return listOf(it) }
         // A victory this civilization cannot achieve is not worth working towards
         val victoryTypes = victoryManager.getAvailableVictories().map { it.name }
         if (victoryTypes.size == 1)
@@ -518,6 +519,7 @@ class Civilization : IsPartOfGameInfoSerialization, Json.Serializable {
 
     @Readonly
     fun getPersonality(): Personality {
+        com.unciv.logic.automation.AutomationPreview.personality(this)?.let { return it }
         return if (isAIOrAutoPlaying()) gameInfo.ruleset.personalities[nation.personality] ?: Personality.neutralPersonality
         else Personality.neutralPersonality
     }

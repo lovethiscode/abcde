@@ -282,7 +282,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
 
         if (worldScreen.canChangeState) {
             val attackText: String = if (attacker.isCity()) "Bombard" else "Attack"
-            val attackButton = attackText.toTextButton().apply { color = Color.RED }
+            val attackButton = attackText.toTextButton().apply { color = Color.RED; name = "ui-attack" }
 
             var attackableTileView: AttackableTileView? = null
 

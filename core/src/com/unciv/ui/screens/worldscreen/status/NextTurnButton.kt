@@ -28,6 +28,7 @@ class NextTurnButton(
     private val unitsDueCell: Cell<Label>
 
     init {
+        name = "ui-next-turn"
         pad(15f)
         onActivation { nextTurnAction.action(worldScreen) }
         addContextMenu { NextTurnMenu(stage, this, worldScreen) }
@@ -62,6 +63,7 @@ class NextTurnButton(
     }
 
     internal fun updateButton(nextTurnAction: NextTurnAction) {
+        userObject = nextTurnAction.name
         label.setText(nextTurnAction.getText(worldScreen).tr())
         label.color = nextTurnAction.color
         if (nextTurnAction.icon != null && ImageGetter.imageExists(nextTurnAction.icon!!))

@@ -66,7 +66,7 @@ class EmpireOverviewScreen(
         }
         persistState.update(pageObjects)
 
-        val closeButton = getCloseButton { game.popScreen() }
+        val closeButton = getCloseButton { game.popScreen() }.apply { name = "ui-overview-close" }
         tabbedPager.decorateHeader(closeButton)
 
         tabbedPager.setFillParent(true)

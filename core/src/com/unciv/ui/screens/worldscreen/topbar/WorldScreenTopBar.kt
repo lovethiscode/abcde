@@ -174,7 +174,7 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
                 worldScreen.openEmpireOverview(EmpireOverviewCategories.Units)
             }
 
-            val overviewButton = "Overview".toTextButton()
+            val overviewButton = "Overview".toTextButton().apply { name = "ui-overview" }
             overviewButton.onActivation(binding = KeyboardBinding.EmpireOverview) {
                 worldScreen.openEmpireOverview()
             }

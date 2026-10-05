@@ -46,6 +46,12 @@ object NextTurnAutomation {
 
         val civView = GameView(civInfo.gameInfo, civInfo).civView
 
+        if (AutomationPreview.active) {
+            for (alert in civInfo.popupAlerts.filter { it.type == AlertType.CityConquered }) {
+                val city = civInfo.gameInfo.getCities().firstOrNull { it.id == alert.value } ?: continue
+                Battle.automateCityConquer(civInfo, city)
+            }
+        }
         respondToPopupAlerts(civInfo)
         TradeAutomation.respondToTradeRequests(civInfo, tradeAndChangeState)
 
@@ -260,16 +266,15 @@ object NextTurnAutomation {
             return researchableTechs.toSortedMap().values.toList()
         }
 
-        val stateForConditionals = civInfo.state
         while (civInfo.tech.freeTechs > 0) {
             val costs = getGroupedResearchableTechs()
             if (costs.isEmpty()) return
             
             val mostExpensiveTechs = costs.lastOrNull{ 
                 // Ignore rows where all techs have 0 weight
-                it.any { it.getWeightForAiDecision(stateForConditionals) > 0 }
+                it.any { AutomationPreview.researchWeight(civInfo, it) > 0 }
             } ?: costs.last()
-            val chosenTech = mostExpensiveTechs.randomWeighted(rng) { it.getWeightForAiDecision(stateForConditionals) }
+            val chosenTech = mostExpensiveTechs.randomWeighted(rng) { AutomationPreview.researchWeight(civInfo, it) }
             civInfo.tech.getFreeTechnology(chosenTech.name)
         }
         if (civInfo.tech.techsToResearch.isEmpty()) {
@@ -278,15 +283,15 @@ object NextTurnAutomation {
 
             val cheapestTechs = costs.firstOrNull{
                 // Ignore rows where all techs have 0 weight
-                it.any { it.getWeightForAiDecision(stateForConditionals) > 0 } }?: costs.first()
+                it.any { AutomationPreview.researchWeight(civInfo, it) > 0 } }?: costs.first()
             //Do not consider advanced techs if only one tech left in cheapest group
             val techToResearch: Technology =
                 if (cheapestTechs.size == 1 || costs.size == 1) {
-                    cheapestTechs.randomWeighted(rng) { it.getWeightForAiDecision(stateForConditionals) }
+                    cheapestTechs.randomWeighted(rng) { AutomationPreview.researchWeight(civInfo, it) }
                 } else {
                     //Choose randomly between cheapest and second cheapest group
                     val techsAdvanced = costs[1]
-                    (cheapestTechs + techsAdvanced).randomWeighted(rng) { it.getWeightForAiDecision(stateForConditionals) }
+                    (cheapestTechs + techsAdvanced).randomWeighted(rng) { AutomationPreview.researchWeight(civInfo, it) }
                 }
 
             civInfo.tech.techsToResearch.add(techToResearch.name)
@@ -598,7 +603,10 @@ object NextTurnAutomation {
         val civHasSignificantlyWeakerMilitaryThanEnemies =
                 ownMilitaryStrength < sumOfEnemiesMilitaryStrength * 0.66f
         for (city in civInfo.cities) {
-            if (shouldAnnexCity(civInfo, city)) city.annexCity()
+            if (shouldAnnexCity(civInfo, city)) {
+                AutomationPreview.choice(civInfo, "city_disposition", "annex", city = city)
+                city.annexCity()
+            }
 
             // Don't pull a city off a spaceship part it's already building for the military push (only if actually attacked)
             val onSpaceshipPart = city.cityConstructions.getCurrentConstruction().name in civInfo.gameInfo.spaceResources

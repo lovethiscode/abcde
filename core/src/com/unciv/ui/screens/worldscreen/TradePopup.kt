@@ -91,14 +91,14 @@ class TradePopup(worldScreen: WorldScreen) : Popup(worldScreen) {
             close()
             TradeThanksPopup(leaderIntroTable, worldScreen)
             requestingCiv.addNotification("[${viewingCiv.civName}] has accepted your trade request", NotificationCategory.Trade, viewingCiv.civName, NotificationIcon.Trade)
-        }.row()
+        }.apply { actor.name = "ui-trade-accept" }.row()
 
         addButton("Not this time.", 'n') {
             tradeRequest.decline(viewingCiv)
             close()
             requestingCiv.addNotification("[${viewingCiv.civName}] has denied your trade request", NotificationCategory.Trade, viewingCiv.civName, NotificationIcon.Trade)
             worldScreen.shouldUpdate = true
-        }.row()
+        }.apply { actor.name = "ui-trade-reject" }.row()
 
         addButton("How about something else...", 'e') {
             close()

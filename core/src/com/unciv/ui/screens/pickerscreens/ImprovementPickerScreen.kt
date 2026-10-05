@@ -199,7 +199,7 @@ class ImprovementPickerScreen(
 
         add(statIcons).align(Align.right)
 
-        val improvementButton = PickerPane.getPickerOptionButton(image, labelText)
+        val improvementButton = PickerPane.getPickerOptionButton(image, labelText).apply { name = "ui-improvement:${improvement.name}" }
         // This is onClick without ActivationTypes.Keystroke equivalence - keys should select *and* close:
         improvementButton.onActivation(type = ActivationTypes.Tap, noEquivalence = true) {
             setDescription(improvement, Color.WHITE)

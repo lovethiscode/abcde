@@ -764,7 +764,7 @@ object Battle {
 
     /** Handle decision-making after city conquest, namely whether the AI should liberate, puppet,
      * or raze a city */
-    private fun automateCityConquer(civInfo: Civilization, city: City) {
+    fun automateCityConquer(civInfo: Civilization, city: City) {
         if (!city.hasDiplomaticMarriage()) {
             val foundingCiv = city.foundingCivObject!!
             var valueAlliance = NextTurnAutomation.valueCityStateAlliance(civInfo, foundingCiv)
@@ -773,6 +773,7 @@ object Battle {
             if (foundingCiv.isCityState && city.civ != civInfo && foundingCiv != civInfo
                 && !civInfo.isAtWarWith(foundingCiv)
                 && valueAlliance > 0) {
+                AutomationPreview.choice(civInfo, "city_disposition", "liberate", city = city)
                 city.liberateCity(civInfo)
                 return
             }
@@ -784,7 +785,8 @@ object Battle {
             // raze if attacker is a city state
             if (!civInfo.hasUnique(UniqueType.MayNotAnnexCities)) city.annexCity()
             city.isBeingRazed = true
-        }
+            AutomationPreview.choice(civInfo, "city_disposition", "raze", city = city)
+        } else AutomationPreview.choice(civInfo, "city_disposition", "puppet", city = city)
     }
     
     @Readonly

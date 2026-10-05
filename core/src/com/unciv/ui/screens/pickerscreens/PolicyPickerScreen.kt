@@ -103,6 +103,7 @@ private class PolicyButton(viewingCiv: Civilization, canChangeState: Boolean, va
         }
 
     init {
+        name = "ui-policy:${policy.name}"
         borderSize = 2f
         icon.setSize(size*0.7f, size*0.7f)
 
@@ -628,6 +629,7 @@ class PolicyPickerScreen(
             }
 
         }
+        table.name = "ui-policy:${branch.name}"
         table.bgColor = when {
             isPickable -> PolicyColors.ButtonBGPickable
             else -> PolicyColors.ButtonBGNotPickable

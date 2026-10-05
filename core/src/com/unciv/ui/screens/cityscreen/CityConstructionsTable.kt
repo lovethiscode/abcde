@@ -506,6 +506,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
     private fun getConstructionButton(constructionButtonDTO: ConstructionButtonDTO): Table {
         val construction = constructionButtonDTO.construction
         val pickConstructionButton = Table().apply {
+            name = "ui-construction:${construction.name}"
             isTransform = false
             align(Align.left).pad(5f)
             touchable = Touchable.enabled

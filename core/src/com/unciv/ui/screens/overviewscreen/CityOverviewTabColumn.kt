@@ -47,7 +47,7 @@ enum class CityOverviewTabColumn : ISortableGridContentProvider<City, EmpireOver
                 .surroundWithCircle(iconSize)
         override fun getEntryValue(item: City) = 0  // make sure that `stat!!` in the super isn't used
         override fun getEntryActor(item: City, iconSize: Float, actionContext: EmpireOverviewScreen) =
-                item.name.toTextButton(hideIcons = true)
+                item.name.toTextButton(hideIcons = true).apply { name = "city-${item.id}" }
                 .onClick {
                     actionContext.game.pushScreen{ CityScreen(GUI.getWorldScreen().selectedGameView.getCityView(item)) }
                 }

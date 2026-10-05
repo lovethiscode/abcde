@@ -26,6 +26,7 @@ class MinimapTile(val tile: Tile, tileSize: Float) {
     init {
         val positionalVector = HexMath.hex2WorldCoords(tile.position)
 
+        image.name = "ui-minimap:${tile.position.x.toInt()}:${tile.position.y.toInt()}"
         image.isVisible = false
         image.setSize(tileSize, tileSize)
         image.setPosition(

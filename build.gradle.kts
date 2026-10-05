@@ -75,6 +75,7 @@ allprojects {
             "io.ktor.http.Parameters.get",
 
             "java.util.BitSet.clone",
+            "java.lang.ThreadLocal.get",
 
             "kotlin.collections.orEmpty",
         )

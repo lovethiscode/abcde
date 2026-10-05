@@ -98,6 +98,7 @@ class CityScreen(
 
     /** Button for exiting the city - sits on BOTTOM CENTER */
     private val exitCityButton = "Exit city".toTextButton().apply {
+        name = "ui-city-exit"
         labelCell.pad(10f)
         keyShortcuts.add(KeyCharAndCode.BACK)
         onActivation {

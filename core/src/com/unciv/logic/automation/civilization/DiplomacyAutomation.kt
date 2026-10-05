@@ -384,6 +384,7 @@ object DiplomacyAutomation {
     }
 
     internal fun offerPeaceTreaty(civInfo: Civilization) {
+        if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)) return
         if (!civInfo.isAtWar() || civInfo.cities.isEmpty() || civInfo.diplomacy.isEmpty()) return
 
         val enemiesCiv = civInfo.diplomacy.asSequence()

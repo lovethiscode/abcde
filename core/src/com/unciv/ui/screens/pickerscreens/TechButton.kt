@@ -40,6 +40,7 @@ class TechButton(
     private val backgroundImage: Image  // Table.background is the border
 
     init {
+        name = "ui-tech:$techName"
         touchable = Touchable.enabled
 
         val path = "TechPickerScreen/TechButton"

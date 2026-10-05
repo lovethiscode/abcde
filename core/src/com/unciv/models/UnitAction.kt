@@ -32,7 +32,7 @@ open class UnitAction(
     /** Action is Null if this unit *can* execute the action but *not right now* - it's embarked, out of moves, etc */
     action: (() -> Unit)? = null
 ) {
-    val action = AutomationPreview.wrapAction(title, action)
+    val action = AutomationPreview.wrapAction(type.name, action)
     fun getIcon(size: Float = 20f): Actor {
         if (type.imageGetter != null)
             return type.imageGetter.invoke()

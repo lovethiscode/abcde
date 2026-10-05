@@ -50,6 +50,9 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
     private val game = worldScreen.game
 
     init {
+        techButtonHolder.name = "ui-tech-open"
+        policyButtonHolder.name = "ui-policy-open"
+        diplomacyButtonHolder.name = "ui-diplomacy-open"
         defaults().left()
         add(fogOfWarButtonHolder).colspan(4).row()
         add(techButtonHolder).colspan(4).row()

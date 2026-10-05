@@ -576,7 +576,7 @@ class AlertPopup(
     }
 
     private fun addAnnexOption(city: City, mayAnnex: Boolean, annexAction: () -> Unit) {
-        val button = "Annex".toTextButton()
+        val button = "Annex".toTextButton().apply { name = "ui-disposition:annex" }
         button.apply {
             if (!mayAnnex) disable() else {
                 button.onActivation {
@@ -598,7 +598,7 @@ class AlertPopup(
     }
 
     private fun addPuppetOption(mayAnnex: Boolean, puppetAction: () -> Unit) {
-        val button = "Puppet".toTextButton()
+        val button = "Puppet".toTextButton().apply { name = "ui-disposition:puppet" }
         button.onActivation {
             puppetAction()
             close()
@@ -612,7 +612,7 @@ class AlertPopup(
     }
 
     private fun addLiberateOption(city: City, conqueringCiv: Civilization) {
-        val button = "Liberate (city returns to [originalOwner])".fillPlaceholders(city.foundingCivObject!!.civName).toTextButton()
+        val button = "Liberate (city returns to [originalOwner])".fillPlaceholders(city.foundingCivObject!!.civName).toTextButton().apply { name = "ui-disposition:liberate" }
         button.onActivation {
             city.liberateCity(conqueringCiv)
             close()
@@ -624,7 +624,7 @@ class AlertPopup(
 
     private fun addRazeOption(city: City, mayAnnex: Boolean, conqueringCiv: Civilization) {
         val canRaze = city.canBeDestroyed(justCaptured = true)
-        val button = "Raze".toTextButton()
+        val button = "Raze".toTextButton().apply { name = "ui-disposition:raze" }
         button.apply {
             if (!canRaze) disable()
             else {
