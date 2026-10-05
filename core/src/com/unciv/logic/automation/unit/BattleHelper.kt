@@ -18,20 +18,8 @@ object BattleHelper {
     fun tryAttackNearbyEnemy(unit: MapUnit, stayOnTile: Boolean = false): Boolean {
         if (unit.hasUnique(UniqueType.CannotAttack)) return false
         val distanceToTiles = unit.movement.getDistanceToTiles()
-        val attackableEnemies = TargetHelper.getAttackableEnemies(unit, distanceToTiles, stayOnTile=stayOnTile)
-            // Only take enemies we can fight without dying or are made to die
-            .filter {
-                val defender = Battle.getMapCombatantOfTile(it.tileToAttack)
-                unit.hasUnique(UniqueType.SelfDestructs) || (defender != null &&
-                (BattleDamage.calculateDamageToAttacker(
-                    MapUnitCombatant(unit),
-                    defender) < unit.health
-                    && unit.getDamageFromTerrain(it.tileToAttackFrom) <= 0))
-                    // For mounted units it is fine to attack from these tiles, but with current AI movement logic it is not easy to determine if our unit can meaningfully move away after attacking
-                    // Also, AI doesn't build tactical roads
-            }
-
-        val enemyTileToAttack = chooseAttackTarget(unit, attackableEnemies)
+        val enemyTileToAttack = chooseAttackTarget(unit,
+            TargetHelper.getAttackableEnemies(unit, distanceToTiles, stayOnTile=stayOnTile))
 
         if (enemyTileToAttack != null) {
             if (enemyTileToAttack.tileToAttack.militaryUnit == null && unit.baseUnit.isRanged()
@@ -44,6 +32,26 @@ object BattleHelper {
             }
         }
         return !unit.hasMovement()
+    }
+
+    /** Selects a survivable attack without moving the unit or resolving combat. */
+    @Readonly
+    fun chooseAttackTarget(unit: MapUnit, candidates: List<AttackableTile>): AttackableTile? {
+        if (unit.hasUnique(UniqueType.CannotAttack)) return null
+        val attackableEnemies = candidates
+            // Only take enemies we can fight without dying or are made to die
+            .filter {
+                val defender = Battle.getMapCombatantOfTile(it.tileToAttack)
+                unit.hasUnique(UniqueType.SelfDestructs) || (defender != null &&
+                (BattleDamage.calculateDamageToAttacker(
+                    MapUnitCombatant(unit),
+                    defender) < unit.health
+                    && unit.getDamageFromTerrain(it.tileToAttackFrom) <= 0))
+                    // For mounted units it is fine to attack from these tiles, but with current AI movement logic it is not easy to determine if our unit can meaningfully move away after attacking
+                    // Also, AI doesn't build tactical roads
+            }
+
+        return rankAttackTarget(unit, attackableEnemies)
     }
 
     fun tryDisembarkUnitToAttackPosition(unit: MapUnit): Boolean {
@@ -60,7 +68,7 @@ object BattleHelper {
                 }
                 .filter { it.tileToAttackFrom.isLand }
 
-        val enemyTileToAttackNextTurn = chooseAttackTarget(unit, attackableEnemiesNextTurn)
+        val enemyTileToAttackNextTurn = rankAttackTarget(unit, attackableEnemiesNextTurn)
 
         if (enemyTileToAttackNextTurn != null) {
             unit.movement.moveToTile(enemyTileToAttackNextTurn.tileToAttackFrom)
@@ -73,7 +81,7 @@ object BattleHelper {
      * Choses the best target in attackableEnemies, this could be a city or a unit.
      */
     @Readonly
-    private fun chooseAttackTarget(unit: MapUnit, attackableEnemies: List<AttackableTile>): AttackableTile? {
+    private fun rankAttackTarget(unit: MapUnit, attackableEnemies: List<AttackableTile>): AttackableTile? {
         // Get the highest valued attackableEnemy
         var highestAttackValue = 0
         var attackTile: AttackableTile? = null

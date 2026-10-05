@@ -62,14 +62,27 @@ object HeadTowardsEnemyCityAutomation {
         closestReachableEnemyCity: Tile,
         shortestPath: List<Tile>
     ): Boolean {
+        val destination = chooseMovementDestination(unit, closestReachableEnemyCity, shortestPath)
+            ?: return false
+        if (destination != unit.currentTile) unit.movement.headTowards(destination)
+        return true
+    }
+
+    /** Chooses the same city approach as the executing AI, without moving. */
+    @Readonly
+    fun chooseMovementDestination(
+        unit: MapUnit,
+        closestReachableEnemyCity: Tile,
+        shortestPath: List<Tile>
+    ): Tile? {
         val unitDistanceToTiles = unit.movement.getDistanceToTiles()
 
         val unitRange = unit.getRange()
         if (unitRange > 2) { // long-ranged unit, should never be in a bombardable position
-            return headTowardsEnemyCityLongRange(closestReachableEnemyCity, unitDistanceToTiles, unitRange, unit)
+            return chooseLongRangeDestination(closestReachableEnemyCity, unitDistanceToTiles, unitRange, unit)
         }
 
-        val nextTileInPath = shortestPath[0]
+        val nextTileInPath = shortestPath.firstOrNull() ?: return unit.currentTile
 
         // None of the stuff below is relevant if we're still quite far away from the city, so we
         // short-circuit here for performance reasons.
@@ -77,8 +90,7 @@ object HeadTowardsEnemyCityAutomation {
             // Even in the worst case of only being able to move 1 tile per turn, we would still
             // not overshoot.
             && shortestPath.size > minDistanceFromCityToConsiderForLandingArea ) {
-            unit.movement.moveToTile(nextTileInPath)
-            return true
+            return nextTileInPath
         }
 
         val ourUnitsAroundEnemyCity = closestReachableEnemyCity.getTilesInDistance(6)
@@ -88,12 +100,10 @@ object HeadTowardsEnemyCityAutomation {
         val city = closestReachableEnemyCity.getCity()!!
 
         if (cannotTakeCitySoon(ourUnitsAroundEnemyCity, city)) {
-            return headToLandingGrounds(closestReachableEnemyCity, unit)
+            return chooseLandingGround(closestReachableEnemyCity, unit)
         }
 
-        unit.movement.moveToTile(nextTileInPath) // go for it!
-
-        return true
+        return nextTileInPath // go for it!
     }
 
     /** Cannot take within 5 turns */
@@ -112,7 +122,8 @@ object HeadTowardsEnemyCityAutomation {
                 || city.health / (expectedDamagePerTurn - cityHealingPerTurn) > 5) // Can damage, but will take more than 5 turns
     }
 
-    private fun headToLandingGrounds(closestReachableEnemyCity: Tile, unit: MapUnit): Boolean {
+    @Readonly
+    private fun chooseLandingGround(closestReachableEnemyCity: Tile, unit: MapUnit): Tile {
         // don't head straight to the city, try to head to landing grounds -
         // this is against tha AI's brilliant plan of having everyone embarked and attacking via sea when unnecessary.
         val tileToHeadTo = closestReachableEnemyCity.getTilesInDistanceRange(minDistanceFromCityToConsiderForLandingArea..maxDistanceFromCityToConsiderForLandingArea)
@@ -120,22 +131,20 @@ object HeadTowardsEnemyCityAutomation {
             .sortedBy { it.aerialDistanceTo(unit.currentTile) }
             .firstOrNull { (unit.movement.canMoveTo(it) || it == unit.currentTile) && unit.movement.canReach(it) }
 
-        if (tileToHeadTo != null) { // no need to worry, keep going as the movement alg. says
-            unit.movement.headTowards(tileToHeadTo)
-        }
-        return true
+        return tileToHeadTo ?: unit.currentTile
     }
 
-    private fun headTowardsEnemyCityLongRange(
+    @Readonly
+    private fun chooseLongRangeDestination(
         closestReachableEnemyCity: Tile,
         unitDistanceToTiles: PathsToTilesWithinTurn,
         unitRange: Int,
         unit: MapUnit
-    ): Boolean {
+    ): Tile? {
         // If we're already in fire range but have no sight, hold position
         // If there IS sight, automateUnitMoves would order attacking instead of heading to city
         if (closestReachableEnemyCity.getTilesInDistance(unitRange).contains(unit.getTile()))
-            return true
+            return unit.currentTile
 
         val tilesInBombardRange = closestReachableEnemyCity.getTilesInDistance(2).toSet()
         val candidateTiles = unitDistanceToTiles.asSequence().filter {
@@ -152,13 +161,6 @@ object HeadTowardsEnemyCityAutomation {
             { it.value.totalMovement }
         )).firstOrNull()
 
-        if (tileToMoveTo != null) {
-            // move into position far away enough so that city bombard or enemy units don't hurt
-            unit.movement.headTowards(tileToMoveTo.key)
-            return true
-        }
-
-        // return false if no tile to move to
-        return false
+        return tileToMoveTo?.key
     }
 }
