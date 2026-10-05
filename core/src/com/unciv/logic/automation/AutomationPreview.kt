@@ -68,7 +68,11 @@ object AutomationPreview {
         val unlocksMilitary = civ.gameInfo.ruleset.units.values.any {
             it.requiredTech == tech.name && it.isMilitary
         }
-        return weight * if (unlocksMilitary) 3f else 1f
+        val unlocksHappiness = civ.getHappiness() <= 0 && civ.cities.isNotEmpty() &&
+            civ.gameInfo.ruleset.buildings.values.any {
+                it.requiredTech == tech.name && it.getStats(civ.cities.first()).happiness > 0f
+            }
+        return weight * if (unlocksMilitary || unlocksHappiness) 3f else 1f
     }
 
     fun withUnit(unit: MapUnit, reportIdle: Boolean = true, block: () -> Unit) {
