@@ -4,6 +4,8 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.Slider
+import com.badlogic.gdx.scenes.scene2d.ui.TextField
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.unciv.Constants
@@ -42,6 +44,7 @@ import com.unciv.utils.Concurrency
 import com.unciv.utils.launchOnGLThread
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 
 fun lobbyStartButtonText(roomState: String, busy: Boolean): String = when {
     roomState == "STARTED" || (roomState == "STARTING" && busy) -> "Starting game..."
@@ -82,6 +85,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private var draftRevision = 0L
     private var draftBaseConfigurationVersion = -1L
     private var configurationDue = 0L
+    private var configurationJob: Job? = null
     private var seatSources = arrayListOf<Int>()
     private val status = "Connecting to room...".toLabel()
 
@@ -198,8 +202,10 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         client.onConnection = { available, message -> Concurrency.runOnGLThread {
             if (!disposed && !paused && generation == connectionGeneration) {
                 connected = available
+                if (!available) cancelConfigurationSync()
                 drawMembers()
                 if (!available) { status.setText(message.tr()); renderedState = "" }
+                else processPendingRequests()
             }
         } }
         client.watch(session,join)
@@ -233,7 +239,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private fun accept(latest: LobbyRoom) {
         if (latest.version < (room?.version ?: -1)) return
         val settingsChanged = room?.configurationVersion != latest.configurationVersion || configurationTable == null || latest.state != "WAITING"
-        if (latest.state != "WAITING") configurationPending = false
+        if (latest.state != "WAITING") { configurationPending = false; cancelConfigurationSync() }
         if (settingsChanged && !configurationPending) {
             mapSettings?.cancelBackgroundJobs()
             configurationTable = null
@@ -268,7 +274,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     if (disposed || paused || generation != connectionGeneration) return@launchOnGLThread
                     busy = false
                     if (leaveAfter) { session.clearIfCurrent(); game.popScreen(); return@launchOnGLThread }
-                    if (configurationWrite && sentRevision == draftRevision) { configurationPending = false; configurationTable = null }
+                    if (configurationWrite && sentRevision == draftRevision) {
+                        configurationPending = false; configurationTable = null; cancelConfigurationSync()
+                    }
                     if (configurationWrite && configurationPending) draftBaseConfigurationVersion = result.configurationVersion
                     accept(result); drawMembers()
                     if (backAfter) {
@@ -276,6 +284,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                         return@launchOnGLThread
                     }
                     if (result.state == "STARTED" && result.seats.any { it.playerId == userId && it.occupancy == session.occupancy }) enterGame()
+                    processPendingRequests()
                 }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -283,11 +292,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     if (disposed || paused || generation != connectionGeneration) return@launchOnGLThread
                     busy = false
                     if (configurationWrite && sentRevision == draftRevision && e is LobbyConnectionException && e.code == "COMMAND_FAILED") {
-                        configurationPending = false; configurationTable = null
+                        configurationPending = false; configurationTable = null; cancelConfigurationSync()
                         room?.let { accept(it) }
                         errorPopup(this@MultiplayerLobbyScreen,e)
                     }
                     status.setText((e.message ?: "Connection failed. Retrying...").tr()); drawMembers(updateStatus = false); renderedState = ""
+                    if (e is LobbyConnectionException && e.code == "COMMAND_FAILED") processPendingRequests()
                 }
             }
         }
@@ -364,7 +374,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 isEnabled = connected && !busy && !configurationPending && r.seats.size < minOf(64,ruleset.nations.values.count { it.isMajorCiv })
                 onClick {
                     gameSetupInfo.gameParameters.players.add(Player(playerType = PlayerType.Human))
-                    seatSources.add(-1); markConfigurationChanged()
+                    seatSources.add(-1); markConfigurationChanged(immediate = true)
                 }
             }).height(44f).padBottom(12f).row()
             val details = ExpanderTab("Room and player information",fontSize = 18, startsOutOpened = detailsOpen,
@@ -418,7 +428,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val gameOptions = GameOptionsTable(this, updatePlayerPickerTable = {
             mapSettings?.generateExampleMap()
         }, updatePlayerPickerRandomLabel = {}, allowOnlineToggle = false, forInviteRoom = true,
-            onConfigurationChanged = { markConfigurationChanged() })
+            onConfigurationChanged = { markConfigurationChanged(immediate = true) })
         mapSettings = MapParametersTable(this,gameSetupInfo.mapParameters,MapGeneratedMainType.generated)
         val twoColumns = width >= 700f
         val columnWidth = if(twoColumns) (width-16f)/2f else width
@@ -432,16 +442,43 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             if(!twoColumns) row()
             add(column("Map Options",mapSettings!!)).width(columnWidth).top().padTop(if(twoColumns) 0f else 16f)
             addListener(object : ChangeListener() {
-                override fun changed(event: ChangeEvent, actor: Actor) { markConfigurationChanged() }
+                override fun changed(event: ChangeEvent, actor: Actor) {
+                    markConfigurationChanged(immediate = actor !is Slider && actor !is TextField)
+                }
             })
         }
     }
-    private fun markConfigurationChanged() {
+    private fun markConfigurationChanged(immediate: Boolean = false) {
         if (!configurationPending) draftBaseConfigurationVersion = room?.configurationVersion ?: -1L
         draftRevision++
         configurationPending = true
-        configurationDue = System.currentTimeMillis() + 600L
+        configurationDue = System.currentTimeMillis() + if (immediate) 0L else 600L
         drawMembers()
+        scheduleConfigurationSync()
+    }
+    private fun cancelConfigurationSync() {
+        configurationJob?.cancel()
+        configurationJob = null
+    }
+    private fun scheduleConfigurationSync() {
+        cancelConfigurationSync()
+        if (paused || disposed || !connected || !configurationPending) return
+        val remaining = configurationDue - System.currentTimeMillis()
+        if (remaining <= 0L) { processPendingRequests(); return }
+        // A delayed GL callback wakes non-continuous rendering; render() is not a timer.
+        configurationJob = Concurrency.runOnGLThread("Sync lobby configuration") {
+            delay(remaining)
+            configurationJob = null
+            processPendingRequests()
+        }
+    }
+    private fun processPendingRequests() {
+        if (paused || busy || disposed || !connected) return
+        if (pendingRequests.isNotEmpty()) pendingRequests.removeFirst().invoke()
+        else if (configurationPending) {
+            if (System.currentTimeMillis() >= configurationDue) saveConfiguration()
+            else scheduleConfigurationSync()
+        }
     }
     private fun saveConfiguration(backAfter: Boolean = false) {
         if (!connected || busy || !configurationPending || room?.state != "WAITING") return
@@ -484,7 +521,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                             playerType = if(s.human) PlayerType.AI else PlayerType.Human
                             chosenCiv = Constants.random
                         }
-                        markConfigurationChanged()
+                        markConfigurationChanged(immediate = true)
                     }
                 }).height(44f).padLeft(8f)
             }
@@ -509,7 +546,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 isEnabled = connected && !busy && !configurationPending
                 onClick {
                     gameSetupInfo.gameParameters.players.removeAt(s.seatId)
-                    seatSources.removeAt(s.seatId); markConfigurationChanged()
+                    seatSources.removeAt(s.seatId); markConfigurationChanged(immediate = true)
                 }
             }).height(44f).padLeft(8f)
         if (empty) {
@@ -538,7 +575,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val player = gameSetupInfo.gameParameters.players[s.seatId]
         val available = ruleset.nations.values.filter { it.isMajorCiv && (it.name == s.civilization || room!!.seats.none { seat -> seat.civilization == it.name }) }
         NationPickerPopup(null,Player(s.civilization,PlayerType.AI),false,screen = this,ruleset = ruleset,availableCivs = available,
-            submit = { civ -> player.chosenCiv = civ; markConfigurationChanged() }).open()
+            submit = { civ -> player.chosenCiv = civ; markConfigurationChanged(immediate = true) }).open()
     }
     override fun resize(width: Int, height: Int) {
         super.resize(width,height)
@@ -563,7 +600,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             val message = map.mapSize.fixUndesiredSizes(map.worldWrap)
             if (message != null) {
                 mapSettings?.update()
-                markConfigurationChanged()
+                markConfigurationChanged(immediate = true)
                 errorPopup(this,UncivShowableException(message))
                 return
             }
@@ -584,14 +621,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             catch (e: Exception) { launchOnGLThread { if (!disposed) { busy = false; enteringGame = false; drawMembers(); errorPopup(this@MultiplayerLobbyScreen,e) } } }
         }
     }
-    override fun render(delta: Float) {
-        super.render(delta)
-        if (!paused && !busy && !disposed) {
-            if (pendingRequests.isNotEmpty()) pendingRequests.removeFirst().invoke()
-            else if (configurationPending && System.currentTimeMillis() >= configurationDue) saveConfiguration()
-        }
-    }
     private fun disconnectRoom() {
+        cancelConfigurationSync()
         connectionGeneration++; connected = false; client.stop()
     }
     override fun pause() { paused = true; disconnectRoom(); if (!enteringGame) job?.cancel(); busy = false }
