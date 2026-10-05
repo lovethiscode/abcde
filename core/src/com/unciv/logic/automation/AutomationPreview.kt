@@ -85,7 +85,11 @@ object AutomationPreview {
         if (action == null) return null
         return {
             check(session.get() === current)
-            current.sink.choice(unit.civ, if (title == "Upgrade") "upgrade" else "unit_action", option, unit, null, unit.currentTile)
+            current.sink.choice(unit.civ, when (title) {
+                "Upgrade" -> "upgrade"
+                "CreateImprovement" -> "create_improvement"
+                else -> "unit_action"
+            }, option, unit, null, unit.currentTile)
             unit.currentMovement = 0f
             throw SelectedAction()
         }

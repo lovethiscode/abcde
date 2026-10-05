@@ -177,6 +177,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         val actionButton = IconTextButton(unitAction.title, icon, fontColor = fontColor)
         actionButton.name = "ui-unit-action:${unitAction.type.name}"
         if (unitAction is UpgradeUnitAction) actionButton.name += ":${unitAction.unitToUpgradeTo.name}"
+        if (unitAction.type == UnitActionType.CreateImprovement) actionButton.name += ":${unitAction.previewOption}"
         actionButton.labelCell.padTop(0f) // aligned with icon 
 
         if (unitAction.type == UnitActionType.Promote && unitAction.action != null)

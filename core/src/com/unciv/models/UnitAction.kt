@@ -29,7 +29,7 @@ open class UnitAction(
     val isCurrentAction: Boolean = false,
     val uncivSound: UncivSound = type.uncivSound,
     val associatedUnique: Unique? = null,
-    previewOption: String = type.name,
+    val previewOption: String = type.name,
     /** Action is Null if this unit *can* execute the action but *not right now* - it's embarked, out of moves, etc */
     action: (() -> Unit)? = null
 ) {

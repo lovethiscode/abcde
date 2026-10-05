@@ -316,6 +316,7 @@ object UnitActionsFromUniques {
         val useFrequency = getUseFrequency(unit, unique, 82f)
 
         return UnitAction(UnitActionType.CreateImprovement, useFrequency, "Create [${improvement.name}]",
+            previewOption = improvement.name,
             action = {
                 tile.setImprovement(improvement, unit.civ, unit)
                 unit.destroy()  // Modders may wish for a nondestructive way, but that should be another Unique
@@ -345,6 +346,7 @@ object UnitActionsFromUniques {
                 }
 
                 yield(UnitAction(UnitActionType.CreateImprovement, useFrequency,
+                    previewOption = improvement.name,
                     title = UnitActionModifiers.actionTextWithSideEffects(
                         "Create [${improvement.name}]",
                         unique,
