@@ -73,7 +73,7 @@ class MoveHereOverlayButtonData(val unitToTurnsToDestination: HashMap<MapUnitVie
             }
             moveHereButton.keyShortcuts.add(KeyCharAndCode.TAB)
         }
-        moveHereButton.name = "ui-move-confirm"
+        moveHereButton.name = "ui-move-confirm:${unitsThatCanMove.map { it.getUnit().id }.sorted().joinToString(",")}:${tileView.position().x}:${tileView.position().y}"
         return moveHereButton
     }
 }
