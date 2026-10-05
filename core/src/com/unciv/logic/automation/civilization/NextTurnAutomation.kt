@@ -371,6 +371,7 @@ object NextTurnAutomation {
         if (scienceGP != null)  greatPerson = scienceGP
         // Humans would pick a prophet or engineer, but it'd require more sophistication on part of the AI - a scientist is the safest option for now
 
+        AutomationPreview.choice(civInfo, "free_person", greatPerson.name)
         civInfo.greatPeople.chooseFreeGreatPerson(greatPerson.name)
     }
 

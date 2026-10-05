@@ -32,6 +32,7 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
         for (unit in greatPersonUnits) {
             val button =
                 PickerPane.getPickerOptionButton(ImageGetter.getUnitIcon(unit), unit.name)
+            button.name = "ui-free-person:${unit.name}"
             button.pack()
             button.isEnabled = unit in availableGreatPeople
             if (button.isEnabled) {
