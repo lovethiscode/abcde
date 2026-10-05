@@ -29,10 +29,11 @@ open class UnitAction(
     val isCurrentAction: Boolean = false,
     val uncivSound: UncivSound = type.uncivSound,
     val associatedUnique: Unique? = null,
+    previewOption: String = type.name,
     /** Action is Null if this unit *can* execute the action but *not right now* - it's embarked, out of moves, etc */
     action: (() -> Unit)? = null
 ) {
-    val action = AutomationPreview.wrapAction(type.name, action)
+    val action = AutomationPreview.wrapAction(type.name, action, previewOption)
     fun getIcon(size: Float = 20f): Actor {
         if (type.imageGetter != null)
             return type.imageGetter.invoke()
@@ -117,7 +118,7 @@ class UpgradeUnitAction(
     val newResourceRequirements: Counter<String>,
     action: (() -> Unit)?,
     useFrequency: Float = 120f,
-) : UnitAction(UnitActionType.Upgrade, useFrequency, title, action = action)
+) : UnitAction(UnitActionType.Upgrade, useFrequency, title, action = action, previewOption = unitToUpgradeTo.name)
 
 /**
  * Unit Actions - generic enum with static properties

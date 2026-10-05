@@ -75,13 +75,13 @@ object AutomationPreview {
             if (reportIdle) current.sink.finished(unit)
         }
     }
-    fun wrapAction(title: String, action: (() -> Unit)?): (() -> Unit)? {
+    fun wrapAction(title: String, action: (() -> Unit)?, option: String = title): (() -> Unit)? {
         val current = session.get() ?: return action
         val unit = current.unit ?: return action
         if (action == null) return null
         return {
             check(session.get() === current)
-            current.sink.choice(unit.civ, "unit_action", title, unit, null, unit.currentTile)
+            current.sink.choice(unit.civ, if (title == "Upgrade") "upgrade" else "unit_action", option, unit, null, unit.currentTile)
             unit.currentMovement = 0f
             throw SelectedAction()
         }

@@ -311,6 +311,7 @@ class CityScreen(
         val canAnnex = !cityView.viewingCiv().hasUnique(UniqueType.MayNotAnnexCities)
         if (cityView.isPuppet() && canAnnex) {
             val annexCityButton = "Annex city".toTextButton()
+            annexCityButton.name = "ui-city-annex"
             annexCityButton.labelCell.pad(10f)
             annexCityButton.onClick {
                 cityView.tryAnnexCity()
@@ -320,6 +321,7 @@ class CityScreen(
             razeCityButtonHolder.add(annexCityButton) //.colspan(cityPickerTable.columns)
         } else if (!cityView.isBeingRazed()) {
             val razeCityButton = "Raze city".toTextButton()
+            razeCityButton.name = "ui-city-raze"
             razeCityButton.labelCell.pad(10f)
             razeCityButton.onClick { cityView.trySetRazing(true); updateAsync() }
             if (!canChangeState || !cityView.canBeDestroyed() || !canAnnex) {
