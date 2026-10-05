@@ -1,5 +1,7 @@
 package com.unciv.logic.battle
 
+import com.unciv.logic.automation.AutomationPreview
+
 import com.unciv.logic.achievements.AchievementTracker
 
 import com.unciv.Constants
@@ -38,6 +40,7 @@ object Battle {
      * Currently not used by UI, only by automation via [BattleHelper.tryAttackNearbyEnemy][com.unciv.logic.automation.unit.BattleHelper.tryAttackNearbyEnemy]
      */
     fun moveAndAttack(attacker: MapUnitCombatant, attackableTile: AttackableTile) {
+        if (AutomationPreview.attack(attacker, attackableTile.tileToAttack, attackableTile.tileToAttackFrom)) return
         if (!movePreparingAttack(attacker, attackableTile, true)) return
         attackOrNuke(attacker, attackableTile)
     }
@@ -104,6 +107,7 @@ object Battle {
     }
 
     fun attack(attacker: ICombatant, defender: ICombatant): DamageDealt {
+        if (AutomationPreview.attack(attacker, defender.getTile())) return DamageDealt.None
         val game = attacker.getCivInfo().gameInfo
         AchievementTracker.beginAction(game)
         var successful = false

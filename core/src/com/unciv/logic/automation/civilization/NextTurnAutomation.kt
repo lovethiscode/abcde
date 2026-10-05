@@ -1,5 +1,7 @@
 package com.unciv.logic.automation.civilization
 
+import com.unciv.logic.automation.AutomationPreview
+
 import com.unciv.UncivGame
 import com.unciv.logic.automation.Automation
 import com.unciv.logic.automation.ThreatLevel
@@ -74,13 +76,16 @@ object NextTurnAutomation {
             civInfo.cityStateFunctions.updateDiplomaticRelationshipForCityState()
         }
 
+        AutomationPreview.checkpoint(civInfo)
         chooseTechToResearch(civInfo)
+        AutomationPreview.checkpoint(civInfo)
         automateCityBombardment(civInfo)
         if (tradeAndChangeState) UseGoldAutomation.useGold(civInfo)
         if (tradeAndChangeState && !civInfo.isCityState) {
             protectCityStates(civInfo)
             bullyCityStates(civInfo)
         }
+        AutomationPreview.checkpoint(civInfo)
         automateUnits(civInfo)  // this is the most expensive part
 
         if (tradeAndChangeState && civInfo.isMajorCiv()) {
@@ -98,6 +103,7 @@ object NextTurnAutomation {
         if (tradeAndChangeState) trainSettler(civInfo)
         // I'm not sure what will happen if we *don't* vote when we can, so automate vote even when forced automation
         tryVoteForDiplomaticVictory(civInfo)
+        AutomationPreview.checkpoint(civInfo)
     }
 
     fun automateGoldToSciencePercentage(civInfo: Civilization) {
@@ -449,6 +455,7 @@ object NextTurnAutomation {
         !unit.isDestroyed && unit.civ == civInfo
 
     internal fun applyPromotions(unit: MapUnit) {
+        if (AutomationPreview.active && (!unit.hasMovement() || unit.attacksThisTurn != 0)) return
         // Restrict Human automated units from promotions via setting
         if (!unit.civ.isAI() && !UncivGame.Current.settings.automatedUnitsChoosePromotions) return
         val rng = unit.cache.state.stateBasedRandom("NextTurnAutomation.automateUnits")

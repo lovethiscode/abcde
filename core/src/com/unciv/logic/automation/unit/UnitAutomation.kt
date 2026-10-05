@@ -1,5 +1,7 @@
 package com.unciv.logic.automation.unit
 
+import com.unciv.logic.automation.AutomationPreview
+
 import com.unciv.GUI
 import com.unciv.UncivGame
 import com.unciv.logic.automation.Automation
@@ -33,7 +35,11 @@ object UnitAutomation {
     private const val CLOSE_ENEMY_TILES_AWAY_LIMIT = 5
     private const val CLOSE_ENEMY_TURNS_AWAY_LIMIT = 3f
 
-    fun automateUnitMoves(unit: MapUnit):Unit = timeThis("automateUnitMoves") {
+    fun automateUnitMoves(unit: MapUnit): Unit = timeThis("automateUnitMoves") {
+        AutomationPreview.withUnit(unit) { automateUnitMovesInternal(unit) }
+    }
+
+    private fun automateUnitMovesInternal(unit: MapUnit) {
         check(!unit.civ.isBarbarian) { "Barbarians is not allowed here." }
 
         // Might die next turn - move!
