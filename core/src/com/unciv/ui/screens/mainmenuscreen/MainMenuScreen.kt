@@ -156,6 +156,7 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
         if (game.files.autosaves.autosaveExists()) {
             val resumeTable = getMenuButton("Resume","OtherIcons/Resume", KeyboardBinding.Resume)
                 { resumeGame() }
+            resumeTable.name = "ui-resume"
             column1.add(resumeTable).row()
         }
 
