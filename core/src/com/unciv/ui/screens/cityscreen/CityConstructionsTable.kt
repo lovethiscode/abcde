@@ -817,6 +817,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
                 it.add(table).left().row()
             }
         }
+        expander.header.name = "ui-construction-category:$title"
         add(expander).prefWidth(prefWidth).growX().row()
     }
 }

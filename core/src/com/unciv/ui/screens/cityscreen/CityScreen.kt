@@ -371,6 +371,7 @@ class CityScreen(
                 .map { CityTileGroup(cityView, it, tileSetStrings, false, isSpying) }
 
         for (tileGroup in cityTileGroups) {
+            tileGroup.name = "ui-city-tile:${tileGroup.tileView.position().x.toInt()}:${tileGroup.tileView.position().y.toInt()}"
             tileGroup.onClick { tileGroupOnClick(tileGroup) }
             tileGroup.layerMisc.onWorkedIconClick = {
                 tileWorkedIconOnClick(tileGroup)

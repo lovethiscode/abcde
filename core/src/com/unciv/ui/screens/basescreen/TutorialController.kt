@@ -82,7 +82,7 @@ class TutorialRender(private val screen: BaseScreen) {
         tutorialPopup.addCloseButton(additionalKey = KeyCharAndCode.SPACE) {
             tutorialPopup.remove()
             showDialog(tutorialName, texts.subList(1, texts.size), closeAction)
-        }
+        }.actor.name = "ui-tutorial-close"
         tutorialPopup.open()
     }
 }

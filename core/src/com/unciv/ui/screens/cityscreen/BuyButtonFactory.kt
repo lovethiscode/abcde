@@ -49,7 +49,7 @@ class BuyButtonFactory(val cityScreen: CityScreen) {
             return null
 
         val cityView = cityScreen.cityView
-        val button = "".toTextButton()
+        val button = "".toTextButton().apply { name = "ui-buy:${stat.name}:${construction.name}" }
 
         if (!isConstructionPurchaseShown(construction, stat)) {
             // This can't ever be bought with the given currency.
@@ -146,7 +146,7 @@ class BuyButtonFactory(val cityScreen: CityScreen) {
             val confirmStyle = BaseScreen.skin.get("positive", TextButton.TextButtonStyle::class.java)
             addOKButton("Purchase", KeyboardBinding.Confirm, confirmStyle) {
                 purchaseConstruction(construction, stat, tile)
-            }
+            }.actor.name = "ui-purchase-confirm"
             equalizeLastTwoButtonWidths()
             open(true)
         }
