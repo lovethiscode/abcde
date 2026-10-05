@@ -10,6 +10,9 @@ import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.files.FileConversions
 import com.unciv.logic.multiplayer.lobby.protocol.*
 import com.unciv.logic.multiplayer.storage.MultiplayerServer
+import com.unciv.logic.multiplayer.MultiplayerOperation
+import com.unciv.logic.multiplayer.observeMultiplayerOperation
+import com.unciv.logic.multiplayer.reportMultiplayerOperation
 import com.unciv.models.metadata.GameSetupInfo
 import com.unciv.models.metadata.Player
 import kotlinx.coroutines.CancellationException
@@ -27,9 +30,18 @@ class LobbyStartSave {
 class LobbyGameStarter(private val session: LobbySession, private val client: LobbyClient,
                        private val server: MultiplayerServer = UncivGame.Current.onlineMultiplayer.serverFor(session.gameServerUrl)) {
     companion object { private val startMutex = Mutex() }
-    suspend fun start(command: LobbyCommand): LobbyRoom = startMutex.withLock { startOnce(command) }
-    private suspend fun startOnce(command: LobbyCommand): LobbyRoom {
-        val frozen = client.command(session.gameId,"start",command)
+    suspend fun start(command: LobbyCommand): LobbyRoom = startMutex.withLock {
+        val frozen = try {
+            client.command(session.gameId,"start",command)
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) {
+            reportMultiplayerOperation(MultiplayerOperation.Start, false, session.playerId)
+            throw e
+        }
+        if (frozen.state == "STARTED") return@withLock frozen
+        observeMultiplayerOperation(MultiplayerOperation.Start, session.playerId) { startOnce(command, frozen) }
+    }
+    private suspend fun startOnce(command: LobbyCommand, frozen: LobbyRoom): LobbyRoom {
         if (frozen.gameServerUrl != session.gameServerUrl)
             throw UncivShowableException("The invitation game server differs from this room.")
         if (frozen.state == "STARTED") return frozen

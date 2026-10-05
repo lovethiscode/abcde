@@ -4,6 +4,8 @@ import com.unciv.UncivGame
 import com.unciv.logic.files.SaveFileWriter
 import com.unciv.logic.multiplayer.lobby.protocol.LobbyProtocol
 import com.unciv.logic.UncivShowableException
+import com.unciv.logic.multiplayer.MultiplayerOperation
+import com.unciv.logic.multiplayer.reportMultiplayerOperation
 
 class LobbySession {
     var sessionId = java.util.UUID.randomUUID().toString()
@@ -45,12 +47,27 @@ class LobbySession {
         pendingCommand = LobbyProtocol.json().toJson(command)
         saveIfCurrent()
     }
-    fun confirmed(room: com.unciv.logic.multiplayer.lobby.protocol.LobbyRoom) {
+    fun confirmed(room: com.unciv.logic.multiplayer.lobby.protocol.LobbyRoom) = synchronized(lock) {
+        val operation = pendingAction
         gameId = room.gameId; setup = room.setup
         occupancy = room.seats.firstOrNull { it.playerId == playerId }?.occupancy.orEmpty()
         if (pendingAction != "leave" || occupancy.isEmpty() || room.state == "CLOSED") {
             pendingAction = ""; pendingRequestId = ""; pendingCommand = ""
         }
         if (room.state == "CLOSED" || occupancy.isEmpty()) clearIfCurrent() else saveIfCurrent()
+        if (occupancy.isNotEmpty() && room.state != "CLOSED") reportMembership(operation, true)
+    }
+    fun rejectPending(requestId: String) = synchronized(lock) {
+        if (pendingRequestId != requestId) return@synchronized
+        reportMembership(pendingAction, false)
+        pendingAction = ""; pendingRequestId = ""; pendingCommand = ""; saveIfCurrent()
+    }
+    private fun reportMembership(action: String, succeeded: Boolean) {
+        val operation = when (action) {
+            "create" -> MultiplayerOperation.RoomCreate
+            "join" -> MultiplayerOperation.RoomJoin
+            else -> return
+        }
+        reportMultiplayerOperation(operation, succeeded, playerId)
     }
 }

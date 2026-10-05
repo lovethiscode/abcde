@@ -15,8 +15,7 @@ import com.unciv.logic.civilization.PlayerType
 import com.unciv.logic.civilization.diplomacy.DiplomaticStatus
 import com.unciv.logic.event.EventBus
 import com.unciv.logic.map.HexCoord
-import com.unciv.logic.multiplayer.MultiplayerOperation
-import com.unciv.logic.multiplayer.reportMultiplayerOperation
+import com.unciv.logic.multiplayer.observeMultiplayerTurnSubmission
 import com.unciv.logic.multiplayer.MultiplayerGameUpdated
 import com.unciv.logic.multiplayer.PendingTurnPersistenceException
 import com.unciv.logic.multiplayer.PendingTurnUploadResolution
@@ -746,7 +745,7 @@ class WorldScreen(
                     if (backgroundTaskExpired) TurnUploadUnconfirmedReason.BackgroundTaskExpired
                     else TurnUploadUnconfirmedReason.UploadFailed,
                 )
-                return reportTurnUpload(false)
+                return false
             }
 
             if (backgroundTaskExpired) {
@@ -754,9 +753,9 @@ class WorldScreen(
                     "Turn upload is unconfirmed because its background time expired. Retry after returning to the game.",
                     reason = TurnUploadUnconfirmedReason.BackgroundTaskExpired,
                 )
-                return reportTurnUpload(false)
+                return false
             }
-            if (!needsAuthentication) return reportTurnUpload(true)
+            if (!needsAuthentication) return true
 
             val authenticationSucceeded = try {
                 requestMultiplayerAuthentication(multiplayerServer)
@@ -764,21 +763,16 @@ class WorldScreen(
                 throw ex
             } catch (ex: Exception) {
                 markTurnUploadUnconfirmed("Could not open authentication. The turn upload is unconfirmed.", ex)
-                return reportTurnUpload(false)
+                return false
             }
             if (!authenticationSucceeded) {
                 markTurnUploadUnconfirmed(
                     "Authentication was cancelled. The turn upload is unconfirmed.",
                     reason = TurnUploadUnconfirmedReason.AuthenticationCancelled,
                 )
-                return reportTurnUpload(false)
+                return false
             }
         }
-    }
-
-    private fun reportTurnUpload(succeeded: Boolean): Boolean {
-        reportMultiplayerOperation(MultiplayerOperation.Turn, succeeded)
-        return succeeded
     }
 
     private suspend fun resolvePendingTurnBeforeRetry(): PendingTurnUploadResolution? {
@@ -813,6 +807,8 @@ class WorldScreen(
             } catch (_: MultiplayerAuthException) {
                 val authenticationSucceeded = try {
                     requestMultiplayerAuthentication(multiplayerServer)
+                } catch (ex: CancellationException) {
+                    throw ex
                 } catch (ex: Exception) {
                     markTurnUploadUnconfirmed("Could not open authentication. The turn upload is unconfirmed.", ex)
                     return null
@@ -862,90 +858,93 @@ class WorldScreen(
                 debug("Next turn starting")
                 val startTime = System.currentTimeMillis()
                 val originalGameInfo = gameInfo
-                val existingPendingTurn = pendingTurnUploadState.get()
+                observeMultiplayerTurnSubmission(originalGameInfo.gameParameters.isOnlineMultiplayer) {
+                    val existingPendingTurn = pendingTurnUploadState.get()
 
-                progressBar.increment()
+                    progressBar.increment()
 
-                if (!isActiveWorldScreen()) return@runOnNonDaemonThreadPool
+                    if (!isActiveWorldScreen()) return@observeMultiplayerTurnSubmission null
 
-                if (pendingTurnUploadState.hasRecoveryFailure()) {
-                    loadLatestMultiplayerState(replacePendingRecovery = true)
-                    return@runOnNonDaemonThreadPool
-                }
-
-                val pendingTurn = try {
-                    pendingTurnUploadState.getOrCreate(originalGameInfo) {
-                        originalGameInfo.clone().apply {
-                            setTransients()  // this can get expensive on large games, not the clone itself
-                            nextTurn(progressBar, true)
-                        }
+                    if (pendingTurnUploadState.hasRecoveryFailure()) {
+                        loadLatestMultiplayerState(replacePendingRecovery = true)
+                        return@observeMultiplayerTurnSubmission false
                     }
-                } catch (ex: PendingTurnPersistenceException) {
-                    markTurnUploadUnconfirmed(ex.message, ex)
-                    return@runOnNonDaemonThreadPool
-                }
-                if (!isActiveWorldScreen()) {
-                    pendingTurnUploadState.ensureUnconfirmed(TurnUploadUnconfirmedReason.UploadFailed)
-                    return@runOnNonDaemonThreadPool
-                }
-                val gameInfoClone = pendingTurn.pendingGame
 
-                if (originalGameInfo.gameParameters.isOnlineMultiplayer) {
-                    if (existingPendingTurn != null) {
-                        when (resolvePendingTurnBeforeRetry() ?: return@runOnNonDaemonThreadPool) {
-                            PendingTurnUploadResolution.Confirmed -> reportTurnUpload(true)
-                            PendingTurnUploadResolution.RetryUpload ->
-                                if (!uploadPendingTurn(gameInfoClone)) return@runOnNonDaemonThreadPool
-                            PendingTurnUploadResolution.RepairPreview ->
-                                if (!uploadPendingTurn(gameInfoClone, previewOnly = true)) return@runOnNonDaemonThreadPool
-                            PendingTurnUploadResolution.ServerChanged -> {
-                                loadLatestMultiplayerState(replacePendingRecovery = true)
-                                return@runOnNonDaemonThreadPool
-                            }
-                            PendingTurnUploadResolution.InvalidServerGame -> {
-                                markTurnUploadUnconfirmed(
-                                    "The server's full game could not be verified. " +
-                                        "The pending turn was kept and was not uploaded."
-                                )
-                                return@runOnNonDaemonThreadPool
+                    val pendingTurn = try {
+                        pendingTurnUploadState.getOrCreate(originalGameInfo) {
+                            originalGameInfo.clone().apply {
+                                setTransients()  // this can get expensive on large games, not the clone itself
+                                nextTurn(progressBar, true)
                             }
                         }
-                    } else if (!uploadPendingTurn(gameInfoClone)) {
-                        return@runOnNonDaemonThreadPool
+                    } catch (ex: PendingTurnPersistenceException) {
+                        markTurnUploadUnconfirmed(ex.message, ex)
+                        return@observeMultiplayerTurnSubmission false
                     }
-                }
+                    if (!isActiveWorldScreen()) {
+                        pendingTurnUploadState.ensureUnconfirmed(TurnUploadUnconfirmedReason.UploadFailed)
+                        return@observeMultiplayerTurnSubmission null
+                    }
+                    val gameInfoClone = pendingTurn.pendingGame
 
-                if (game.gameInfo != originalGameInfo) // while this was turning we loaded another game
-                    return@runOnNonDaemonThreadPool
-
-                if (gameInfo.gameParameters.isOnlineMultiplayer) {
-                    try {
-                        game.onlineMultiplayer.persistGamePreviewLocally(gameInfoClone)
-                        if (!game.files.autosaves.autoSave(gameInfoClone)) {
-                            throw UncivShowableException("Could not persist the confirmed turn locally.")
+                    if (originalGameInfo.gameParameters.isOnlineMultiplayer) {
+                        if (existingPendingTurn != null) {
+                            when (resolvePendingTurnBeforeRetry() ?: return@observeMultiplayerTurnSubmission false) {
+                                PendingTurnUploadResolution.Confirmed -> Unit
+                                PendingTurnUploadResolution.RetryUpload ->
+                                    if (!uploadPendingTurn(gameInfoClone)) return@observeMultiplayerTurnSubmission if (isActiveWorldScreen()) false else null
+                                PendingTurnUploadResolution.RepairPreview ->
+                                    if (!uploadPendingTurn(gameInfoClone, previewOnly = true)) return@observeMultiplayerTurnSubmission if (isActiveWorldScreen()) false else null
+                                PendingTurnUploadResolution.ServerChanged -> {
+                                    loadLatestMultiplayerState(replacePendingRecovery = true)
+                                    return@observeMultiplayerTurnSubmission false
+                                }
+                                PendingTurnUploadResolution.InvalidServerGame -> {
+                                    markTurnUploadUnconfirmed(
+                                        "The server's full game could not be verified. " +
+                                            "The pending turn was kept and was not uploaded."
+                                    )
+                                    return@observeMultiplayerTurnSubmission false
+                                }
+                            }
+                        } else if (!uploadPendingTurn(gameInfoClone)) {
+                            return@observeMultiplayerTurnSubmission if (isActiveWorldScreen()) false else null
                         }
-                    } catch (ex: Exception) {
-                        markTurnUploadUnconfirmed(
-                            "The server confirmed the turn, but it could not be saved locally. Retry to recover safely.",
-                            ex,
-                        )
-                        return@runOnNonDaemonThreadPool
                     }
+
+                    if (game.gameInfo != originalGameInfo) // while this was turning we loaded another game
+                        return@observeMultiplayerTurnSubmission null
+
+                    if (gameInfo.gameParameters.isOnlineMultiplayer) {
+                        try {
+                            game.onlineMultiplayer.persistGamePreviewLocally(gameInfoClone)
+                            if (!game.files.autosaves.autoSave(gameInfoClone)) {
+                                throw UncivShowableException("Could not persist the confirmed turn locally.")
+                            }
+                        } catch (ex: Exception) {
+                            markTurnUploadUnconfirmed(
+                                "The server confirmed the turn, but it could not be saved locally. Retry to recover safely.",
+                                ex,
+                            )
+                            return@observeMultiplayerTurnSubmission false
+                        }
+                    }
+
+                    pendingTurnUploadState.clear()
+                    failedUpload = false
+                    debug("Next turn took %sms", System.currentTimeMillis() - startTime)
+
+                    // Special case: when you are the only alive human player, the game will always be up to date
+                    if (gameInfo.gameParameters.isOnlineMultiplayer
+                            && gameInfoClone.civilizations.count { it.isAlive() && it.playerType == PlayerType.Human } == 1) {
+                        gameInfoClone.isUpToDate = true
+                    }
+
+                    progressBar.increment()
+
+                    startNewScreenJob(gameInfoClone, autoPlay)
+                    true
                 }
-
-                pendingTurnUploadState.clear()
-                failedUpload = false
-                debug("Next turn took %sms", System.currentTimeMillis() - startTime)
-
-                // Special case: when you are the only alive human player, the game will always be up to date
-                if (gameInfo.gameParameters.isOnlineMultiplayer
-                        && gameInfoClone.civilizations.count { it.isAlive() && it.playerType == PlayerType.Human } == 1) {
-                    gameInfoClone.isUpToDate = true
-                }
-
-                progressBar.increment()
-
-                startNewScreenJob(gameInfoClone, autoPlay)
             }
         } catch (ex: Throwable) {
             pendingTurnUploadState.finishTurnProcessing()

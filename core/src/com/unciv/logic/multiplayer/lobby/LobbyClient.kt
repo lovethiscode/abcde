@@ -177,8 +177,8 @@ class LobbyClient(val roomApiUrl: String, private val transport: LobbyTransport 
             }
             if (response.code.isNotEmpty()) {
                 val current = session
-                if (current?.pendingRequestId == requestId && response.code !in setOf("RETRY","JOIN_RESULT_UNKNOWN")) {
-                    current.pendingAction = ""; current.pendingRequestId = ""; current.pendingCommand = ""; current.saveIfCurrent()
+                if (response.code !in setOf("RETRY","JOIN_RESULT_UNKNOWN")) {
+                    current?.rejectPending(if (action == "recoverJoin") c.originalRequestId else requestId)
                 }
                 val error = LobbyConnectionException(response.code,response.message)
                 if (error.terminal || error.code == "RETRY") fail(error)

@@ -55,4 +55,26 @@ class MultiplayerOperationTest {
         } catch (thrown: CancellationException) { assertSame(cancellation, thrown) }
         assertTrue(results.isEmpty())
     }
+    @Test fun turnSubmissionReportsOneResultForRecoveryPersistenceAndCancellation() = runBlocking {
+        for (result in listOf(true, false, null)) {
+            results.clear()
+            observeMultiplayerTurnSubmission(true) { result }
+            assertEquals(if (result == null) 0 else 1, results.size)
+            if (result != null) {
+                assertEquals(MultiplayerOperation.TurnSubmit, results.single().operation)
+                assertEquals(result, results.single().succeeded)
+            }
+        }
+        results.clear()
+        try { observeMultiplayerTurnSubmission(true) { throw IOException("Local persistence failed") } }
+        catch (_: IOException) { }
+        assertFalse(results.single().succeeded)
+        results.clear()
+        try { observeMultiplayerTurnSubmission(true) { throw CancellationException("Paused") } }
+        catch (_: CancellationException) { }
+        assertTrue(results.isEmpty())
+        observeMultiplayerTurnSubmission(false) { true }
+        assertTrue(results.isEmpty())
+    }
+
 }

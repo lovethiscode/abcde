@@ -337,11 +337,11 @@ class Multiplayer(
     }
 
     /** Downloads and records an invitation without changing the selected global server. */
-    suspend fun downloadInvitedGame(invite: MultiplayerGameInvite): GameInfo = observeMultiplayerOperation(MultiplayerOperation.Join) {
+    suspend fun downloadInvitedGame(invite: MultiplayerGameInvite): GameInfo {
         val serverUrl = invite.serverUrl ?: UncivGame.Current.settings.multiplayer.getServer()
         val latest = serverFor(serverUrl).downloadGame(invite.gameId)
         persistGamePreviewLocally(latest)
-        latest
+        return latest
     }
 
     /** Downloads game, and updates it locally

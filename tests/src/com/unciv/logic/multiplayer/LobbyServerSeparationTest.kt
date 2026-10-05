@@ -1,6 +1,10 @@
 package com.unciv.logic.multiplayer
 
+import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
+import com.unciv.logic.event.EventBus.EventReceiver
+import org.mockito.Mockito.*
+import java.util.concurrent.CopyOnWriteArrayList
 import com.unciv.UncivGame
 import com.unciv.json.json
 import com.unciv.logic.UncivShowableException
@@ -25,14 +29,22 @@ class LobbyServerSeparationTest {
     private val directory=Files.createTempDirectory("unciv-dual-server").toFile()
     private val api="https://rooms.example/unciv-lobby"
     private val saves="https://saves.example"
+    private var previousApp: Application? = null
+    private val events = EventReceiver()
+    private val results = CopyOnWriteArrayList<MultiplayerOperationCompleted>()
     @Before fun setup() {
+        previousApp = Gdx.app
+        val app = mock(Application::class.java)
+        doAnswer { it.getArgument<Runnable>(0).run(); null }.`when`(app).postRunnable(any(Runnable::class.java))
+        Gdx.app = app
+        events.receive(MultiplayerOperationCompleted::class) { results.add(it) }
         RulesetCache.loadRulesets(noMods=true)
         UncivGame.Current=UncivGame().apply {
             files=UncivFiles(Gdx.files,directory.path)
             settings=GameSettings().apply { multiplayer.setServer("https://global.example") }
         }
     }
-    @After fun cleanup() { directory.deleteRecursively() }
+    @After fun cleanup() { events.stopReceiving(); Gdx.app = previousApp; directory.deleteRecursively() }
     @Test fun failedUploadCannotCompleteAndRetryUsesTheIdenticalSaveOnTheGameServer() = runBlocking {
         val host=UncivGame.Current.settings.multiplayer.getUserId()
         val room=LobbyRoom().apply {
@@ -100,8 +112,10 @@ class LobbyServerSeparationTest {
         assertEquals("STARTED",starter.start(command).state)
         assertEquals(room.saveHash,LobbyProtocol.saveFingerprint(FileConversions.unzip(uploaded)))
         assertNotEquals(first,uploaded)
+        assertEquals(listOf(false,false,true),results.filter { it.operation == MultiplayerOperation.Start }.map { it.succeeded })
         val count=requests.size
         starter.start(command)
+        assertEquals(3,results.count { it.operation == MultiplayerOperation.Start })
         assertEquals(count,requests.size)
         assertEquals("wss://rooms.example/unciv-lobby/ws",socket.urls.single())
         assertTrue(requests.all { it.url.startsWith("$saves/files/") })

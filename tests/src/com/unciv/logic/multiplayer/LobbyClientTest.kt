@@ -1,6 +1,10 @@
 package com.unciv.logic.multiplayer
 
+import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
+import com.unciv.logic.event.EventBus.EventReceiver
+import org.mockito.Mockito.*
+import java.util.concurrent.CopyOnWriteArrayList
 import com.unciv.UncivGame
 import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.multiplayer.lobby.*
@@ -21,7 +25,15 @@ class LobbyClientTest {
     private val api = "https://rooms.example/unciv-lobby"
     private lateinit var session: LobbySession
     private lateinit var room: LobbyRoom
+    private var previousApp: Application? = null
+    private val receiver = EventReceiver()
+    private val operations = CopyOnWriteArrayList<MultiplayerOperationCompleted>()
     @Before fun setup() {
+        previousApp = Gdx.app
+        val app = mock(Application::class.java)
+        doAnswer { it.getArgument<Runnable>(0).run(); null }.`when`(app).postRunnable(any(Runnable::class.java))
+        Gdx.app = app
+        receiver.receive(MultiplayerOperationCompleted::class) { operations.add(it) }
         UncivGame.Current = UncivGame().apply { files = UncivFiles(Gdx.files,directory.path); settings = GameSettings() }
         session = LobbySession().apply {
             roomApiUrl = api; gameServerUrl = saves; gameId = UUID.randomUUID().toString()
@@ -33,7 +45,7 @@ class LobbyClientTest {
             seats.add(LobbySeat().apply { playerId = session.playerId; occupancy = "seat" })
         }
     }
-    @After fun cleanup() { directory.deleteRecursively() }
+    @After fun cleanup() { receiver.stopReceiving(); Gdx.app = previousApp; directory.deleteRecursively() }
     @Test fun constructingClientDoesNotConnectAndJoiningPersistsIntentBeforeSend() = runBlocking {
         val socket = TestLobbyTransport(saves) { request ->
             assertEquals("join",LobbySession.current()!!.pendingAction)
@@ -53,6 +65,7 @@ class LobbyClientTest {
         val first = LobbyClient(api,socket,requestTimeoutMillis = 100)
         assertTrue(runCatching { first.open(session,join = true) }.isFailure)
         first.close()
+        assertTrue(operations.isEmpty())
         val persisted = LobbySession.current()!!
         assertEquals("join",persisted.pendingAction)
         val original = socket.requests.single().requestId
@@ -63,6 +76,12 @@ class LobbyClientTest {
         second.open(persisted,join = true)
         assertEquals(1,socket.requests.count { it.action == "join" })
         assertEquals("seat",persisted.occupancy)
+        assertEquals(MultiplayerOperation.RoomJoin,operations.single().operation)
+        assertTrue(operations.single().succeeded)
+        assertEquals(session.playerId,operations.single().playerId)
+        socket.reply = { request -> assertEquals("resume",request.action); room }
+        second.open(persisted)
+        assertEquals(1,operations.size)
         second.close()
     }
     @Test fun receiveAndHeartbeatContinueWhileAnOperationWaitsForItsAck() = runBlocking {
@@ -142,4 +161,38 @@ class LobbyClientTest {
         delay(50); assertNull(LobbySession.current()); assertEquals(1,socket.urls.size)
         client.close()
     }
+    @Test fun roomCreationAndDuplicateSnapshotsReportOnlyOneMembershipResult() = runBlocking {
+        session.gameId = ""; session.createKey = UUID.randomUUID().toString()
+        session.setup = com.unciv.json.json().toJson(com.unciv.models.metadata.GameSetupInfo())
+        session.save()
+        val socket = TestLobbyTransport(saves) { room }
+        val client = LobbyClient(api,socket)
+        client.open(session)
+        assertEquals(MultiplayerOperation.RoomCreate,operations.single().operation)
+        assertTrue(operations.single().succeeded)
+        session.confirmed(room); session.confirmed(room)
+        client.open(session)
+        assertEquals(1,operations.size)
+        client.close()
+    }
+    @Test fun rejectedJoinReportsFailureButCancellationDoesNot() = runBlocking {
+        val socket = TestLobbyTransport(saves) { null }
+        socket.reply = { request ->
+            socket.sockets.last().emit(LobbyMessage().apply {
+                type = "result"; requestId = request.requestId; code = "COMMAND_FAILED"; message = "Room is full"
+            }); null
+        }
+        val client = LobbyClient(api,socket)
+        assertTrue(runCatching { client.open(session,join = true) }.isFailure)
+        assertEquals(MultiplayerOperation.RoomJoin,operations.single().operation)
+        assertFalse(operations.single().succeeded)
+        client.close()
+        operations.clear()
+        socket.reply = { null }
+        val pending = launch { client.open(session,join = true) }
+        withTimeout(2_000) { while (socket.requests.size < 2) delay(5) }
+        pending.cancelAndJoin(); client.close()
+        assertTrue(operations.isEmpty())
+    }
+
 }
