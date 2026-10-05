@@ -43,6 +43,7 @@ class AskNumberPopup(
         add(wrapper).colspan(2).row()
 
         val nameField = UncivTextField.Integer(label, defaultValue)
+        nameField.name = "ui-number-input"
 
         fun clampInBounds(input: Int?): Int? {
             if (input == null) return null
@@ -100,7 +101,7 @@ class AskNumberPopup(
             }
         ) {
             actionOnOk(nameField.intValue!!)
-        }
+        }.actor.name = "ui-number-confirm"
         equalizeLastTwoButtonWidths()
 
         keyboardFocus = nameField

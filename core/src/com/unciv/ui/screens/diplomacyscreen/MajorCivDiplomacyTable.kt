@@ -167,6 +167,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
 
     private fun getTradeButton(otherCiv: Civilization): TextButton {
         val tradeButton = "Trade".toTextButton()
+        tradeButton.name = "ui-trade-open:${otherCiv.civID}"
         tradeButton.onClick {
             diplomacyScreen.setTrade(otherCiv).apply {
                 offerColumnsTable.update()

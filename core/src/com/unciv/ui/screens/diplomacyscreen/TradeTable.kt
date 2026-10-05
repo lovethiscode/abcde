@@ -16,7 +16,7 @@ class TradeTable(
     private val otherCivilization: ForeignCivView,
     diplomacyScreen: DiplomacyScreen
 ): Table(BaseScreen.skin) {
-    internal val tradeView = civ.getTradeView(otherCivilization)
+    val tradeView = civ.getTradeView(otherCivilization)
     internal val offerColumnsTable = OfferColumnsTable(tradeView, diplomacyScreen, civ, otherCivilization) { onChange() }
     // This is so that after a trade has been traded, we can switch out the offersToDisplay to start anew - this is the easiest way
     private val offerColumnsTableWrapper = Table()
@@ -30,6 +30,8 @@ class TradeTable(
     }
 
     init {
+        name = "ui-trade-table:${otherCivilization.civID}"
+        offerButton.name = "ui-trade-submit"
         offerColumnsTableWrapper.add(offerColumnsTable)
         add(offerColumnsTableWrapper).row()
 

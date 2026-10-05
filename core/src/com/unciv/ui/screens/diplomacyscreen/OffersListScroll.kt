@@ -70,7 +70,7 @@ class OffersListScroll(
             if (labelName.isNotEmpty() && offersOfType.any()) {
                 expanderTabs[offerType] = ExpanderTab(labelName, persistenceID = "Trade.$persistenceID.$offerType") {
                     it.defaults().pad(5f)
-                }
+                }.apply { header.name = "ui-trade-category:${this@OffersListScroll.persistenceID}:$offerType" }
             }
         }
 
@@ -97,6 +97,7 @@ class OffersListScroll(
                     else -> null
                 }
                 val tradeButton = IconTextButton(tradeLabel, tradeIcon).apply {
+                    name = "ui-trade-offer:$persistenceID:$offerType:${offer.name}"
                     if (tradeIcon != null)
                         iconCell.size(30f)
                     label.setAlignment(Align.center)
