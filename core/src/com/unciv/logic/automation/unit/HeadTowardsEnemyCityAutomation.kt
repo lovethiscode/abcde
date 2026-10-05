@@ -64,7 +64,11 @@ object HeadTowardsEnemyCityAutomation {
     ): Boolean {
         val destination = chooseMovementDestination(unit, closestReachableEnemyCity, shortestPath)
             ?: return false
-        if (destination != unit.currentTile) unit.movement.headTowards(destination)
+        if (destination != unit.currentTile) {
+            if (unit.getRange() <= 2 && destination == shortestPath.firstOrNull())
+                unit.movement.moveToTile(destination)
+            else unit.movement.headTowards(destination)
+        }
         return true
     }
 
