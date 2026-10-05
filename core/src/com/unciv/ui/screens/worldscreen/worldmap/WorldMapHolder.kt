@@ -47,7 +47,8 @@ class WorldMapHolder(
     internal val worldScreen: WorldScreen,
     internal val tileMap: TileMap
 ) : ZoomableScrollPane(20f, 20f) {
-    internal var selectedTile: TileView? = null
+    var selectedTile: TileView? = null
+        internal set
     val tileGroups = HashMap<TileView, WorldTileGroup>()
 
     /** Holds buttons created by [OverlayButtonData] implementations */

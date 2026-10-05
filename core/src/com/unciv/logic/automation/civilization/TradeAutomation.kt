@@ -21,7 +21,7 @@ object TradeAutomation {
             val otherCiv = civInfo.gameInfo.getCivilization(tradeRequest.requestingCiv)
             if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)
                 && com.unciv.logic.automation.AutomationPreview.includesPeace(tradeRequest.trade)) {
-                com.unciv.logic.automation.AutomationPreview.choice(civInfo, "reject_trade", tradeRequest.requestingCiv)
+                com.unciv.logic.automation.AutomationPreview.tradeChoice(civInfo, "reject_trade", tradeRequest)
                 civInfo.tradeRequests.remove(tradeRequest)
                 tradeRequest.decline(civInfo)
                 continue
@@ -39,7 +39,7 @@ object TradeAutomation {
              */
             civInfo.tradeRequests.remove(tradeRequest)
             if (TradeEvaluation().isTradeAcceptable(tradeLogic.currentTrade, civInfo, otherCiv)) {
-                com.unciv.logic.automation.AutomationPreview.choice(civInfo, "accept_trade", otherCiv.civID)
+                com.unciv.logic.automation.AutomationPreview.tradeChoice(civInfo, "accept_trade", tradeRequest)
                 tradeLogic.acceptTrade()
                 otherCiv.addNotification("[${civInfo.civName}] has accepted your trade request", NotificationCategory.Trade, NotificationIcon.Trade, civInfo.civName)
             } else {
@@ -48,7 +48,7 @@ object TradeAutomation {
                     otherCiv.addNotification("[${civInfo.civName}] has made a counteroffer to your trade request", NotificationCategory.Trade, NotificationIcon.Trade, civInfo.civName)
                     otherCiv.tradeRequests.add(counteroffer)
                 } else{
-                    com.unciv.logic.automation.AutomationPreview.choice(civInfo, "reject_trade", otherCiv.civID)
+                    com.unciv.logic.automation.AutomationPreview.tradeChoice(civInfo, "reject_trade", tradeRequest)
                     otherCiv.addNotification("[${civInfo.civName}] has denied your trade request", NotificationCategory.Trade, civInfo.civName, NotificationIcon.Trade)
                     tradeRequest.decline(civInfo)
                 }
