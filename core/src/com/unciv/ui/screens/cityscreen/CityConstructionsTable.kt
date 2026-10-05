@@ -254,6 +254,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
             if (i in 1..3) {
                 val color = if (selectedQueueEntry == i) highlightColor else BaseScreen.skinStrings.skinConfig.baseColor
                 val image = ImageGetter.getConstructionPortrait(constructionName, 40f).surroundWithCircle(miniQueueHeight, false, color)
+                image.name = "ui-construction-queue-preview:$constructionName"
                 image.addListener(object: ClickListener() {
                     // Calling event.stop() to prevent click propagation to the parent,
                     // the expander header.
@@ -556,6 +557,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
         if (!cannotAddConstructionToQueue(construction)) {
             val addToQueueButton = ImageGetter.getImage("OtherIcons/New")
                 .apply { color = ImageGetter.CHARCOAL }.surroundWithCircle(40f)
+            addToQueueButton.name = "ui-construction-add:${construction.name}"
             addToQueueButton.onClick(UncivSound.Silent) {
                 // Since the pickConstructionButton.onClick adds the construction if it's selected,
                 // this effectively adds the construction even if it's unselected
