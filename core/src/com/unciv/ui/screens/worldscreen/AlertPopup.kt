@@ -61,7 +61,7 @@ import kotlin.text.ifEmpty
  */
 class AlertPopup(
     private val worldScreen: WorldScreen,
-    private val popupAlert: PopupAlert
+    val popupAlert: PopupAlert
 ): Popup(worldScreen) {
     
     companion object {
@@ -263,10 +263,10 @@ class AlertPopup(
         ).row()
         addCloseButton("Declare Friendship ([30] turns)", KeyboardBinding.Confirm) {
             playerDiploManager.signDeclarationOfFriendship()
-        }.row()
+        }.apply { actor.name = "ui-friendship-accept" }.row()
         addCloseButton("We are not interested.", KeyboardBinding.Cancel) {
             playerDiploManager.otherCivDiplomacy().setFlag(DiplomacyFlags.DeclinedDeclarationOfFriendship, 20)
-        }.row()
+        }.apply { actor.name = "ui-friendship-reject" }.row()
         val music = UncivGame.Current.musicController
         music.playVoice("${otherciv.nation.name}.declaringFriendship")
         return true
