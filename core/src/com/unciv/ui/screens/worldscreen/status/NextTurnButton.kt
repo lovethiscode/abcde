@@ -24,6 +24,7 @@ class NextTurnButton(
     private val worldScreen: WorldScreen
 ) : IconTextButton("", null, 30) {
     private var nextTurnAction = Default
+    val currentAction: NextTurnAction get() = nextTurnAction
     private val unitsDueLabel = Label("", BaseScreen.skin)
     private val unitsDueCell: Cell<Label>
 
@@ -63,7 +64,6 @@ class NextTurnButton(
     }
 
     internal fun updateButton(nextTurnAction: NextTurnAction) {
-        userObject = nextTurnAction.name
         label.setText(nextTurnAction.getText(worldScreen).tr())
         label.color = nextTurnAction.color
         if (nextTurnAction.icon != null && ImageGetter.imageExists(nextTurnAction.icon!!))
