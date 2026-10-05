@@ -885,7 +885,7 @@ class Civilization : IsPartOfGameInfoSerialization, Json.Serializable {
      *  Otherwise, it stays 'alive' as long as it has cities (irrespective of settlers owned)
      */
     @Readonly
-    fun isDefeated() = when {
+    fun isDefeated() = com.unciv.logic.automation.AutomationPreview.defeated(this) ?: when {
         isBarbarian || isSpectator() -> false     // Barbarians and voyeurs can't lose
         hasEverOwnedOriginalCapital -> cities.isEmpty()
         else -> units.getCivUnitsSize() == 0

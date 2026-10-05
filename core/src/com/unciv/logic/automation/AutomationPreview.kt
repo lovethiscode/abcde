@@ -21,12 +21,13 @@ object AutomationPreview {
         fun checkpoint(civ: Civilization)
     }
     private class Session(val game: GameInfo, val sink: Sink, val militaryVictory: String?,
-                          val personality: Personality?, var unit: MapUnit? = null)
+                          val personality: Personality?, val defeatedCivs: Map<String, Boolean>, var unit: MapUnit? = null)
     private class SelectedAction : RuntimeException()
     private val session = ThreadLocal<Session>()
     val active: Boolean get() = session.get() != null
 
-    fun capture(game: GameInfo, sink: Sink, militaryVictory: String? = null, block: () -> Unit) {
+    fun capture(game: GameInfo, sink: Sink, militaryVictory: String? = null,
+                defeatedCivs: Map<String, Boolean> = emptyMap(), block: () -> Unit) {
         check(!active) { "Nested AI preview" }
         val personality = if (militaryVictory == null) null else {
             val original = game.getCurrentPlayerCivilization().getPersonality()
@@ -40,7 +41,7 @@ object AutomationPreview {
                 preferredVictoryType = militaryVictory
             }
         }
-        session.set(Session(game, sink, militaryVictory, personality))
+        session.set(Session(game, sink, militaryVictory, personality, defeatedCivs))
         try { block() } finally { session.remove() }
     }
     @Readonly private fun militarySession(civ: Civilization): Session? = session.get()?.takeIf {
@@ -54,6 +55,9 @@ object AutomationPreview {
         }
     @Readonly fun personality(civ: Civilization): Personality? = militarySession(civ)?.personality
     @Readonly fun preferredVictory(civ: Civilization): String? = militarySession(civ)?.militaryVictory
+    @Readonly fun defeated(civ: Civilization): Boolean? = session.get()?.takeIf {
+        it.game === civ.gameInfo
+    }?.defeatedCivs?.get(civ.civID)
     fun researchWeight(civ: Civilization, tech: Technology): Float {
         val weight = tech.getWeightForAiDecision(civ.state)
         if (!militaryGoal(civ)) return weight
