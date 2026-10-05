@@ -86,6 +86,7 @@ class SwapWithOverlayButtonData(val unitView: MapUnitView, val tileView: TileVie
 
     fun getSwapWithButton(worldMapHolder: WorldMapHolder): Group {
         val swapWithButton = Group()
+        swapWithButton.name = "ui-swap-confirm:${unitView.getUnit().id}:${tileView.position().x.toInt()}:${tileView.position().y.toInt()}"
         swapWithButton.setSize(buttonSize, buttonSize)
         swapWithButton.addActor(ImageGetter.getCircle(size = buttonSize))
         swapWithButton.addActor(
