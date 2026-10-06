@@ -251,7 +251,7 @@ object Automation {
                     landArmy.count(::canCapture) < 2 -> landCandidates.filter(::canCapture)
                     landArmy.count { it.isProbablySiegeUnit() } < 2 ->
                         landCandidates.filter { it.isProbablySiegeUnit() }
-                    else -> landCandidates.filter { it.isRanged() }
+                    else -> landCandidates.filter { it.isRanged() && !it.isProbablySiegeUnit() }
                 }
                 (preferred.ifEmpty { landCandidates.filter { it.isRanged() } }.ifEmpty { landCandidates })
                     .maxByOrNull { it.getForceEvaluation() }?.let { return it }
