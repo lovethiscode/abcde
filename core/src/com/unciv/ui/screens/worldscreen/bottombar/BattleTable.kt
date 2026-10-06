@@ -105,7 +105,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         addBorderAllowOpacity(2f, Color.WHITE)
         addRoundCloseButton(this) {
             isVisible = false
-        }
+        }.name = "ui-battle-close"
 
         setPosition(stage.width / 2 - width / 2, 5f)
     }
