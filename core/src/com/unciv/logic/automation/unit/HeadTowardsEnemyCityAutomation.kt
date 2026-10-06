@@ -160,7 +160,9 @@ object HeadTowardsEnemyCityAutomation {
     private fun chooseLandingGround(closestReachableEnemyCity: Tile, unit: MapUnit): Tile {
         // don't head straight to the city, try to head to landing grounds -
         // this is against tha AI's brilliant plan of having everyone embarked and attacking via sea when unnecessary.
-        val tileToHeadTo = closestReachableEnemyCity.getTilesInDistanceRange(minDistanceFromCityToConsiderForLandingArea..maxDistanceFromCityToConsiderForLandingArea)
+        val maxDistance = if (AutomationPreview.isConquestCapital(unit.civ, closestReachableEnemyCity.getCity()!!))
+            minDistanceFromCityToConsiderForLandingArea else maxDistanceFromCityToConsiderForLandingArea
+        val tileToHeadTo = closestReachableEnemyCity.getTilesInDistanceRange(minDistanceFromCityToConsiderForLandingArea..maxDistance)
             .filter { it.isLand && unit.getDamageFromTerrain(it) <= 0 } // Don't head for hurty terrain
             .sortedBy { it.aerialDistanceTo(unit.currentTile) }
             .firstOrNull { (unit.movement.canMoveTo(it) || it == unit.currentTile) && unit.movement.canReach(it) }
