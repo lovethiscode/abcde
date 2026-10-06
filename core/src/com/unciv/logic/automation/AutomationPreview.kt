@@ -190,12 +190,12 @@ object AutomationPreview {
         return targetCities(civ).any { city -> !city.isCoastal() &&
             city.getCenterTile().getTilesInDistance(1).all { it.isExplored(civ) } }
     }
-    @Readonly fun needsLandConquestProduction(civ: Civilization): Boolean {
+    @Readonly fun needsLandConquestProduction(civ: Civilization, includeQueued: Boolean = true): Boolean {
         if (!militaryGoal(civ) || !preparing(civ)) return false
         val city = targetCities(civ).firstOrNull() ?: return false
-        val landArmy = eligibleArmy(civ, city).map { it.baseUnit } + civ.cities.mapNotNull {
+        val landArmy = eligibleArmy(civ, city).map { it.baseUnit } + if (includeQueued) civ.cities.mapNotNull {
                 civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
-            }.filter { it.isMilitary && it.isLandUnit }
+            }.filter { it.isMilitary && it.isLandUnit } else emptyList()
         val missingCapture = landArmy.count { it.isMelee() && !it.hasUnique(UniqueType.CannotCaptureCities) } < 2
         val availableSiege = civ.gameInfo.ruleset.units.values.any { it.isLandUnit && it.isProbablySiegeUnit() &&
             Automation.allowSpendingResource(civ, it) && civ.cities.any { home -> it.isBuildable(home.cityConstructions) } }

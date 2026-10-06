@@ -638,7 +638,8 @@ object NextTurnAutomation {
         if (civInfo.isOneCityChallenger()) return
         if (civInfo.cities.none()) return
         if (AutomationPreview.militaryGoal(civInfo) && (civInfo.isAtWar() || !AutomationPreview.economyReady(civInfo) ||
-            AutomationPreview.needsMilitaryProduction(civInfo))) return
+            AutomationPreview.needsMilitaryProduction(civInfo) ||
+            AutomationPreview.needsLandConquestProduction(civInfo, includeQueued = false))) return
         if (civInfo.getHappiness() <= civInfo.cities.size) return
         if (CivilianUnitAutomation.isLateGame(civInfo)){
             // all suitable land may be occupied already
