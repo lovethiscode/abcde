@@ -121,6 +121,8 @@ object HeadTowardsEnemyCityAutomation {
     ): Boolean {
         val cityCombatant = CityCombatant(city)
         val expectedDamagePerTurn = ourUnitsAroundEnemyCity
+            .filterNot { AutomationPreview.militaryGoal(it.civ) && it.baseUnit.isWaterUnit &&
+                it.baseUnit.isMelee() && !city.isNaval() }
             .sumOf { BattleDamage.calculateDamageToDefender(MapUnitCombatant(it), cityCombatant) }
 
         val cityHealingPerTurn = 20
