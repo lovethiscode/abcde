@@ -428,7 +428,7 @@ object NextTurnAutomation {
 
         val citiesRequiringManualPlacement = civInfo.getKnownCivs().filter { it.isAtWarWith(civInfo) }
             .flatMap { it.cities }
-            .filterNot { AutomationPreview.isConquestCapital(civInfo, it) }
+            .filterNot { AutomationPreview.militaryGoal(civInfo) }
             .filter {
                 var count = 0
                 it.getCenterTile().forEachTileInDistance(4) { tile -> if (tile.militaryUnit?.civ == civInfo) count++ }
