@@ -335,7 +335,7 @@ class AlertPopup(
         }
         addGoodSizedLabel(leaderMessage).row()
         music.playVoice("${otherCiv.civName}.acceptingDemand")
-        addCloseButton("Very well.", KeyboardBinding.Cancel)
+        addCloseButton("Very well.", KeyboardBinding.Cancel).apply { actor.name = "ui-alert-close" }
         return true
     }
     
