@@ -142,6 +142,24 @@ object AutomationPreview {
             .firstOrNull()?.first
     }
     private fun researchPriority(civ: Civilization, tech: Technology): Int {
+        val target = if (preparing(civ)) targetCities(civ).firstOrNull() else null
+        val army = target?.let { eligibleArmy(civ, it) }.orEmpty()
+        val missingCapture = target != null && army.count(::canCapture) < 2
+        val missingFirepower = target != null && army.count { it.baseUnit.isRanged() } < 2
+        val landUnits = civ.gameInfo.ruleset.units.values.filter { unit ->
+            unit.isMilitary && unit.isLandUnit && !unit.hasUnique(UniqueType.CannotAttack) &&
+                (unit.uniqueTo == null || unit.uniqueTo == civ.civName)
+        }
+        val captureUnits = landUnits.filter { it.isMelee() && !it.hasUnique(UniqueType.CannotCaptureCities) }
+        val firepowerUnits = landUnits.filter { it.isRanged() }
+        fun available(units: List<BaseUnit>) = units.any { unit -> civ.cities.any { unit.isBuildable(it.cityConstructions) } }
+        val roleUnits = (if (missingCapture && !available(captureUnits)) captureUnits else emptyList()) +
+            (if (missingFirepower && !available(firepowerUnits)) firepowerUnits else emptyList())
+        val firstRoleTech = roleUnits.mapNotNull { civ.gameInfo.ruleset.technologies[it.requiredTech] }
+            .filterNot { civ.tech.isResearched(it.name) }
+            .minByOrNull { civ.tech.getRequiredTechsToDestination(it).sumOf { prerequisite -> prerequisite.cost } }
+        val unlocksMissingRole = firstRoleTech != null &&
+            civ.tech.getRequiredTechsToDestination(firstRoleTech).any { it.name == tech.name }
         val inlandConquest = hasKnownInlandWarCapital(civ)
         val firstSiegeTech = if (!inlandConquest || civ.units.getCivUnits().count {
             it.baseUnit.isLandUnit && it.baseUnit.isProbablySiegeUnit()
@@ -170,7 +188,7 @@ object AutomationPreview {
                     civ.cities.any { city -> !city.cityConstructions.isBuilt(building.name) } &&
                     civ.tech.getRequiredTechsToDestination(destination).any { it.name == tech.name }
             }
-        return when { unlocksHappiness -> 4; unlocksSiege -> 3
+        return when { unlocksHappiness -> 4; unlocksMissingRole || unlocksSiege -> 3
             unlocksArmyUpgrade && strategy(civ)?.research == ResearchPriority.Military -> 2
             unlocksMilitary -> 1; else -> 0 }
     }
@@ -207,6 +225,7 @@ object AutomationPreview {
         val missingSiege = landArmy.count { it.isRanged() } < 2 ||
             visibleFirepowerGap && landArmy.count { it.isProbablySiegeUnit() } < 2
         if (!missingCapture && !missingSiege) return false
+        if (!includeQueued) return true
         return civ.gameInfo.ruleset.units.values.any { unit ->
             unit.isMilitary && unit.isLandUnit && !unit.hasUnique(UniqueType.CannotAttack) &&
                 ((missingCapture && unit.isMelee() && !unit.hasUnique(UniqueType.CannotCaptureCities)) ||
