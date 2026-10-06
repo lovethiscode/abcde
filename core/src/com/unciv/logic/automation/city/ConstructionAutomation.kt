@@ -123,8 +123,14 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
             addMilitaryUnitChoice()
         }
 
+        val happinessRescue = if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)
+                && civInfo.getHappiness() <= 0) relativeCostEffectiveness.filter {
+            it.choice is Building && !it.choice.isAnyWonder() &&
+                (preferenceBenefits[it.choice.name]?.happiness ?: 0f) > 0f
+        } else emptyList()
+        val choices = happinessRescue.ifEmpty { relativeCostEffectiveness }
         val chosenConstruction: IConstruction =
-            if (relativeCostEffectiveness.isEmpty()) { // choose one of the special constructions instead
+            if (choices.isEmpty()) { // choose one of the special constructions instead
                 // add science!
                 when {
                     PerpetualConstruction.Science.isBuildable(cityConstructions) && !allTechsAreResearched -> PerpetualConstruction.Science
@@ -133,7 +139,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
                     PerpetualConstruction.Faith.isBuildable(cityConstructions) -> PerpetualConstruction.Faith
                     else -> PerpetualConstruction.Idle
                 }
-            } else { relativeCostEffectiveness.maxBy { (it.choiceModifier / it.remainingWork.coerceAtLeast(1)).coerceAtLeast(0f) }.choice }
+            } else { choices.maxBy { (it.choiceModifier / it.remainingWork.coerceAtLeast(1)).coerceAtLeast(0f) }.choice }
             //TODO: All bad things are build anyways at the moment, maybe let's stop doing that and chose perpetual construction instead
 
         // Do not notify while in resistance (you can't do anything about it) - still notify for puppets ("annex already!")
