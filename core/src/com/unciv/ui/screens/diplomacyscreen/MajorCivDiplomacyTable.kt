@@ -73,6 +73,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
 
 
         val demandsButton = "Demands".toTextButton()
+        demandsButton.name = "ui-demands-open:${otherCiv.civID}"
         demandsButton.onClick {
             diplomacyScreen.rightSideTable.clear()
             diplomacyScreen.rightSideTable.add(getDemandsTable(viewingCiv, otherCiv))
@@ -230,6 +231,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
                 continue
 
             val button = demand.demandText.toTextButton()
+            button.name = "ui-demand:${otherCiv.civID}:${demand.name}"
 
             if (otherCiv.popupAlerts.any { it.type == demand.demandAlert && it.value == viewingCiv.civID } // Already demanded
                 || diplomacyManager.hasFlag(demand.agreedToDemand)) { // already agreed
