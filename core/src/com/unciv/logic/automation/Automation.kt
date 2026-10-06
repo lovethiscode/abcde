@@ -222,9 +222,10 @@ object Automation {
                     } // there is absolutely no reason for you to make water units on this body of water.
         }
 
+        val inlandCapital = AutomationPreview.hasKnownInlandWarCapital(city.civ)
         val militaryUnits = availableUnits
             .filter { it.isMilitary }
-            .filterNot { removeShips && it.isWaterUnit }
+            .filterNot { (removeShips || inlandCapital) && it.isWaterUnit }
             .filter { allowSpendingResource(city.civ, it) }
             .filterNot {
                 // units that can't attack may be very strong meatshields, but current AI

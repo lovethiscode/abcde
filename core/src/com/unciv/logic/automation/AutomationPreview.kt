@@ -119,15 +119,17 @@ object AutomationPreview {
             }
         return when { unlocksHappiness -> 3; unlocksArmyUpgrade -> 2; unlocksMilitary -> 1; else -> 0 }
     }
-    @Readonly fun needsLandConquestProduction(civ: Civilization): Boolean {
+    @Readonly fun hasKnownInlandWarCapital(civ: Civilization): Boolean {
         if (!militaryGoal(civ) || !civ.isAtWar()) return false
-        val knownInlandCapital = civ.gameInfo.civilizations.any { enemy ->
+        return civ.gameInfo.civilizations.any { enemy ->
             civ.isAtWarWith(enemy) && warTargetPriority(civ, enemy) > 0f && enemy.cities.any { city ->
                 city.isOriginalCapital && city.getCenterTile().getTilesInDistance(1).all { it.isExplored(civ) } &&
                     !city.isCoastal()
             }
         }
-        if (!knownInlandCapital) return false
+    }
+    @Readonly fun needsLandConquestProduction(civ: Civilization): Boolean {
+        if (!hasKnownInlandWarCapital(civ)) return false
         val landArmySize = civ.units.getCivUnits().count { it.isMilitary() && it.baseUnit.isLandUnit } +
             civ.cities.count {
                 val unit = civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
