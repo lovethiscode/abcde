@@ -245,6 +245,17 @@ object Automation {
                     city.civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
                 }.filter { it.isMilitary && it.isLandUnit }
             fun canCapture(unit: BaseUnit) = unit.isMelee() && !unit.hasUnique(UniqueType.CannotCaptureCities)
+            if (AutomationPreview.needsLandConquestProduction(city.civ)) {
+                val landCandidates = militaryUnits.filter { it.isLandUnit }.toList()
+                val preferred = when {
+                    landArmy.count(::canCapture) < 2 -> landCandidates.filter(::canCapture)
+                    landArmy.count { it.isProbablySiegeUnit() } < 2 ->
+                        landCandidates.filter { it.isProbablySiegeUnit() }
+                    else -> landCandidates.filter { it.isRanged() }
+                }
+                (preferred.ifEmpty { landCandidates.filter { it.isRanged() } }.ifEmpty { landCandidates })
+                    .maxByOrNull { it.getForceEvaluation() }?.let { return it }
+            }
             if (landArmy.count(::canCapture) * 3 < landArmy.size) {
                 militaryUnits.filter { it.isLandUnit && canCapture(it) }
                     .maxByOrNull { it.getForceEvaluation() }?.let { return it }

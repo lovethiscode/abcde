@@ -20,6 +20,7 @@ import com.unciv.logic.civilization.diplomacy.*
 import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.logic.map.tile.Tile
 import com.unciv.models.ruleset.MilestoneType
+import com.unciv.models.ruleset.Building
 import com.unciv.models.ruleset.Policy
 import com.unciv.models.ruleset.PolicyBranch
 import com.unciv.models.ruleset.nation.PersonalityValue
@@ -614,8 +615,12 @@ object NextTurnAutomation {
 
             // Don't pull a city off a spaceship part it's already building for the military push (only if actually attacked)
             val onSpaceshipPart = city.cityConstructions.getCurrentConstruction().name in civInfo.gameInfo.spaceResources
-            if (city.health < city.getMaxHealth() || (civHasSignificantlyWeakerMilitaryThanEnemies && !onSpaceshipPart)
-                || AutomationPreview.needsMilitaryProduction(civInfo)) {
+            val currentBuilding = city.cityConstructions.getCurrentConstruction() as? Building
+            val finishingHappiness = AutomationPreview.militaryGoal(civInfo) && currentBuilding != null &&
+                currentBuilding.getStats(city).happiness > 0f &&
+                (city.cityConstructions.inProgressConstructions[currentBuilding.name] ?: 0) > 0
+            if (!finishingHappiness && (city.health < city.getMaxHealth() || (civHasSignificantlyWeakerMilitaryThanEnemies && !onSpaceshipPart)
+                || AutomationPreview.needsMilitaryProduction(civInfo))) {
                 Automation.tryTrainMilitaryUnit(city) // need defenses if city is under attack
                 if (city.cityConstructions.constructionQueue.isNotEmpty())
                     continue // found a unit to build so move on

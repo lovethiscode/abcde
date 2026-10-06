@@ -119,13 +119,29 @@ object AutomationPreview {
             }
         return when { unlocksHappiness -> 3; unlocksArmyUpgrade -> 2; unlocksMilitary -> 1; else -> 0 }
     }
+    @Readonly fun needsLandConquestProduction(civ: Civilization): Boolean {
+        if (!militaryGoal(civ) || !civ.isAtWar()) return false
+        val knownInlandCapital = civ.gameInfo.civilizations.any { enemy ->
+            civ.isAtWarWith(enemy) && warTargetPriority(civ, enemy) > 0f && enemy.cities.any { city ->
+                city.isOriginalCapital && city.getCenterTile().getTilesInDistance(1).all { it.isExplored(civ) } &&
+                    !city.isCoastal()
+            }
+        }
+        if (!knownInlandCapital) return false
+        val landArmySize = civ.units.getCivUnits().count { it.isMilitary() && it.baseUnit.isLandUnit } +
+            civ.cities.count {
+                val unit = civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
+                unit?.isMilitary == true && unit.isLandUnit
+            }
+        return landArmySize < maxOf(6, civ.cities.size * 2)
+    }
     @Readonly fun needsMilitaryProduction(civ: Civilization): Boolean {
         if (!militaryGoal(civ) || !civ.isAtWar() || civ.getHappiness() <= 0 ||
             civ.stats.getUnitSupplyDeficit() > 0 || civ.gold < 0 || civ.stats.statsForNextTurn.gold < 0) return false
         val armySize = civ.units.getCivUnits().count { it.isMilitary() } + civ.cities.count {
             civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]?.isMilitary == true
         }
-        return armySize < maxOf(6, civ.cities.size * 3)
+        return armySize < maxOf(6, civ.cities.size * 3) || needsLandConquestProduction(civ)
     }
 
     fun withUnit(unit: MapUnit, reportIdle: Boolean = true, block: () -> Unit) {
