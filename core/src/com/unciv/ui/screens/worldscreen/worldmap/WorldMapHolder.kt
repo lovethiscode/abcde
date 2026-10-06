@@ -534,6 +534,7 @@ class WorldMapHolder(
             unitList.addAll(visibleOwnedUnits)
         }
 
+        if (unitList.isNotEmpty()) table.name = "ui-unit-selection-overlay"
         for (unitView in unitList) {
             val unitIconGroup = UnitIconGroup(unitView, 48f).surroundWithCircle(68f, resizeActor = false)
             unitIconGroup.circle.color = Color.GRAY.cpy().apply { a = 0.5f }
