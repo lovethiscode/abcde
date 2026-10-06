@@ -4,6 +4,7 @@ import yairm210.purity.annotations.Readonly
 import com.unciv.json.json
 import com.unciv.models.ruleset.nation.Personality
 import com.unciv.models.ruleset.tech.Technology
+import com.unciv.models.ruleset.MilestoneType
 import com.unciv.logic.GameInfo
 import com.unciv.logic.battle.ICombatant
 import com.unciv.logic.civilization.Civilization
@@ -36,6 +37,9 @@ object AutomationPreview {
                 military = 9f
                 aggressive = 9f
                 declareWar = 9f
+                commerce = commerce.coerceAtMost(2f)
+                diplomacy = diplomacy.coerceAtMost(2f)
+                loyal = loyal.coerceAtMost(2f)
                 production = production.coerceAtLeast(7f)
                 science = science.coerceAtLeast(7f)
                 happiness = happiness.coerceAtLeast(7f)
@@ -56,6 +60,20 @@ object AutomationPreview {
         }
     @Readonly fun personality(civ: Civilization): Personality? = militarySession(civ)?.personality
     @Readonly fun preferredVictory(civ: Civilization): String? = militarySession(civ)?.militaryVictory
+    @Readonly fun warTargetPriority(civ: Civilization, target: Civilization): Float {
+        val current = militarySession(civ) ?: return 0f
+        val victory = civ.gameInfo.ruleset.victories[current.militaryVictory] ?: return 0f
+        val advancesVictory = victory.milestoneObjects.any {
+            when (it.type) {
+                MilestoneType.CaptureAllCapitals -> target.cities.any { city ->
+                    city.isOriginalCapital && city.foundingCivObject?.isMajorCiv() == true
+                }
+                MilestoneType.DestroyAllPlayers -> target.isMajorCiv() && !target.isDefeated()
+                else -> false
+            }
+        }
+        return if (advancesVictory) 30f else 0f
+    }
     @Readonly fun defeated(civ: Civilization): Boolean? = session.get()?.takeIf {
         it.game === civ.gameInfo
     }?.defeatedCivs?.get(civ.civID)
