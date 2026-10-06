@@ -14,6 +14,7 @@ import com.unciv.logic.map.tile.Tile
 import com.unciv.models.ruleset.unique.UniqueType
 import com.unciv.models.ruleset.Building
 import com.unciv.models.ruleset.IConstruction
+import com.unciv.models.ruleset.RejectionReasonType
 import com.unciv.models.ruleset.unit.BaseUnit
 import com.unciv.models.stats.Stats
 import com.unciv.logic.civilization.diplomacy.DiplomaticStatus
@@ -179,15 +180,17 @@ object AutomationPreview {
             val route = civ.tech.getRequiredTechsToDestination(destination)
             route.size <= 3 && route.any { it.name == tech.name }
         }
-        val unlocksHappiness = civ.getHappiness() <= 0 && civ.cities.isNotEmpty() &&
-            civ.gameInfo.ruleset.buildings.values.any { building ->
-                val destination = civ.gameInfo.ruleset.technologies[building.requiredTech]
-                destination != null && !building.isAnyWonder() &&
-                    (building.uniqueTo == null || building.uniqueTo == civ.civName) &&
-                    building.getStats(civ.cities.first()).happiness > 0f &&
-                    civ.cities.any { city -> !city.cityConstructions.isBuilt(building.name) } &&
-                    civ.tech.getRequiredTechsToDestination(destination).any { it.name == tech.name }
-            }
+        val happinessTech = if (civ.getHappiness() > 0) null else civ.gameInfo.ruleset.buildings.values
+            .asSequence().filter { !it.isAnyWonder() }.mapNotNull { building ->
+                val destination = civ.gameInfo.ruleset.technologies[building.requiredTech] ?: return@mapNotNull null
+                if (civ.tech.isResearched(destination.name) || civ.cities.none { city ->
+                        building.getStats(city).happiness > 0f &&
+                            building.getRejectionReasons(city.cityConstructions).all { it.type == RejectionReasonType.RequiresTech }
+                    }) return@mapNotNull null
+                destination
+            }.minByOrNull { destination -> civ.tech.getRequiredTechsToDestination(destination).sumOf { it.cost } }
+        val unlocksHappiness = happinessTech != null &&
+            civ.tech.getRequiredTechsToDestination(happinessTech).any { it.name == tech.name }
         return when { unlocksHappiness -> 4; unlocksMissingRole || unlocksSiege -> 3
             unlocksArmyUpgrade && strategy(civ)?.research == ResearchPriority.Military -> 2
             unlocksMilitary -> 1; else -> 0 }
