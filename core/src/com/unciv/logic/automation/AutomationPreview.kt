@@ -250,7 +250,9 @@ object AutomationPreview {
         val army = eligibleArmy(civ, target)
         val ourForce = army.sumOf { it.baseUnit.getForceEvaluation().toDouble() * it.health / 100 }.toFloat()
         val enemyForce = target.civ.getStatForRanking(com.unciv.ui.screens.victoryscreen.RankingType.Force)
-        return army.size < maxOf(6, civ.cities.size * 2) && ourForce < enemyForce
+        val insufficient = ourForce < enemyForce
+        if (insufficient) decision(civ, "military force gap available=${army.size} reference=${maxOf(6, civ.cities.size * 2)} own=$ourForce visibleEnemy=$enemyForce")
+        return insufficient
     }
 
     @Readonly fun economyReady(civ: Civilization, cost: Int = 0, extraMaintenance: Float = 0f): Boolean {
