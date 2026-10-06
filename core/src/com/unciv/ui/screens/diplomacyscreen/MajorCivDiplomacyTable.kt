@@ -149,6 +149,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
     private fun getDeclareFriendshipButton(otherCiv: Civilization): TextButton {
         val declareFriendshipButton =
             "Offer Declaration of Friendship ([30] turns)".toTextButton()
+        declareFriendshipButton.name = "ui-offer-friendship:${otherCiv.civID}"
         declareFriendshipButton.onClick {
             otherCiv.popupAlerts.add(
                 PopupAlert(
