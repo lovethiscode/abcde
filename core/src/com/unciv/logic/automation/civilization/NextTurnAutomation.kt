@@ -276,7 +276,8 @@ object NextTurnAutomation {
                 // Ignore rows where all techs have 0 weight
                 it.any { AutomationPreview.researchWeight(civInfo, it) > 0 }
             } ?: costs.last()
-            val chosenTech = mostExpensiveTechs.randomWeighted(rng) { AutomationPreview.researchWeight(civInfo, it) }
+            val chosenTech = AutomationPreview.preferredResearch(civInfo, costs.flatten())
+                ?: mostExpensiveTechs.randomWeighted(rng) { AutomationPreview.researchWeight(civInfo, it) }
             civInfo.tech.getFreeTechnology(chosenTech.name)
         }
         if (civInfo.tech.techsToResearch.isEmpty()) {
@@ -288,7 +289,7 @@ object NextTurnAutomation {
                 it.any { AutomationPreview.researchWeight(civInfo, it) > 0 } }?: costs.first()
             //Do not consider advanced techs if only one tech left in cheapest group
             val techToResearch: Technology =
-                if (cheapestTechs.size == 1 || costs.size == 1) {
+                AutomationPreview.preferredResearch(civInfo, costs.flatten()) ?: if (cheapestTechs.size == 1 || costs.size == 1) {
                     cheapestTechs.randomWeighted(rng) { AutomationPreview.researchWeight(civInfo, it) }
                 } else {
                     //Choose randomly between cheapest and second cheapest group
@@ -613,7 +614,8 @@ object NextTurnAutomation {
 
             // Don't pull a city off a spaceship part it's already building for the military push (only if actually attacked)
             val onSpaceshipPart = city.cityConstructions.getCurrentConstruction().name in civInfo.gameInfo.spaceResources
-            if (city.health < city.getMaxHealth() || (civHasSignificantlyWeakerMilitaryThanEnemies && !onSpaceshipPart)) {
+            if (city.health < city.getMaxHealth() || (civHasSignificantlyWeakerMilitaryThanEnemies && !onSpaceshipPart)
+                || AutomationPreview.needsMilitaryProduction(civInfo)) {
                 Automation.tryTrainMilitaryUnit(city) // need defenses if city is under attack
                 if (city.cityConstructions.constructionQueue.isNotEmpty())
                     continue // found a unit to build so move on
@@ -628,6 +630,8 @@ object NextTurnAutomation {
         if (civInfo.isCityState) return
         if (civInfo.isOneCityChallenger()) return
         if (civInfo.cities.none()) return
+        if (AutomationPreview.militaryGoal(civInfo) && (civInfo.isAtWar() ||
+            civInfo.diplomacy.values.any { it.hasFlag(DiplomacyFlags.WaryOf) && it.getFlag(DiplomacyFlags.WaryOf) < 0 })) return
         if (civInfo.getHappiness() <= civInfo.cities.size) return
         if (CivilianUnitAutomation.isLateGame(civInfo)){
             // all suitable land may be occupied already

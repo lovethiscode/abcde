@@ -1,6 +1,7 @@
 package com.unciv.logic.automation.unit
 
 import com.unciv.logic.automation.Timers.Companion.timeThis
+import com.unciv.logic.automation.AutomationPreview
 import com.unciv.logic.automation.civilization.NextTurnAutomation
 import com.unciv.logic.battle.BattleDamage
 import com.unciv.logic.battle.CityCombatant
@@ -34,8 +35,10 @@ object HeadTowardsEnemyCityAutomation {
     fun getEnemyCitiesByPriority(unit: MapUnit): Sequence<City> {
         val enemies = unit.civ.getKnownCivs()
             .filter { unit.civ.isAtWarWith(it) && it.cities.isNotEmpty() }
+            .toList()
+        val victoryEnemies = enemies.filter { AutomationPreview.warTargetPriority(unit.civ, it) > 0f }
 
-        val closestEnemyCity = enemies
+        val closestEnemyCity = (victoryEnemies.ifEmpty { enemies })
             .mapNotNull { NextTurnAutomation.getForeignCityNearCapital(unit.civ.getCapital(), it) }
             .minByOrNull { it.aerialDistance }?.city
             ?: return emptySequence() // no attackable cities found

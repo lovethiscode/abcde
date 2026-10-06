@@ -83,6 +83,18 @@ object AutomationPreview {
     fun researchWeight(civ: Civilization, tech: Technology): Float {
         val weight = tech.getWeightForAiDecision(civ.state)
         if (!militaryGoal(civ)) return weight
+        return weight * when (researchPriority(civ, tech)) { 2, 3 -> 9f; 1 -> 3f; else -> 1f }
+    }
+    /** A military prerequisite must not lose to an unrelated, cheaper research group. */
+    fun preferredResearch(civ: Civilization, candidates: List<Technology>): Technology? {
+        if (!militaryGoal(civ)) return null
+        return candidates.filter { civ.tech.canBeResearched(it.name) && it.getWeightForAiDecision(civ.state) > 0f }
+            .map { it to researchPriority(civ, it) }.filter { it.second >= 2 }
+            .sortedWith(compareByDescending<Pair<Technology, Int>> { it.second }
+                .thenBy { it.first.cost }.thenBy { it.first.name })
+            .firstOrNull()?.first
+    }
+    private fun researchPriority(civ: Civilization, tech: Technology): Int {
         val unlocksMilitary = civ.gameInfo.ruleset.units.values.any {
             it.requiredTech == tech.name && it.isMilitary
         }
@@ -102,7 +114,15 @@ object AutomationPreview {
                     civ.cities.any { city -> !city.cityConstructions.isBuilt(building.name) } &&
                     civ.tech.getRequiredTechsToDestination(destination).any { it.name == tech.name }
             }
-        return weight * when { unlocksHappiness || unlocksArmyUpgrade -> 9f; unlocksMilitary -> 3f; else -> 1f }
+        return when { unlocksHappiness -> 3; unlocksArmyUpgrade -> 2; unlocksMilitary -> 1; else -> 0 }
+    }
+    @Readonly fun needsMilitaryProduction(civ: Civilization): Boolean {
+        if (!militaryGoal(civ) || !civ.isAtWar() || civ.getHappiness() <= 0 ||
+            civ.stats.getUnitSupplyDeficit() > 0 || civ.gold < 0 || civ.stats.statsForNextTurn.gold < 0) return false
+        val armySize = civ.units.getCivUnits().count { it.isMilitary() } + civ.cities.count {
+            civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]?.isMilitary == true
+        }
+        return armySize < maxOf(6, civ.cities.size * 3)
     }
 
     fun withUnit(unit: MapUnit, reportIdle: Boolean = true, block: () -> Unit) {
