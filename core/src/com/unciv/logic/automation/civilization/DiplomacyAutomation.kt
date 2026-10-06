@@ -358,12 +358,13 @@ object DiplomacyAutomation {
         if (civView.cities().isEmpty() || civView.getKnownCivs().none()) return
         if (civView.getPersonalityValue(PersonalityValue.DeclareWar) == 0f) return
         if (civView.getHappiness() <= 0) return
+        val militaryGoal = com.unciv.logic.automation.AutomationPreview.militaryGoal(civView.getCiv())
+        if (!com.unciv.logic.automation.AutomationPreview.allowsOffense(civView.getCiv())) return
 
         val ourMilitaryUnits = civView.getUnits().count { !it.isCivilian() }
-        if (ourMilitaryUnits < civView.cities().size) return
-        if (ourMilitaryUnits < 4) return  // to stop AI declaring war at the beginning of games when everyone isn't set up well enough
+        if (!militaryGoal && ourMilitaryUnits < civView.cities().size) return
+        if (!militaryGoal && ourMilitaryUnits < 4) return  // to stop AI declaring war at the beginning of games when everyone isn't set up well enough
         // For mods we can't check the number of cities, so we will check the population instead.
-        val militaryGoal = com.unciv.logic.automation.AutomationPreview.militaryGoal(civView.getCiv())
         val minimumPopulation = if (militaryGoal) 3 else 12
         if (civView.cities().sumOf { it.getPopulationCount() } < minimumPopulation) return
 
@@ -380,6 +381,7 @@ object DiplomacyAutomation {
         if (targetCivs.none()) return
 
         val targetCivsWithMotivation: List<Pair<Civilization, Float>> = targetCivs
+            .filter { !militaryGoal || com.unciv.logic.automation.AutomationPreview.declarationReady(civView.getCiv(), it.getCiv()) }
             .map { Pair(it.getCiv(), hasAtLeastMotivationToAttack(civView.getCiv(), it.getCiv(), 0f)) }
             .filter { it.second > 0 }.toList()
 

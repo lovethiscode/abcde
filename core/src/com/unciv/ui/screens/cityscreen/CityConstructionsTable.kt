@@ -730,6 +730,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
 
     private fun getRemoveFromQueueButton(constructionQueueIndex: Int): Table {
         val tab = Table()
+        tab.name = "ui-construction-remove:$constructionQueueIndex"
         tab.add(ImageGetter.getImage("OtherIcons/Stop").surroundWithCircle(40f))
         tab.touchable = Touchable.enabled
         tab.onClick {

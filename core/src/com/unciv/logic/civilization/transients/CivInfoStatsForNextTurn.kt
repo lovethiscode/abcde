@@ -4,6 +4,7 @@ import com.unciv.Constants
 import com.unciv.logic.automation.Timers.Companion.timeThis
 import com.unciv.logic.civilization.Civilization
 import com.unciv.logic.civilization.PlayerType
+import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.logic.civilization.diplomacy.RelationshipLevel
 import com.unciv.logic.map.tile.RoadStatus
 import com.unciv.models.ruleset.Policy
@@ -32,14 +33,14 @@ class CivInfoStatsForNextTurn(val civInfo: Civilization) {
     var statsForNextTurn = Stats()
 
     @Readonly
-    private fun getUnitMaintenance(): Int {
+    fun getUnitMaintenance(units: Sequence<MapUnit> = civInfo.units.getCivUnits()): Int {
         val baseUnitCost = 0.5f
         var freeUnits = 3
         civInfo.forEachMatchingUnique(UniqueType.FreeUnits, civInfo.state) { unique ->
             freeUnits += unique.params[0].toInt()
         }
 
-        var unitsToPayFor = civInfo.units.getCivUnits()
+        var unitsToPayFor = units
         if (civInfo.hasUnique(UniqueType.UnitsInCitiesNoMaintenance))
             unitsToPayFor = unitsToPayFor.filterNot {
                 it.getTile().isCityCenter() && it.canGarrison()

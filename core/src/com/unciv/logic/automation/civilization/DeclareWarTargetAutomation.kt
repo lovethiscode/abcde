@@ -17,7 +17,12 @@ object DeclareWarTargetAutomation {
      * Note that this doesn't guarantee that we will declare war on them immediately, or that we will end up declaring war at all.
      */
     fun chooseDeclareWarTarget(civView: CivView, civAttackMotivations: List<Pair<Civilization, Float>>) {
-        val highestValueTargets = civAttackMotivations.sortedByDescending { it.first.getStatForRanking(RankingType.Score) }
+        val preferred = if (com.unciv.logic.automation.AutomationPreview.strategy(civView.getCiv())?.combat ==
+            com.unciv.logic.automation.CombatPriority.Auto) null
+            else com.unciv.logic.automation.AutomationPreview.targetCities(civView.getCiv()).firstOrNull()?.civ
+        val highestValueTargets = civAttackMotivations.sortedWith(compareBy<Pair<Civilization, Float>> {
+            if (it.first == preferred) 0 else 1
+        }.thenByDescending { it.first.getStatForRanking(RankingType.Score) })
 
         for (target in highestValueTargets) {
             if (tryDeclareWarWithPlan(civView, target.first, target.second))
@@ -129,4 +134,3 @@ object DeclareWarTargetAutomation {
     }
 
 }
-

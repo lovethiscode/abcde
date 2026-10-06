@@ -20,7 +20,9 @@ object TradeAutomation {
         for (tradeRequest in civInfo.tradeRequests.toList()) {
             val otherCiv = civInfo.gameInfo.getCivilization(tradeRequest.requestingCiv)
             if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)
-                && com.unciv.logic.automation.AutomationPreview.includesPeace(tradeRequest.trade)) {
+                && (com.unciv.logic.automation.AutomationPreview.includesPeace(tradeRequest.trade) ||
+                    !com.unciv.logic.automation.AutomationPreview.allowsOffense(civInfo) &&
+                    (tradeRequest.trade.ourOffers + tradeRequest.trade.theirOffers).any { it.type == TradeOfferType.WarDeclaration })) {
                 com.unciv.logic.automation.AutomationPreview.tradeChoice(civInfo, "reject_trade", tradeRequest)
                 civInfo.tradeRequests.remove(tradeRequest)
                 tradeRequest.decline(civInfo)

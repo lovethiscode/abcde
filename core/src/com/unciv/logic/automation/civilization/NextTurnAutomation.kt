@@ -21,6 +21,7 @@ import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.logic.map.tile.Tile
 import com.unciv.models.ruleset.MilestoneType
 import com.unciv.models.ruleset.Building
+import com.unciv.models.ruleset.PerpetualConstruction
 import com.unciv.models.ruleset.Policy
 import com.unciv.models.ruleset.PolicyBranch
 import com.unciv.models.ruleset.nation.PersonalityValue
@@ -636,8 +637,8 @@ object NextTurnAutomation {
         if (civInfo.isCityState) return
         if (civInfo.isOneCityChallenger()) return
         if (civInfo.cities.none()) return
-        if (AutomationPreview.militaryGoal(civInfo) && (civInfo.isAtWar() ||
-            civInfo.diplomacy.values.any { it.hasFlag(DiplomacyFlags.WaryOf) && it.getFlag(DiplomacyFlags.WaryOf) < 0 })) return
+        if (AutomationPreview.militaryGoal(civInfo) && (civInfo.isAtWar() || !AutomationPreview.economyReady(civInfo) ||
+            AutomationPreview.needsMilitaryProduction(civInfo))) return
         if (civInfo.getHappiness() <= civInfo.cities.size) return
         if (CivilianUnitAutomation.isLateGame(civInfo)){
             // all suitable land may be occupied already
@@ -681,8 +682,12 @@ object NextTurnAutomation {
             .filterNot { (it.cityConstructions.getCurrentConstruction() as? BaseUnit)?.isCityFounder() == true }
             .maxByOrNull { it.cityStats.currentCityStats.production }
             ?: return
-        if (bestCity.cityConstructions.getBuiltBuildings().count() > 1) // 2 buildings or more, otherwise focus on self first
-            bestCity.cityConstructions.setCurrentConstruction(settlerUnits.minByOrNull { it.cost }!!.name)
+        if (bestCity.cityConstructions.getBuiltBuildings().count() > 1 ||
+            AutomationPreview.strategy(civInfo)?.expansion == com.unciv.logic.automation.ExpansionPriority.NewCities)
+            if (AutomationPreview.strategy(civInfo)?.expansion != com.unciv.logic.automation.ExpansionPriority.ExistingCities ||
+                bestCity.cityConstructions.getCurrentConstruction() is PerpetualConstruction ||
+                bestCity.cityConstructions.getWorkDone(bestCity.cityConstructions.currentConstructionName()) == 0)
+                bestCity.cityConstructions.setCurrentConstruction(settlerUnits.minByOrNull { it.cost }!!.name)
     }
 
     // Technically, this function should also check for civs that have liberated one or more cities

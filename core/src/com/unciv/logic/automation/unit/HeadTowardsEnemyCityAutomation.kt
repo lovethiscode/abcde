@@ -39,6 +39,11 @@ object HeadTowardsEnemyCityAutomation {
             .filter { unit.civ.isAtWarWith(it) && it.cities.isNotEmpty() }
             .toList()
         val victoryEnemies = enemies.filter { AutomationPreview.warTargetPriority(unit.civ, it) > 0f }
+        if (AutomationPreview.strategy(unit.civ)?.combat in setOf(com.unciv.logic.automation.CombatPriority.Capital,
+                com.unciv.logic.automation.CombatPriority.Nearest, com.unciv.logic.automation.CombatPriority.Counterattack)) {
+            return AutomationPreview.targetCities(unit.civ, atWarOnly = true).asSequence()
+                .filterNot { unit.baseUnit.isRanged() && it.health == 1 }
+        }
 
         val closestEnemyCity = (victoryEnemies.ifEmpty { enemies })
             .mapNotNull { NextTurnAutomation.getForeignCityNearCapital(unit.civ.getCapital(), it) }
@@ -46,7 +51,7 @@ object HeadTowardsEnemyCityAutomation {
             ?: return emptySequence() // no attackable cities found
 
         val knownCapitals = closestEnemyCity.civ.cities.filter {
-            AutomationPreview.isConquestCapital(unit.civ, it)
+            it.isOriginalCapital && AutomationPreview.isConquestCapital(unit.civ, it)
         }.sortedBy { it.getCenterTile().aerialDistanceTo(unit.currentTile) }
 
         // Our main attack target is the closest city, but we're fine with deviating from that a bit

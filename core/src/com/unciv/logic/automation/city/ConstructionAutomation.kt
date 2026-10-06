@@ -36,6 +36,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
     private val civInfo = city.civ
 
     private val relativeCostEffectiveness = ArrayList<ConstructionChoice>()
+    private val preferenceBenefits = mutableMapOf<String, Stats>()
     private val cityState = city.state
     private val cityStats = city.cityStats
 
@@ -93,7 +94,8 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
         val extraAiModifier = if ((civInfo.isAI() || com.unciv.logic.automation.AutomationPreview.controls(civInfo)) && choice is INonPerpetualConstruction)
             choice.getWeightForAiDecision(GameContext(civInfo, city))
         else 1f
-        choices.add(ConstructionChoice(choice, choiceModifier * extraAiModifier,
+        val preference = com.unciv.logic.automation.AutomationPreview.productionWeight(civInfo, choice, preferenceBenefits[choice.name])
+        choices.add(ConstructionChoice(choice, choiceModifier * extraAiModifier * preference,
             cityConstructions.getRemainingWork(choice.name), cityConstructions.productionForConstruction(choice.name)))
     }
 
@@ -157,10 +159,14 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
         // There is a risk however, that these cities run out of things to build, and start to construct nothing
         if (civInfo.stats.getUnitSupplyDeficit() > 0) return // we don't want more units if it's already hurting our empire
         // todo: add worker disbandment and consumption of great persons if under attack & short on unit supply
-        if (!isAtWar && (civInfo.stats.statsForNextTurn.gold < 0 || militaryUnits > max(7, cities * 5))) return
+        if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)) {
+            if (!com.unciv.logic.automation.AutomationPreview.economyReady(civInfo)) return
+        } else if (!isAtWar && (civInfo.stats.statsForNextTurn.gold < 0 || militaryUnits > max(7, cities * 5))) return
         if (civInfo.gold < -50) return
 
         val militaryUnit = Automation.chooseMilitaryUnit(city, units) ?: return
+        if (!com.unciv.logic.automation.AutomationPreview.allowsSpending(civInfo, 0,
+                com.unciv.logic.automation.AutomationPreview.extraUnitMaintenance(civInfo, militaryUnit, city.getCenterTile()))) return
         val unitsToCitiesRatio = cities.toFloat() / (militaryUnits + 1)
         // most buildings and civ units contribute the the civ's growth, military units are anti-growth
         var modifier = 1 + sqrt(unitsToCitiesRatio) / 2
@@ -176,7 +182,6 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
 
         if (!civInfo.isAIOrAutoPlaying()) modifier /= 2 // Players prefer to make their own unit choices usually
         modifier *= personality.modifierFocus(PersonalityValue.Military, .3f)
-        if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)) modifier *= 3f
         addChoice(relativeCostEffectiveness, militaryUnit, modifier)
     }
 
@@ -342,6 +347,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
     private fun applyBuildingStats(building: Building, cityBaseline: Stats): Float {
         val buildingStats = getStatDifferenceFromBuilding(building.name, cityBaseline)
         buildingStats.add(getBuildingStatsFromUniques(building, buildingStats))
+        preferenceBenefits[building.name] = buildingStats.clone()
 
         buildingStats.food *= 3
 

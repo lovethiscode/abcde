@@ -240,18 +240,25 @@ object Automation {
             .toList().asSequence()
 
         val chosenUnit: BaseUnit
-        if (AutomationPreview.militaryGoal(city.civ) && city.civ.isAtWar()) {
-            val landArmy = city.civ.units.getCivUnits().map { it.baseUnit }
+        if (AutomationPreview.militaryGoal(city.civ) && AutomationPreview.preparing(city.civ)) {
+            val target = AutomationPreview.targetCities(city.civ).firstOrNull()
+            val completed = if (target == null) city.civ.units.getCivUnits().toList()
+                else AutomationPreview.eligibleArmy(city.civ, target)
+            val landArmy = completed.asSequence().map { it.baseUnit }
                 .filter { it.isMilitary && it.isLandUnit }.toList() + city.civ.cities.mapNotNull {
                     city.civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
                 }.filter { it.isMilitary && it.isLandUnit }
             fun canCapture(unit: BaseUnit) = unit.isMelee() && !unit.hasUnique(UniqueType.CannotCaptureCities)
+            if (inlandCapital && AutomationPreview.strategy(city.civ)?.production == ProductionPriority.Army &&
+                landArmy.count { it.isProbablySiegeUnit() } < 2 && landArmy.count(::canCapture) >= 2)
+                militaryUnits.filter { it.isLandUnit && it.isProbablySiegeUnit() }
+                    .maxByOrNull { it.getForceEvaluation() }?.let { return it }
             if (AutomationPreview.needsLandConquestProduction(city.civ)) {
                 val landCandidates = militaryUnits.filter { it.isLandUnit }.toList()
                 val preferred = when {
                     landArmy.count(::canCapture) < 2 -> landCandidates.filter(::canCapture)
-                    landArmy.count { it.isProbablySiegeUnit() } < 2 ->
-                        landCandidates.filter { it.isProbablySiegeUnit() }
+                    landArmy.count { it.isRanged() } < 2 || landArmy.count { it.isProbablySiegeUnit() } < 2 ->
+                        landCandidates.filter { it.isProbablySiegeUnit() }.ifEmpty { landCandidates.filter { it.isRanged() } }
                     else -> landCandidates.filter { it.isRanged() && !it.isProbablySiegeUnit() }
                 }
                 (preferred.ifEmpty { landCandidates.filter { it.isRanged() } }.ifEmpty { landCandidates })

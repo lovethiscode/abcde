@@ -12,6 +12,11 @@ import com.unciv.logic.city.City
 import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.logic.map.tile.Tile
 import com.unciv.models.ruleset.unique.UniqueType
+import com.unciv.models.ruleset.Building
+import com.unciv.models.ruleset.IConstruction
+import com.unciv.models.ruleset.unit.BaseUnit
+import com.unciv.models.stats.Stats
+import com.unciv.logic.civilization.diplomacy.DiplomaticStatus
 
 /** Explicit, thread-confined decision capture on an independent game copy. Absent in normal play. */
 object AutomationPreview {
@@ -24,7 +29,12 @@ object AutomationPreview {
     }
     private class Session(val game: GameInfo, val sink: Sink, val militaryVictory: String?,
                           val personality: Personality?, val defeatedCivs: Map<String, Boolean>,
-                          val builtWonders: Set<String>?, var unit: MapUnit? = null)
+                          val builtWonders: Set<String>?, val strategy: AutomationStrategy,
+                          var stage: AutomationStage, var targetCityId: String?,
+                          val reasons: MutableList<String>, val reassess: Boolean, var unit: MapUnit? = null) {
+        val benefits = mutableMapOf<Pair<String, String>, Stats>()
+        val paths = mutableMapOf<Pair<Int, String>, Int>()
+    }
     private class SelectedAction : RuntimeException()
     private val session = ThreadLocal<Session>()
     val active: Boolean get() = session.get() != null
@@ -33,30 +43,51 @@ object AutomationPreview {
     } == true
 
     fun capture(game: GameInfo, sink: Sink, militaryVictory: String? = null,
-                defeatedCivs: Map<String, Boolean> = emptyMap(), builtWonders: Set<String>? = null, block: () -> Unit) {
+                defeatedCivs: Map<String, Boolean> = emptyMap(), builtWonders: Set<String>? = null,
+                strategy: AutomationStrategy = AutomationStrategy.Siege, stage: AutomationStage = AutomationStage.Preparing,
+                targetCityId: String? = null, reasons: MutableList<String> = mutableListOf(),
+                reassess: Boolean = false, block: () -> Unit) {
         check(!active) { "Nested AI preview" }
         val personality = if (militaryVictory == null) null else {
             val original = game.getCurrentPlayerCivilization().getPersonality()
             json().fromJson(Personality::class.java, json().toJson(original)).apply {
-                military = 9f
-                aggressive = 9f
-                declareWar = 9f
-                commerce = commerce.coerceAtMost(2f)
-                diplomacy = diplomacy.coerceAtMost(2f)
-                loyal = loyal.coerceAtMost(2f)
-                production = production.coerceAtLeast(7f)
-                science = science.coerceAtLeast(7f)
-                happiness = happiness.coerceAtLeast(7f)
+                if (strategy.combat != CombatPriority.Counterattack && stage != AutomationStage.Building) {
+                    declareWar = declareWar.coerceAtLeast(1f)
+                    if (strategy.production == ProductionPriority.Army) {
+                        military = 9f
+                        aggressive = 9f
+                        declareWar = 9f
+                    }
+                }
                 preferredVictoryType = militaryVictory
             }
         }
-        session.set(Session(game, sink, militaryVictory, personality, defeatedCivs, builtWonders))
+        session.set(Session(game, sink, militaryVictory, personality, defeatedCivs, builtWonders,
+            strategy, stage, targetCityId, reasons, reassess))
         try { block() } finally { session.remove() }
     }
     @Readonly private fun militarySession(civ: Civilization): Session? = session.get()?.takeIf {
         it.militaryVictory != null && it.game === civ.gameInfo && it.game.currentPlayer == civ.civID
     }
     @Readonly fun militaryGoal(civ: Civilization): Boolean = militarySession(civ) != null
+    @Readonly fun strategy(civ: Civilization): AutomationStrategy? = militarySession(civ)?.strategy
+    @Readonly fun preparing(civ: Civilization): Boolean = militarySession(civ)?.stage?.let {
+        it != AutomationStage.Building
+    } == true
+    @Readonly fun allowsOffense(civ: Civilization): Boolean = militarySession(civ)?.let {
+        it.strategy.combat != CombatPriority.Counterattack && it.stage != AutomationStage.Building
+    } ?: true
+    @Readonly @Suppress("purity") // Records diagnostics in the thread-local preview, never in the game.
+    fun decision(civ: Civilization, message: String) {
+        militarySession(civ)?.reasons?.let { if (message !in it) it.add(message) }
+    }
+    fun selectedTarget(civ: Civilization): String? = militarySession(civ)?.targetCityId
+    fun readyToPrepare(civ: Civilization): Boolean = strategy(civ)?.combat != CombatPriority.Counterattack &&
+        economyReady(civ) && targetCities(civ).any { city ->
+            val army = eligibleArmy(civ, city).filter { it.health >= 50 }
+            army.count(::canCapture) >= 2 && army.count { it.baseUnit.isRanged() } >= 2 &&
+                com.unciv.logic.automation.civilization.MotivationToAttackAutomation.hasAtLeastMotivationToAttack(civ, city.civ, 20f) >= 20f
+        }
     fun includesPeace(trade: com.unciv.logic.trade.Trade): Boolean =
         (trade.ourOffers + trade.theirOffers).any {
             it.type == com.unciv.logic.trade.TradeOfferType.PeaceProposal ||
@@ -69,9 +100,10 @@ object AutomationPreview {
         val victory = civ.gameInfo.ruleset.victories[current.militaryVictory] ?: return 0f
         val advancesVictory = victory.milestoneObjects.any {
             when (it.type) {
-                MilestoneType.CaptureAllCapitals -> target.cities.any { city ->
+                MilestoneType.CaptureAllCapitals -> target.isMajorCiv() && !target.isDefeated() &&
+                    (target.cities.none { it.isOriginalCapital } || target.cities.any { city ->
                     city.isOriginalCapital && city.foundingCivObject?.isMajorCiv() == true
-                }
+                })
                 MilestoneType.DestroyAllPlayers -> target.isMajorCiv() && !target.isDefeated()
                 else -> false
             }
@@ -87,7 +119,18 @@ object AutomationPreview {
     fun researchWeight(civ: Civilization, tech: Technology): Float {
         val weight = tech.getWeightForAiDecision(civ.state)
         if (!militaryGoal(civ)) return weight
-        return weight * when (researchPriority(civ, tech)) { 2, 3, 4 -> 9f; 1 -> 3f; else -> 1f }
+        val config = strategy(civ)!!
+        val military = researchPriority(civ, tech) > 0
+        val economy = config.research == ResearchPriority.Economy && civ.gameInfo.ruleset.buildings.values.any { building ->
+            val destination = civ.gameInfo.ruleset.technologies[building.requiredTech] ?: return@any false
+            !building.isAnyWonder() && (building.uniqueTo == null || building.uniqueTo == civ.civName) &&
+                civ.tech.getRequiredTechsToDestination(destination).any { it.name == tech.name } &&
+                civ.cities.any { city -> !city.cityConstructions.isBuilt(building.name) &&
+                    buildingBenefits(city, building).let { it.production > 0 || it.gold > 0 || it.science > 0 } }
+        }
+        val multiplier = if (config.research == ResearchPriority.Military && military || economy) 2f else 1f
+        if (multiplier > 1f) decision(civ, "research preference ${config.research} ${tech.name} weight=$weight multiplier=$multiplier")
+        return weight * multiplier
     }
     /** A military prerequisite must not lose to an unrelated, cheaper research group. */
     fun preferredResearch(civ: Civilization, candidates: List<Technology>): Technology? {
@@ -109,10 +152,10 @@ object AutomationPreview {
         val unlocksSiege = firstSiegeTech != null && !civ.tech.isResearched(firstSiegeTech.name) &&
             civ.tech.getRequiredTechsToDestination(firstSiegeTech).any { it.name == tech.name }
         val unlocksMilitary = civ.gameInfo.ruleset.units.values.any {
-            it.requiredTech == tech.name && it.isMilitary && (!inlandConquest || !it.isWaterUnit)
+            it.requiredTech == tech.name && it.isMilitary && !it.isWaterUnit
         }
         val unlocksArmyUpgrade = civ.units.getCivUnits().any { unit ->
-            if (!unit.isMilitary()) return@any false
+            if (!unit.isMilitary() || unit.baseUnit.isWaterUnit) return@any false
             val upgrade = unit.baseUnit.upgradesTo?.let { civ.getEquivalentUnit(it) } ?: return@any false
             val destination = civ.gameInfo.ruleset.technologies[upgrade.requiredTech] ?: return@any false
             val route = civ.tech.getRequiredTechsToDestination(destination)
@@ -127,10 +170,12 @@ object AutomationPreview {
                     civ.cities.any { city -> !city.cityConstructions.isBuilt(building.name) } &&
                     civ.tech.getRequiredTechsToDestination(destination).any { it.name == tech.name }
             }
-        return when { unlocksHappiness -> 4; unlocksSiege -> 3; unlocksArmyUpgrade -> 2; unlocksMilitary -> 1; else -> 0 }
+        return when { unlocksHappiness -> 4; unlocksSiege -> 3
+            unlocksArmyUpgrade && strategy(civ)?.research == ResearchPriority.Military -> 2
+            unlocksMilitary -> 1; else -> 0 }
     }
     @Readonly fun isConquestCapital(civ: Civilization, city: City): Boolean =
-        militaryGoal(civ) && civ.isAtWarWith(city.civ) && city.isOriginalCapital &&
+        militaryGoal(civ) && civ.isAtWarWith(city.civ) &&
             city.getCenterTile().isExplored(civ) && warTargetPriority(civ, city.civ) > 0f
 
     @Readonly fun hasConquestCaptureSupport(civ: Civilization, city: City): Boolean =
@@ -141,38 +186,179 @@ object AutomationPreview {
         }
 
     @Readonly fun hasKnownInlandWarCapital(civ: Civilization): Boolean {
-        if (!militaryGoal(civ) || !civ.isAtWar()) return false
-        return civ.gameInfo.civilizations.any { enemy ->
-            civ.isAtWarWith(enemy) && warTargetPriority(civ, enemy) > 0f && enemy.cities.any { city ->
-                city.isOriginalCapital && city.getCenterTile().getTilesInDistance(1).all { it.isExplored(civ) } &&
-                    !city.isCoastal()
-            }
-        }
+        if (!militaryGoal(civ) || !preparing(civ)) return false
+        return targetCities(civ).any { city -> !city.isCoastal() &&
+            city.getCenterTile().getTilesInDistance(1).all { it.isExplored(civ) } }
     }
     @Readonly fun needsLandConquestProduction(civ: Civilization): Boolean {
-        if (!hasKnownInlandWarCapital(civ)) return false
-        val landArmy = civ.units.getCivUnits().map { it.baseUnit }
-            .filter { it.isMilitary && it.isLandUnit }.toList() + civ.cities.mapNotNull {
+        if (!militaryGoal(civ) || !preparing(civ)) return false
+        val city = targetCities(civ).firstOrNull() ?: return false
+        val landArmy = eligibleArmy(civ, city).map { it.baseUnit } + civ.cities.mapNotNull {
                 civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
             }.filter { it.isMilitary && it.isLandUnit }
-        if (landArmy.size < maxOf(6, civ.cities.size * 2)) return true
         val missingCapture = landArmy.count { it.isMelee() && !it.hasUnique(UniqueType.CannotCaptureCities) } < 2
-        val missingSiege = landArmy.count { it.isProbablySiegeUnit() } < 2
+        val availableSiege = civ.gameInfo.ruleset.units.values.any { it.isLandUnit && it.isProbablySiegeUnit() &&
+            Automation.allowSpendingResource(civ, it) && civ.cities.any { home -> it.isBuildable(home.cityConstructions) } }
+        val visibleFirepowerGap = city.getCenterTile().isVisible(civ) && availableSiege &&
+            eligibleArmy(civ, city).filter { it.health >= 50 }.sumOf {
+                com.unciv.logic.battle.BattleDamage.calculateDamageToDefender(
+                    com.unciv.logic.battle.MapUnitCombatant(it), com.unciv.logic.battle.CityCombatant(city))
+            } <= 20 + city.health / 5
+        val missingSiege = landArmy.count { it.isRanged() } < 2 ||
+            visibleFirepowerGap && landArmy.count { it.isProbablySiegeUnit() } < 2
         if (!missingCapture && !missingSiege) return false
         return civ.gameInfo.ruleset.units.values.any { unit ->
             unit.isMilitary && unit.isLandUnit && !unit.hasUnique(UniqueType.CannotAttack) &&
                 ((missingCapture && unit.isMelee() && !unit.hasUnique(UniqueType.CannotCaptureCities)) ||
-                    (missingSiege && unit.isProbablySiegeUnit())) &&
+                    (missingSiege && unit.isRanged())) &&
                 Automation.allowSpendingResource(civ, unit) && civ.cities.any { unit.isBuildable(it.cityConstructions) }
         }
     }
     @Readonly fun needsMilitaryProduction(civ: Civilization): Boolean {
-        if (!militaryGoal(civ) || !civ.isAtWar() || civ.getHappiness() <= 0 ||
-            civ.stats.getUnitSupplyDeficit() > 0 || civ.gold < 0 || civ.stats.statsForNextTurn.gold < 0) return false
-        val armySize = civ.units.getCivUnits().count { it.isMilitary() } + civ.cities.count {
-            civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]?.isMilitary == true
+        if (!militaryGoal(civ)) return false
+        if (!preparing(civ) || !economyReady(civ)) {
+            decision(civ, "mobilization blocked stage=${militarySession(civ)!!.stage} happiness=${civ.getHappiness()} gold=${civ.gold} income=${civ.stats.statsForNextTurn.gold} supply=${civ.stats.getUnitSupplyDeficit()}")
+            return false
         }
-        return armySize < maxOf(6, civ.cities.size * 3) || needsLandConquestProduction(civ)
+        if (needsLandConquestProduction(civ)) return true
+        val target = targetCities(civ).firstOrNull() ?: run {
+            decision(civ, "mobilization: known target or land route unavailable")
+            return false
+        }
+        val army = eligibleArmy(civ, target)
+        val ourForce = army.sumOf { it.baseUnit.getForceEvaluation().toDouble() * it.health / 100 }.toFloat()
+        val enemyForce = target.civ.getStatForRanking(com.unciv.ui.screens.victoryscreen.RankingType.Force)
+        return army.size < maxOf(6, civ.cities.size * 2) && ourForce < enemyForce
+    }
+
+    @Readonly fun economyReady(civ: Civilization, cost: Int = 0, extraMaintenance: Float = 0f): Boolean {
+        val remaining = civ.gold - cost
+        val income = civ.stats.statsForNextTurn.gold - extraMaintenance
+        return civ.getHappiness() > 0 && civ.stats.getUnitSupplyDeficit() == 0 && remaining >= 0 &&
+            remaining >= maxOf(0f, -income) * 5f
+    }
+
+    fun allowsSpending(civ: Civilization, cost: Int, extraMaintenance: Float = 0f): Boolean =
+        !militaryGoal(civ) || civ.cities.any { it.health < it.getMaxHealth() } || economyReady(civ, cost, extraMaintenance)
+
+    fun extraUnitMaintenance(civ: Civilization, base: BaseUnit, tile: Tile, replaced: MapUnit? = null): Float {
+        if (!militaryGoal(civ)) return 0f
+        val fake = base.newMapUnit(civ, com.unciv.Constants.NO_ID).apply { currentTile = tile }
+        val hypothetical = civ.units.getCivUnits().filter { it !== replaced } + sequenceOf(fake)
+        return (civ.stats.getUnitMaintenance(hypothetical) - civ.stats.getUnitMaintenance()).toFloat()
+    }
+
+    @Readonly private fun canCapture(unit: MapUnit) = unit.baseUnit.isMelee() && !unit.hasUnique(UniqueType.CannotCaptureCities)
+
+    /** Paths are evaluated on the isolated copy under the proposed war's traversal rules. */
+    @Readonly @Suppress("purity") // Scoped copy only; restores hypothetical diplomacy and movement caches.
+    fun attackPathCost(unit: MapUnit, city: City): Int {
+        val current = militarySession(unit.civ) ?: return unit.movement.getShortestPath(city.getCenterTile()).size
+        return current.paths.getOrPut(unit.id to city.id) {
+            val manager = unit.civ.getDiplomacyManager(city.civ) ?: return@getOrPut Int.MAX_VALUE
+            val old = manager.diplomaticStatus
+            val movement = unit.currentMovement
+            try {
+                manager.diplomaticStatus = DiplomaticStatus.War
+                unit.currentMovement = unit.getMaxMovement().toFloat()
+                unit.movement.clearPathfindingCache()
+                val path = unit.movement.getShortestPath(city.getCenterTile())
+                if (path.isEmpty()) Int.MAX_VALUE else path.size
+            } finally {
+                manager.diplomaticStatus = old
+                unit.currentMovement = movement
+                unit.movement.clearPathfindingCache()
+            }
+        }
+    }
+
+    @Readonly fun eligibleArmy(civ: Civilization, city: City): List<MapUnit> = civ.units.getCivUnits().filter {
+        it.isMilitary() && it.baseUnit.isLandUnit && !it.isEmbarked() && !it.hasUnique(UniqueType.CannotAttack) &&
+            it.currentTile.getCity()?.let { home -> home.civ == civ && home.health < home.getMaxHealth() } != true &&
+            attackPathCost(it, city) != Int.MAX_VALUE
+    }.toList()
+
+    @Readonly fun declarationReady(civ: Civilization, target: Civilization): Boolean {
+        if (!militaryGoal(civ)) return true
+        val city = targetCities(civ).firstOrNull { it.civ == target }
+        val reason = when {
+            !allowsOffense(civ) -> "offense disabled stage=${militarySession(civ)!!.stage}"
+            !economyReady(civ) -> "economy/happiness/supply"
+            civ.cities.any { it.health < it.getMaxHealth() } -> "city defense"
+            city == null -> "target/path not known"
+            else -> {
+                val army = eligibleArmy(civ, city).filter { it.health >= 50 }
+                when {
+                    army.count(::canCapture) < 2 -> "capture role/health/path"
+                    army.count { it.baseUnit.isRanged() } < 2 -> "firepower role/health/path"
+                    else -> null
+                }
+            }
+        }
+        if (reason != null) decision(civ, "declaration blocked ${target.civID}: $reason")
+        return reason == null
+    }
+
+    @Readonly @Suppress("purity") // Retains a target and path cache only in the current planning session.
+    fun targetCities(civ: Civilization, atWarOnly: Boolean = false): List<City> {
+        val current = militarySession(civ) ?: return emptyList()
+        val candidates = civ.getKnownCivs().filter { enemy ->
+            enemy.isMajorCiv() && !enemy.isDefeated() &&
+                (!atWarOnly || civ.isAtWarWith(enemy)) &&
+                (civ.isAtWarWith(enemy) || warTargetPriority(civ, enemy) > 0)
+        }.flatMap { it.cities.asSequence() }.filter { it.getCenterTile().isExplored(civ) }.toList()
+        val army = civ.units.getCivUnits().filter { it.isMilitary() && it.baseUnit.isLandUnit && !it.isEmbarked() }.toList().ifEmpty {
+            val home = civ.cities.firstOrNull() ?: return@ifEmpty emptyList()
+            val probe = civ.gameInfo.ruleset.units.values.firstOrNull { it.isMilitary && it.isLandUnit &&
+                !it.hasUnique(UniqueType.CannotAttack) && it.isBuildable(home.cityConstructions) }
+                ?: return@ifEmpty emptyList()
+            listOf(probe.newMapUnit(civ, com.unciv.Constants.NO_ID).apply { currentTile = home.getCenterTile() })
+        }
+        fun cost(city: City) = army.map { attackPathCost(it, city) }.sorted().take(4).let {
+            if (it.isEmpty() || it.first() == Int.MAX_VALUE) Int.MAX_VALUE else it.filter { n -> n != Int.MAX_VALUE }.sum()
+        }
+        val reachable = candidates.filter { cost(it) != Int.MAX_VALUE }
+        val sorted = reachable.sortedWith(compareBy<City> {
+            if (current.strategy.combat == CombatPriority.Capital && it.isOriginalCapital) 0 else 1
+        }.thenBy { cost(it) }.thenBy { if (it.isOriginalCapital) 0 else 1 }.thenBy { it.id })
+        val retained = sorted.firstOrNull { it.id == current.targetCityId }
+        val discoveredCapital = current.strategy.combat == CombatPriority.Capital && retained?.isOriginalCapital != true &&
+            sorted.firstOrNull()?.isOriginalCapital == true
+        val reviewed = if (!current.reassess) null else sorted.firstOrNull { city ->
+            com.unciv.logic.automation.civilization.MotivationToAttackAutomation.hasAtLeastMotivationToAttack(civ, city.civ, 0f) > 0f
+        }
+        val selected = if (reviewed != null) reviewed else if (discoveredCapital) sorted.firstOrNull() else retained ?: sorted.firstOrNull()
+        if (selected != null) current.targetCityId = selected.id
+        return (listOfNotNull(selected) + sorted).distinct()
+    }
+
+    fun productionWeight(civ: Civilization, choice: IConstruction, benefits: Stats? = null): Float {
+        val priority = strategy(civ)?.production ?: return 1f
+        val matches = when (priority) {
+            ProductionPriority.Auto -> false
+            ProductionPriority.Army -> choice is BaseUnit && choice.isMilitary
+            ProductionPriority.Production -> choice is Building && !choice.isAnyWonder() && (benefits?.production ?: 0f) > 0f
+            ProductionPriority.Gold -> choice is Building && !choice.isAnyWonder() && (benefits?.gold ?: 0f) > 0f
+            ProductionPriority.Science -> choice is Building && !choice.isAnyWonder() && (benefits?.science ?: 0f) > 0f
+        }
+        if (matches) decision(civ, "production preference $priority ${choice.name} multiplier=2")
+        return if (matches) 2f else 1f
+    }
+
+    private fun buildingBenefits(city: City, building: Building): Stats {
+        val current = militarySession(city.civ) ?: return Stats()
+        return current.benefits.getOrPut(city.id to building.name) {
+            try {
+                val baseline = city.clone().apply { setTransients(city.civ); cityStats.update(updateCivStats = false, calculateGrowthModifiers = false) }
+                val added = city.clone().apply {
+                    setTransients(city.civ)
+                    cityConstructions.builtBuildings.add(building.name)
+                    cityConstructions.setTransients()
+                    cityStats.update(updateCivStats = false, calculateGrowthModifiers = false)
+                }
+                added.cityStats.currentCityStats - baseline.cityStats.currentCityStats
+            } finally { city.expansion.setTransients() }
+        }
     }
 
     fun withUnit(unit: MapUnit, reportIdle: Boolean = true, block: () -> Unit) {

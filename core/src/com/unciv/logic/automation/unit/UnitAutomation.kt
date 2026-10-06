@@ -243,6 +243,8 @@ object UnitAutomation {
         val upgradeUnits = getUnitsToUpgradeTo(unit)
         if (upgradeUnits.none()) return false // for resource reasons, usually
         val upgradedUnit = upgradeUnits.minBy { it.cost }
+        if (!AutomationPreview.allowsSpending(unit.civ, unit.upgrade.getCostOfUpgrade(upgradedUnit),
+                AutomationPreview.extraUnitMaintenance(unit.civ, upgradedUnit, unit.currentTile, unit))) return false
 
         if (upgradedUnit.getResourceRequirementsPerTurn(unit.cache.state).keys.any { !unit.requiresResource(it) }) {
             // The upgrade requires new resource types, so check if we are willing to invest them
