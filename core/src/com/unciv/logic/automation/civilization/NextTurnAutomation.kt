@@ -683,6 +683,9 @@ object NextTurnAutomation {
             .filterNot { (it.cityConstructions.getCurrentConstruction() as? BaseUnit)?.isCityFounder() == true }
             .maxByOrNull { it.cityStats.currentCityStats.production }
             ?: return
+        if (AutomationPreview.militaryGoal(civInfo) &&
+            bestCity.cityConstructions.getCurrentConstruction() !is PerpetualConstruction &&
+            bestCity.cityConstructions.getWorkDone(bestCity.cityConstructions.currentConstructionName()) > 0) return
         if (bestCity.cityConstructions.getBuiltBuildings().count() > 1 ||
             AutomationPreview.strategy(civInfo)?.expansion == com.unciv.logic.automation.ExpansionPriority.NewCities)
             if (AutomationPreview.strategy(civInfo)?.expansion != com.unciv.logic.automation.ExpansionPriority.ExistingCities ||
