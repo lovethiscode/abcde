@@ -52,7 +52,7 @@ object AutomationPreview {
     @Readonly private fun militarySession(civ: Civilization): Session? = session.get()?.takeIf {
         it.militaryVictory != null && it.game === civ.gameInfo && it.game.currentPlayer == civ.civID
     }
-    fun militaryGoal(civ: Civilization): Boolean = militarySession(civ) != null
+    @Readonly fun militaryGoal(civ: Civilization): Boolean = militarySession(civ) != null
     fun includesPeace(trade: com.unciv.logic.trade.Trade): Boolean =
         (trade.ourOffers + trade.theirOffers).any {
             it.type == com.unciv.logic.trade.TradeOfferType.PeaceProposal ||
@@ -86,6 +86,13 @@ object AutomationPreview {
         val unlocksMilitary = civ.gameInfo.ruleset.units.values.any {
             it.requiredTech == tech.name && it.isMilitary
         }
+        val unlocksArmyUpgrade = civ.units.getCivUnits().any { unit ->
+            if (!unit.isMilitary()) return@any false
+            val upgrade = unit.baseUnit.upgradesTo?.let { civ.getEquivalentUnit(it) } ?: return@any false
+            val destination = civ.gameInfo.ruleset.technologies[upgrade.requiredTech] ?: return@any false
+            val route = civ.tech.getRequiredTechsToDestination(destination)
+            route.size <= 3 && route.any { it.name == tech.name }
+        }
         val unlocksHappiness = civ.getHappiness() <= 0 && civ.cities.isNotEmpty() &&
             civ.gameInfo.ruleset.buildings.values.any { building ->
                 val destination = civ.gameInfo.ruleset.technologies[building.requiredTech]
@@ -95,7 +102,7 @@ object AutomationPreview {
                     civ.cities.any { city -> !city.cityConstructions.isBuilt(building.name) } &&
                     civ.tech.getRequiredTechsToDestination(destination).any { it.name == tech.name }
             }
-        return weight * when { unlocksHappiness -> 9f; unlocksMilitary -> 3f; else -> 1f }
+        return weight * when { unlocksHappiness || unlocksArmyUpgrade -> 9f; unlocksMilitary -> 3f; else -> 1f }
     }
 
     fun withUnit(unit: MapUnit, reportIdle: Boolean = true, block: () -> Unit) {

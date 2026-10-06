@@ -239,6 +239,17 @@ object Automation {
             .toList().asSequence()
 
         val chosenUnit: BaseUnit
+        if (AutomationPreview.militaryGoal(city.civ) && city.civ.isAtWar()) {
+            val landArmy = city.civ.units.getCivUnits().map { it.baseUnit }
+                .filter { it.isMilitary && it.isLandUnit }.toList() + city.civ.cities.mapNotNull {
+                    city.civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
+                }.filter { it.isMilitary && it.isLandUnit }
+            fun canCapture(unit: BaseUnit) = unit.isMelee() && !unit.hasUnique(UniqueType.CannotCaptureCities)
+            if (landArmy.count(::canCapture) * 3 < landArmy.size) {
+                militaryUnits.filter { it.isLandUnit && canCapture(it) }
+                    .maxByOrNull { it.getForceEvaluation() }?.let { return it }
+            }
+        }
         if (!city.civ.isAtWar()
                 && city.civ.cities.any { it.getCenterTile().militaryUnit == null }
                 && militaryUnits.any { it.isRanged() } // this is for city defence so get a ranged unit if we can
