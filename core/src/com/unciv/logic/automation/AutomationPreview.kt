@@ -11,6 +11,7 @@ import com.unciv.logic.civilization.Civilization
 import com.unciv.logic.city.City
 import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.logic.map.tile.Tile
+import com.unciv.models.ruleset.unique.UniqueType
 
 /** Explicit, thread-confined decision capture on an independent game copy. Absent in normal play. */
 object AutomationPreview {
@@ -119,6 +120,17 @@ object AutomationPreview {
             }
         return when { unlocksHappiness -> 3; unlocksArmyUpgrade -> 2; unlocksMilitary -> 1; else -> 0 }
     }
+    @Readonly fun isConquestCapital(civ: Civilization, city: City): Boolean =
+        militaryGoal(civ) && civ.isAtWarWith(city.civ) && city.isOriginalCapital &&
+            city.getCenterTile().isExplored(civ) && warTargetPriority(civ, city.civ) > 0f
+
+    @Readonly fun hasConquestCaptureSupport(civ: Civilization, city: City): Boolean =
+        city.getCenterTile().getTilesInDistance(3).flatMap { it.getUnits() }.any {
+            it.civ == civ && it.baseUnit.isLandUnit && it.baseUnit.isMelee() && it.health >= 50 &&
+                !it.isEmbarked() && !it.hasUnique(UniqueType.CannotCaptureCities) &&
+                !it.hasUnique(UniqueType.CannotAttack)
+        }
+
     @Readonly fun hasKnownInlandWarCapital(civ: Civilization): Boolean {
         if (!militaryGoal(civ) || !civ.isAtWar()) return false
         return civ.gameInfo.civilizations.any { enemy ->
@@ -130,12 +142,20 @@ object AutomationPreview {
     }
     @Readonly fun needsLandConquestProduction(civ: Civilization): Boolean {
         if (!hasKnownInlandWarCapital(civ)) return false
-        val landArmySize = civ.units.getCivUnits().count { it.isMilitary() && it.baseUnit.isLandUnit } +
-            civ.cities.count {
-                val unit = civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
-                unit?.isMilitary == true && unit.isLandUnit
-            }
-        return landArmySize < maxOf(6, civ.cities.size * 2)
+        val landArmy = civ.units.getCivUnits().map { it.baseUnit }
+            .filter { it.isMilitary && it.isLandUnit }.toList() + civ.cities.mapNotNull {
+                civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
+            }.filter { it.isMilitary && it.isLandUnit }
+        if (landArmy.size < maxOf(6, civ.cities.size * 2)) return true
+        val missingCapture = landArmy.count { it.isMelee() && !it.hasUnique(UniqueType.CannotCaptureCities) } < 2
+        val missingSiege = landArmy.count { it.isProbablySiegeUnit() } < 2
+        if (!missingCapture && !missingSiege) return false
+        return civ.gameInfo.ruleset.units.values.any { unit ->
+            unit.isMilitary && unit.isLandUnit && !unit.hasUnique(UniqueType.CannotAttack) &&
+                ((missingCapture && unit.isMelee() && !unit.hasUnique(UniqueType.CannotCaptureCities)) ||
+                    (missingSiege && unit.isProbablySiegeUnit())) &&
+                Automation.allowSpendingResource(civ, unit) && civ.cities.any { unit.isBuildable(it.cityConstructions) }
+        }
     }
     @Readonly fun needsMilitaryProduction(civ: Civilization): Boolean {
         if (!militaryGoal(civ) || !civ.isAtWar() || civ.getHappiness() <= 0 ||

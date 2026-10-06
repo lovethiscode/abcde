@@ -1,5 +1,6 @@
 package com.unciv.logic.automation.unit
 
+import com.unciv.logic.automation.AutomationPreview
 import com.unciv.logic.battle.AttackableTile
 import com.unciv.logic.battle.Battle
 import com.unciv.logic.battle.BattleDamage
@@ -139,6 +140,8 @@ object BattleHelper {
         if (attacker.baseUnit.isProbablySiegeUnit()) attackValue += 100
         // Ranged units don't take damage from the city
         else if (attacker.baseUnit.isRanged()) attackValue += 10
+        if (attacker.baseUnit.isProbablySiegeUnit() && AutomationPreview.isConquestCapital(attacker.civ, city) &&
+            AutomationPreview.hasConquestCaptureSupport(attacker.civ, city)) attackValue += 150
         // Lower health cities have a higher priority to attack ranges from -20 to 30
         attackValue -= (city.health - 60) / 2
 

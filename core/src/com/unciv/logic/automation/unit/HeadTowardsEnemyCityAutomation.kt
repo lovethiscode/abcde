@@ -9,8 +9,10 @@ import com.unciv.logic.battle.MapUnitCombatant
 import com.unciv.logic.city.City
 import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.logic.map.mapunit.movement.PathsToTilesWithinTurn
+import com.unciv.logic.map.mapunit.movement.UnitMovement
 import com.unciv.logic.map.tile.Tile
 import yairm210.purity.annotations.Readonly
+import com.unciv.models.ruleset.unique.UniqueType
 
 object HeadTowardsEnemyCityAutomation {
 
@@ -43,11 +45,17 @@ object HeadTowardsEnemyCityAutomation {
             .minByOrNull { it.aerialDistance }?.city
             ?: return emptySequence() // no attackable cities found
 
+        val knownCapitals = closestEnemyCity.civ.cities.filter {
+            AutomationPreview.isConquestCapital(unit.civ, it)
+        }.sortedBy { it.getCenterTile().aerialDistanceTo(unit.currentTile) }
+
         // Our main attack target is the closest city, but we're fine with deviating from that a bit
         var enemyCitiesByPriority = closestEnemyCity.civ.cities
             .associateWith { it.getCenterTile().aerialDistanceTo(closestEnemyCity.getCenterTile()) }
             .asSequence().filterNot { it.value > 10 } // anything 10 tiles away from the target is irrelevant
             .sortedBy { it.value }.map { it.key } // sort the list by closeness to target - least is best!
+
+        enemyCitiesByPriority = (knownCapitals.asSequence() + enemyCitiesByPriority).distinct()
 
         if (unit.baseUnit.isRanged()) // ranged units don't harm capturable cities, waste of a turn
             enemyCitiesByPriority = enemyCitiesByPriority.filterNot { it.health == 1 }
@@ -100,16 +108,33 @@ object HeadTowardsEnemyCityAutomation {
             return nextTileInPath
         }
 
-        val ourUnitsAroundEnemyCity = closestReachableEnemyCity.getTilesInDistance(6)
+        val city = closestReachableEnemyCity.getCity()!!
+        val conquest = AutomationPreview.isConquestCapital(unit.civ, city)
+        val ourUnitsAroundEnemyCity = closestReachableEnemyCity.getTilesInDistance(if (conquest) 3 else 6)
             .flatMap { it.getUnits() }
             .filter { it.isMilitary() && it.civ == unit.civ }
+            .filter { !conquest || (it.health >= 50 && !it.isEmbarked() && !it.hasUnique(UniqueType.CannotAttack)) }
 
-        val city = closestReachableEnemyCity.getCity()!!
-
-        if (cannotTakeCitySoon(ourUnitsAroundEnemyCity, city)) {
+        if ((conquest && !AutomationPreview.hasConquestCaptureSupport(unit.civ, city)) ||
+            cannotTakeCitySoon(ourUnitsAroundEnemyCity, city)) {
             return chooseLandingGround(closestReachableEnemyCity, unit)
         }
 
+        if (conquest && unit.baseUnit.isProbablySiegeUnit()) {
+            val firingPosition = unitDistanceToTiles.asSequence().filter { (tile, _) ->
+                tile.aerialDistanceTo(closestReachableEnemyCity) == unitRange &&
+                    (tile == unit.currentTile || unit.movement.canMoveTo(tile)) &&
+                    unit.getDamageFromTerrain(tile) <= 0 &&
+                    (unit.hasUnique(UniqueType.IndirectFire) || closestReachableEnemyCity in
+                        tile.tileMap.getViewableTiles(tile.position, unitRange, true))
+            }.sortedWith(compareByDescending<Map.Entry<Tile, UnitMovement.ParentTileAndTotalMovement>> { entry ->
+                entry.key.neighbors.count { tile -> tile.militaryUnit?.let {
+                    it.civ == unit.civ && it.baseUnit.isMelee() && it.health >= 50
+                } == true }
+            }.thenBy { entry -> entry.key.neighbors.count { it.militaryUnit?.civ?.isAtWarWith(unit.civ) == true } }
+                .thenBy { it.value.totalMovement }).firstOrNull()?.key
+            if (firingPosition != null) return firingPosition
+        }
         return nextTileInPath // go for it!
     }
 

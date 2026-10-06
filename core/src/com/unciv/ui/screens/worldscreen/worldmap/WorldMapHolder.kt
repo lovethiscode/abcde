@@ -540,6 +540,7 @@ class WorldMapHolder(
             unitIconGroup.circle.color = Color.GRAY.cpy().apply { a = 0.5f }
             if (!unitView.hasMovement()) unitIconGroup.color.a = 0.66f
             val clickableCircle = ClickableCircle(68f)
+            clickableCircle.name = "ui-unit-selection:${unitView.getUnit().id}"
             clickableCircle.onClickSuppressive {
                 worldScreen.bottomUnitTable.selectUnit(unitView, Gdx.input.isShiftKeyPressed())
                 worldScreen.shouldUpdate = true
