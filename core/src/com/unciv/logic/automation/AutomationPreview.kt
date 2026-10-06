@@ -87,7 +87,7 @@ object AutomationPreview {
     fun researchWeight(civ: Civilization, tech: Technology): Float {
         val weight = tech.getWeightForAiDecision(civ.state)
         if (!militaryGoal(civ)) return weight
-        return weight * when (researchPriority(civ, tech)) { 2, 3 -> 9f; 1 -> 3f; else -> 1f }
+        return weight * when (researchPriority(civ, tech)) { 2, 3, 4 -> 9f; 1 -> 3f; else -> 1f }
     }
     /** A military prerequisite must not lose to an unrelated, cheaper research group. */
     fun preferredResearch(civ: Civilization, candidates: List<Technology>): Technology? {
@@ -99,8 +99,17 @@ object AutomationPreview {
             .firstOrNull()?.first
     }
     private fun researchPriority(civ: Civilization, tech: Technology): Int {
+        val inlandConquest = hasKnownInlandWarCapital(civ)
+        val firstSiegeTech = if (!inlandConquest || civ.units.getCivUnits().count {
+            it.baseUnit.isLandUnit && it.baseUnit.isProbablySiegeUnit()
+        } >= 2) null else civ.gameInfo.ruleset.units.values.asSequence()
+            .filter { it.isLandUnit && it.isProbablySiegeUnit() && (it.uniqueTo == null || it.uniqueTo == civ.civName) }
+            .mapNotNull { civ.gameInfo.ruleset.technologies[it.requiredTech] }.distinct()
+            .minByOrNull { it.cost }
+        val unlocksSiege = firstSiegeTech != null && !civ.tech.isResearched(firstSiegeTech.name) &&
+            civ.tech.getRequiredTechsToDestination(firstSiegeTech).any { it.name == tech.name }
         val unlocksMilitary = civ.gameInfo.ruleset.units.values.any {
-            it.requiredTech == tech.name && it.isMilitary
+            it.requiredTech == tech.name && it.isMilitary && (!inlandConquest || !it.isWaterUnit)
         }
         val unlocksArmyUpgrade = civ.units.getCivUnits().any { unit ->
             if (!unit.isMilitary()) return@any false
@@ -118,7 +127,7 @@ object AutomationPreview {
                     civ.cities.any { city -> !city.cityConstructions.isBuilt(building.name) } &&
                     civ.tech.getRequiredTechsToDestination(destination).any { it.name == tech.name }
             }
-        return when { unlocksHappiness -> 3; unlocksArmyUpgrade -> 2; unlocksMilitary -> 1; else -> 0 }
+        return when { unlocksHappiness -> 4; unlocksSiege -> 3; unlocksArmyUpgrade -> 2; unlocksMilitary -> 1; else -> 0 }
     }
     @Readonly fun isConquestCapital(civ: Civilization, city: City): Boolean =
         militaryGoal(civ) && civ.isAtWarWith(city.civ) && city.isOriginalCapital &&
