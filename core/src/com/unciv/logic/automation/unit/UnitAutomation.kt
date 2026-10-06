@@ -52,7 +52,7 @@ object UnitAutomation {
         }
 
         val isHumanAndNotAutoplaying =
-            unit.civ.isHuman() && GUI.getWorldScreenIfActive()?.autoPlay?.isAutoPlaying() != true
+            unit.civ.isHuman() && !AutomationPreview.controls(unit.civ) && GUI.getWorldScreenIfActive()?.autoPlay?.isAutoPlaying() != true
         // AI promotes units via NextTurnAutomation.automateUnits
         if (isHumanAndNotAutoplaying) NextTurnAutomation.applyPromotions(unit)
         // AI upgrades units via UseGoldAutomation in NextTurnAutomation
@@ -237,7 +237,7 @@ object UnitAutomation {
     }
 
     internal fun tryUpgradeUnit(unit: MapUnit): Boolean {
-        if (unit.civ.isHuman() && !UncivGame.Current.settings.automatedUnitsCanUpgrade
+        if (unit.civ.isHuman() && !AutomationPreview.controls(unit.civ) && !UncivGame.Current.settings.automatedUnitsCanUpgrade
             && UncivGame.Current.worldScreen?.autoPlay?.isAutoPlayingAndFullAutoPlayAI() == false) return false
 
         val upgradeUnits = getUnitsToUpgradeTo(unit)

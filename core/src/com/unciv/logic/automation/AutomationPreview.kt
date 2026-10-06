@@ -27,6 +27,9 @@ object AutomationPreview {
     private class SelectedAction : RuntimeException()
     private val session = ThreadLocal<Session>()
     val active: Boolean get() = session.get() != null
+    @Readonly fun controls(civ: Civilization): Boolean = session.get()?.let {
+        it.game === civ.gameInfo && it.game.currentPlayer == civ.civID
+    } == true
 
     fun capture(game: GameInfo, sink: Sink, militaryVictory: String? = null,
                 defeatedCivs: Map<String, Boolean> = emptyMap(), builtWonders: Set<String>? = null, block: () -> Unit) {

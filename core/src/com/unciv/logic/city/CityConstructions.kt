@@ -843,7 +843,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
                 || !city.civ.gameInfo.gameParameters.isOnlineMultiplayer
         if ((isCurrentPlayersTurn && (UncivGame.Current.settings.autoAssignCityProduction
                 || UncivGame.Current.worldScreen?.autoPlay?.isAutoPlayingAndFullAutoPlayAI() == true)) // only automate if the active human player has the setting to automate production
-                || city.civ.isAI() || city.isPuppet) {
+                || city.civ.isAI() || AutomationPreview.controls(city.civ) || city.isPuppet) {
             ConstructionAutomation(this).chooseNextConstruction()
         }
 

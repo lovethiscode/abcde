@@ -466,7 +466,7 @@ object NextTurnAutomation {
     internal fun applyPromotions(unit: MapUnit) {
         if (AutomationPreview.active && (!unit.hasMovement() || unit.attacksThisTurn != 0)) return
         // Restrict Human automated units from promotions via setting
-        if (!unit.civ.isAI() && !UncivGame.Current.settings.automatedUnitsChoosePromotions) return
+        if (!unit.civ.isAI() && !AutomationPreview.controls(unit.civ) && !UncivGame.Current.settings.automatedUnitsChoosePromotions) return
         val rng = unit.cache.state.stateBasedRandom("NextTurnAutomation.automateUnits")
         val stateForConditionals = unit.cache.state
         while (unit.promotions.canBePromoted()) {

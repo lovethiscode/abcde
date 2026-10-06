@@ -90,7 +90,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
                                           val remainingWork: Int, val production: Int)
 
     private fun addChoice(choices: ArrayList<ConstructionChoice>, choice: IConstruction, choiceModifier: Float) {
-        val extraAiModifier = if (civInfo.isAI() && choice is INonPerpetualConstruction)
+        val extraAiModifier = if ((civInfo.isAI() || com.unciv.logic.automation.AutomationPreview.controls(civInfo)) && choice is INonPerpetualConstruction)
             choice.getWeightForAiDecision(GameContext(civInfo, city))
         else 1f
         choices.add(ConstructionChoice(choice, choiceModifier * extraAiModifier,

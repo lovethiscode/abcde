@@ -396,7 +396,7 @@ class WorkerAutomation(
                     && unit.canBuildImprovement(it.value, tile)
                     && tile.improvementFunctions.canBuildImprovement(it.value, gameContext)
                 // Properly exclude removing forest and jungle tiles from potentialTileImprovements.
-                    && !(UncivGame.Current.settings.stopAutomatedWorkersRemoveVegetation &&
+                    && !(!com.unciv.logic.automation.AutomationPreview.controls(civInfo) && UncivGame.Current.settings.stopAutomatedWorkersRemoveVegetation &&
                         tile.terrainHasUnique(UniqueType.Vegetation) &&
                         it.value.name.startsWith(Constants.remove) &&
                         civInfo.isHuman()) // Make sure to only apply this to player automated workers.
@@ -410,7 +410,7 @@ class WorkerAutomation(
             .filter { it.second > 0f }
             .maxByOrNull { it.second }?.first
 
-        if (currentImprovement != null && civInfo.isHuman() && !UncivGame.Current.settings.automatedWorkersReplaceImprovements
+        if (currentImprovement != null && civInfo.isHuman() && !com.unciv.logic.automation.AutomationPreview.controls(civInfo) && !UncivGame.Current.settings.automatedWorkersReplaceImprovements
             && UncivGame.Current.worldScreen?.autoPlay?.isAutoPlayingAndFullAutoPlayAI() == false) {
             // Note that we might still want to build roads or remove fallout, so we can't exit the function immedietly
             bestBuildableImprovement = null

@@ -469,6 +469,7 @@ class Civilization : IsPartOfGameInfoSerialization, Json.Serializable {
     @Readonly fun isAI() = playerType == PlayerType.AI
     @Readonly
     fun isAIOrAutoPlaying(): Boolean {
+        if (com.unciv.logic.automation.AutomationPreview.militaryGoal(this)) return true
         if (playerType == PlayerType.AI) return true
         if (gameInfo.isSimulation()) return true
         val worldScreen = UncivGame.Current.worldScreen ?: return false
