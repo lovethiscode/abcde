@@ -710,6 +710,9 @@ object NextTurnAutomation {
         for (otherCiv in civInfo.getKnownCivs().filter { it.isMajorCiv() }) {
             val diploManager = civInfo.getDiplomacyManager(otherCiv)!!
             for (demand in Demand.entries) {
+                // The UI planner can only issue demands enabled on the human diplomacy page.
+                if (AutomationPreview.militaryGoal(civInfo)
+                    && (!demand.show(civInfo) || diploManager.hasFlag(demand.agreedToDemand))) continue
                 if (diploManager.hasFlag(demand.violationOccurred))
                     onDemandViolation(demand, civInfo, otherCiv)
             }
