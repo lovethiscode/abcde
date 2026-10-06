@@ -363,7 +363,9 @@ object DiplomacyAutomation {
         if (ourMilitaryUnits < civView.cities().size) return
         if (ourMilitaryUnits < 4) return  // to stop AI declaring war at the beginning of games when everyone isn't set up well enough
         // For mods we can't check the number of cities, so we will check the population instead.
-        if (civView.cities().sumOf { it.getPopulationCount() } < 12) return // FAR too early for that what are you thinking!
+        val militaryGoal = com.unciv.logic.automation.AutomationPreview.militaryGoal(civView.getCiv())
+        val minimumPopulation = if (militaryGoal) 3 else 12
+        if (civView.cities().sumOf { it.getPopulationCount() } < minimumPopulation) return
 
         //evaluate war
         val targetCivs = civView.getKnownCivs()
@@ -371,6 +373,7 @@ object DiplomacyAutomation {
                 it.isDefeated() || it == civView || it.cities().isEmpty() || !civView.getDiplomacyManagerWith(it)!!.canDeclareWar()
                     || it.cities().none { city -> civView.hasExplored(city.getCenterTile()) }
             }
+            .filter { !militaryGoal || com.unciv.logic.automation.AutomationPreview.warTargetPriority(civView.getCiv(), it.getCiv()) > 0 }
         // If the AI declares war on a civ without knowing the location of any cities,
         // it'll just keep amassing an army and not sending it anywhere, and end up at a massive disadvantage.
 
