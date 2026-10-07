@@ -566,14 +566,25 @@ object UnitAutomation {
     }
 
     private fun tryHeadTowardsOurSiegedCity(unit: MapUnit): Boolean {
+        val controlled = AutomationPreview.militaryGoal(unit.civ)
+        fun threatened(city: City) = controlled && city.getCenterTile().getTilesInDistance(2).any { tile ->
+            tile.militaryUnit?.let { enemy -> enemy.civ.isAtWarWith(unit.civ) && enemy.isVisibleTo(unit.civ) &&
+                !enemy.hasUnique(UniqueType.CannotAttack) } == true
+        }
         val siegedCities = unit.civ.cities
                 .asSequence()
                 .filter {
-                    unit.civ == it.civ && it.health < it.getMaxHealth()
-                }
+                    unit.civ == it.civ && (it.health < it.getMaxHealth() || threatened(it))
+                }.toList()
 
-        if (siegedCities.any { it.getCenterTile().aerialDistanceTo(unit.getTile()) <= 2 })
+        if (siegedCities.any { it.getCenterTile().aerialDistanceTo(unit.getTile()) <= 2 }) {
+            if (siegedCities.any { threatened(it) && it.getCenterTile().aerialDistanceTo(unit.getTile()) <= 2 }) {
+                tryAttacking(unit)
+                if (unit.hasMovement() && unit.health < 100) tryHealUnit(unit)
+                return true
+            }
             return false
+        }
 
         val reachableTileNearSiegedCity = siegedCities
                 .flatMap { it.getCenterTile().getTilesAtDistance(2) }
@@ -584,7 +595,7 @@ object UnitAutomation {
         if (reachableTileNearSiegedCity != null) {
             unit.movement.headTowards(reachableTileNearSiegedCity)
         }
-        return !unit.hasMovement()
+        return controlled && reachableTileNearSiegedCity != null || !unit.hasMovement()
     }
 
 

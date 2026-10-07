@@ -118,7 +118,8 @@ object BattleHelper {
         
         if (canCaptureCity && city.health <= BattleDamage.calculateDamageToDefender(attackerUnit, cityUnit).coerceAtLeast(1))
             return 10000
-        if (canCaptureCity && AutomationPreview.isConquestCapital(attacker.civ, city)) return 0
+        if (canCaptureCity && AutomationPreview.isConquestCapital(attacker.civ, city) &&
+            !AutomationPreview.canJoinConquestAssault(attacker, city)) return 0
             
 
         if (attacker.baseUnit.isMelee()) {

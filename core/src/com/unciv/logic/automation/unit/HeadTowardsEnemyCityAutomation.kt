@@ -116,7 +116,8 @@ object HeadTowardsEnemyCityAutomation {
         val city = closestReachableEnemyCity.getCity()!!
         val conquest = AutomationPreview.isConquestCapital(unit.civ, city)
         if (conquest && unit.baseUnit.isLandUnit && unit.baseUnit.isMelee() &&
-            city.health > BattleDamage.calculateDamageToDefender(MapUnitCombatant(unit), CityCombatant(city)).coerceAtLeast(1))
+            city.health > BattleDamage.calculateDamageToDefender(MapUnitCombatant(unit), CityCombatant(city)).coerceAtLeast(1) &&
+            !AutomationPreview.canJoinConquestAssault(unit, city))
             return chooseLandingGround(closestReachableEnemyCity, unit)
         val ourUnitsAroundEnemyCity = closestReachableEnemyCity.getTilesInDistance(if (conquest) 3 else 6)
             .flatMap { it.getUnits() }

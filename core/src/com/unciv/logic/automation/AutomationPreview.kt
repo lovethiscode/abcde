@@ -206,6 +206,27 @@ object AutomationPreview {
                 !it.hasUnique(UniqueType.CannotAttack)
         }
 
+    /** Joining an active barrage is different from sending unsupported melee into bombardment. */
+    @Readonly fun canJoinConquestAssault(unit: MapUnit, city: City): Boolean {
+        if (!isConquestCapital(unit.civ, city) || unit.health < 50 || !city.getCenterTile().isVisible(unit.civ)) return false
+        val defender = com.unciv.logic.battle.CityCombatant(city)
+        val retaliation = com.unciv.logic.battle.BattleDamage.calculateDamageToAttacker(
+            com.unciv.logic.battle.MapUnitCombatant(unit), defender)
+        if (retaliation * 2 >= unit.health) return false
+        val firepower = city.getCenterTile().getTilesInDistance(3).mapNotNull { it.militaryUnit }.filter {
+            it.civ == unit.civ && it.baseUnit.isRanged() && it.health >= 50 && !it.isEmbarked() &&
+                !it.hasUnique(UniqueType.CannotAttack) &&
+                (!it.hasUnique(UniqueType.MustSetUp) || it.isSetUpForSiege()) &&
+                it.currentTile.aerialDistanceTo(city.getCenterTile()) <= it.getRange() &&
+                (it.hasUnique(UniqueType.IndirectFire) || city.getCenterTile() in
+                    it.currentTile.tileMap.getViewableTiles(it.currentTile.position, it.getRange(), true))
+        }.toList()
+        return firepower.size >= 2 && firepower.sumOf {
+            com.unciv.logic.battle.BattleDamage.calculateDamageToDefender(
+                com.unciv.logic.battle.MapUnitCombatant(it), defender)
+        } > 20 + city.health / 5
+    }
+
     @Readonly fun hasKnownInlandWarCapital(civ: Civilization): Boolean {
         if (!militaryGoal(civ) || !preparing(civ)) return false
         return targetCities(civ).any { city -> !city.isCoastal() &&
