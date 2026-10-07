@@ -91,19 +91,24 @@ object BattleHelper {
         predicted.turnsFortified = 0
         predicted.action = null
         predicted.setTransients(unit.civ.gameInfo.ruleset)
-        val postCombatant = MapUnitCombatant(predicted)
+        val protectingCity = postTile.getCity()?.takeIf { postTile.isCityCenter() && it.civ == unit.civ }
+        val postCombatant = if (protectingCity == null) MapUnitCombatant(predicted) else CityCombatant(protectingCity)
         var followupDamage = 0
+        var canCaptureProtectingCity = false
         for (enemyCiv in unit.civ.getKnownCivs().filter { unit.civ.isAtWarWith(it) }) {
             for (enemy in enemyCiv.units.getCivUnits()) {
                 val tile = enemy.currentTile
                 if (!enemy.isMilitary() || !enemy.isVisibleTo(unit.civ) || tile == defeatedTile ||
                     enemy.hasUnique(UniqueType.CannotAttack) ||
                     enemy.baseUnit.isWaterUnit && enemy.baseUnit.isMelee() && !postTile.isWater) continue
-                followupDamage += visibleAttackPositions(enemy, unit).filter { from ->
+                val positions = visibleAttackPositions(enemy, unit).filter { from ->
                     from.aerialDistanceTo(postTile) in 1..enemy.getRange() &&
                         (enemy.baseUnit.isMelee() || enemy.hasUnique(UniqueType.IndirectFire) || postTile in
                             from.tileMap.getViewableTiles(from.position, enemy.getRange(), true))
-                }.maxOfOrNull { from ->
+                }
+                if (positions.isNotEmpty() && enemy.baseUnit.isMelee() && !enemy.hasUnique(UniqueType.CannotCaptureCities))
+                    canCaptureProtectingCity = true
+                followupDamage += positions.maxOfOrNull { from ->
                     BattleDamage.calculateDamageToDefender(MapUnitCombatant(enemy), postCombatant, from)
                 } ?: 0
             }
@@ -114,7 +119,9 @@ object BattleHelper {
                     followupDamage += BattleDamage.calculateDamageToDefender(CityCombatant(city), postCombatant, tile)
             }
         }
-        return followupDamage
+        // A garrison is attacked through its city; it is lost only if the city can be captured.
+        return if (protectingCity == null) followupDamage
+            else if (canCaptureProtectingCity && followupDamage >= protectingCity.health) health else 0
     }
 
     /** Next-turn movement through currently visible terrain only; hidden armies are not inspected. */

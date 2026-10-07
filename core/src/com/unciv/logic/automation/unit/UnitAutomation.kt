@@ -368,23 +368,23 @@ object UnitAutomation {
     }
 
     private fun tryAvoidLethalFollowup(unit: MapUnit): Boolean {
-        if (!AutomationPreview.militaryGoal(unit.civ) || !unit.baseUnit.isLandUnit ||
-            unit.currentTile.isCityCenter() && unit.currentTile.getCity()?.civ == unit.civ) return false
+        if (!AutomationPreview.militaryGoal(unit.civ) || !unit.baseUnit.isLandUnit) return false
         val danger = BattleHelper.visibleFollowupDamage(unit, unit.currentTile)
         if (danger < unit.health) return false
         val destinations = unit.movement.getDistanceToTiles()
-        // Keep an actual immediate capture available, including the final capital.
-        if (unit.baseUnit.isMelee() && !unit.hasUnique(UniqueType.CannotCaptureCities) &&
-            com.unciv.logic.battle.TargetHelper.getAttackableEnemies(unit, destinations).any {
-                val city = it.tileToAttack.getCity()
-                city != null && it.tileToAttack.isCityCenter() && city.civ.isAtWarWith(unit.civ) &&
-                    com.unciv.logic.battle.BattleDamage.calculateDamageToDefender(
-                        com.unciv.logic.battle.MapUnitCombatant(unit), com.unciv.logic.battle.CityCombatant(city),
-                        it.tileToAttackFrom) >= city.health &&
-                    com.unciv.logic.battle.BattleDamage.calculateDamageToAttacker(
-                        com.unciv.logic.battle.MapUnitCombatant(unit), com.unciv.logic.battle.CityCombatant(city),
-                        it.tileToAttackFrom) < unit.health
-            }) return false
+        // An immediate city capture must not be replaced by retreat or low-health healing.
+        val safeAttack = if (unit.canAttack() && unit.baseUnit.isMelee() &&
+            !unit.hasUnique(UniqueType.CannotCaptureCities)) BattleHelper.chooseAttackTarget(unit,
+            TargetHelper.getAttackableEnemies(unit, destinations).filter {
+                val city = it.tileToAttack.getCity()?.takeIf { _ -> it.tileToAttack.isCityCenter() }
+                city != null && BattleDamage.calculateDamageToDefender(
+                    MapUnitCombatant(unit), CityCombatant(city),
+                    it.tileToAttackFrom) >= city.health
+            }) else null
+        if (safeAttack != null) {
+            Battle.moveAndAttack(MapUnitCombatant(unit), safeAttack)
+            return true
+        }
         val retreat = destinations.keys.asSequence().filter {
             it != unit.currentTile && unit.movement.canMoveTo(it) && unit.getDamageFromTerrain(it) <= 0
         }.map { it to BattleHelper.visibleFollowupDamage(unit, it) }
