@@ -82,7 +82,13 @@ object UnitAutomation {
             return AirUnitAutomation.automateBomber(unit)
         }
 
+        if (tryDefendCity(unit)) return
         if (tryAvoidLethalFollowup(unit)) return
+        if (AutomationPreview.militaryGoal(unit.civ) && unit.health < 50 && unit.canHealInCurrentTile()
+            && BattleHelper.visibleFollowupDamage(unit, unit.currentTile) == 0) {
+            AutomationPreview.decision(unit.civ, "safe recovery unit=${unit.id} health=${unit.health}")
+            return
+        }
 
         // Accompany settlers
         if (tryAccompanySettlerOrGreatPerson(unit)) return
@@ -365,6 +371,23 @@ object UnitAutomation {
             }
         }
         return false
+    }
+
+    private fun tryDefendCity(unit: MapUnit): Boolean {
+        if (!AutomationPreview.militaryGoal(unit.civ) || !unit.baseUnit.isLandUnit || !unit.canAttack()) return false
+        val cities = unit.civ.cities.filter { it.getCenterTile().aerialDistanceTo(unit.currentTile) <= 2 }
+        if (cities.isEmpty()) return false
+        // Critical wounds may fire from city protection, but must not leave it to fight.
+        val candidates = TargetHelper.getAttackableEnemies(unit, unit.movement.getDistanceToTiles(),
+            stayOnTile = unit.health < 50).filter { attack ->
+            attack.tileToAttack.militaryUnit != null && cities.any {
+                it.getCenterTile().aerialDistanceTo(attack.tileToAttack) <= 2
+            } && (unit.health >= 50 || unit.currentTile.isCityCenter() && unit.baseUnit.isRanged())
+        }
+        val attack = BattleHelper.chooseAttackTarget(unit, candidates) ?: return false
+        AutomationPreview.decision(unit.civ, "city defense unit=${unit.id} health=${unit.health}")
+        Battle.moveAndAttack(MapUnitCombatant(unit), attack)
+        return true
     }
 
     private fun tryAvoidLethalFollowup(unit: MapUnit): Boolean {

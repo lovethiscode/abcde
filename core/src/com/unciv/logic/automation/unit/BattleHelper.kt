@@ -79,6 +79,18 @@ object BattleHelper {
         val remaining = unit.health - retaliation
         val followupDamage = visibleFollowupDamage(unit, postTile, attack.tileToAttack.takeIf { killsDefender }, remaining)
         if (followupDamage < remaining) return true
+        // Supported defenders must be able to clear a siege instead of all fleeing the same upper bound.
+        if (unit.type.name != "Scout" && remaining >= 50 && damage > retaliation &&
+            postTile == unit.currentTile && defender is MapUnitCombatant &&
+            unit.civ.cities.any { city -> city.getCenterTile().aerialDistanceTo(postTile) <= 2 &&
+                city.getCenterTile().aerialDistanceTo(attack.tileToAttack) <= 2 } &&
+            postTile.getTilesInDistance(2).any { tile -> tile.militaryUnit?.let { ally ->
+                ally != unit && ally.civ == unit.civ && ally.health >= 50 && ally.type.name != "Scout" &&
+                    !ally.hasUnique(UniqueType.CannotAttack)
+            } == true }) {
+            AutomationPreview.decision(unit.civ, "supported city defense unit=${unit.id} remaining=$remaining visible followup=$followupDamage")
+            return true
+        }
         AutomationPreview.decision(unit.civ, "military attack rejected unit=${unit.id} remaining=$remaining visible followup=$followupDamage")
         return false
     }
