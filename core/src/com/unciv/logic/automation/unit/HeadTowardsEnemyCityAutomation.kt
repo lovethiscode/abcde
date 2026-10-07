@@ -129,7 +129,7 @@ object HeadTowardsEnemyCityAutomation {
             return chooseLandingGround(closestReachableEnemyCity, unit)
         }
 
-        if (conquest && unit.baseUnit.isProbablySiegeUnit()) {
+        if (conquest && unit.baseUnit.isLandUnit && unit.baseUnit.isRanged()) {
             val firingPosition = unitDistanceToTiles.asSequence().filter { (tile, _) ->
                 tile.aerialDistanceTo(closestReachableEnemyCity) == unitRange &&
                     (tile == unit.currentTile || unit.movement.canMoveTo(tile)) &&
