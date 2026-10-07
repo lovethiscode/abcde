@@ -67,7 +67,8 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
 
     private val units = city.getRuleset().units.values.asSequence()
         .filterNot { buildableUnits[it.name] == false || // if we already know that this unit can't be built here then don't even consider it
-            (civInfo.isHuman() && it.name in city.disabledConstructions) || shouldAvoidConstruction(it) }
+            (civInfo.isHuman() && it.name in city.disabledConstructions) || shouldAvoidConstruction(it) ||
+            !com.unciv.logic.automation.AutomationPreview.allowsUnitProduction(civInfo, it) }
 
     private val civUnits = civInfo.units.getCivUnits()
     private val militaryUnits = civUnits.count { it.baseUnit.isMilitary }
@@ -124,7 +125,8 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
         }
 
         val happinessRescue = if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)
-                && civInfo.getHappiness() <= 0) relativeCostEffectiveness.filter {
+                && (civInfo.getHappiness() <= 0 || isAtWar && civInfo.getHappiness() <= 3 &&
+                    com.unciv.logic.automation.AutomationPreview.strategy(civInfo)?.production == com.unciv.logic.automation.ProductionPriority.Army)) relativeCostEffectiveness.filter {
             it.choice is Building && !it.choice.isAnyWonder() &&
                 (preferenceBenefits[it.choice.name]?.happiness ?: 0f) > 0f
         } else emptyList()
@@ -242,6 +244,8 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
     }
 
     private fun addWorkerChoice() {
+        if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo) && workers >= cities &&
+            com.unciv.logic.automation.AutomationPreview.needsLandConquestProduction(civInfo)) return
         val workerEquivalents = units
             .filter {
                 it.hasUnique(UniqueType.BuildImprovements)

@@ -225,6 +225,7 @@ object Automation {
         val inlandCapital = AutomationPreview.hasKnownInlandWarCapital(city.civ)
         val militaryUnits = availableUnits
             .filter { it.isMilitary }
+            .filter { AutomationPreview.allowsUnitProduction(city.civ, it) }
             .filterNot { (removeShips || inlandCapital) && it.isWaterUnit }
             .filter { allowSpendingResource(city.civ, it) }
             .filterNot {
@@ -244,11 +245,11 @@ object Automation {
             val target = AutomationPreview.targetCities(city.civ).firstOrNull()
             val completed = if (target == null) city.civ.units.getCivUnits().toList()
                 else AutomationPreview.eligibleArmy(city.civ, target)
-            val landArmy = completed.asSequence().map { it.baseUnit }
+            val landArmy = completed.asSequence().filter { it.health >= 50 }.map { it.baseUnit }
                 .filter { it.isMilitary && it.isLandUnit }.toList() + city.civ.cities.mapNotNull {
                     city.civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
                 }.filter { it.isMilitary && it.isLandUnit }
-            fun canCapture(unit: BaseUnit) = unit.isMelee() && !unit.hasUnique(UniqueType.CannotCaptureCities)
+            fun canCapture(unit: BaseUnit) = AutomationPreview.isCaptureUnit(unit)
             if (inlandCapital && AutomationPreview.strategy(city.civ)?.production == ProductionPriority.Army &&
                 landArmy.count { it.isProbablySiegeUnit() } < 2 && landArmy.count(::canCapture) >= 2)
                 militaryUnits.filter { it.isLandUnit && it.isProbablySiegeUnit() }

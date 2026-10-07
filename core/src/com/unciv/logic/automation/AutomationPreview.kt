@@ -151,7 +151,7 @@ object AutomationPreview {
             unit.isMilitary && unit.isLandUnit && !unit.hasUnique(UniqueType.CannotAttack) &&
                 (unit.uniqueTo == null || unit.uniqueTo == civ.civName)
         }
-        val captureUnits = landUnits.filter { it.isMelee() && !it.hasUnique(UniqueType.CannotCaptureCities) }
+        val captureUnits = landUnits.filter(::isCaptureUnit)
         val firepowerUnits = landUnits.filter { it.isRanged() }
         fun available(units: List<BaseUnit>) = units.any { unit -> civ.cities.any { unit.isBuildable(it.cityConstructions) } }
         val roleUnits = (if (missingCapture && !available(captureUnits)) captureUnits else emptyList()) +
@@ -201,7 +201,7 @@ object AutomationPreview {
 
     @Readonly fun hasConquestCaptureSupport(civ: Civilization, city: City): Boolean =
         city.getCenterTile().getTilesInDistance(3).flatMap { it.getUnits() }.any {
-            it.civ == civ && it.baseUnit.isLandUnit && it.baseUnit.isMelee() && it.health >= 50 &&
+            it.civ == civ && it.baseUnit.isLandUnit && isCaptureUnit(it.baseUnit) && it.health >= 50 &&
                 !it.isEmbarked() && !it.hasUnique(UniqueType.CannotCaptureCities) &&
                 !it.hasUnique(UniqueType.CannotAttack)
         }
@@ -235,24 +235,24 @@ object AutomationPreview {
     @Readonly fun needsLandConquestProduction(civ: Civilization, includeQueued: Boolean = true): Boolean {
         if (!militaryGoal(civ) || !preparing(civ)) return false
         val city = targetCities(civ).firstOrNull() ?: return false
-        val landArmy = eligibleArmy(civ, city).map { it.baseUnit } + if (includeQueued) civ.cities.mapNotNull {
+        val landArmy = eligibleArmy(civ, city).filter { it.health >= 50 }.map { it.baseUnit } + if (includeQueued) civ.cities.mapNotNull {
                 civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
             }.filter { it.isMilitary && it.isLandUnit } else emptyList()
-        val missingCapture = landArmy.count { it.isMelee() && !it.hasUnique(UniqueType.CannotCaptureCities) } < 2
+        val missingCapture = landArmy.count(::isCaptureUnit) < 2
         val availableSiege = civ.gameInfo.ruleset.units.values.any { it.isLandUnit && it.isProbablySiegeUnit() &&
             Automation.allowSpendingResource(civ, it) && civ.cities.any { home -> it.isBuildable(home.cityConstructions) } }
         val visibleFirepowerGap = city.getCenterTile().isVisible(civ) && availableSiege &&
-            eligibleArmy(civ, city).filter { it.health >= 50 }.sumOf {
+            eligibleArmy(civ, city).filter { it.health >= 50 && it.baseUnit.isRanged() }.sumOf {
                 com.unciv.logic.battle.BattleDamage.calculateDamageToDefender(
                     com.unciv.logic.battle.MapUnitCombatant(it), com.unciv.logic.battle.CityCombatant(city))
             } <= 20 + city.health / 5
         val missingSiege = landArmy.count { it.isRanged() } < 2 ||
-            visibleFirepowerGap && landArmy.count { it.isProbablySiegeUnit() } < 2
+            visibleFirepowerGap && (landArmy.count { it.isProbablySiegeUnit() } < 2 || militarySession(civ)?.reassess == true)
         if (!missingCapture && !missingSiege) return false
         if (!includeQueued) return true
         return civ.gameInfo.ruleset.units.values.any { unit ->
             unit.isMilitary && unit.isLandUnit && !unit.hasUnique(UniqueType.CannotAttack) &&
-                ((missingCapture && unit.isMelee() && !unit.hasUnique(UniqueType.CannotCaptureCities)) ||
+                ((missingCapture && isCaptureUnit(unit)) ||
                     (missingSiege && unit.isRanged())) &&
                 Automation.allowSpendingResource(civ, unit) && civ.cities.any { unit.isBuildable(it.cityConstructions) }
         }
@@ -293,7 +293,26 @@ object AutomationPreview {
         return (civ.stats.getUnitMaintenance(hypothetical) - civ.stats.getUnitMaintenance()).toFloat()
     }
 
-    @Readonly private fun canCapture(unit: MapUnit) = unit.baseUnit.isMelee() && !unit.hasUnique(UniqueType.CannotCaptureCities)
+    @Readonly fun isCaptureUnit(unit: BaseUnit) = unit.isMelee() && unit.type.name != "Scout" &&
+        !unit.hasUnique(UniqueType.CannotCaptureCities) && !unit.hasUnique(UniqueType.CannotAttack)
+
+    @Readonly private fun canCapture(unit: MapUnit) = isCaptureUnit(unit.baseUnit)
+
+    @Readonly fun allowsUnitProduction(civ: Civilization, unit: BaseUnit): Boolean {
+        if (!militaryGoal(civ) || unit.type.name != "Scout") return true
+        if (targetCities(civ).isNotEmpty()) return false
+        return civ.units.getCivUnits().count { it.type.name == "Scout" } + civ.cities.count {
+            civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]?.type?.name == "Scout"
+        } < 2
+    }
+
+    @Readonly fun keepConquestCity(civ: Civilization, city: City): Boolean {
+        if (!militaryGoal(civ) || strategy(civ)?.combat != CombatPriority.Capital) return false
+        return civ.getKnownCivs().flatMap { it.cities.asSequence() }.any {
+            it.civ != civ && it.civ.isMajorCiv() && it.isOriginalCapital && it.getCenterTile().isExplored(civ) &&
+                it.getCenterTile().aerialDistanceTo(city.getCenterTile()) <= 5
+        }
+    }
 
     /** Paths are evaluated on the isolated copy under the proposed war's traversal rules. */
     @Readonly @Suppress("purity") // Scoped copy only; restores hypothetical diplomacy and movement caches.
@@ -319,6 +338,7 @@ object AutomationPreview {
 
     @Readonly fun eligibleArmy(civ: Civilization, city: City): List<MapUnit> = civ.units.getCivUnits().filter {
         it.isMilitary() && it.baseUnit.isLandUnit && !it.isEmbarked() && !it.hasUnique(UniqueType.CannotAttack) &&
+            (!militaryGoal(civ) || it.type.name != "Scout") &&
             it.currentTile.getCity()?.let { home -> home.civ == civ && home.health < home.getMaxHealth() } != true &&
             attackPathCost(it, city) != Int.MAX_VALUE
     }.toList()
@@ -381,7 +401,7 @@ object AutomationPreview {
         val priority = strategy(civ)?.production ?: return 1f
         val matches = when (priority) {
             ProductionPriority.Auto -> false
-            ProductionPriority.Army -> choice is BaseUnit && choice.isMilitary
+            ProductionPriority.Army -> choice is BaseUnit && choice.isMilitary && choice.type.name != "Scout"
             ProductionPriority.Production -> choice is Building && !choice.isAnyWonder() && (benefits?.production ?: 0f) > 0f
             ProductionPriority.Gold -> choice is Building && !choice.isAnyWonder() && (benefits?.gold ?: 0f) > 0f
             ProductionPriority.Science -> choice is Building && !choice.isAnyWonder() && (benefits?.science ?: 0f) > 0f

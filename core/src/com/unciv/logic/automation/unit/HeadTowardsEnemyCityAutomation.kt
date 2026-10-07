@@ -134,6 +134,7 @@ object HeadTowardsEnemyCityAutomation {
                 tile.aerialDistanceTo(closestReachableEnemyCity) == unitRange &&
                     (tile == unit.currentTile || unit.movement.canMoveTo(tile)) &&
                     unit.getDamageFromTerrain(tile) <= 0 &&
+                    BattleHelper.visibleFollowupDamage(unit, tile) < unit.health &&
                     (unit.hasUnique(UniqueType.IndirectFire) || closestReachableEnemyCity in
                         tile.tileMap.getViewableTiles(tile.position, unitRange, true))
             }.sortedWith(compareByDescending<Map.Entry<Tile, UnitMovement.ParentTileAndTotalMovement>> { entry ->
@@ -143,6 +144,7 @@ object HeadTowardsEnemyCityAutomation {
             }.thenBy { entry -> entry.key.neighbors.count { it.militaryUnit?.civ?.isAtWarWith(unit.civ) == true } }
                 .thenBy { it.value.totalMovement }).firstOrNull()?.key
             if (firingPosition != null) return firingPosition
+            return chooseLandingGround(closestReachableEnemyCity, unit)
         }
         return nextTileInPath // go for it!
     }
