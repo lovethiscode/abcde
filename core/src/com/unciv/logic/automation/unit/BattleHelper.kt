@@ -11,6 +11,7 @@ import com.unciv.logic.city.City
 import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.models.ruleset.unique.GameContext
 import com.unciv.models.ruleset.unique.UniqueType
+import yairm210.purity.annotations.LocalState
 import yairm210.purity.annotations.Readonly
 
 object BattleHelper {
@@ -51,8 +52,55 @@ object BattleHelper {
                     // For mounted units it is fine to attack from these tiles, but with current AI movement logic it is not easy to determine if our unit can meaningfully move away after attacking
                     // Also, AI doesn't build tactical roads
             }
+            .filter { !AutomationPreview.militaryGoal(unit.civ) || unit.type.name != "Scout" ||
+                isSafeScoutAttack(unit, it) }
 
         return rankAttackTarget(unit, attackableEnemies)
+    }
+
+    @Readonly
+    private fun isSafeScoutAttack(unit: MapUnit, attack: AttackableTile): Boolean {
+        val attacker = MapUnitCombatant(unit)
+        val defender = Battle.getMapCombatantOfTile(attack.tileToAttack) ?: return false
+        val retaliation = BattleDamage.calculateDamageToAttacker(attacker, defender, attack.tileToAttackFrom)
+        val damage = BattleDamage.calculateDamageToDefender(attacker, defender, attack.tileToAttackFrom)
+        val killsDefender = damage >= defender.getHealth()
+        if (!killsDefender && retaliation >= damage) {
+            AutomationPreview.decision(unit.civ, "scout attack rejected unit=${unit.id} losing exchange damage=$damage retaliation=$retaliation")
+            return false
+        }
+
+        // Evaluate the post-attack position on a detached unit, without changing the live map.
+        val postTile = if (killsDefender && unit.baseUnit.isMelee()) attack.tileToAttack else attack.tileToAttackFrom
+        @LocalState val predicted = unit.clone()
+        predicted.currentTile = postTile
+        predicted.health -= retaliation
+        predicted.turnsFortified = 0
+        predicted.action = null
+        predicted.setTransients(unit.civ.gameInfo.ruleset)
+        val postCombatant = MapUnitCombatant(predicted)
+        var followupDamage = 0
+        for (enemyCiv in unit.civ.getKnownCivs().filter { unit.civ.isAtWarWith(it) }) {
+            for (enemy in enemyCiv.units.getCivUnits()) {
+                val tile = enemy.currentTile
+                if (enemy.isMilitary() && enemy.isVisibleTo(unit.civ) &&
+                    !(killsDefender && tile == attack.tileToAttack) && !enemy.hasUnique(UniqueType.CannotAttack) &&
+                    (!enemy.baseUnit.isWaterUnit || !enemy.baseUnit.isMelee() || postTile.isWater) &&
+                    tile.aerialDistanceTo(postTile) <= enemy.getRange() &&
+                    (enemy.baseUnit.isMelee() || enemy.hasUnique(UniqueType.IndirectFire) || postTile in
+                        tile.tileMap.getViewableTiles(tile.position, enemy.getRange(), true)))
+                    followupDamage += BattleDamage.calculateDamageToDefender(MapUnitCombatant(enemy), postCombatant, tile)
+            }
+            for (city in enemyCiv.cities) {
+                val tile = city.getCenterTile()
+                if (!(killsDefender && tile == attack.tileToAttack) && tile.isVisible(unit.civ) &&
+                    tile.aerialDistanceTo(postTile) <= city.getBombardRange())
+                    followupDamage += BattleDamage.calculateDamageToDefender(CityCombatant(city), postCombatant, tile)
+            }
+        }
+        if (followupDamage < predicted.health) return true
+        AutomationPreview.decision(unit.civ, "scout attack rejected unit=${unit.id} remaining=${predicted.health} visible followup=$followupDamage")
+        return false
     }
 
     fun tryDisembarkUnitToAttackPosition(unit: MapUnit): Boolean {
