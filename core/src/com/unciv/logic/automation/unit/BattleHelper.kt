@@ -9,6 +9,7 @@ import com.unciv.logic.battle.MapUnitCombatant
 import com.unciv.logic.battle.TargetHelper
 import com.unciv.logic.city.City
 import com.unciv.logic.map.mapunit.MapUnit
+import com.unciv.logic.map.mapunit.movement.MovementCost
 import com.unciv.logic.map.tile.Tile
 import com.unciv.models.ruleset.unique.GameContext
 import com.unciv.models.ruleset.unique.UniqueType
@@ -95,13 +96,16 @@ object BattleHelper {
         for (enemyCiv in unit.civ.getKnownCivs().filter { unit.civ.isAtWarWith(it) }) {
             for (enemy in enemyCiv.units.getCivUnits()) {
                 val tile = enemy.currentTile
-                if (enemy.isMilitary() && enemy.isVisibleTo(unit.civ) &&
-                    tile != defeatedTile && !enemy.hasUnique(UniqueType.CannotAttack) &&
-                    (!enemy.baseUnit.isWaterUnit || !enemy.baseUnit.isMelee() || postTile.isWater) &&
-                    tile.aerialDistanceTo(postTile) <= enemy.getRange() &&
-                    (enemy.baseUnit.isMelee() || enemy.hasUnique(UniqueType.IndirectFire) || postTile in
-                        tile.tileMap.getViewableTiles(tile.position, enemy.getRange(), true)))
-                    followupDamage += BattleDamage.calculateDamageToDefender(MapUnitCombatant(enemy), postCombatant, tile)
+                if (!enemy.isMilitary() || !enemy.isVisibleTo(unit.civ) || tile == defeatedTile ||
+                    enemy.hasUnique(UniqueType.CannotAttack) ||
+                    enemy.baseUnit.isWaterUnit && enemy.baseUnit.isMelee() && !postTile.isWater) continue
+                followupDamage += visibleAttackPositions(enemy, unit).filter { from ->
+                    from.aerialDistanceTo(postTile) in 1..enemy.getRange() &&
+                        (enemy.baseUnit.isMelee() || enemy.hasUnique(UniqueType.IndirectFire) || postTile in
+                            from.tileMap.getViewableTiles(from.position, enemy.getRange(), true))
+                }.maxOfOrNull { from ->
+                    BattleDamage.calculateDamageToDefender(MapUnitCombatant(enemy), postCombatant, from)
+                } ?: 0
             }
             for (city in enemyCiv.cities) {
                 val tile = city.getCenterTile()
@@ -111,6 +115,30 @@ object BattleHelper {
             }
         }
         return followupDamage
+    }
+
+    /** Next-turn movement through currently visible terrain only; hidden armies are not inspected. */
+    @Readonly
+    private fun visibleAttackPositions(enemy: MapUnit, observer: MapUnit): Set<Tile> {
+        val origin = enemy.currentTile
+        if (!enemy.baseUnit.isLandUnit || enemy.hasUnique(UniqueType.MustSetUp) || enemy.cache.cannotMove)
+            return setOf(origin)
+        val movement = enemy.getMaxMovement().toFloat()
+        @LocalState val costs = hashMapOf(origin to 0f)
+        @LocalState val pending = java.util.ArrayDeque<Tile>()
+        pending.add(origin)
+        while (pending.isNotEmpty()) {
+            val from = pending.removeFirst()
+            for (to in from.neighbors) {
+                if (!to.isVisible(observer.civ) || !enemy.movement.canPassThrough(to, false)) continue
+                val cost = costs.getValue(from) + MovementCost.getMovementCostBetweenAdjacentTiles(enemy, from, to)
+                // Moving with no movement left cannot be followed by an attack.
+                if (cost >= movement || cost >= (costs[to] ?: Float.MAX_VALUE)) continue
+                costs[to] = cost
+                pending.add(to)
+            }
+        }
+        return costs.keys.filter { it == origin || enemy.movement.canMoveTo(it, includeOtherEscortUnit = false) }.toSet()
     }
 
     fun tryDisembarkUnitToAttackPosition(unit: MapUnit): Boolean {

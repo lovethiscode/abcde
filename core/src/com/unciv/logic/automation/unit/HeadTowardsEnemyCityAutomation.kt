@@ -176,8 +176,15 @@ object HeadTowardsEnemyCityAutomation {
         val tileToHeadTo = closestReachableEnemyCity.getTilesInDistanceRange(minDistanceFromCityToConsiderForLandingArea..maxDistance)
             .filter { it.isLand && unit.getDamageFromTerrain(it) <= 0 } // Don't head for hurty terrain
             .sortedBy { it.aerialDistanceTo(unit.currentTile) }
-            .firstOrNull { (unit.movement.canMoveTo(it) || it == unit.currentTile) && unit.movement.canReach(it) }
-
+            .firstOrNull { tile ->
+                if (!(unit.movement.canMoveTo(tile) || tile == unit.currentTile) || !unit.movement.canReach(tile)) false
+                else if (!AutomationPreview.militaryGoal(unit.civ) || !unit.baseUnit.isRanged()) true
+                else {
+                    val nextTile = if (tile in unit.movement.getDistanceToTiles()) tile
+                        else unit.movement.getShortestPath(tile).firstOrNull() ?: unit.currentTile
+                    BattleHelper.visibleFollowupDamage(unit, nextTile) < unit.health
+                }
+            }
         return tileToHeadTo ?: unit.currentTile
     }
 
