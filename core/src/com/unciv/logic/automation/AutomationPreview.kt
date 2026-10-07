@@ -35,6 +35,7 @@ object AutomationPreview {
                           val reasons: MutableList<String>, val reassess: Boolean, var unit: MapUnit? = null) {
         val benefits = mutableMapOf<Pair<String, String>, Stats>()
         val paths = mutableMapOf<Pair<Int, String>, Int>()
+        var defenders: Map<Int, City>? = null
     }
     private class SelectedAction : RuntimeException()
     private val session = ThreadLocal<Session>()
@@ -83,6 +84,60 @@ object AutomationPreview {
         militarySession(civ)?.reasons?.let { if (message !in it) it.add(message) }
     }
     fun selectedTarget(civ: Civilization): String? = militarySession(civ)?.targetCityId
+
+    @Readonly fun reinforcementTarget(civ: Civilization): City? =
+        if (!militaryGoal(civ) || !allowsOffense(civ) || !civ.isAtWar()) null
+        else targetCities(civ, atWarOnly = true).firstOrNull()
+
+    /** Reserve enough nearby defenders, rather than diverting every recruit to the same city. */
+    @Readonly @Suppress("purity") // Assignments live only in this planning session.
+    fun defenseCity(unit: MapUnit): City? {
+        val current = militarySession(unit.civ) ?: return null
+        if (reinforcementTarget(unit.civ) == null) return null
+        if (current.defenders == null) {
+            val assignments = mutableMapOf<Int, City>()
+            val army = unit.civ.units.getCivUnits().filter {
+                it.isMilitary() && it.baseUnit.isLandUnit && !it.isEmbarked() &&
+                    it.type.name != "Scout" && !it.hasUnique(UniqueType.CannotAttack)
+            }.toList()
+            for (city in unit.civ.cities.sortedWith(compareBy<City> { it.health.toFloat() / it.getMaxHealth() }.thenBy { it.id })) {
+                val center = city.getCenterTile()
+                val enemies = center.getTilesInDistance(2).mapNotNull { it.militaryUnit }.filter {
+                    it.civ.isAtWarWith(unit.civ) && it.isVisibleTo(unit.civ) &&
+                        !it.hasUnique(UniqueType.CannotAttack)
+                }.toList()
+                if (enemies.isEmpty() && city.health == city.getMaxHealth()) continue
+                val candidates = army.filter { ally -> ally.id !in assignments &&
+                    (ally.health >= 50 || ally.currentTile == center && ally.baseUnit.isRanged()) &&
+                    ally.movement.canReach(center)
+                }.sortedWith(compareBy<MapUnit> { if (it.baseUnit.isProbablySiegeUnit()) 1 else 0 }
+                    .thenBy { it.currentTile.aerialDistanceTo(center) }
+                    .thenByDescending { it.health }.thenBy { it.id })
+                val enemyForce = enemies.sumOf { it.baseUnit.getForceEvaluation().toDouble() * it.health / 100 }
+                val selected = mutableListOf<MapUnit>()
+                fun reserve(ally: MapUnit?) {
+                    if (ally != null && ally !in selected) { selected.add(ally); assignments[ally.id] = city }
+                }
+                reserve(candidates.firstOrNull { it.baseUnit.isRanged() && !it.baseUnit.isProbablySiegeUnit() })
+                if (enemies.isNotEmpty()) reserve(candidates.firstOrNull { isCaptureUnit(it.baseUnit) })
+                val emergency = city.health < city.getMaxHealth() / 2
+                for (ally in candidates) {
+                    val force = selected.sumOf { it.baseUnit.getForceEvaluation().toDouble() * it.health / 100 }
+                    if (selected.isNotEmpty() && force >= enemyForce * (if (emergency) 1.2 else 0.7)) break
+                    reserve(ally)
+                }
+                decision(unit.civ, "defense reserve city=${city.name} units=${selected.map { it.id }} visibleEnemies=${enemies.size}")
+            }
+            current.defenders = assignments
+        }
+        return current.defenders!![unit.id]
+    }
+
+    @Readonly fun reinforcementPriority(unit: MapUnit): Int {
+        if (reinforcementTarget(unit.civ) == null || !unit.baseUnit.isLandUnit || !unit.isMilitary()) return 0
+        return when { unit.health < 50 -> -1; unit.baseUnit.isProbablySiegeUnit() -> 2
+            unit.baseUnit.isRanged() -> 1; else -> 0 }
+    }
     fun readyToPrepare(civ: Civilization): Boolean = strategy(civ)?.combat != CombatPriority.Counterattack &&
         economyReady(civ) && targetCities(civ).any { city ->
             val army = eligibleArmy(civ, city).filter { it.health >= 50 }

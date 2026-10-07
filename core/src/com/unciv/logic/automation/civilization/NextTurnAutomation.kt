@@ -425,7 +425,8 @@ object NextTurnAutomation {
         // capturedBy changes owner on the same object, and an earlier action can do that to a
         // later one, so ownership and destruction are checked at each dispatch, not before the loop.
         val unitsAtStart = civInfo.units.getCivUnits().toList()
-        fun unitsInPriorityOrder() = unitsAtStart.sortedBy { unit -> getUnitPriority(unit, isAtWar) }
+        fun unitsInPriorityOrder() = unitsAtStart.sortedWith(compareBy<MapUnit> { AutomationPreview.reinforcementPriority(it) }
+            .thenBy { getUnitPriority(it, isAtWar) })
 
         val citiesRequiringManualPlacement = civInfo.getKnownCivs().filter { it.isAtWarWith(civInfo) }
             .flatMap { it.cities }
