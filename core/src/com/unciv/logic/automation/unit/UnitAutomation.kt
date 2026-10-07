@@ -425,16 +425,25 @@ object UnitAutomation {
                 return true
             }
         }
-        if (unit.currentTile.aerialDistanceTo(target.getCenterTile()) <= 5 &&
-            BattleHelper.tryAttackNearbyEnemy(unit, stayOnTile = true)) return true
+        if (unit.canAttack() && unit.currentTile.aerialDistanceTo(target.getCenterTile()) <= 5) {
+            val attack = BattleHelper.chooseAttackTarget(unit, TargetHelper.getAttackableEnemies(unit,
+                unit.movement.getDistanceToTiles(), stayOnTile = true).filter {
+                !it.tileToAttack.isCityCenter() && it.tileToAttack.militaryUnit != null
+            })
+            if (attack != null) {
+                Battle.moveAndAttack(MapUnitCombatant(unit), attack)
+                return true
+            }
+        }
         // Use only the retained objective; individual reachability must not split the army.
         if (!unit.movement.canReach(target.getCenterTile())) {
             AutomationPreview.decision(unit.civ, "reinforcement route blocked unit=${unit.id} target=${target.id}")
             return true
         }
         AutomationPreview.decision(unit.civ, "concentrated reinforcement unit=${unit.id} target=${target.id} health=${unit.health}")
-        return HeadTowardsEnemyCityAutomation.headTowardsEnemyCity(unit, target.getCenterTile(),
+        HeadTowardsEnemyCityAutomation.headTowardsEnemyCity(unit, target.getCenterTile(),
             unit.movement.getShortestPath(target.getCenterTile()))
+        return true
     }
 
     private fun tryAvoidLethalFollowup(unit: MapUnit): Boolean {
