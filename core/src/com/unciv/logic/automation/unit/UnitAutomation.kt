@@ -415,8 +415,7 @@ object UnitAutomation {
             }
             return false
         }
-        // Moving or attacking wakes the real unit through existing UI actions.
-        if (recovering) unit.action = null
+        // Existing movement/attack capture wakes the unit only when it actually acts.
         if (unit.canAttack() && (unit.baseUnit.isMelee() || AutomationPreview.hasConquestCaptureSupport(unit.civ, target))) {
             val attack = BattleHelper.chooseAttackTarget(unit, TargetHelper.getAttackableEnemies(unit,
                 unit.movement.getDistanceToTiles(), listOf(target.getCenterTile()), stayOnTile = unit.baseUnit.isRanged()))
