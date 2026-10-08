@@ -47,9 +47,9 @@ class MultiplayerLobbyLocalizationTest {
             UncivGame.Current.translations.createTranslations(language, entries, noDiacritics = true)
             assertEquals(entries.getValue("Player [number]").replace("[number]", "2"),
                 "Player [2]".tr(hideIcons = true))
-            val source = "[\$joined]/[\$total] joined · [\$ready]/[\$total] ready"
+            val source = "[\$joined]/[\$total] joined · [\$ready]/[\$readyTotal] ready"
             assertEquals(entries.getValue(source).replace("[\$joined]", "2")
-                .replace("[\$total]", "3").replace("[\$ready]", "1"),
+                .replace("[\$total]", "3").replace("[\$readyTotal]", "3").replace("[\$ready]", "1"),
                 "[2]/[3] joined · [1]/[3] ready".tr(hideIcons = true))
             assertEquals(entries.getValue("Room is full"), "Room is full".tr(hideIcons = true))
             assertEquals(entries.getValue("[count] games").replace("[count]", "3"),
@@ -147,7 +147,7 @@ class MultiplayerLobbyLocalizationTest {
             "Host · You",
             "Waiting for player",
             "Your friend chooses their civilization",
-            "[\$joined]/[\$total] joined · [\$ready]/[\$total] ready",
+            "[\$joined]/[\$total] joined · [\$ready]/[\$readyTotal] ready",
             "Not ready",
             "Ready",
             "Cancel ready",

@@ -4,13 +4,18 @@ import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Graphics
 import com.badlogic.gdx.Input
+import com.badlogic.gdx.backends.headless.HeadlessFiles
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.utils.GdxNativesLoader
 import com.unciv.UncivGame
+import com.unciv.dev.FontDesktop
+import com.unciv.logic.files.UncivFiles
 import com.unciv.models.metadata.GameSettings
 import com.unciv.ui.images.ImageWithCustomSize
+import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.screens.LoadingScreen
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -32,7 +37,12 @@ class LoadingScreenGeometryTest {
             Gdx.input = mock(Input::class.java)
             Gdx.gl = mock(GL20::class.java)
             Gdx.gl20 = Gdx.gl
-            UncivGame.Current = UncivGame().apply { settings = GameSettings() }
+            UncivGame.Current = UncivGame().apply {
+                settings = GameSettings()
+                files = UncivFiles(HeadlessFiles())
+            }
+            Fonts.fontImplementation = FontDesktop()
+            ImageGetter.setNewRuleset(ImageGetter.ruleset)
             // Keep the real LoadingScreen, viewport, framebuffer capture and image layout.
             // Only GPU rendering is mocked; no game or simulator input is sent.
             mockConstruction(SpriteBatch::class.java).use {
