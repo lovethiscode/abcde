@@ -75,7 +75,7 @@ object Automation {
     fun rankStatsForCityWork(stats: Stats, city: City, areWeRankingSpecialist: Boolean): Float
         = timeThis("Automation.rankStatsForCityWork") {
         val cityAIFocus = city.getCityFocus()
-        @LocalState val yieldStats = stats.clone()
+        val yieldStats = stats.clone()
         val cityStatsObj = city.cityStats
         val civInfo = city.civ
         val allTechsAreResearched = civInfo.tech.allTechsAreResearched()
@@ -157,7 +157,7 @@ object Automation {
             yieldStats.gold *= 2
         }
 
-        if (city.civ.getHappiness() < 0) {
+        if (city.civ.getHappiness() < 5) {
             yieldStats.happiness *= 2
         }
 

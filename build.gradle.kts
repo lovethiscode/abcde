@@ -78,11 +78,17 @@ allprojects {
             "java.lang.ThreadLocal.get",
 
             "kotlin.collections.orEmpty",
+            "kotlin.collections.toTypedArray",
         )
         wellKnownPureClasses = setOf(
         )
         wellKnownInternalStateClasses = setOf(
             "com.badlogic.gdx.math.Vector2",
+            "kotlin.collections.ArrayDeque",
+            "java.util.PriorityQueue",
+        )
+        wellKnownNewInstanceFunctions = setOf(
+            "kotlin.text.split"
         )
         warnOnPossibleAnnotations = false
     }
@@ -197,7 +203,6 @@ project(":core") {
 
     dependencies {
         "implementation"(rootProject.libs.gdx)
-        "implementation"(rootProject.libs.gdx.texture.array.batch)
         "implementation"(rootProject.libs.coroutines.core)
         "api"(rootProject.libs.threetenbp)
 
