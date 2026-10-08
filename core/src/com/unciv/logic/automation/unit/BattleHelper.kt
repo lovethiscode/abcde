@@ -150,7 +150,9 @@ object BattleHelper {
             val from = pending.removeFirst()
             for (to in from.neighbors) {
                 if (!to.isVisible(observer.civ) || !enemy.movement.canPassThrough(to, false)) continue
-                val cost = costs.getValue(from) + MovementCost.getMovementCostBetweenAdjacentTiles(enemy, from, to)
+                // Allies may move later this turn; their current control zones cannot guarantee safety.
+                val cost = costs.getValue(from) + MovementCost.getMovementCostBetweenAdjacentTiles(enemy, from, to,
+                    considerZoneOfControl = false)
                 // Moving with no movement left cannot be followed by an attack.
                 if (cost >= movement || cost >= (costs[to] ?: Float.MAX_VALUE)) continue
                 costs[to] = cost
