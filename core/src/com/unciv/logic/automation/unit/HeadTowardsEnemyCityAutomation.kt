@@ -102,7 +102,10 @@ object HeadTowardsEnemyCityAutomation {
             return chooseLongRangeDestination(closestReachableEnemyCity, unitDistanceToTiles, unitRange, unit)
         }
 
-        val nextTileInPath = shortestPath.firstOrNull() ?: return unit.currentTile
+        val nextTileInPath = shortestPath.firstOrNull() ?: run {
+            return if (AutomationPreview.isConquestCapital(unit.civ, closestReachableEnemyCity.getCity()!!))
+                chooseLandingGround(closestReachableEnemyCity, unit) else unit.currentTile
+        }
 
         // None of the stuff below is relevant if we're still quite far away from the city, so we
         // short-circuit here for performance reasons.

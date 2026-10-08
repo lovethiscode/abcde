@@ -41,6 +41,7 @@ object UnitAutomation {
 
     private fun automateUnitMovesInternal(unit: MapUnit) {
         check(!unit.civ.isBarbarian) { "Barbarians is not allowed here." }
+        if (AutomationPreview.controls(unit.civ) && !unit.hasMovement()) return
 
         // Might die next turn - move!
         if (unit.getDamageFromTerrain() > 0 && tryHealUnit(unit)) return
@@ -425,21 +426,19 @@ object UnitAutomation {
                 return true
             }
         }
+        // Clear reachable troops instead of waiting for a shot from the current tile.
         if (unit.canAttack() && unit.currentTile.aerialDistanceTo(target.getCenterTile()) <= 5) {
             val attack = BattleHelper.chooseAttackTarget(unit, TargetHelper.getAttackableEnemies(unit,
-                unit.movement.getDistanceToTiles(), stayOnTile = true).filter {
+                unit.movement.getDistanceToTiles()).filter {
                 !it.tileToAttack.isCityCenter() && it.tileToAttack.militaryUnit != null
             })
             if (attack != null) {
+                AutomationPreview.decision(unit.civ, "reinforcement clears blocker unit=${unit.id} target=${target.id}")
                 Battle.moveAndAttack(MapUnitCombatant(unit), attack)
                 return true
             }
         }
         // Use only the retained objective; individual reachability must not split the army.
-        if (!unit.movement.canReach(target.getCenterTile())) {
-            AutomationPreview.decision(unit.civ, "reinforcement route blocked unit=${unit.id} target=${target.id}")
-            return true
-        }
         AutomationPreview.decision(unit.civ, "concentrated reinforcement unit=${unit.id} target=${target.id} health=${unit.health}")
         HeadTowardsEnemyCityAutomation.headTowardsEnemyCity(unit, target.getCenterTile(),
             unit.movement.getShortestPath(target.getCenterTile()))

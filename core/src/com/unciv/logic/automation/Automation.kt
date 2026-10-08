@@ -250,6 +250,11 @@ object Automation {
                     city.civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
                 }.filter { it.isMilitary && it.isLandUnit }
             fun canCapture(unit: BaseUnit) = AutomationPreview.isCaptureUnit(unit)
+            if (AutomationPreview.strategy(city.civ)?.production == ProductionPriority.Army &&
+                landArmy.count(::canCapture) >= 2 &&
+                landArmy.count { it.isRanged() && !it.isProbablySiegeUnit() } < 2)
+                militaryUnits.filter { it.isLandUnit && it.isRanged() && !it.isProbablySiegeUnit() }
+                    .maxByOrNull { it.getForceEvaluation() }?.let { return it }
             if (inlandCapital && AutomationPreview.strategy(city.civ)?.production == ProductionPriority.Army &&
                 landArmy.count { it.isProbablySiegeUnit() } < 2 && landArmy.count(::canCapture) >= 2)
                 militaryUnits.filter { it.isLandUnit && it.isProbablySiegeUnit() }

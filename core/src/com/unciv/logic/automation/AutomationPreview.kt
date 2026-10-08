@@ -294,6 +294,8 @@ object AutomationPreview {
                 civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
             }.filter { it.isMilitary && it.isLandUnit } else emptyList()
         val missingCapture = landArmy.count(::isCaptureUnit) < 2
+        val missingSupport = strategy(civ)?.production == ProductionPriority.Army &&
+            landArmy.count { it.isRanged() && !it.isProbablySiegeUnit() } < 2
         val availableSiege = civ.gameInfo.ruleset.units.values.any { it.isLandUnit && it.isProbablySiegeUnit() &&
             Automation.allowSpendingResource(civ, it) && civ.cities.any { home -> it.isBuildable(home.cityConstructions) } }
         val visibleFirepowerGap = city.getCenterTile().isVisible(civ) && availableSiege &&
@@ -303,12 +305,13 @@ object AutomationPreview {
             } <= 20 + city.health / 5
         val missingSiege = landArmy.count { it.isRanged() } < 2 ||
             visibleFirepowerGap && (landArmy.count { it.isProbablySiegeUnit() } < 2 || militarySession(civ)?.reassess == true)
-        if (!missingCapture && !missingSiege) return false
+        if (!missingCapture && !missingSiege && !missingSupport) return false
         if (!includeQueued) return true
         return civ.gameInfo.ruleset.units.values.any { unit ->
             unit.isMilitary && unit.isLandUnit && !unit.hasUnique(UniqueType.CannotAttack) &&
                 ((missingCapture && isCaptureUnit(unit)) ||
-                    (missingSiege && unit.isRanged())) &&
+                    (missingSiege && unit.isRanged()) ||
+                    (missingSupport && unit.isRanged() && !unit.isProbablySiegeUnit())) &&
                 Automation.allowSpendingResource(civ, unit) && civ.cities.any { unit.isBuildable(it.cityConstructions) }
         }
     }
