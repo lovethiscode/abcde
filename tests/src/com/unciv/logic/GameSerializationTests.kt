@@ -24,8 +24,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
-import java.io.StringWriter
-import java.io.Writer
 import java.nio.file.Files
 
 
@@ -146,14 +144,17 @@ class GameSerializationTests {
     }
 
     @Test
-    fun uncompressedSaveWritesDirectlyToFile() {
+    fun uncompressedSaveStreamsToTemporaryFile() {
         UncivFiles.saveZipped = false
-        val saveFile = WriterOnlyFileHandle()
-
-        UncivGame.Current.files.saveGame(game, saveFile)
-        val loadedGame = UncivFiles.gameInfoFromString(saveFile.output.toString())
-
-        Assert.assertEquals(game.gameId, loadedGame.gameId)
+        val saveDirectory = Files.createTempDirectory("unciv-stream-save-").toFile()
+        try {
+            val saveFile = WriterOnlyFileHandle(File(saveDirectory, "save.json"))
+            UncivGame.Current.files.saveGame(game, saveFile)
+            val loadedGame = UncivFiles.gameInfoFromString(saveFile.readString())
+            Assert.assertEquals(game.gameId, loadedGame.gameId)
+        } finally {
+            saveDirectory.deleteRecursively()
+        }
     }
 
     @Test
@@ -191,6 +192,7 @@ class GameSerializationTests {
 
             Assert.assertEquals(1, callbackCount)
             Assert.assertNotNull(callbackException)
+            Assert.assertTrue(saveDirectory.isDirectory)
         } finally {
             saveDirectory.delete()
         }
@@ -221,10 +223,8 @@ class GameSerializationTests {
         settingsBackup.save()
     }
 
-    private class WriterOnlyFileHandle : FileHandle("writer-only") {
-        val output = StringWriter()
-
-        override fun writer(append: Boolean, charset: String): Writer = output
+    private class WriterOnlyFileHandle(file: File) : FileHandle(file) {
+        override fun sibling(name: String): FileHandle = WriterOnlyFileHandle(File(file().parentFile, name))
 
         override fun writeString(string: String, append: Boolean, charset: String) {
             throw AssertionError("Uncompressed saves must not allocate a complete JSON string")

@@ -8,6 +8,7 @@ object SaveFileWriter {
     private const val BACKUP_SUFFIX = ".unciv-backup"
 
     fun write(file: FileHandle, writeTemporary: (FileHandle) -> Unit) = SaveFileLocks.withLock(file) {
+        check(!file.isDirectory) { "Cannot save over a directory" }
         recover(file)
         val temporary = file.sibling(".${file.name()}$TEMP_SUFFIX")
         val backup = file.sibling(".${file.name()}$BACKUP_SUFFIX")

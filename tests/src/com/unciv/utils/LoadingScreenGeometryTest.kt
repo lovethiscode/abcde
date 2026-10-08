@@ -10,6 +10,7 @@ import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.utils.GdxNativesLoader
 import com.unciv.UncivGame
 import com.unciv.models.metadata.GameSettings
+import com.unciv.ui.images.ImageWithCustomSize
 import com.unciv.ui.screens.LoadingScreen
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -52,7 +53,7 @@ class LoadingScreenGeometryTest {
                         }
                         val screen = LoadingScreen()
                         try {
-                            val image = screen.stage.actors.first()
+                            val image = screen.stage.actors.filterIsInstance<ImageWithCustomSize>().single()
                             val viewport = screen.stage.viewport
                             val bottomLeft = viewport.project(Vector2(image.x, image.y))
                             val topRight = viewport.project(Vector2(image.x + image.width, image.y + image.height))
