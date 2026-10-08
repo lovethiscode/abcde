@@ -21,7 +21,6 @@ object DeclareWarPlanEvaluator {
      */
     @Readonly
     fun evaluateTeamWarPlan(civInfo: Civilization, target: Civilization, teamCiv: Civilization, givenMotivation: Float?): Float {
-        if (!com.unciv.logic.automation.AutomationPreview.declarationReady(civInfo, target)) return -1000f
         val teamCivDiplo = civInfo.getDiplomacyManager(teamCiv)!!
         if (civInfo.getPersonality()[PersonalityValue.DeclareWar] == 0f) return -1000f
         if (teamCivDiplo.isRelationshipLevelLT(RelationshipLevel.Neutral)) return -1000f
@@ -75,7 +74,6 @@ object DeclareWarPlanEvaluator {
      */
     @Readonly
     fun evaluateJoinWarPlan(civInfo: Civilization, target: Civilization, civToJoin: Civilization, givenMotivation: Float?): Float {
-        if (!com.unciv.logic.automation.AutomationPreview.declarationReady(civInfo, target)) return -1000f
         val thirdCivDiplo = civInfo.getDiplomacyManager(civToJoin)!!
         if (civInfo.getPersonality()[PersonalityValue.DeclareWar] == 0f) return -1000f
         if (thirdCivDiplo.isRelationshipLevelLE(RelationshipLevel.Favorable)) return -1000f
@@ -153,7 +151,6 @@ object DeclareWarPlanEvaluator {
      */
     @Readonly
     fun evaluateDeclareWarPlan(civInfo: Civilization, target: Civilization, givenMotivation: Float?): Float {
-        if (!com.unciv.logic.automation.AutomationPreview.declarationReady(civInfo, target)) return -1000f
         if (civInfo.getPersonality()[PersonalityValue.DeclareWar] == 0f) return -1000f
         val motivation = givenMotivation
             ?: MotivationToAttackAutomation.hasAtLeastMotivationToAttack(civInfo, target, 0f)
@@ -176,7 +173,6 @@ object DeclareWarPlanEvaluator {
      */
     @Readonly
     fun evaluateStartPreparingWarPlan(civInfo: Civilization, target: Civilization, givenMotivation: Float?): Float {
-        if (!com.unciv.logic.automation.AutomationPreview.allowsOffense(civInfo)) return -1000f
         val motivation = givenMotivation
             ?: MotivationToAttackAutomation.hasAtLeastMotivationToAttack(civInfo, target, 0f)
 

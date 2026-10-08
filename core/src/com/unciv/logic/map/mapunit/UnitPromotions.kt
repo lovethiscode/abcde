@@ -1,7 +1,5 @@
 package com.unciv.logic.map.mapunit
 
-import com.unciv.logic.automation.AutomationPreview
-
 import com.unciv.logic.achievements.AchievementTracker
 
 import com.unciv.logic.IsPartOfGameInfoSerialization
@@ -127,7 +125,6 @@ class UnitPromotions : IsPartOfGameInfoSerialization {
         if (promotions.contains(promotionName)) return
         val ruleset = unit.civ.gameInfo.ruleset
         val promotion = ruleset.unitPromotions[promotionName] ?: return
-        if (!isFree) AutomationPreview.choice(unit.civ, "promote", promotionName, unit)
         AchievementTracker.beginAction(unit.civ.gameInfo)
         var successful = false
         try {

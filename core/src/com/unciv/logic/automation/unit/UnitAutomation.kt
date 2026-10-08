@@ -1,7 +1,5 @@
 package com.unciv.logic.automation.unit
 
-import com.unciv.logic.automation.AutomationPreview
-
 import com.unciv.GUI
 import com.unciv.UncivGame
 import com.unciv.logic.automation.Automation
@@ -35,13 +33,9 @@ object UnitAutomation {
     private const val CLOSE_ENEMY_TILES_AWAY_LIMIT = 5
     private const val CLOSE_ENEMY_TURNS_AWAY_LIMIT = 3f
 
-    fun automateUnitMoves(unit: MapUnit): Unit = timeThis("automateUnitMoves") {
-        AutomationPreview.withUnit(unit) { automateUnitMovesInternal(unit) }
-    }
-
-    private fun automateUnitMovesInternal(unit: MapUnit) {
+    fun automateUnitMoves(unit: MapUnit):Unit = timeThis("automateUnitMoves") {
+        if (com.unciv.logic.PlayerDecisionControl.controls(unit.civ)) return
         check(!unit.civ.isBarbarian) { "Barbarians is not allowed here." }
-        if (AutomationPreview.controls(unit.civ) && !unit.hasMovement()) return
 
         // Might die next turn - move!
         if (unit.getDamageFromTerrain() > 0 && tryHealUnit(unit)) return
@@ -53,7 +47,7 @@ object UnitAutomation {
         }
 
         val isHumanAndNotAutoplaying =
-            unit.civ.isHuman() && !AutomationPreview.controls(unit.civ) && GUI.getWorldScreenIfActive()?.autoPlay?.isAutoPlaying() != true
+            unit.civ.isHuman() && GUI.getWorldScreenIfActive()?.autoPlay?.isAutoPlaying() != true
         // AI promotes units via NextTurnAutomation.automateUnits
         if (isHumanAndNotAutoplaying) NextTurnAutomation.applyPromotions(unit)
         // AI upgrades units via UseGoldAutomation in NextTurnAutomation
@@ -81,15 +75,6 @@ object UnitAutomation {
                 return AirUnitAutomation.automateMissile(unit)
 
             return AirUnitAutomation.automateBomber(unit)
-        }
-
-        if (tryDefendCity(unit)) return
-        if (tryAvoidLethalFollowup(unit)) return
-        if (tryConcentrateReinforcements(unit)) return
-        if (AutomationPreview.militaryGoal(unit.civ) && unit.health < 50 && unit.canHealInCurrentTile()
-            && BattleHelper.visibleFollowupDamage(unit, unit.currentTile) == 0) {
-            AutomationPreview.decision(unit.civ, "safe recovery unit=${unit.id} health=${unit.health}")
-            return
         }
 
         // Accompany settlers
@@ -247,14 +232,12 @@ object UnitAutomation {
     }
 
     internal fun tryUpgradeUnit(unit: MapUnit): Boolean {
-        if (unit.civ.isHuman() && !AutomationPreview.controls(unit.civ) && !UncivGame.Current.settings.automatedUnitsCanUpgrade
+        if (unit.civ.isHuman() && !UncivGame.Current.settings.automatedUnitsCanUpgrade
             && UncivGame.Current.worldScreen?.autoPlay?.isAutoPlayingAndFullAutoPlayAI() == false) return false
 
         val upgradeUnits = getUnitsToUpgradeTo(unit)
         if (upgradeUnits.none()) return false // for resource reasons, usually
         val upgradedUnit = upgradeUnits.minBy { it.cost }
-        if (!AutomationPreview.allowsSpending(unit.civ, unit.upgrade.getCostOfUpgrade(upgradedUnit),
-                AutomationPreview.extraUnitMaintenance(unit.civ, upgradedUnit, unit.currentTile, unit))) return false
 
         if (upgradedUnit.getResourceRequirementsPerTurn(unit.cache.state).keys.any { !unit.requiresResource(it) }) {
             // The upgrade requires new resource types, so check if we are willing to invest them
@@ -373,105 +356,6 @@ object UnitAutomation {
             }
         }
         return false
-    }
-
-    private fun tryDefendCity(unit: MapUnit): Boolean {
-        if (!AutomationPreview.militaryGoal(unit.civ) || !unit.baseUnit.isLandUnit || !unit.canAttack()) return false
-        if (AutomationPreview.reinforcementTarget(unit.civ) != null && AutomationPreview.defenseCity(unit) == null) return false
-        val cities = unit.civ.cities.filter { it.getCenterTile().aerialDistanceTo(unit.currentTile) <= 2 }
-        if (cities.isEmpty()) return false
-        // Critical wounds may fire from city protection, but must not leave it to fight.
-        val candidates = TargetHelper.getAttackableEnemies(unit, unit.movement.getDistanceToTiles(),
-            stayOnTile = unit.health < 50).filter { attack ->
-            attack.tileToAttack.militaryUnit != null && cities.any {
-                it.getCenterTile().aerialDistanceTo(attack.tileToAttack) <= 2
-            } && (unit.health >= 50 || unit.currentTile.isCityCenter() && unit.baseUnit.isRanged())
-        }
-        val attack = BattleHelper.chooseAttackTarget(unit, candidates) ?: return false
-        AutomationPreview.decision(unit.civ, "city defense unit=${unit.id} health=${unit.health}")
-        Battle.moveAndAttack(MapUnitCombatant(unit), attack)
-        return true
-    }
-
-    private fun tryConcentrateReinforcements(unit: MapUnit): Boolean {
-        if (!unit.baseUnit.isLandUnit || unit.isEmbarked() || unit.type.name == "Scout" ||
-            unit.hasUnique(UniqueType.CannotAttack)) return false
-        val target = AutomationPreview.reinforcementTarget(unit.civ) ?: return false
-        if (AutomationPreview.defenseCity(unit) != null) return false
-        val recovering = unit.action?.contains("until healed") == true
-        if (unit.health < 50 || recovering && unit.health < 75) {
-            if (unit.canHealInCurrentTile() && BattleHelper.visibleFollowupDamage(unit, unit.currentTile) == 0) {
-                AutomationPreview.decision(unit.civ, "rotation recovery unit=${unit.id} health=${unit.health}")
-                return true
-            }
-            val safeTile = unit.movement.getDistanceToTiles().keys.filter {
-                unit.movement.canMoveTo(it) && unit.rankTileForHealing(it) > 0 &&
-                    unit.getDamageFromTerrain(it) <= 0 && BattleHelper.visibleFollowupDamage(unit, it) == 0
-            }.sortedWith(compareByDescending<Tile> { unit.rankTileForHealing(it) }
-                .thenBy { it.aerialDistanceTo(unit.currentTile) }).firstOrNull()
-            if (safeTile != null) {
-                AutomationPreview.decision(unit.civ, "rotation retreat unit=${unit.id} health=${unit.health}")
-                unit.movement.moveToTile(safeTile)
-                return true
-            }
-            return false
-        }
-        // Existing movement/attack capture wakes the unit only when it actually acts.
-        if (unit.canAttack() && (unit.baseUnit.isMelee() || AutomationPreview.hasConquestCaptureSupport(unit.civ, target))) {
-            val attack = BattleHelper.chooseAttackTarget(unit, TargetHelper.getAttackableEnemies(unit,
-                unit.movement.getDistanceToTiles(), listOf(target.getCenterTile()), stayOnTile = unit.baseUnit.isRanged()))
-            if (attack != null) {
-                AutomationPreview.decision(unit.civ, "concentrated attack unit=${unit.id} target=${target.id}")
-                Battle.moveAndAttack(MapUnitCombatant(unit), attack)
-                return true
-            }
-        }
-        // Clear reachable troops instead of waiting for a shot from the current tile.
-        if (unit.canAttack() && unit.currentTile.aerialDistanceTo(target.getCenterTile()) <= 5) {
-            val attack = BattleHelper.chooseAttackTarget(unit, TargetHelper.getAttackableEnemies(unit,
-                unit.movement.getDistanceToTiles()).filter {
-                !it.tileToAttack.isCityCenter() && it.tileToAttack.militaryUnit != null
-            })
-            if (attack != null) {
-                AutomationPreview.decision(unit.civ, "reinforcement clears blocker unit=${unit.id} target=${target.id}")
-                Battle.moveAndAttack(MapUnitCombatant(unit), attack)
-                return true
-            }
-        }
-        // Use only the retained objective; individual reachability must not split the army.
-        AutomationPreview.decision(unit.civ, "concentrated reinforcement unit=${unit.id} target=${target.id} health=${unit.health}")
-        HeadTowardsEnemyCityAutomation.headTowardsEnemyCity(unit, target.getCenterTile(),
-            unit.movement.getShortestPath(target.getCenterTile()))
-        return true
-    }
-
-    private fun tryAvoidLethalFollowup(unit: MapUnit): Boolean {
-        if (!AutomationPreview.militaryGoal(unit.civ) || !unit.baseUnit.isLandUnit) return false
-        val danger = BattleHelper.visibleFollowupDamage(unit, unit.currentTile)
-        if (danger < unit.health) return false
-        val destinations = unit.movement.getDistanceToTiles()
-        // An immediate city capture must not be replaced by retreat or low-health healing.
-        val safeAttack = if (unit.canAttack() && unit.baseUnit.isMelee() &&
-            !unit.hasUnique(UniqueType.CannotCaptureCities)) BattleHelper.chooseAttackTarget(unit,
-            TargetHelper.getAttackableEnemies(unit, destinations).filter {
-                val city = it.tileToAttack.getCity()?.takeIf { _ -> it.tileToAttack.isCityCenter() }
-                city != null && BattleDamage.calculateDamageToDefender(
-                    MapUnitCombatant(unit), CityCombatant(city),
-                    it.tileToAttackFrom) >= city.health
-            }) else null
-        if (safeAttack != null) {
-            Battle.moveAndAttack(MapUnitCombatant(unit), safeAttack)
-            return true
-        }
-        val retreat = destinations.keys.asSequence().filter {
-            it != unit.currentTile && unit.movement.canMoveTo(it) && unit.getDamageFromTerrain(it) <= 0
-        }.map { it to BattleHelper.visibleFollowupDamage(unit, it) }
-            .filter { it.second < danger }
-            .sortedWith(compareBy<Pair<Tile, Int>> { it.second }.thenByDescending { unit.rankTileForHealing(it.first) })
-            .firstOrNull() ?: return false
-        AutomationPreview.decision(unit.civ, "lethal followup retreat unit=${unit.id} health=${unit.health} damage=$danger destinationDamage=${retreat.second}")
-        unit.movement.moveToTile(retreat.first)
-        return true
     }
 
     private fun tryHealUnit(unit: MapUnit): Boolean {
@@ -675,27 +559,14 @@ object UnitAutomation {
     }
 
     private fun tryHeadTowardsOurSiegedCity(unit: MapUnit): Boolean {
-        val controlled = AutomationPreview.militaryGoal(unit.civ)
-        fun threatened(city: City) = controlled && city.getCenterTile().getTilesInDistance(2).any { tile ->
-            tile.militaryUnit?.let { enemy -> enemy.civ.isAtWarWith(unit.civ) && enemy.isVisibleTo(unit.civ) &&
-                !enemy.hasUnique(UniqueType.CannotAttack) } == true
-        }
         val siegedCities = unit.civ.cities
                 .asSequence()
-                .filter { !controlled || AutomationPreview.reinforcementTarget(unit.civ) == null ||
-                    it == AutomationPreview.defenseCity(unit) }
                 .filter {
-                    unit.civ == it.civ && (it.health < it.getMaxHealth() || threatened(it))
-                }.toList()
+                    unit.civ == it.civ && it.health < it.getMaxHealth()
+                }
 
-        if (siegedCities.any { it.getCenterTile().aerialDistanceTo(unit.getTile()) <= 2 }) {
-            if (siegedCities.any { threatened(it) && it.getCenterTile().aerialDistanceTo(unit.getTile()) <= 2 }) {
-                tryAttacking(unit)
-                if (unit.hasMovement() && unit.health < 100) tryHealUnit(unit)
-                return true
-            }
+        if (siegedCities.any { it.getCenterTile().aerialDistanceTo(unit.getTile()) <= 2 })
             return false
-        }
 
         val reachableTileNearSiegedCity = siegedCities
                 .flatMap { it.getCenterTile().getTilesAtDistance(2) }
@@ -706,7 +577,7 @@ object UnitAutomation {
         if (reachableTileNearSiegedCity != null) {
             unit.movement.headTowards(reachableTileNearSiegedCity)
         }
-        return controlled && reachableTileNearSiegedCity != null || !unit.hasMovement()
+        return !unit.hasMovement()
     }
 
 
@@ -808,6 +679,7 @@ object UnitAutomation {
     /** This is what a unit with the 'explore' action does.
     It also explores, but also has other functions, like healing if necessary. */
     fun automatedExplore(unit: MapUnit) {
+        if (com.unciv.logic.PlayerDecisionControl.controls(unit.civ)) return
         if (tryGoToRuin(unit) && (!unit.hasMovement() || unit.isDestroyed)) return
         if (unit.health < 80 && tryHealUnit(unit)) return
         if (tryExplore(unit)) return

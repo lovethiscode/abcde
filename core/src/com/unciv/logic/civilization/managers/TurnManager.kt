@@ -256,7 +256,7 @@ class TurnManager(val civInfo: Civilization) {
 
 
     fun endTurn(progressBar: NextTurnProgress? = null):Unit = timeThis("TurnManager.endTurn") {
-        if (UncivGame.Current.settings.citiesAutoBombardAtEndOfTurn)
+        if (!com.unciv.logic.PlayerDecisionControl.controls(civInfo) && UncivGame.Current.settings.citiesAutoBombardAtEndOfTurn)
             NextTurnAutomation.automateCityBombardment(civInfo) // Bombard with all cities that haven't, maybe you missed one
 
         civInfo.forEachTriggeredUnique(UniqueType.TriggerUponTurnEnd, civInfo.state, ignoreCities = true) { unique ->

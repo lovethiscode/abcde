@@ -1,7 +1,5 @@
 package com.unciv.logic.automation.civilization
 
-import com.unciv.logic.automation.AutomationPreview
-
 import com.unciv.logic.automation.unit.UnitAutomation
 import com.unciv.logic.city.City
 import com.unciv.logic.civilization.Civilization
@@ -21,7 +19,7 @@ object UseGoldAutomation {
     /** allow AI to spend money to purchase city-state friendship, buildings & unit */
     fun useGold(civ: Civilization) {
         for (unit in civ.units.getCivUnits())
-            AutomationPreview.withUnit(unit, reportIdle = false) { UnitAutomation.tryUpgradeUnit(unit) }
+            UnitAutomation.tryUpgradeUnit(unit)
 
         if (civ.isMajorCiv())
             useGoldForCityStates(civ)
@@ -37,12 +35,6 @@ object UseGoldAutomation {
             val statBuyCost = construction.getStatBuyCost(city, Stat.Gold) ?: continue
             if (!city.cityConstructions.isConstructionPurchaseAllowed(construction, Stat.Gold, statBuyCost)) continue
             if (civ.gold < statBuyCost || construction.hurryCostModifier > acceptableHurryCostModifier) continue
-            val maintenance = when (construction) {
-                is com.unciv.models.ruleset.unit.BaseUnit -> AutomationPreview.extraUnitMaintenance(civ, construction, city.getCenterTile())
-                is com.unciv.models.ruleset.Building -> construction.maintenance.toFloat()
-                else -> 0f
-            }
-            if (!AutomationPreview.allowsSpending(civ, statBuyCost, maintenance)) continue
             if (city.cityConstructions.getWorkDone(construction.name) > 0) continue // Don't buy things we already invested production into (may waste the invested production)
             city.cityConstructions.purchaseConstruction(construction, 0, true)
         }
@@ -110,7 +102,7 @@ object UseGoldAutomation {
             for (tileThatNeedsBuying in tilesThatNeedBuying) {
                 val goldCostOfTile =
                     cityWithLeastCostToBuy.expansion.getGoldCostOfTile(tileThatNeedsBuying)
-                if (civInfo.gold >= goldCostOfTile && AutomationPreview.allowsSpending(civInfo, goldCostOfTile)) {
+                if (civInfo.gold >= goldCostOfTile) {
                     cityWithLeastCostToBuy.expansion.buyTile(tileThatNeedsBuying)
                     goldSpent += goldCostOfTile
                 } else {
@@ -181,9 +173,8 @@ object UseGoldAutomation {
         // for example upgrading an army to conquer the player who's contesting our city states
         if (influence < 10 || stopSpending) return
         // Only make an investment if we got our Pledge to Protect influence at the highest level
-        val amount = if (civInfo.gold >= 1000) 1000 else 500
-        if (!AutomationPreview.allowsSpending(civInfo, amount)) return
-        cityState.cityStateFunctions.receiveGoldGift(civInfo, amount)
+        if (civInfo.gold >= 1000) cityState.cityStateFunctions.receiveGoldGift(civInfo, 1000)
+        else cityState.cityStateFunctions.receiveGoldGift(civInfo, 500)
         return
     }
 

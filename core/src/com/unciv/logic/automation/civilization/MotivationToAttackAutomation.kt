@@ -127,7 +127,6 @@ object MotivationToAttackAutomation {
         modifiers += getWonderBasedMotivations(targetCiv)
 
         modifiers.add(Pair("War with allies", getAlliedWarMotivation(civInfo, targetCiv)))
-        modifiers.add(Pair("Military victory target", com.unciv.logic.automation.AutomationPreview.warTargetPriority(civInfo, targetCiv)))
 
         // Purely for debugging, remove modifiers that don't have an effect
         modifiers.removeAll { it.second == 0f }

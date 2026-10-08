@@ -1,7 +1,5 @@
 package com.unciv.logic.battle
 
-import com.unciv.logic.automation.AutomationPreview
-
 import com.unciv.logic.achievements.AchievementTracker
 
 import com.unciv.logic.city.City
@@ -62,7 +60,6 @@ object Nuke {
 
     @Suppress("FunctionName")   // Yes we want this name to stand out
     fun NUKE(attacker: MapUnitCombatant, targetTile: Tile) {
-        if (AutomationPreview.attack(attacker, targetTile)) return
         val game = attacker.getCivInfo().gameInfo
         AchievementTracker.beginAction(game)
         var successful = false

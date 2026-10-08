@@ -820,6 +820,7 @@ class WorldScreen(
                     val pendingTurn = try {
                         pendingTurnUploadState.getOrCreate(originalGameInfo) {
                             originalGameInfo.clone().apply {
+                                com.unciv.logic.PlayerDecisionControl.followNextTurn(originalGameInfo, this)
                                 setTransients()  // this can get expensive on large games, not the clone itself
                                 nextTurn(progressBar, true)
                             }

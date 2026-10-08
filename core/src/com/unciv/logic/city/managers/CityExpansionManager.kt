@@ -1,7 +1,5 @@
 package com.unciv.logic.city.managers
 
-import com.unciv.logic.automation.AutomationPreview
-
 import com.unciv.logic.IsPartOfGameInfoSerialization
 import com.unciv.logic.automation.Automation
 import com.unciv.logic.city.City
@@ -72,7 +70,6 @@ class CityExpansionManager : IsPartOfGameInfoSerialization {
     }
 
     fun buyTile(tile: Tile) {
-        AutomationPreview.choice(city.civ, "buy_tile", "${getGoldCostOfTile(tile)} gold", city = city, tile = tile)
         val goldCost = getGoldCostOfTile(tile)
 
         class TriedToBuyNonContiguousTileException(msg: String) : Exception(msg)

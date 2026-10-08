@@ -1,7 +1,6 @@
 package com.unciv.logic.automation.unit
 
 import com.unciv.logic.automation.Timers.Companion.timeThis
-import com.unciv.logic.automation.AutomationPreview
 import com.unciv.logic.automation.civilization.NextTurnAutomation
 import com.unciv.logic.battle.BattleDamage
 import com.unciv.logic.battle.CityCombatant
@@ -9,10 +8,8 @@ import com.unciv.logic.battle.MapUnitCombatant
 import com.unciv.logic.city.City
 import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.logic.map.mapunit.movement.PathsToTilesWithinTurn
-import com.unciv.logic.map.mapunit.movement.UnitMovement
 import com.unciv.logic.map.tile.Tile
 import yairm210.purity.annotations.Readonly
-import com.unciv.models.ruleset.unique.UniqueType
 
 object HeadTowardsEnemyCityAutomation {
 
@@ -37,30 +34,17 @@ object HeadTowardsEnemyCityAutomation {
     fun getEnemyCitiesByPriority(unit: MapUnit): Sequence<City> {
         val enemies = unit.civ.getKnownCivs()
             .filter { unit.civ.isAtWarWith(it) && it.cities.isNotEmpty() }
-            .toList()
-        val victoryEnemies = enemies.filter { AutomationPreview.warTargetPriority(unit.civ, it) > 0f }
-        if (AutomationPreview.strategy(unit.civ)?.combat in setOf(com.unciv.logic.automation.CombatPriority.Capital,
-                com.unciv.logic.automation.CombatPriority.Nearest, com.unciv.logic.automation.CombatPriority.Counterattack)) {
-            return AutomationPreview.targetCities(unit.civ, atWarOnly = true).asSequence()
-                .filterNot { unit.baseUnit.isRanged() && it.health == 1 }
-        }
 
-        val closestEnemyCity = (victoryEnemies.ifEmpty { enemies })
+        val closestEnemyCity = enemies
             .mapNotNull { NextTurnAutomation.getForeignCityNearCapital(unit.civ.getCapital(), it) }
             .minByOrNull { it.aerialDistance }?.city
             ?: return emptySequence() // no attackable cities found
-
-        val knownCapitals = closestEnemyCity.civ.cities.filter {
-            it.isOriginalCapital && AutomationPreview.isConquestCapital(unit.civ, it)
-        }.sortedBy { it.getCenterTile().aerialDistanceTo(unit.currentTile) }
 
         // Our main attack target is the closest city, but we're fine with deviating from that a bit
         var enemyCitiesByPriority = closestEnemyCity.civ.cities
             .associateWith { it.getCenterTile().aerialDistanceTo(closestEnemyCity.getCenterTile()) }
             .asSequence().filterNot { it.value > 10 } // anything 10 tiles away from the target is irrelevant
             .sortedBy { it.value }.map { it.key } // sort the list by closeness to target - least is best!
-
-        enemyCitiesByPriority = (knownCapitals.asSequence() + enemyCitiesByPriority).distinct()
 
         if (unit.baseUnit.isRanged()) // ranged units don't harm capturable cities, waste of a turn
             enemyCitiesByPriority = enemyCitiesByPriority.filterNot { it.health == 1 }
@@ -78,34 +62,14 @@ object HeadTowardsEnemyCityAutomation {
         closestReachableEnemyCity: Tile,
         shortestPath: List<Tile>
     ): Boolean {
-        val destination = chooseMovementDestination(unit, closestReachableEnemyCity, shortestPath)
-            ?: return false
-        if (destination != unit.currentTile) {
-            if (unit.getRange() <= 2 && destination == shortestPath.firstOrNull())
-                unit.movement.moveToTile(destination)
-            else unit.movement.headTowards(destination)
-        }
-        return true
-    }
-
-    /** Chooses the same city approach as the executing AI, without moving. */
-    @Readonly
-    fun chooseMovementDestination(
-        unit: MapUnit,
-        closestReachableEnemyCity: Tile,
-        shortestPath: List<Tile>
-    ): Tile? {
         val unitDistanceToTiles = unit.movement.getDistanceToTiles()
 
         val unitRange = unit.getRange()
         if (unitRange > 2) { // long-ranged unit, should never be in a bombardable position
-            return chooseLongRangeDestination(closestReachableEnemyCity, unitDistanceToTiles, unitRange, unit)
+            return headTowardsEnemyCityLongRange(closestReachableEnemyCity, unitDistanceToTiles, unitRange, unit)
         }
 
-        val nextTileInPath = shortestPath.firstOrNull() ?: run {
-            return if (AutomationPreview.isConquestCapital(unit.civ, closestReachableEnemyCity.getCity()!!))
-                chooseLandingGround(closestReachableEnemyCity, unit) else unit.currentTile
-        }
+        val nextTileInPath = shortestPath[0]
 
         // None of the stuff below is relevant if we're still quite far away from the city, so we
         // short-circuit here for performance reasons.
@@ -113,43 +77,23 @@ object HeadTowardsEnemyCityAutomation {
             // Even in the worst case of only being able to move 1 tile per turn, we would still
             // not overshoot.
             && shortestPath.size > minDistanceFromCityToConsiderForLandingArea ) {
-            return nextTileInPath
+            unit.movement.moveToTile(nextTileInPath)
+            return true
         }
 
-        val city = closestReachableEnemyCity.getCity()!!
-        val conquest = AutomationPreview.isConquestCapital(unit.civ, city)
-        if (conquest && unit.baseUnit.isLandUnit && unit.baseUnit.isMelee() &&
-            city.health > BattleDamage.calculateDamageToDefender(MapUnitCombatant(unit), CityCombatant(city)).coerceAtLeast(1) &&
-            !AutomationPreview.canJoinConquestAssault(unit, city))
-            return chooseLandingGround(closestReachableEnemyCity, unit)
-        val ourUnitsAroundEnemyCity = closestReachableEnemyCity.getTilesInDistance(if (conquest) 3 else 6)
+        val ourUnitsAroundEnemyCity = closestReachableEnemyCity.getTilesInDistance(6)
             .flatMap { it.getUnits() }
             .filter { it.isMilitary() && it.civ == unit.civ }
-            .filter { !conquest || (it.health >= 50 && !it.isEmbarked() && !it.hasUnique(UniqueType.CannotAttack)) }
 
-        if ((conquest && !AutomationPreview.hasConquestCaptureSupport(unit.civ, city)) ||
-            cannotTakeCitySoon(ourUnitsAroundEnemyCity, city)) {
-            return chooseLandingGround(closestReachableEnemyCity, unit)
+        val city = closestReachableEnemyCity.getCity()!!
+
+        if (cannotTakeCitySoon(ourUnitsAroundEnemyCity, city)) {
+            return headToLandingGrounds(closestReachableEnemyCity, unit)
         }
 
-        if (conquest && unit.baseUnit.isLandUnit && unit.baseUnit.isRanged()) {
-            val firingPosition = unitDistanceToTiles.asSequence().filter { (tile, _) ->
-                tile.aerialDistanceTo(closestReachableEnemyCity) == unitRange &&
-                    (tile == unit.currentTile || unit.movement.canMoveTo(tile)) &&
-                    unit.getDamageFromTerrain(tile) <= 0 &&
-                    BattleHelper.visibleFollowupDamage(unit, tile) < unit.health &&
-                    (unit.hasUnique(UniqueType.IndirectFire) || closestReachableEnemyCity in
-                        tile.tileMap.getViewableTiles(tile.position, unitRange, true))
-            }.sortedWith(compareByDescending<Map.Entry<Tile, UnitMovement.ParentTileAndTotalMovement>> { entry ->
-                entry.key.neighbors.count { tile -> tile.militaryUnit?.let {
-                    it.civ == unit.civ && it.baseUnit.isMelee() && it.health >= 50
-                } == true }
-            }.thenBy { entry -> entry.key.neighbors.count { it.militaryUnit?.civ?.isAtWarWith(unit.civ) == true } }
-                .thenBy { it.value.totalMovement }).firstOrNull()?.key
-            if (firingPosition != null) return firingPosition
-            return chooseLandingGround(closestReachableEnemyCity, unit)
-        }
-        return nextTileInPath // go for it!
+        unit.movement.moveToTile(nextTileInPath) // go for it!
+
+        return true
     }
 
     /** Cannot take within 5 turns */
@@ -160,8 +104,6 @@ object HeadTowardsEnemyCityAutomation {
     ): Boolean {
         val cityCombatant = CityCombatant(city)
         val expectedDamagePerTurn = ourUnitsAroundEnemyCity
-            .filterNot { AutomationPreview.militaryGoal(it.civ) && it.baseUnit.isWaterUnit &&
-                it.baseUnit.isMelee() && !city.isNaval() }
             .sumOf { BattleDamage.calculateDamageToDefender(MapUnitCombatant(it), cityCombatant) }
 
         val cityHealingPerTurn = 20
@@ -170,38 +112,30 @@ object HeadTowardsEnemyCityAutomation {
                 || city.health / (expectedDamagePerTurn - cityHealingPerTurn) > 5) // Can damage, but will take more than 5 turns
     }
 
-    @Readonly
-    private fun chooseLandingGround(closestReachableEnemyCity: Tile, unit: MapUnit): Tile {
+    private fun headToLandingGrounds(closestReachableEnemyCity: Tile, unit: MapUnit): Boolean {
         // don't head straight to the city, try to head to landing grounds -
         // this is against tha AI's brilliant plan of having everyone embarked and attacking via sea when unnecessary.
-        val maxDistance = if (AutomationPreview.isConquestCapital(unit.civ, closestReachableEnemyCity.getCity()!!))
-            minDistanceFromCityToConsiderForLandingArea else maxDistanceFromCityToConsiderForLandingArea
-        val tileToHeadTo = closestReachableEnemyCity.getTilesInDistanceRange(minDistanceFromCityToConsiderForLandingArea..maxDistance)
+        val tileToHeadTo = closestReachableEnemyCity.getTilesInDistanceRange(minDistanceFromCityToConsiderForLandingArea..maxDistanceFromCityToConsiderForLandingArea)
             .filter { it.isLand && unit.getDamageFromTerrain(it) <= 0 } // Don't head for hurty terrain
             .sortedBy { it.aerialDistanceTo(unit.currentTile) }
-            .firstOrNull { tile ->
-                if (!(unit.movement.canMoveTo(tile) || tile == unit.currentTile) || !unit.movement.canReach(tile)) false
-                else if (!AutomationPreview.militaryGoal(unit.civ) || !unit.baseUnit.isRanged()) true
-                else {
-                    val nextTile = if (tile in unit.movement.getDistanceToTiles()) tile
-                        else unit.movement.getShortestPath(tile).firstOrNull() ?: unit.currentTile
-                    BattleHelper.visibleFollowupDamage(unit, nextTile) < unit.health
-                }
-            }
-        return tileToHeadTo ?: unit.currentTile
+            .firstOrNull { (unit.movement.canMoveTo(it) || it == unit.currentTile) && unit.movement.canReach(it) }
+
+        if (tileToHeadTo != null) { // no need to worry, keep going as the movement alg. says
+            unit.movement.headTowards(tileToHeadTo)
+        }
+        return true
     }
 
-    @Readonly
-    private fun chooseLongRangeDestination(
+    private fun headTowardsEnemyCityLongRange(
         closestReachableEnemyCity: Tile,
         unitDistanceToTiles: PathsToTilesWithinTurn,
         unitRange: Int,
         unit: MapUnit
-    ): Tile? {
+    ): Boolean {
         // If we're already in fire range but have no sight, hold position
         // If there IS sight, automateUnitMoves would order attacking instead of heading to city
         if (closestReachableEnemyCity.getTilesInDistance(unitRange).contains(unit.getTile()))
-            return unit.currentTile
+            return true
 
         val tilesInBombardRange = closestReachableEnemyCity.getTilesInDistance(2).toSet()
         val candidateTiles = unitDistanceToTiles.asSequence().filter {
@@ -218,6 +152,13 @@ object HeadTowardsEnemyCityAutomation {
             { it.value.totalMovement }
         )).firstOrNull()
 
-        return tileToMoveTo?.key
+        if (tileToMoveTo != null) {
+            // move into position far away enough so that city bombard or enemy units don't hurt
+            unit.movement.headTowards(tileToMoveTo.key)
+            return true
+        }
+
+        // return false if no tile to move to
+        return false
     }
 }

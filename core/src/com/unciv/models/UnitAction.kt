@@ -1,7 +1,5 @@
 package com.unciv.models
 
-import com.unciv.logic.automation.AutomationPreview
-
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.unciv.Constants
 import com.unciv.models.ruleset.unique.Unique
@@ -29,11 +27,10 @@ open class UnitAction(
     val isCurrentAction: Boolean = false,
     val uncivSound: UncivSound = type.uncivSound,
     val associatedUnique: Unique? = null,
-    val previewOption: String = type.name,
+    val actionKey: String = type.name,
     /** Action is Null if this unit *can* execute the action but *not right now* - it's embarked, out of moves, etc */
-    action: (() -> Unit)? = null
+    val action: (() -> Unit)? = null
 ) {
-    val action = AutomationPreview.wrapAction(type.name, action, previewOption)
     fun getIcon(size: Float = 20f): Actor {
         if (type.imageGetter != null)
             return type.imageGetter.invoke()
@@ -118,7 +115,7 @@ class UpgradeUnitAction(
     val newResourceRequirements: Counter<String>,
     action: (() -> Unit)?,
     useFrequency: Float = 120f,
-) : UnitAction(UnitActionType.Upgrade, useFrequency, title, action = action, previewOption = unitToUpgradeTo.name)
+) : UnitAction(UnitActionType.Upgrade, useFrequency, title, action = action, actionKey = unitToUpgradeTo.name)
 
 /**
  * Unit Actions - generic enum with static properties

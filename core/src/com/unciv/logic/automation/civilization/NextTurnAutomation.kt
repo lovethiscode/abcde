@@ -1,7 +1,5 @@
 package com.unciv.logic.automation.civilization
 
-import com.unciv.logic.automation.AutomationPreview
-
 import com.unciv.UncivGame
 import com.unciv.logic.automation.Automation
 import com.unciv.logic.automation.ThreatLevel
@@ -20,8 +18,6 @@ import com.unciv.logic.civilization.diplomacy.*
 import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.logic.map.tile.Tile
 import com.unciv.models.ruleset.MilestoneType
-import com.unciv.models.ruleset.Building
-import com.unciv.models.ruleset.PerpetualConstruction
 import com.unciv.models.ruleset.Policy
 import com.unciv.models.ruleset.PolicyBranch
 import com.unciv.models.ruleset.nation.PersonalityValue
@@ -46,14 +42,9 @@ object NextTurnAutomation {
         if (civInfo.isBarbarian) return BarbarianAutomation(civInfo).automate()
         if (civInfo.isSpectator()) return // When there's a spectator in multiplayer games, it's processed automatically, but shouldn't be able to actually do anything
 
+        if (com.unciv.logic.PlayerDecisionControl.controls(civInfo)) return
         val civView = GameView(civInfo.gameInfo, civInfo).civView
 
-        if (AutomationPreview.active) {
-            for (alert in civInfo.popupAlerts.filter { it.type == AlertType.CityConquered }) {
-                val city = civInfo.gameInfo.getCities().firstOrNull { it.id == alert.value } ?: continue
-                Battle.automateCityConquer(civInfo, city)
-            }
-        }
         respondToPopupAlerts(civInfo)
         TradeAutomation.respondToTradeRequests(civInfo, tradeAndChangeState)
 
@@ -84,16 +75,13 @@ object NextTurnAutomation {
             civInfo.cityStateFunctions.updateDiplomaticRelationshipForCityState()
         }
 
-        AutomationPreview.checkpoint(civInfo)
         chooseTechToResearch(civInfo)
-        AutomationPreview.checkpoint(civInfo)
         automateCityBombardment(civInfo)
         if (tradeAndChangeState) UseGoldAutomation.useGold(civInfo)
         if (tradeAndChangeState && !civInfo.isCityState) {
             protectCityStates(civInfo)
             bullyCityStates(civInfo)
         }
-        AutomationPreview.checkpoint(civInfo)
         automateUnits(civInfo)  // this is the most expensive part
 
         if (tradeAndChangeState && civInfo.isMajorCiv()) {
@@ -111,7 +99,6 @@ object NextTurnAutomation {
         if (tradeAndChangeState) trainSettler(civInfo)
         // I'm not sure what will happen if we *don't* vote when we can, so automate vote even when forced automation
         tryVoteForDiplomaticVictory(civInfo)
-        AutomationPreview.checkpoint(civInfo)
     }
 
     fun automateGoldToSciencePercentage(civInfo: Civilization) {
@@ -158,11 +145,9 @@ object NextTurnAutomation {
         val diploManager = civInfo.getDiplomacyManager(requestingCiv)!!
         if (civInfo.diplomacyFunctions.canSignDeclarationOfFriendshipWith(requestingCiv)
             && DiplomacyAutomation.wantsToSignDeclarationOfFrienship(civInfo, requestingCiv)) {
-            AutomationPreview.choice(civInfo, "friendship:accept", requestingCiv.civID)
             diploManager.signDeclarationOfFriendship()
             requestingCiv.addNotification("We have signed a Declaration of Friendship with [${civInfo.civName}]!", NotificationCategory.Diplomacy, NotificationIcon.Diplomacy, civInfo.civName)
         } else {
-            AutomationPreview.choice(civInfo, "friendship:reject", requestingCiv.civID)
             diploManager.otherCivDiplomacy().setFlag(DiplomacyFlags.DeclinedDeclarationOfFriendship, 10)
             requestingCiv.addNotification("[${civInfo.civName}] has denied our Declaration of Friendship!", NotificationCategory.Diplomacy, NotificationIcon.Diplomacy, civInfo.civName)
         }
@@ -270,16 +255,16 @@ object NextTurnAutomation {
             return researchableTechs.toSortedMap().values.toList()
         }
 
+        val stateForConditionals = civInfo.state
         while (civInfo.tech.freeTechs > 0) {
             val costs = getGroupedResearchableTechs()
             if (costs.isEmpty()) return
             
             val mostExpensiveTechs = costs.lastOrNull{ 
                 // Ignore rows where all techs have 0 weight
-                it.any { AutomationPreview.researchWeight(civInfo, it) > 0 }
+                it.any { it.getWeightForAiDecision(stateForConditionals) > 0 }
             } ?: costs.last()
-            val chosenTech = AutomationPreview.preferredResearch(civInfo, costs.flatten())
-                ?: mostExpensiveTechs.randomWeighted(rng) { AutomationPreview.researchWeight(civInfo, it) }
+            val chosenTech = mostExpensiveTechs.randomWeighted(rng) { it.getWeightForAiDecision(stateForConditionals) }
             civInfo.tech.getFreeTechnology(chosenTech.name)
         }
         if (civInfo.tech.techsToResearch.isEmpty()) {
@@ -288,15 +273,15 @@ object NextTurnAutomation {
 
             val cheapestTechs = costs.firstOrNull{
                 // Ignore rows where all techs have 0 weight
-                it.any { AutomationPreview.researchWeight(civInfo, it) > 0 } }?: costs.first()
+                it.any { it.getWeightForAiDecision(stateForConditionals) > 0 } }?: costs.first()
             //Do not consider advanced techs if only one tech left in cheapest group
             val techToResearch: Technology =
-                AutomationPreview.preferredResearch(civInfo, costs.flatten()) ?: if (cheapestTechs.size == 1 || costs.size == 1) {
-                    cheapestTechs.randomWeighted(rng) { AutomationPreview.researchWeight(civInfo, it) }
+                if (cheapestTechs.size == 1 || costs.size == 1) {
+                    cheapestTechs.randomWeighted(rng) { it.getWeightForAiDecision(stateForConditionals) }
                 } else {
                     //Choose randomly between cheapest and second cheapest group
                     val techsAdvanced = costs[1]
-                    (cheapestTechs + techsAdvanced).randomWeighted(rng) { AutomationPreview.researchWeight(civInfo, it) }
+                    (cheapestTechs + techsAdvanced).randomWeighted(rng) { it.getWeightForAiDecision(stateForConditionals) }
                 }
 
             civInfo.tech.techsToResearch.add(techToResearch.name)
@@ -376,7 +361,6 @@ object NextTurnAutomation {
         if (scienceGP != null)  greatPerson = scienceGP
         // Humans would pick a prophet or engineer, but it'd require more sophistication on part of the AI - a scientist is the safest option for now
 
-        AutomationPreview.choice(civInfo, "free_person", greatPerson.name)
         civInfo.greatPeople.chooseFreeGreatPerson(greatPerson.name)
     }
 
@@ -425,12 +409,10 @@ object NextTurnAutomation {
         // capturedBy changes owner on the same object, and an earlier action can do that to a
         // later one, so ownership and destruction are checked at each dispatch, not before the loop.
         val unitsAtStart = civInfo.units.getCivUnits().toList()
-        fun unitsInPriorityOrder() = unitsAtStart.sortedWith(compareBy<MapUnit> { AutomationPreview.reinforcementPriority(it) }
-            .thenBy { getUnitPriority(it, isAtWar) })
+        fun unitsInPriorityOrder() = unitsAtStart.sortedBy { unit -> getUnitPriority(unit, isAtWar) }
 
         val citiesRequiringManualPlacement = civInfo.getKnownCivs().filter { it.isAtWarWith(civInfo) }
             .flatMap { it.cities }
-            .filterNot { AutomationPreview.militaryGoal(civInfo) }
             .filter {
                 var count = 0
                 it.getCenterTile().forEachTileInDistance(4) { tile -> if (tile.militaryUnit?.civ == civInfo) count++ }
@@ -468,9 +450,8 @@ object NextTurnAutomation {
         !unit.isDestroyed && unit.civ == civInfo
 
     internal fun applyPromotions(unit: MapUnit) {
-        if (AutomationPreview.active && (!unit.hasMovement() || unit.attacksThisTurn != 0)) return
         // Restrict Human automated units from promotions via setting
-        if (!unit.civ.isAI() && !AutomationPreview.controls(unit.civ) && !UncivGame.Current.settings.automatedUnitsChoosePromotions) return
+        if (!unit.civ.isAI() && !UncivGame.Current.settings.automatedUnitsChoosePromotions) return
         val rng = unit.cache.state.stateBasedRandom("NextTurnAutomation.automateUnits")
         val stateForConditionals = unit.cache.state
         while (unit.promotions.canBePromoted()) {
@@ -611,19 +592,11 @@ object NextTurnAutomation {
         val civHasSignificantlyWeakerMilitaryThanEnemies =
                 ownMilitaryStrength < sumOfEnemiesMilitaryStrength * 0.66f
         for (city in civInfo.cities) {
-            if (shouldAnnexCity(civInfo, city)) {
-                AutomationPreview.choice(civInfo, "city_disposition", "annex", city = city)
-                city.annexCity()
-            }
+            if (shouldAnnexCity(civInfo, city)) city.annexCity()
 
             // Don't pull a city off a spaceship part it's already building for the military push (only if actually attacked)
             val onSpaceshipPart = city.cityConstructions.getCurrentConstruction().name in civInfo.gameInfo.spaceResources
-            val currentBuilding = city.cityConstructions.getCurrentConstruction() as? Building
-            val finishingHappiness = AutomationPreview.militaryGoal(civInfo) && currentBuilding != null &&
-                currentBuilding.getStats(city).happiness > 0f &&
-                (city.cityConstructions.inProgressConstructions[currentBuilding.name] ?: 0) > 0
-            if (!finishingHappiness && (city.health < city.getMaxHealth() || (civHasSignificantlyWeakerMilitaryThanEnemies && !onSpaceshipPart)
-                || AutomationPreview.needsMilitaryProduction(civInfo))) {
+            if (city.health < city.getMaxHealth() || (civHasSignificantlyWeakerMilitaryThanEnemies && !onSpaceshipPart)) {
                 Automation.tryTrainMilitaryUnit(city) // need defenses if city is under attack
                 if (city.cityConstructions.constructionQueue.isNotEmpty())
                     continue // found a unit to build so move on
@@ -638,9 +611,6 @@ object NextTurnAutomation {
         if (civInfo.isCityState) return
         if (civInfo.isOneCityChallenger()) return
         if (civInfo.cities.none()) return
-        if (AutomationPreview.militaryGoal(civInfo) && (civInfo.isAtWar() || !AutomationPreview.economyReady(civInfo) ||
-            AutomationPreview.needsMilitaryProduction(civInfo) ||
-            AutomationPreview.needsLandConquestProduction(civInfo, includeQueued = false))) return
         if (civInfo.getHappiness() <= civInfo.cities.size) return
         if (CivilianUnitAutomation.isLateGame(civInfo)){
             // all suitable land may be occupied already
@@ -684,15 +654,8 @@ object NextTurnAutomation {
             .filterNot { (it.cityConstructions.getCurrentConstruction() as? BaseUnit)?.isCityFounder() == true }
             .maxByOrNull { it.cityStats.currentCityStats.production }
             ?: return
-        if (AutomationPreview.militaryGoal(civInfo) &&
-            bestCity.cityConstructions.getCurrentConstruction() !is PerpetualConstruction &&
-            bestCity.cityConstructions.getWorkDone(bestCity.cityConstructions.currentConstructionName()) > 0) return
-        if (bestCity.cityConstructions.getBuiltBuildings().count() > 1 ||
-            AutomationPreview.strategy(civInfo)?.expansion == com.unciv.logic.automation.ExpansionPriority.NewCities)
-            if (AutomationPreview.strategy(civInfo)?.expansion != com.unciv.logic.automation.ExpansionPriority.ExistingCities ||
-                bestCity.cityConstructions.getCurrentConstruction() is PerpetualConstruction ||
-                bestCity.cityConstructions.getWorkDone(bestCity.cityConstructions.currentConstructionName()) == 0)
-                bestCity.cityConstructions.setCurrentConstruction(settlerUnits.minByOrNull { it.cost }!!.name)
+        if (bestCity.cityConstructions.getBuiltBuildings().count() > 1) // 2 buildings or more, otherwise focus on self first
+            bestCity.cityConstructions.setCurrentConstruction(settlerUnits.minByOrNull { it.cost }!!.name)
     }
 
     // Technically, this function should also check for civs that have liberated one or more cities
@@ -726,9 +689,6 @@ object NextTurnAutomation {
         for (otherCiv in civInfo.getKnownCivs().filter { it.isMajorCiv() }) {
             val diploManager = civInfo.getDiplomacyManager(otherCiv)!!
             for (demand in Demand.entries) {
-                // The UI planner can only issue demands enabled on the human diplomacy page.
-                if (AutomationPreview.militaryGoal(civInfo)
-                    && (!demand.show(civInfo) || diploManager.hasFlag(demand.agreedToDemand))) continue
                 if (diploManager.hasFlag(demand.violationOccurred))
                     onDemandViolation(demand, civInfo, otherCiv)
             }

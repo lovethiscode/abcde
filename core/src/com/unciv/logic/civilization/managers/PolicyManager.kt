@@ -1,7 +1,5 @@
 package com.unciv.logic.civilization.managers
 
-import com.unciv.logic.automation.AutomationPreview
-
 import com.unciv.logic.achievements.AchievementRules
 import com.unciv.logic.achievements.AchievementTracker
 
@@ -246,7 +244,6 @@ class PolicyManager : IsPartOfGameInfoSerialization {
     fun adopt(policy: Policy, branchCompletion: Boolean = false): Unit = AchievementTracker.action(civInfo.gameInfo) {
 
         if (!branchCompletion) {
-            AutomationPreview.choice(civInfo, "policy", policy.name)
             if (freePolicies > 0) freePolicies--
             else if (!civInfo.gameInfo.gameParameters.godMode) {
                 val cultureNeededForNextPolicy = getCultureNeededForNextPolicy()

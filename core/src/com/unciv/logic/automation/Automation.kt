@@ -222,11 +222,9 @@ object Automation {
                     } // there is absolutely no reason for you to make water units on this body of water.
         }
 
-        val inlandCapital = AutomationPreview.hasKnownInlandWarCapital(city.civ)
         val militaryUnits = availableUnits
             .filter { it.isMilitary }
-            .filter { AutomationPreview.allowsUnitProduction(city.civ, it) }
-            .filterNot { (removeShips || inlandCapital) && it.isWaterUnit }
+            .filterNot { removeShips && it.isWaterUnit }
             .filter { allowSpendingResource(city.civ, it) }
             .filterNot {
                 // units that can't attack may be very strong meatshields, but current AI
@@ -241,40 +239,6 @@ object Automation {
             .toList().asSequence()
 
         val chosenUnit: BaseUnit
-        if (AutomationPreview.militaryGoal(city.civ) && AutomationPreview.preparing(city.civ)) {
-            val target = AutomationPreview.targetCities(city.civ).firstOrNull()
-            val completed = if (target == null) city.civ.units.getCivUnits().toList()
-                else AutomationPreview.eligibleArmy(city.civ, target)
-            val landArmy = completed.asSequence().filter { it.health >= 50 }.map { it.baseUnit }
-                .filter { it.isMilitary && it.isLandUnit }.toList() + city.civ.cities.mapNotNull {
-                    city.civ.gameInfo.ruleset.units[it.cityConstructions.currentConstructionName()]
-                }.filter { it.isMilitary && it.isLandUnit }
-            fun canCapture(unit: BaseUnit) = AutomationPreview.isCaptureUnit(unit)
-            if (AutomationPreview.strategy(city.civ)?.production == ProductionPriority.Army &&
-                landArmy.count(::canCapture) >= 2 &&
-                landArmy.count { it.isRanged() && !it.isProbablySiegeUnit() } < 2)
-                militaryUnits.filter { it.isLandUnit && it.isRanged() && !it.isProbablySiegeUnit() }
-                    .maxByOrNull { it.getForceEvaluation() }?.let { return it }
-            if (inlandCapital && AutomationPreview.strategy(city.civ)?.production == ProductionPriority.Army &&
-                landArmy.count { it.isProbablySiegeUnit() } < 2 && landArmy.count(::canCapture) >= 2)
-                militaryUnits.filter { it.isLandUnit && it.isProbablySiegeUnit() }
-                    .maxByOrNull { it.getForceEvaluation() }?.let { return it }
-            if (AutomationPreview.needsLandConquestProduction(city.civ)) {
-                val landCandidates = militaryUnits.filter { it.isLandUnit }.toList()
-                val preferred = when {
-                    landArmy.count(::canCapture) < 2 -> landCandidates.filter(::canCapture)
-                    landArmy.count { it.isRanged() } < 2 || landArmy.count { it.isProbablySiegeUnit() } < 2 ->
-                        landCandidates.filter { it.isProbablySiegeUnit() }.ifEmpty { landCandidates.filter { it.isRanged() } }
-                    else -> landCandidates.filter { it.isRanged() && !it.isProbablySiegeUnit() }
-                }
-                (preferred.ifEmpty { landCandidates.filter { it.isRanged() } }.ifEmpty { landCandidates })
-                    .maxByOrNull { it.getForceEvaluation() }?.let { return it }
-            }
-            if (landArmy.count(::canCapture) * 3 < landArmy.size) {
-                militaryUnits.filter { it.isLandUnit && canCapture(it) }
-                    .maxByOrNull { it.getForceEvaluation() }?.let { return it }
-            }
-        }
         if (!city.civ.isAtWar()
                 && city.civ.cities.any { it.getCenterTile().militaryUnit == null }
                 && militaryUnits.any { it.isRanged() } // this is for city defence so get a ranged unit if we can

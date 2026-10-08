@@ -528,11 +528,8 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
     fun canDeclareWar() = !civInfo.isDefeated() && !otherCiv.isDefeated()
             && turnsToPeaceTreaty() == 0 && diplomaticStatus != DiplomaticStatus.War
 
-    fun declareWar(declareWarReason: DeclareWarReason = DeclareWarReason(WarType.DirectWar)) {
-        if (declareWarReason.warType == WarType.DirectWar)
-            com.unciv.logic.automation.AutomationPreview.choice(civInfo, "declare_war", otherCiv.civID)
+    fun declareWar(declareWarReason: DeclareWarReason = DeclareWarReason(WarType.DirectWar)) =
         DeclareWar.declareWar(this, declareWarReason)
-    }
 
     //Used for nuke
     @Readonly fun canAttack() = turnsToPeaceTreaty() == 0
@@ -632,8 +629,6 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
 
 
     fun makePeace() {
-        if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)
-            || com.unciv.logic.automation.AutomationPreview.militaryGoal(otherCiv)) return
         makePeaceOneSide()
         otherCivDiplomacy().makePeaceOneSide()
 

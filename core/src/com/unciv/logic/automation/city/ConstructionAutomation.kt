@@ -36,7 +36,6 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
     private val civInfo = city.civ
 
     private val relativeCostEffectiveness = ArrayList<ConstructionChoice>()
-    private val preferenceBenefits = mutableMapOf<String, Stats>()
     private val cityState = city.state
     private val cityStats = city.cityStats
 
@@ -67,8 +66,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
 
     private val units = city.getRuleset().units.values.asSequence()
         .filterNot { buildableUnits[it.name] == false || // if we already know that this unit can't be built here then don't even consider it
-            (civInfo.isHuman() && it.name in city.disabledConstructions) || shouldAvoidConstruction(it) ||
-            !com.unciv.logic.automation.AutomationPreview.allowsUnitProduction(civInfo, it) }
+            (civInfo.isHuman() && it.name in city.disabledConstructions) || shouldAvoidConstruction(it) }
 
     private val civUnits = civInfo.units.getCivUnits()
     private val militaryUnits = civUnits.count { it.baseUnit.isMilitary }
@@ -92,11 +90,10 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
                                           val remainingWork: Int, val production: Int)
 
     private fun addChoice(choices: ArrayList<ConstructionChoice>, choice: IConstruction, choiceModifier: Float) {
-        val extraAiModifier = if ((civInfo.isAI() || com.unciv.logic.automation.AutomationPreview.controls(civInfo)) && choice is INonPerpetualConstruction)
+        val extraAiModifier = if (civInfo.isAI() && choice is INonPerpetualConstruction)
             choice.getWeightForAiDecision(GameContext(civInfo, city))
         else 1f
-        val preference = com.unciv.logic.automation.AutomationPreview.productionWeight(civInfo, choice, preferenceBenefits[choice.name])
-        choices.add(ConstructionChoice(choice, choiceModifier * extraAiModifier * preference,
+        choices.add(ConstructionChoice(choice, choiceModifier * extraAiModifier,
             cityConstructions.getRemainingWork(choice.name), cityConstructions.productionForConstruction(choice.name)))
     }
 
@@ -124,15 +121,8 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
             addMilitaryUnitChoice()
         }
 
-        val happinessRescue = if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)
-                && (civInfo.getHappiness() <= 0 || isAtWar && civInfo.getHappiness() <= 3 &&
-                    com.unciv.logic.automation.AutomationPreview.strategy(civInfo)?.production == com.unciv.logic.automation.ProductionPriority.Army)) relativeCostEffectiveness.filter {
-            it.choice is Building && !it.choice.isAnyWonder() &&
-                (preferenceBenefits[it.choice.name]?.happiness ?: 0f) > 0f
-        } else emptyList()
-        val choices = happinessRescue.ifEmpty { relativeCostEffectiveness }
         val chosenConstruction: IConstruction =
-            if (choices.isEmpty()) { // choose one of the special constructions instead
+            if (relativeCostEffectiveness.isEmpty()) { // choose one of the special constructions instead
                 // add science!
                 when {
                     PerpetualConstruction.Science.isBuildable(cityConstructions) && !allTechsAreResearched -> PerpetualConstruction.Science
@@ -141,7 +131,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
                     PerpetualConstruction.Faith.isBuildable(cityConstructions) -> PerpetualConstruction.Faith
                     else -> PerpetualConstruction.Idle
                 }
-            } else { choices.maxBy { (it.choiceModifier / it.remainingWork.coerceAtLeast(1)).coerceAtLeast(0f) }.choice }
+            } else { relativeCostEffectiveness.maxBy { (it.choiceModifier / it.remainingWork.coerceAtLeast(1)).coerceAtLeast(0f) }.choice }
             //TODO: All bad things are build anyways at the moment, maybe let's stop doing that and chose perpetual construction instead
 
         // Do not notify while in resistance (you can't do anything about it) - still notify for puppets ("annex already!")
@@ -167,14 +157,10 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
         // There is a risk however, that these cities run out of things to build, and start to construct nothing
         if (civInfo.stats.getUnitSupplyDeficit() > 0) return // we don't want more units if it's already hurting our empire
         // todo: add worker disbandment and consumption of great persons if under attack & short on unit supply
-        if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo)) {
-            if (!com.unciv.logic.automation.AutomationPreview.economyReady(civInfo)) return
-        } else if (!isAtWar && (civInfo.stats.statsForNextTurn.gold < 0 || militaryUnits > max(7, cities * 5))) return
+        if (!isAtWar && (civInfo.stats.statsForNextTurn.gold < 0 || militaryUnits > max(7, cities * 5))) return
         if (civInfo.gold < -50) return
 
         val militaryUnit = Automation.chooseMilitaryUnit(city, units) ?: return
-        if (!com.unciv.logic.automation.AutomationPreview.allowsSpending(civInfo, 0,
-                com.unciv.logic.automation.AutomationPreview.extraUnitMaintenance(civInfo, militaryUnit, city.getCenterTile()))) return
         val unitsToCitiesRatio = cities.toFloat() / (militaryUnits + 1)
         // most buildings and civ units contribute the the civ's growth, military units are anti-growth
         var modifier = 1 + sqrt(unitsToCitiesRatio) / 2
@@ -244,8 +230,6 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
     }
 
     private fun addWorkerChoice() {
-        if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo) && workers >= cities &&
-            com.unciv.logic.automation.AutomationPreview.needsLandConquestProduction(civInfo)) return
         val workerEquivalents = units
             .filter {
                 it.hasUnique(UniqueType.BuildImprovements)
@@ -357,7 +341,6 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
     private fun applyBuildingStats(building: Building, cityBaseline: Stats): Float {
         val buildingStats = getStatDifferenceFromBuilding(building.name, cityBaseline)
         buildingStats.add(getBuildingStatsFromUniques(building, buildingStats))
-        preferenceBenefits[building.name] = buildingStats.clone()
 
         buildingStats.food *= 3
 
@@ -366,8 +349,6 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
         buildingStats.gold *= 2 // Everything's weighed by rankStatsValue, which ranks gold at 0.3, let's make that 0.6 (vs Science being 1)
 
         if (civInfo.getHappiness() < 10 || civInfo.getHappiness() < civInfo.cities.size)
-            buildingStats.happiness *= 3
-        if (com.unciv.logic.automation.AutomationPreview.militaryGoal(civInfo) && civInfo.getHappiness() <= 0)
             buildingStats.happiness *= 3
 
         if (city.cityStats.currentCityStats.culture < 2) {
