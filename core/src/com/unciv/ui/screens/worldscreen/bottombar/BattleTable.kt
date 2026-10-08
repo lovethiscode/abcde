@@ -378,7 +378,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         addSeparator().pad(0f)
         row().pad(5f)
 
-        val attackButton = "NUKE".toTextButton().apply { color = Color.RED }
+        val attackButton = "NUKE".toTextButton().apply { color = Color.RED; name = "ui-attack" }
 
         if (!worldScreen.isPlayersTurn || !attackerView.canAttack() || !canNuke) {
             attackButton.disable()
@@ -447,7 +447,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         add(getHealthBar(attacker.getMaxHealth(), attacker.getMaxHealth(), attacker.getMaxHealth(), attacker.getMaxHealth()))
         row().pad(5f)
 
-        val attackButton = "Air Sweep".toTextButton().apply { color = Color.RED }
+        val attackButton = "Air Sweep".toTextButton().apply { color = Color.RED; name = "ui-attack" }
 
         val canReach = attackerView.getTilesInAttackRange().contains(targetTileView)
 
