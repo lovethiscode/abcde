@@ -97,6 +97,8 @@ object BattleHelper {
 
     @Readonly
     fun visibleFollowupDamage(unit: MapUnit, postTile: Tile, defeatedTile: Tile? = null, health: Int = unit.health): Int {
+        val conservative = AutomationPreview.militaryGoal(unit.civ) &&
+            AutomationPreview.strategy(unit.civ)?.combat != com.unciv.logic.automation.CombatPriority.Counterattack
         @LocalState val predicted = unit.clone()
         predicted.currentTile = postTile
         predicted.health = health
@@ -121,14 +123,16 @@ object BattleHelper {
                 if (positions.isNotEmpty() && enemy.baseUnit.isMelee() && !enemy.hasUnique(UniqueType.CannotCaptureCities))
                     canCaptureProtectingCity = true
                 followupDamage += positions.maxOfOrNull { from ->
-                    BattleDamage.calculateDamageToDefender(MapUnitCombatant(enemy), postCombatant, from)
+                    BattleDamage.calculateDamageToDefender(MapUnitCombatant(enemy), postCombatant, from,
+                        if (conservative) 1f else BattleDamage.getRandomness(postCombatant))
                 } ?: 0
             }
             for (city in enemyCiv.cities) {
                 val tile = city.getCenterTile()
-                if (tile != defeatedTile && tile.isVisible(unit.civ) &&
+                if (tile != defeatedTile && (tile.isVisible(unit.civ) || conservative && unit.civ.hasExplored(tile)) &&
                     tile.aerialDistanceTo(postTile) <= city.getBombardRange())
-                    followupDamage += BattleDamage.calculateDamageToDefender(CityCombatant(city), postCombatant, tile)
+                    followupDamage += BattleDamage.calculateDamageToDefender(CityCombatant(city), postCombatant, tile,
+                        if (conservative) 1f else BattleDamage.getRandomness(postCombatant))
             }
         }
         // A garrison is attacked through its city; it is lost only if the city can be captured.

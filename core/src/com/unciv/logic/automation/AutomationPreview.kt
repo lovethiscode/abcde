@@ -109,6 +109,8 @@ object AutomationPreview {
                 if (enemies.isEmpty() && city.health == city.getMaxHealth()) continue
                 val candidates = army.filter { ally -> ally.id !in assignments &&
                     (ally.health >= 50 || ally.currentTile == center && ally.baseUnit.isRanged()) &&
+                    (current.strategy.combat == CombatPriority.Counterattack || ally.health >= 75 ||
+                        ally.action?.contains("until healed") != true || ally.currentTile == center) &&
                     ally.movement.canReach(center)
                 }.sortedWith(compareBy<MapUnit> { if (it.baseUnit.isProbablySiegeUnit()) 1 else 0 }
                     .thenBy { it.currentTile.aerialDistanceTo(center) }
