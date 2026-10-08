@@ -183,17 +183,17 @@ class AlertPopup(
             val warReason = if (popupAlert.type == AlertType.AttackedAllyMinor) WarType.AlliedCityStateWar else WarType.ProtectedCityStateWar
             player.getDiplomacyManager(bullyOrAttacker)!!.declareWar(DeclareWarReason(warReason, cityState))
             cityState.getDiplomacyManager(player)!!.influence += 20f // You went to war for us!!
-        }.row()}
+        }.apply { actor.name = "ui-alert-choice:declare_war" }.row()}
 
         addCloseButton("You'll pay for this!", KeyboardBinding.Confirm) {
             player.getDiplomacyManager(bullyOrAttacker)!!.sideWithCityState()
-        }.row()
+        }.apply { actor.name = "ui-alert-choice:side_with_minor" }.row()
 
         addCloseButton("Very well.", KeyboardBinding.Cancel) {
             player.addNotification("You have broken your Pledge to Protect [${cityState.civName}]!",
                 cityState.cityStateFunctions.getNotificationActions(), NotificationCategory.Diplomacy, cityState.civName)
             cityState.cityStateFunctions.removeProtectorCiv(player, forced = true)
-        }.row()
+        }.apply { actor.name = "ui-alert-choice:abandon_protection" }.row()
         
         return true
     }
@@ -249,7 +249,7 @@ class AlertPopup(
             addLiberateOption(city, conqueringCiv)
             addSeparator()
         }
-        addCloseButton("Keep it").row()
+        addCloseButton("Keep it").apply { actor.name = "ui-disposition:keep" }.row()
     }
 
     private fun addDeclarationOfFriendship(): Boolean {
@@ -291,9 +291,9 @@ class AlertPopup(
         if (diplomacy.canDeclareWar()) {
             addCloseButton("THIS MEANS WAR! (Declare war)") {
                 diplomacy.declareWar()
-            }.row()
+            }.apply { actor.name = "ui-alert-choice:declare_war" }.row()
         }
-        addCloseButton("Very well.", KeyboardBinding.Cancel).row()
+        addCloseButton("Very well.", KeyboardBinding.Cancel).apply { actor.name = "ui-alert-choice:acknowledge" }.row()
         return true
     }
     
@@ -315,12 +315,12 @@ class AlertPopup(
         addGoodSizedLabel(demand.demandText).row()
         addCloseButton(demand.acceptDemandText, KeyboardBinding.Confirm) {
             playerDiploManager.agreeToDemand(demand)
-        }.row()
+        }.apply { actor.name = "ui-alert-choice:accept" }.row()
         addCloseButton(demand.refuseDemandText, KeyboardBinding.Cancel) {
             playerDiploManager.refuseDemand(demand)
             if (demand == Demand.DoNotAttackUs)
                 viewingCiv.getDiplomacyManager(otherciv)!!.declareWar()
-        }
+        }.apply { actor.name = "ui-alert-choice:reject" }
         return true
     }
 
@@ -458,11 +458,11 @@ class AlertPopup(
                 yield(CivilopediaAction("Tutorial/Barbarians"))
             }
             originalOwner.addNotification("Your captured [${unitName}] has been returned by [${captor.civName}]", notificationSequence, NotificationCategory.Diplomacy, NotificationIcon.Trade, unitName, captor.civName)
-        }
+        }.apply { actor.name = "ui-alert-choice:return" }
         addCloseButton(Constants.no, KeyboardBinding.Cancel) {
             // Take it for ourselves
             BattleUnitCapture.captureOrConvertToWorker(capturedUnit, captor)
-        }
+        }.apply { actor.name = "ui-alert-choice:keep" }
         return true
     }
 
@@ -565,7 +565,7 @@ class AlertPopup(
     }
 
     private fun addDestroyOption(destroyAction: () -> Unit) {
-        val button = "Destroy".toTextButton()
+        val button = "Destroy".toTextButton().apply { name = "ui-disposition:destroy" }
         button.onActivation {
             destroyAction()
             close()
