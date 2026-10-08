@@ -152,7 +152,8 @@ object BattleHelper {
                 if (!to.isVisible(observer.civ) || !enemy.movement.canPassThrough(to, false)) continue
                 // Allies may move later this turn; their current control zones cannot guarantee safety.
                 val cost = costs.getValue(from) + MovementCost.getMovementCostBetweenAdjacentTiles(enemy, from, to,
-                    considerZoneOfControl = false)
+                    considerZoneOfControl = AutomationPreview.strategy(observer.civ)?.combat ==
+                        com.unciv.logic.automation.CombatPriority.Counterattack)
                 // Moving with no movement left cannot be followed by an attack.
                 if (cost >= movement || cost >= (costs[to] ?: Float.MAX_VALUE)) continue
                 costs[to] = cost
