@@ -60,7 +60,7 @@ object UnitActions {
      * Reading these never invokes their action closures. UI-only navigation/selection is excluded. */
     fun getStateUnitActions(unit: MapUnit) = sequence {
         val tile = unit.getTile()
-        for (getActionsFunction in actionTypeToFunctions.values)
+        for (getActionsFunction in actionTypeToFunctions.filterKeys { it != UnitActionType.ConnectRoad }.values)
             yieldAll(getActionsFunction(unit, tile))
         yieldAll(UnitActionsUpgrade.getUpgradeActions(unit))
         yieldAll(UnitActionsPillage.getPillageActions(unit, tile))
