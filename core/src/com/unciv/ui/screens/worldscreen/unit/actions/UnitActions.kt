@@ -56,6 +56,21 @@ object UnitActions {
         addUnmappedUnitActions(unit)
     }
 
+    /** State-based commands without inspecting UI selection or opening a screen.
+     * Reading these never invokes their action closures. UI-only navigation/selection is excluded. */
+    fun getStateUnitActions(unit: MapUnit) = sequence {
+        val tile = unit.getTile()
+        for (getActionsFunction in actionTypeToFunctions.values)
+            yieldAll(getActionsFunction(unit, tile))
+        yieldAll(UnitActionsUpgrade.getUpgradeActions(unit))
+        yieldAll(UnitActionsPillage.getPillageActions(unit, tile))
+        addPromoteActions(unit)
+        addSleepActions(unit, tile)
+        addFortifyActions(unit)
+        addSkipAction(unit)
+        addDisbandAction(unit)
+    }
+
     /**
      *  Get all instances of [UnitAction] of the [unitActionType] type for [unit].
      *
