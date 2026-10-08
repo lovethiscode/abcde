@@ -28,7 +28,7 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
     private val goldPerTurnLabel = "+0"
         .toLabel(colorFromRGB(225, 217, 71), 14)
 
-    private val scienceLabel = "0".toLabel(colorFromRGB(78, 140, 151)) // #4e8c97
+    private val scienceLabel = "0".toLabel(colorFromRGB(78, 140, 151)).apply { name = "ui-tech-stat-open" } // #4e8c97
     private val happinessLabel = "0".toLabel()
     private val cultureLabel = "0".toLabel(colorFromRGB(210, 94, 210)) // #d25ed2
 
