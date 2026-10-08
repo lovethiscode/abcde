@@ -142,7 +142,7 @@ class AlertPopup(
         if (civInfo.isDefeated()) return false
         addLeaderName(civInfo)
         addGoodSizedLabel("Remove your troops in our border immediately!")
-        addCloseButton("Sorry.", KeyboardBinding.Confirm)
+        addCloseButton("Sorry.", KeyboardBinding.Confirm).apply { actor.name = "ui-alert-close" }
         addCloseButton("Never!", KeyboardBinding.Cancel)
         return true
     }
