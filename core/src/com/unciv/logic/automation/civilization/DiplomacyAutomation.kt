@@ -355,6 +355,12 @@ object DiplomacyAutomation {
     }
 
     internal fun declareWar(civView: CivView) {
+        val civ = civView.getCiv()
+        com.unciv.logic.automation.AutomationPreview.policy(civ)?.preferredWar(civ)?.let { target ->
+            if (com.unciv.logic.automation.AutomationPreview.policy(civ)?.allowDeclaration(civ, target) != false)
+                civ.getDiplomacyManager(target)?.declareWar()
+            return
+        }
         if (civView.cities().isEmpty() || civView.getKnownCivs().none()) return
         if (civView.getPersonalityValue(PersonalityValue.DeclareWar) == 0f) return
         if (civView.getHappiness() <= 0) return
@@ -368,6 +374,7 @@ object DiplomacyAutomation {
         //evaluate war
         val targetCivs = civView.getKnownCivs()
             .filterNot {
+                com.unciv.logic.automation.AutomationPreview.policy(civ)?.allowDeclaration(civ, it.getCiv()) == false ||
                 it.isDefeated() || it == civView || it.cities().isEmpty() || !civView.getDiplomacyManagerWith(it)!!.canDeclareWar()
                     || it.cities().none { city -> civView.hasExplored(city.getCenterTile()) }
             }
@@ -384,6 +391,7 @@ object DiplomacyAutomation {
     }
 
     internal fun offerPeaceTreaty(civInfo: Civilization) {
+        if (com.unciv.logic.automation.AutomationPreview.policy(civInfo)?.allowPeace(civInfo) == false) return
         if (!civInfo.isAtWar() || civInfo.cities.isEmpty() || civInfo.diplomacy.isEmpty()) return
 
         val enemiesCiv = civInfo.diplomacy.asSequence()

@@ -73,7 +73,7 @@ object BattleHelper {
      * Choses the best target in attackableEnemies, this could be a city or a unit.
      */
     @Readonly
-    private fun chooseAttackTarget(unit: MapUnit, attackableEnemies: List<AttackableTile>): AttackableTile? {
+    fun chooseAttackTarget(unit: MapUnit, attackableEnemies: List<AttackableTile>): AttackableTile? {
         // Get the highest valued attackableEnemy
         var highestAttackValue = 0
         var attackTile: AttackableTile? = null

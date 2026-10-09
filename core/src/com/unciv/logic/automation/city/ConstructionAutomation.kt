@@ -93,7 +93,8 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
         val extraAiModifier = if (civInfo.isAI() && choice is INonPerpetualConstruction)
             choice.getWeightForAiDecision(GameContext(civInfo, city))
         else 1f
-        choices.add(ConstructionChoice(choice, choiceModifier * extraAiModifier,
+        choices.add(ConstructionChoice(choice, choiceModifier * extraAiModifier * (com.unciv.logic.automation.AutomationPreview.policy(civInfo)
+            ?.productionWeight(city, choice, null) ?: 1f),
             cityConstructions.getRemainingWork(choice.name), cityConstructions.productionForConstruction(choice.name)))
     }
 
@@ -121,7 +122,10 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
             addMilitaryUnitChoice()
         }
 
-        val chosenConstruction: IConstruction =
+        val policy = com.unciv.logic.automation.AutomationPreview.policy(civInfo)
+        val preferred = policy?.preferredProduction(city,
+            (buildings.filterBuildable().toList() + units.filterBuildable().toList()))
+        val chosenConstruction: IConstruction = preferred ?:
             if (relativeCostEffectiveness.isEmpty()) { // choose one of the special constructions instead
                 // add science!
                 when {

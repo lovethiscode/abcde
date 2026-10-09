@@ -1,5 +1,7 @@
 ﻿package com.unciv.logic.map.tile
 
+import com.unciv.logic.automation.AutomationPreview
+
 import com.unciv.Constants
 import com.unciv.GUI
 import com.unciv.UncivGame
@@ -1086,6 +1088,7 @@ class Tile : IsPartOfGameInfoSerialization {
 
     fun startWorkingOnImprovement(improvement: TileImprovement, civInfo: Civilization, unit: MapUnit) {
         if (isMarkedForCreatesOneImprovement()) return
+        AutomationPreview.choice(civInfo, "improvement", improvement.name, unit, tile = this)
 
         val gameContext = GameContext(civInfo, unit = unit, tile = this)
         val stockpiledResourceRequirements = improvement.getStockpiledResourceRequirements(gameContext)

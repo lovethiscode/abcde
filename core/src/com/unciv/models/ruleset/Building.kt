@@ -393,7 +393,8 @@ class Building : RulesetStatsObject(), INonPerpetualConstruction {
 
         // World Wonders
         if (isWonder) {
-            if (civ.gameInfo.getCities().any { it.cityConstructions.isBuilt(name) })
+            if (com.unciv.logic.automation.AutomationPreview.wonderBuilt(civ.gameInfo, name)
+                ?: civ.gameInfo.getCities().any { it.cityConstructions.isBuilt(name) })
                 yield(RejectionReasonType.WonderAlreadyBuilt.toInstance())
         }
 

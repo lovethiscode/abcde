@@ -33,9 +33,15 @@ object UnitAutomation {
     private const val CLOSE_ENEMY_TILES_AWAY_LIMIT = 5
     private const val CLOSE_ENEMY_TURNS_AWAY_LIMIT = 3f
 
-    fun automateUnitMoves(unit: MapUnit):Unit = timeThis("automateUnitMoves") {
+    fun automateUnitMoves(unit: MapUnit): Unit = timeThis("automateUnitMoves") {
+        com.unciv.logic.automation.AutomationPreview.withUnit(unit) { automateUnitMovesInternal(unit) }
+    }
+
+    private fun automateUnitMovesInternal(unit: MapUnit) {
         if (com.unciv.logic.PlayerDecisionControl.controls(unit.civ)) return
         check(!unit.civ.isBarbarian) { "Barbarians is not allowed here." }
+        if (com.unciv.logic.automation.AutomationPreview.controls(unit.civ) && !unit.hasMovement()) return
+        if (com.unciv.logic.automation.AutomationPreview.policy(unit.civ)?.automateUnit(unit) == true) return
 
         // Might die next turn - move!
         if (unit.getDamageFromTerrain() > 0 && tryHealUnit(unit)) return
@@ -47,7 +53,7 @@ object UnitAutomation {
         }
 
         val isHumanAndNotAutoplaying =
-            unit.civ.isHuman() && GUI.getWorldScreenIfActive()?.autoPlay?.isAutoPlaying() != true
+            unit.civ.isHuman() && !com.unciv.logic.automation.AutomationPreview.controls(unit.civ) && GUI.getWorldScreenIfActive()?.autoPlay?.isAutoPlaying() != true
         // AI promotes units via NextTurnAutomation.automateUnits
         if (isHumanAndNotAutoplaying) NextTurnAutomation.applyPromotions(unit)
         // AI upgrades units via UseGoldAutomation in NextTurnAutomation
