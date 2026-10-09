@@ -2,6 +2,7 @@ package com.unciv.ui.screens.worldscreen.minimap
 
 import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.unciv.GUI
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.setSize
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.images.IconCircleGroup
@@ -23,13 +24,20 @@ class MapOverlayToggleButton(
     private val setter: (Boolean) -> Unit
 ) : IconCircleGroup(
     size = iconSize + 2f,
-    actor = ImageGetter.getImage(iconPath).apply {
+    actor = ImageGetter.getImage(if (ExpeditionBlueTheme.enabled) when (iconPath) {
+        "TileIcons/MapOverlayToggleMovement" -> "OtherIcons/ArrowRight"
+        "TileIcons/MapOverlayToggleYields" -> "OtherIcons/Score"
+        "TileIcons/MapOverlayToggleWorkedTiles" -> "OtherIcons/Nations"
+        "TileIcons/MapOverlayToggleResources" -> "OtherIcons/Resources"
+        "TileIcons/MapOverlayToggleImprovements" -> "OtherIcons/Improvements"
+        else -> iconPath
+    } else iconPath).apply {
         setSize(iconSize)
     },
     resizeActor = false
 ) {
     init {
-        circle.color = ImageGetter.CHARCOAL
+        circle.color = ExpeditionBlueTheme.color(ImageGetter.CHARCOAL, ExpeditionBlueTheme.panel)
         onClick(::toggle)
     }
 
@@ -42,6 +50,7 @@ class MapOverlayToggleButton(
 
     /** Update. Called via [WorldScreen.shouldUpdate] on toggle. */
     fun update() {
-        actor.color.a = if (getter()) 1f else 0.5f
+        if (ExpeditionBlueTheme.enabled) actor.color = if (getter()) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.muted
+        else actor.color.a = if (getter()) 1f else 0.5f
     }
 }

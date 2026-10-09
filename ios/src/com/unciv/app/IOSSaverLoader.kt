@@ -2,6 +2,7 @@ package com.unciv.app
 
 import com.unciv.logic.UncivShowableException
 import com.unciv.logic.files.PlatformSaverLoader
+import com.unciv.models.skins.ExpeditionBlueTheme
 import org.robovm.apple.dispatch.DispatchQueue
 import org.robovm.apple.foundation.NSArray
 import org.robovm.apple.foundation.NSData
@@ -12,6 +13,7 @@ import org.robovm.apple.foundation.NSFileCoordinatorReadingOptions
 import org.robovm.apple.foundation.NSFileCoordinatorWritingOptions
 import org.robovm.apple.foundation.NSURL
 import org.robovm.apple.uikit.UIApplication
+import org.robovm.apple.uikit.UIColor
 import org.robovm.apple.uikit.UIDocumentPickerDelegateAdapter
 import org.robovm.apple.uikit.UIDocumentPickerViewController
 import org.robovm.apple.uikit.UISceneActivationState
@@ -273,6 +275,10 @@ private class UIKitIOSDocumentPicker : IOSDocumentPicker {
         activePicker = picker
         activeDelegate = delegate
         try {
+            if (ExpeditionBlueTheme.enabled) {
+                val gold = ExpeditionBlueTheme.gold
+                picker.view.tintColor = UIColor.fromRGBA(gold.r.toDouble(), gold.g.toDouble(), gold.b.toDouble(), 1.0)
+            }
             presenter.presentViewController(picker, true, null)
         } catch (ex: Exception) {
             activePicker = null

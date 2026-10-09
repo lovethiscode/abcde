@@ -64,6 +64,8 @@
     <true/>
     <key>UIStatusBarHidden</key>
     <true/>
+    <key>UIUserInterfaceStyle</key>
+    <string>Dark</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
     <key>UISupportedInterfaceOrientations</key>

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -299,7 +300,7 @@ class PlayerPickerTable(
                 player.playerId = playerIdTextField.text.trim()
                 errorLabel.apply {
                     setText("✔") // U+2714 heavy checkmark
-                    setFontColor(Color.GREEN)
+                    setFontColor(ExpeditionBlueTheme.color(Color.GREEN, ExpeditionBlueTheme.success))
                 }
             } else {
                 errorLabel.apply {

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -84,7 +85,7 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
         if (assignedSpecialists >= maxSpecialists || cityView.isPuppet()) return Table()
         val assignButton = "+".toLabel(ImageGetter.CHARCOAL, Constants.headingFontSize)
             .apply { this.setAlignment(Align.center) }
-            .surroundWithCircle(30f).apply { circle.color = Color.GREEN.darken(0.2f) }
+            .surroundWithCircle(30f).apply { circle.color = ExpeditionBlueTheme.color(Color.GREEN.darken(0.2f), ExpeditionBlueTheme.raised) }
         assignButton.onClick {
             cityView.tryAssignSpecialist(specialistName)
             cityScreen.updateAsync()

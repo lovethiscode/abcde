@@ -1,5 +1,6 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
@@ -130,7 +131,7 @@ internal class MultiplayerTab(
                 settings.multiplayer.setServer(validatedServer)
                 validatedServerUrl = validatedServer
                 errorTextField.isVisible = false
-                multiplayerServerTextField.color = Color.GREEN
+                multiplayerServerTextField.color = ExpeditionBlueTheme.color(Color.GREEN, ExpeditionBlueTheme.success)
             } catch (ex: Throwable) {
                 validatedServerUrl = null
                 errorTextField.setText(ex.localizedMessage)

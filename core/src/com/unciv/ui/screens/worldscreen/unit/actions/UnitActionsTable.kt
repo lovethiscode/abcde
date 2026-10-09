@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen.unit.actions
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Interpolation
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -181,7 +182,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         actionButton.labelCell.padTop(0f) // aligned with icon 
 
         if (unitAction.type == UnitActionType.Promote && unitAction.action != null)
-            actionButton.color = Color.GREEN.brighten(0.5f)
+            actionButton.color = ExpeditionBlueTheme.color(Color.GREEN.brighten(0.5f), ExpeditionBlueTheme.gold)
 
         actionButton.pack()
 

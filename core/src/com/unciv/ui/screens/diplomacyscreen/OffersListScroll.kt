@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.diplomacyscreen
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -119,7 +120,7 @@ class OffersListScroll(
                     // highlight unique suggestions
                     if (offerType in listOf(Luxury_Resource, Strategic_Resource)
                             && otherSideOffers.all { it.type != offer.type || it.name != offer.name || it.amount < 0}) // we can 'have' negative amounts of resources 
-                        tradeButton.color = Color.GREEN
+                        tradeButton.color = ExpeditionBlueTheme.color(Color.GREEN, ExpeditionBlueTheme.gold)
 
                     tradeButton.onClick {
                         val amountTransferred = min(amountPerClick, offer.amount)
