@@ -47,7 +47,7 @@ internal class CampaignHomeMenu(
         pad(28f)
         val portrait = screen.isPortrait()
         val width = (screen.stage.width - 56f).coerceAtMost(1600f)
-        val bodyHeight = screen.stage.height * .48f
+        val bodyHeight = (screen.stage.height * .48f).coerceAtMost(400f)
         val coverWidth = if (portrait) width else width * .55f
         val actionsWidth = if (portrait) width else width - coverWidth - 22f
 

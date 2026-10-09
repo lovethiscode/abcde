@@ -28,9 +28,9 @@ class CampaignPlaceholderScreen : BaseScreen(), RecreateOnResize {
                 .size(90f).padBottom(24f).row()
             add("Original campaigns".toLabel(Color.valueOf("1b3542"), 44)).row()
             add("Campaigns are being prepared".toLabel(Color.valueOf("5c737c"), 26).apply { wrap = true })
-                .width(stage.width * .72f).padTop(18f).row()
+                .width(this@CampaignPlaceholderScreen.stage.width * .72f).padTop(18f).row()
             add("Return home to continue your game or start free play.".toLabel(Color.valueOf("5c737c"), 22).apply { wrap = true })
-                .width(stage.width * .72f).padTop(12f).row()
+                .width(this@CampaignPlaceholderScreen.stage.width * .72f).padTop(12f).row()
             add().expandY()
         }
         stage.addActor(root)
