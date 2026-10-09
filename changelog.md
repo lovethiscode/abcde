@@ -1,3 +1,20 @@
+## 4.22.8
+
+Liberated city states make peace with anyone they were at war with pre-liberation
+
+When loading a game that causes Out Of Memory, show error message instead of crashing
+
+Added "Only the first available choice is offered" event unique, for switch/case style options
+
+By SomeTroglodyte:
+- Add science income without a research target to overflow, so it's not lost 
+- Allow finer control of the value for "snapping" Sliders (not only for Android) 
+- Fix locale-dependent number formatting messing up some numbers
+
+Resolved "doesn't work on Java 8", hopefully for future changes as well
+
+Update multiplayer game preview as players turns change, even if turn number is the same
+
 ## 4.22.7
 
 Sharper text on Android - By finalpatch
