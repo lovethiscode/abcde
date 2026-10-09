@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Colors
 import com.badlogic.gdx.graphics.g2d.GlyphLayout
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.unciv.Constants
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.fonts.FontRulesetIcons
 import com.unciv.ui.components.fonts.Fonts
@@ -34,7 +35,7 @@ class ColorMarkupLabel private constructor(
         fontSize: Int = Constants.defaultFontSize,
         defaultColor: Color = Color.WHITE,
         hideIcons: Boolean = false
-    ) : this(fontSize, mapMarkup(text, defaultColor, hideIcons))
+    ) : this(fontSize, mapMarkup(text, ExpeditionBlueTheme.labelColor(defaultColor), hideIcons))
 
     /** A Label automatically applying Gdx markup colors to symbols and rest of text separately -
      *  _**after**_ translating [text].
@@ -49,7 +50,7 @@ class ColorMarkupLabel private constructor(
         textColor: Color,
         symbolColor: Color = Color.WHITE,
         fontSize: Int = Constants.defaultFontSize
-    ) : this (fontSize, prepareText(text, textColor, symbolColor))
+    ) : this (fontSize, prepareText(text, ExpeditionBlueTheme.labelColor(textColor), symbolColor))
 
     /** Only if wrap was turned on, this is the prefWidth before.
      *  Used for getMaxWidth as better estimate than the default 0. */
