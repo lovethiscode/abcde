@@ -80,6 +80,14 @@ class MultiplayerLobbyLocalizationTest {
             "English", "Simplified_Chinese", "Traditional_Chinese", "Spanish", "French", "German", "Brazilian_Portuguese", "Russian", "Japanese", "Korean",
         )
         private val messages = listOf(
+            "Add player manually",
+            "Manually added",
+            "Mark ready",
+            "Edit manual player",
+            "Confirm this player is ready to play. Their app is not connected to this room.",
+            "Paste the Player ID sent by the Android player. After starting, send them the Game ID.",
+            "[\$filled]/[\$total] seats filled · [\$ready]/[\$readyTotal] ready",
+            "This player was added manually. Ask the host to remove them before joining by invitation.",
             "Add player",
             "Player [number]",
             "Game ID or invitation link",

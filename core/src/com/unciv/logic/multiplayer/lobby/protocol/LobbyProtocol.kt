@@ -9,6 +9,7 @@ import java.security.MessageDigest
 class LobbySeat {
     var seatId = 0
     var human = true
+    var manual = false
     var civilization = "Random"
     var playerId = ""
     var occupancy = ""
@@ -60,6 +61,7 @@ class LobbyCommand {
     var seats = arrayListOf<LobbySeat>()
     var seatId = -1
     var targetOccupancy = ""
+    var manualPlayerId = ""
     var seatRevision = 0L
     var civilization = "Random"
     var ready = false
@@ -90,7 +92,7 @@ object LobbyProtocol {
     const val HEARTBEAT_MILLIS = 10_000L
     const val CONNECTION_TIMEOUT_MILLIS = 30_000L
     val actions = setOf("create", "join", "recoverJoin", "resume", "heartbeat", "configuration",
-        "civilization", "ready", "leave", "kick", "close", "start", "save", "complete")
+        "manualPlayer", "civilization", "ready", "leave", "kick", "close", "start", "save", "complete")
     fun json() = Json().apply {
         setOutputType(JsonWriter.OutputType.json)
         setUsePrototypes(false)

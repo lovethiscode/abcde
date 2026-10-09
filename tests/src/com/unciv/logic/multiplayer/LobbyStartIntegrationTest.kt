@@ -22,7 +22,9 @@ import java.io.File
 
 @RunWith(BaseTestRunner::class)
 class LobbyStartIntegrationTest {
-    @Test fun threeRealWebSocketsFreezeAndUploadTheSameGameToTheIndependentSaveServer() = runBlocking<Unit> {
+    @Test fun threeRealWebSocketsFreezeAndUploadTheSameGameToTheIndependentSaveServer() = runBlocking<Unit> { startGame(false) }
+    @Test fun manualPlayerAndNativeGuestAreWrittenAsHumansToTheIndependentSaveServer() = runBlocking<Unit> { startGame(true) }
+    private suspend fun startGame(manualGuest: Boolean) {
         val api = System.getenv("UNCIV_LOBBY_TEST_SERVER")
         val saves = System.getenv("UNCIV_LOBBY_TEST_GAME_SERVER")
         Assume.assumeNotNull(api,saves)
@@ -60,11 +62,20 @@ class LobbyStartIntegrationTest {
                 frozenVersion = room.frozenVersion; saveHash = room.saveHash
                 seatRevision = room.seats.firstOrNull { it.playerId == playerId }?.revision ?: 0L
             }
-            for (index in 1..2) { sessions[index].gameId = reserved; room = clients[index].open(sessions[index],join = true) }
+            for (index in 1..2) {
+                if (manualGuest && index == 1) room = clients[0].command(reserved,"manualPlayer",command(0).apply {
+                    seatId = index; seatRevision = room.seats[index].revision; targetOccupancy = room.seats[index].occupancy
+                    manualPlayerId = ids[index]
+                }) else { sessions[index].gameId = reserved; room = clients[index].open(sessions[index],join = true) }
+            }
             assertTrue(room.seats[0].ready)
             for ((index,civ) in listOf(1 to "Greece",2 to "Russia")) {
-                room = clients[index].command(reserved,"civilization",command(index).apply { seatId = index; civilization = civ })
-                room = clients[index].command(reserved,"ready",command(index).apply { ready = true })
+                val controller = if (manualGuest && index == 1) 0 else index
+                fun seatCommand() = command(controller).apply {
+                    seatId = index; seatRevision = room.seats[index].revision; targetOccupancy = room.seats[index].occupancy
+                }
+                room = clients[controller].command(reserved,"civilization",seatCommand().apply { civilization = civ })
+                room = clients[controller].command(reserved,"ready",seatCommand().apply { ready = true })
             }
             val server = MultiplayerServer(saves,transport = http)
             room = LobbyGameStarter(sessions[0],clients[0],server).start(command(0))
@@ -74,6 +85,7 @@ class LobbyStartIntegrationTest {
             assertEquals(reserved,loaded.gameId)
             assertEquals(saves,loaded.gameParameters.multiplayerServerUrl)
             assertEquals(ids + "",loaded.gameParameters.players.map { it.playerId })
+            assertEquals(listOf(PlayerType.Human,PlayerType.Human,PlayerType.Human,PlayerType.AI),loaded.gameParameters.players.map { it.playerType })
             assertEquals(listOf("Rome","Greece","Russia","England"),loaded.gameParameters.players.map { it.chosenCiv })
             assertTrue(requests.isNotEmpty())
             assertTrue(requests.all { it.url.startsWith("$saves/files/") })
@@ -81,9 +93,10 @@ class LobbyStartIntegrationTest {
             val body = server.fileStorage().loadFileData(reserved)
             assertEquals(room.saveHash,LobbyProtocol.saveFingerprint(FileConversions.unzip(body)))
             System.getenv("UNCIV_LOBBY_EVIDENCE")?.let { path -> File(path).apply {
-                mkdirs(); resolve("integration-room.json").writeText(LobbyProtocol.json().toJson(room))
-                resolve("integration-save.gz").writeText(body)
-                resolve("integration-http-requests.txt").writeText(requests.joinToString("\n") { "${it.method} ${it.url}" })
+                mkdirs(); val prefix = if (manualGuest) "manual-" else ""
+                resolve(prefix + "integration-room.json").writeText(LobbyProtocol.json().toJson(room))
+                resolve(prefix + "integration-save.gz").writeText(body)
+                resolve(prefix + "integration-http-requests.txt").writeText(requests.joinToString("\n") { "${it.method} ${it.url}" })
             } }
         } finally { clients.forEach { it.close() }; directory.deleteRecursively() }
     }

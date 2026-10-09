@@ -165,8 +165,8 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
         }
     }
     private fun sameStart(a: LobbyRoom, b: LobbyRoom): Boolean = a.configurationVersion == b.configurationVersion &&
-        a.seats.map { listOf(it.seatId,it.human,it.playerId,it.occupancy,it.revision,it.ready) } ==
-        b.seats.map { listOf(it.seatId,it.human,it.playerId,it.occupancy,it.revision,it.ready) }
+        a.seats.map { listOf(it.seatId,it.human,it.manual,it.playerId,it.occupancy,it.revision,it.ready) } ==
+        b.seats.map { listOf(it.seatId,it.human,it.manual,it.playerId,it.occupancy,it.revision,it.ready) }
 
     private suspend fun start(peer: LobbyPeer, request: LobbyMessage): LobbyRoom {
         var owner = false
@@ -183,7 +183,7 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
             if (room.state != "WAITING" || room.seats.any { it.human && (it.playerId.isEmpty() || !it.ready) })
                 throw LobbyFailure(409,"All human seats must be occupied and ready")
             state.round ?: run {
-                val peers = room.seats.filter { it.human }.map { s -> state.peers[identity(s.playerId,s.occupancy)]
+                val peers = room.seats.filter { it.human && !it.manual }.map { s -> state.peers[identity(s.playerId,s.occupancy)]
                     ?: throw LobbyFailure(409,"A player disconnected. Wait for them to reconnect and get ready, or remove them.") }
                 StartRound(room,peer,peers).also {
                     state.round = it; owner = true

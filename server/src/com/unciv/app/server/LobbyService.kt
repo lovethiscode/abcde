@@ -34,7 +34,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         rooms.find(eq("state", "WAITING")).batchSize(100).iterator().use { cursor ->
             for (doc in cursor) mutate(doc.getString("_id")) { r ->
                 expire(r)
-                r.seats.filter { it.playerId != r.hostId && it.ready }.forEach { it.ready = false; it.revision++ }
+                r.seats.filter { !it.manual && it.playerId != r.hostId && it.ready }.forEach { it.ready = false; it.revision++ }
             }
         }
     }
@@ -46,7 +46,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         val host = room.seats.firstOrNull { it.playerId == room.hostId }
         val deadline = (host?.lastSeen ?: 0L) + 30 * 60_000L
         val next = when (room.state) {
-            "WAITING" -> minOf(deadline, room.seats.filter { it.playerId.isNotEmpty() && it.playerId != room.hostId }
+            "WAITING" -> minOf(deadline, room.seats.filter { !it.manual && it.playerId.isNotEmpty() && it.playerId != room.hostId }
                 .minOfOrNull { it.lastSeen + 5 * 60_000L } ?: deadline)
             "STARTING" -> if (room.saveHash.isEmpty() || deadline > clock()) deadline
                 else maxOf(room.nextMaintenanceAt, clock() + 30_000L)
@@ -93,7 +93,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         for ((index, seat) in room.seats.withIndex()) {
             val player = players[index]
             if (seat.human != (player.getString("playerType", "AI") == "Human")) fail("Seat type differs from setup", 400)
-            seat.seatId = index; seat.playerId = ""; seat.occupancy = ""; seat.ready = false; seat.lastSeen = 0
+            seat.seatId = index; seat.manual = false; seat.playerId = ""; seat.occupancy = ""; seat.ready = false; seat.lastSeen = 0
             if (seat.human && !hostBound) {
                 seat.playerId = c.playerId; seat.occupancy = UUID.randomUUID().toString(); seat.lastSeen = clock(); hostBound = true
                 seat.ready = true
@@ -123,7 +123,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         if (room.state == "WAITING") {
             val host = room.seats.first { it.playerId == room.hostId }
             if (clock() - host.lastSeen >= 30 * 60_000) { room.state = "CLOSED"; room.reason = "Host timed out"; return }
-            room.seats.filter { it.human && it.playerId.isNotEmpty() && it.playerId != room.hostId && clock() - it.lastSeen >= 5 * 60_000 }
+            room.seats.filter { it.human && !it.manual && it.playerId.isNotEmpty() && it.playerId != room.hostId && clock() - it.lastSeen >= 5 * 60_000 }
                 .forEach { clear(it) }
         } else if (room.state == "STARTING") {
             val host = room.seats.first { it.playerId == room.hostId }
@@ -158,7 +158,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         }
     }
     fun disconnected(id: String, player: String, occupancy: String): LobbyRoom = mutate(id) { r ->
-        if (r.state == "WAITING") r.seats.firstOrNull { it.playerId == player && it.occupancy == occupancy && player != r.hostId }
+        if (r.state == "WAITING") r.seats.firstOrNull { !it.manual && it.playerId == player && it.occupancy == occupancy && player != r.hostId }
             ?.let { if (it.ready) { it.ready = false; it.revision++ } }
     }
     private fun syncSeats(r: LobbyRoom) {
@@ -170,11 +170,21 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         }
         r.setup = setup.toJson(com.badlogic.gdx.utils.JsonWriter.OutputType.json)
     }
-    private fun clear(s: LobbySeat) { s.playerId = ""; s.occupancy = ""; s.ready = false; s.civilization = "Random"; s.lastSeen = 0; s.revision++ }
+    private fun clear(s: LobbySeat) { s.manual = false; s.playerId = ""; s.occupancy = ""; s.ready = false; s.civilization = "Random"; s.lastSeen = 0; s.revision++ }
     private fun waiting(r: LobbyRoom) { if (r.state != "WAITING") fail("Room is no longer waiting") }
-    private fun member(r: LobbyRoom, c: LobbyCommand) = r.seats.firstOrNull { it.playerId == c.playerId && it.occupancy == c.occupancy && c.occupancy.isNotEmpty() }
+    private fun member(r: LobbyRoom, c: LobbyCommand) = r.seats.firstOrNull { !it.manual && it.playerId == c.playerId && it.occupancy == c.occupancy && c.occupancy.isNotEmpty() }
         ?: fail("You have left this room or were removed. Open the invitation to rejoin.")
     private fun host(r: LobbyRoom, c: LobbyCommand) { member(r, c); if (r.hostId != c.playerId) fail("Only the host can do this", 403) }
+    private fun controlledSeat(r: LobbyRoom, c: LobbyCommand): LobbySeat {
+        val own = member(r,c)
+        if (c.seatId < 0 || c.seatId == own.seatId) return own
+        host(r,c)
+        val seat = r.seats.firstOrNull { it.seatId == c.seatId && it.manual && it.human }
+            ?: fail("You can choose only your own civilization",403)
+        if (seat.occupancy != c.targetOccupancy || c.configurationVersion != r.configurationVersion)
+            fail("This seat has changed. Refresh and retry.")
+        return seat
+    }
     private fun checkCiv(r: LobbyRoom, s: LobbySeat, civ: String) {
         if (civ == "Random") return
         if (civ !in LobbyProtocol.civilizations(r.baseRuleset, readAsset)) fail("Civilization is unavailable", 400)
@@ -201,6 +211,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                 seatId = index; human = requested.human
                 if (human && old?.playerId?.isNotEmpty() == true) {
                     playerId = old.playerId; occupancy = old.occupancy; lastSeen = old.lastSeen
+                    manual = old.manual
                     civilization = old.civilization.takeIf { it == "Random" || it in nations } ?: "Random"
                 } else civilization = if (human) "Random" else requested.civilization
                 revision = (old?.revision ?: 0L) + 1L
@@ -247,6 +258,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                         return@mutate
                     }
                     val existing = r.seats.firstOrNull { it.playerId == c.playerId && it.human }
+                    if (existing?.manual == true) fail("This player was added manually. Ask the host to remove them before joining by invitation.")
                     if (existing != null && r.state != "CLOSED") existing.lastSeen = clock()
                     else {
                         waiting(r); if (!uuid(c.playerId)) fail("Invalid player ID", 400)
@@ -276,14 +288,28 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                     clear(s); s.human = true; r.configurationVersion++
                     syncSeats(r)
                 }
+                "manualPlayer" -> {
+                    waiting(r); host(r,c)
+                    val s = r.seats.firstOrNull { it.seatId == c.seatId && it.human && it.playerId != r.hostId }
+                        ?: fail("This seat has changed. Refresh and retry.")
+                    if (c.configurationVersion != r.configurationVersion || s.revision != c.seatRevision || s.occupancy != c.targetOccupancy ||
+                        (s.playerId.isNotEmpty() && !s.manual)) fail("This seat has changed. Refresh and retry.")
+                    if (!uuid(c.manualPlayerId)) fail("Invalid player ID",400)
+                    if (r.seats.any { it !== s && it.playerId == c.manualPlayerId }) fail("Player ID already used!",400)
+                    if (s.playerId != c.manualPlayerId) {
+                        s.playerId = c.manualPlayerId; s.manual = true; s.occupancy = UUID.randomUUID().toString()
+                        s.ready = false; s.lastSeen = 0; s.revision++; r.configurationVersion++
+                        syncSeats(r)
+                    }
+                }
                 "civilization" -> {
-                    waiting(r); val s = member(r,c); if (s.seatId != c.seatId) fail("You can choose only your own civilization",403)
+                    waiting(r); val s = controlledSeat(r,c); if (s.seatId != c.seatId) fail("You can choose only your own civilization",403)
                     if (s.revision != c.seatRevision) fail("Your seat changed. Refresh and retry.")
                     checkCiv(r,s,c.civilization)
-                    if (s.civilization != c.civilization) { s.civilization = c.civilization; s.ready = false; s.revision++ }
+                    if (s.civilization != c.civilization) { s.civilization = c.civilization; s.ready = false; s.revision++; syncSeats(r) }
                 }
                 "ready" -> {
-                    waiting(r); val s = member(r,c)
+                    waiting(r); val s = controlledSeat(r,c)
                     if (c.configurationVersion != r.configurationVersion) fail("Room settings changed. Refresh and retry.")
                     if (s.revision != c.seatRevision) fail("Your seat changed. Refresh and retry.")
                     val ready = s.playerId == r.hostId || c.ready

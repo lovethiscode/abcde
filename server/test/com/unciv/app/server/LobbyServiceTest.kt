@@ -52,6 +52,73 @@ class LobbyServiceTest {
         seats=ArrayList(r.seats.map { old -> LobbySeat().apply { seatId=old.seatId; human=old.human; civilization=old.civilization } })
     }
     private fun JsonValue.set(key: String, value: String) { remove(key); addChild(key,JsonValue(value)) }
+    private fun manual(r: LobbyRoom, seat: Int = 1, id: String = guest) = c(r,host).apply {
+        seatId = seat; seatRevision = r.seats[seat].revision; targetOccupancy = r.seats[seat].occupancy
+        manualPlayerId = id
+    }
+    @Test fun manualPlayerPersistsWithoutSocketAndHostCanChooseCivilizationAndPrepare() {
+        var r = create()
+        r = service.command(r.gameId,"manualPlayer",manual(r))
+        assertTrue(r.seats[1].human); assertTrue(r.seats[1].manual); assertFalse(r.seats[1].ready)
+        assertEquals(guest,r.seats[1].playerId)
+        r = service.command(r.gameId,"civilization",manual(r).apply { civilization = "Rome" })
+        r = service.command(r.gameId,"ready",manual(r).apply { ready = true })
+        service.close(); service = newService()
+        now += 6 * 60_000L
+        r = service.maintain(r.gameId)
+        assertTrue(r.seats[1].ready); assertTrue(r.seats[1].manual); assertEquals("Rome",r.seats[1].civilization)
+        val player = JsonReader().parse(r.setup).get("gameParameters").get("players")[1]
+        assertEquals("Human",player.getString("playerType")); assertEquals(guest,player.getString("playerId"))
+        assertEquals("Rome",player.getString("chosenCiv"))
+        assertEquals("STARTING",service.command(r.gameId,"start",c(r,host)).state)
+    }
+    @Test fun manualPlayerRejectsInvalidDuplicateIdsAndOccupiedNativeSeats() {
+        var r = create(3)
+        for (id in listOf("bad-id",host))
+            assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"manualPlayer",manual(r,id=id)) }
+        r = service.command(r.gameId,"manualPlayer",manual(r))
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"manualPlayer",manual(r,2)) }
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"join",c(r,guest)) }
+        val native = UUID.randomUUID().toString()
+        r = join(r,native)
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"manualPlayer",manual(r,2,UUID.randomUUID().toString())) }
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"manualPlayer",c(r,native).apply {
+            seatId=1; manualPlayerId=UUID.randomUUID().toString()
+        }) }
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"ready",manual(r).apply { playerId=native; occupancy=r.seats[2].occupancy; ready=true }) }
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"resume",c(r,guest)) }
+        assertFalse(service.find(r.gameId)!!.seats[1].ready)
+    }
+    @Test fun editingManualPlayerAndRoomConfigurationRequireFreshReadyAndRejectStaleCommands() {
+        var r = create()
+        r = service.command(r.gameId,"manualPlayer",manual(r))
+        r = service.command(r.gameId,"ready",manual(r).apply { ready=true })
+        val stale = manual(r).apply { ready=true }
+        r = service.command(r.gameId,"civilization",manual(r).apply { civilization="Greece" })
+        assertFalse(r.seats[1].ready)
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"ready",stale) }
+        r = service.command(r.gameId,"ready",manual(r).apply { ready=true })
+        val old = manual(r).apply { ready=true }
+        val other = UUID.randomUUID().toString()
+        r = service.command(r.gameId,"manualPlayer",manual(r,id=other))
+        assertFalse(r.seats[1].ready); assertNotEquals(old.targetOccupancy,r.seats[1].occupancy)
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"ready",old) }
+        r = service.command(r.gameId,"ready",manual(r,id=other).apply { ready=true })
+        r = service.command(r.gameId,"configuration",configuration(r))
+        assertTrue(r.seats[1].manual); assertEquals(other,r.seats[1].playerId); assertFalse(r.seats[1].ready)
+        assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"start",c(r,host)) }
+    }
+    @Test fun removingManualPlayerRestoresAnOrdinaryVacantHumanSeat() {
+        var r = create()
+        r = service.command(r.gameId,"manualPlayer",manual(r))
+        val old = r.seats[1].occupancy
+        r = service.command(r.gameId,"kick",c(r,host).apply { seatId=1; targetOccupancy=old })
+        assertTrue(r.seats[1].human); assertFalse(r.seats[1].manual)
+        assertEquals("",r.seats[1].playerId); assertEquals("Random",r.seats[1].civilization); assertFalse(r.seats[1].ready)
+        r = join(r)
+        assertEquals(guest,r.seats[1].playerId); assertFalse(r.seats[1].manual)
+        assertNotEquals(old,r.seats[1].occupancy)
+    }
     @Test fun configurationUpdatesKeepMembersAndInvalidatePreviouslyPreparedRequests() {
         var r=join(create())
         for(id in listOf(host,guest)) r=service.command(r.gameId,"ready",c(r,id).apply { ready=true })

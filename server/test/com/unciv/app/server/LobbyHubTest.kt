@@ -79,6 +79,48 @@ class LobbyHubTest {
         val check = next(peer) { it.type == "check" }
         hub.handle(peer.socket,LobbyMessage().apply { type = "checkReply"; gameId = peer.socket.gameId; checkId = check.checkId })
     }
+    private suspend fun addManual(h: Peer, r: LobbyRoom, id: String, seatId: Int): LobbyRoom {
+        val added = issue(h,message(r,host,"manualPlayer").apply { command!!.apply {
+            this.seatId=seatId; seatRevision=r.seats[seatId].revision; targetOccupancy=r.seats[seatId].occupancy; manualPlayerId=id
+        } })
+        assertEquals("",added.code)
+        val ready = issue(h,message(added.room!!,host,"ready").apply { command!!.apply {
+            this.seatId=seatId; seatRevision=added.room!!.seats[seatId].revision; targetOccupancy=added.room!!.seats[seatId].occupancy
+            this.ready=true
+        } })
+        assertEquals("",ready.code)
+        return ready.room!!
+    }
+    @Test fun manualGuestCanStartWithoutAGuestSocket() = runBlocking {
+        var r = create(); val h = connect(r,host)
+        r = addManual(h,r,UUID.randomUUID().toString(),1)
+        val started = async { issue(h,message(r,host,"start")) }
+        reply(h)
+        val result = started.await()
+        assertEquals("",result.code); assertEquals("STARTING",result.room!!.state)
+        assertTrue(result.room!!.seats[1].manual)
+    }
+    @Test fun mixedRoomStillRequiresNativeGuestConnectionAndRejectsChangesDuringStart() = runBlocking {
+        var r = create(3); val h=connect(r,host)
+        r = addManual(h,r,UUID.randomUUID().toString(),1)
+        val native=UUID.randomUUID().toString(); val g=connect(r,native,true)
+        ready(g); r=service.find(r.gameId)!!
+        hub.detach(g.socket)
+        assertEquals("COMMAND_FAILED",issue(h,message(service.find(r.gameId)!!,host,"start")).code)
+        val restored=connect(service.find(r.gameId)!!,native); ready(restored)
+        r=service.find(r.gameId)!!
+        val started=async { issue(h,message(r,host,"start")) }
+        val check=next(h) { it.type=="check" }
+        val edit=issue(h,message(r,host,"manualPlayer").apply { command!!.apply {
+            seatId=1; seatRevision=r.seats[1].revision; targetOccupancy=r.seats[1].occupancy
+            manualPlayerId=UUID.randomUUID().toString()
+        } })
+        assertEquals("",edit.code)
+        hub.handle(h.socket,LobbyMessage().apply { type="checkReply"; gameId=r.gameId; checkId=check.checkId })
+        reply(restored)
+        assertEquals("COMMAND_FAILED",started.await().code)
+        assertEquals("WAITING",service.find(r.gameId)!!.state)
+    }
     @Test fun disconnectKeepsCivilizationButCancelsReadyAndBlocksStart() = runBlocking {
         var room = create(); val h = connect(room,host)
         val guest = UUID.randomUUID().toString(); val g = connect(room,guest,true)

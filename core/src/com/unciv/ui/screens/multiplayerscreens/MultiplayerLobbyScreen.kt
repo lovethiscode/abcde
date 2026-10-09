@@ -13,6 +13,7 @@ import com.unciv.UncivGame
 import com.unciv.json.json
 import com.unciv.logic.UncivShowableException
 import com.unciv.logic.civilization.PlayerType
+import com.unciv.logic.IdChecker
 import com.unciv.logic.multiplayer.MultiplayerGameInvite
 import com.unciv.logic.multiplayer.lobby.*
 import com.unciv.logic.multiplayer.lobby.protocol.*
@@ -26,6 +27,8 @@ import com.unciv.ui.components.extensions.*
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.popups.Popup
+import com.unciv.ui.popups.ToastPopup
+import com.unciv.ui.components.widgets.UncivTextField
 import com.unciv.ui.screens.newgamescreen.NationPickerPopup
 import com.unciv.ui.screens.newgamescreen.IPreviousScreen
 import com.unciv.ui.screens.newgamescreen.GameOptionsTable
@@ -236,6 +239,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             seatRevision = r.seats.firstOrNull { it.playerId == userId && it.occupancy == session.occupancy }?.revision ?: 0L
         }
     }
+    private fun seatCommand(s: LobbySeat) = command().apply {
+        seatId = s.seatId; seatRevision = s.revision; targetOccupancy = s.occupancy
+    }
     private fun accept(latest: LobbyRoom) {
         if (latest.version < (room?.version ?: -1)) return
         val settingsChanged = room?.configurationVersion != latest.configurationVersion || configurationTable == null || latest.state != "WAITING"
@@ -305,7 +311,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private fun drawMembers(updateStatus: Boolean = true, force: Boolean = false) {
         val r = room
         // Heartbeats change version/lastSeen but should not replace actors under a player's finger.
-        val signature = "$connected|$busy|$configurationPending|${r?.configurationVersion}|${r?.state}|${r?.reason}|${r?.seats?.map { listOf(it.seatId,it.playerId,it.occupancy,it.civilization,it.ready) }}"
+        val signature = "$connected|$busy|$configurationPending|${r?.configurationVersion}|${r?.state}|${r?.reason}|${r?.seats?.map { listOf(it.seatId,it.playerId,it.occupancy,it.manual,it.civilization,it.ready) }}"
         if (!force && updateStatus && renderedState == signature) return
         renderedState = signature
         val scrollY = scroll.scrollY
@@ -352,7 +358,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             }
             val players = Table().apply {
                 add("Players".toLabel(fontSize = 24)).left().row()
-                add("[$joined]/[${humans.size}] joined · [$ready]/[${humans.size}] ready".toLabel(Color.LIGHT_GRAY,18)).left().padTop(4f).padBottom(12f).row()
+                val counts = if (humans.any { it.manual }) "[$joined]/[${humans.size}] seats filled · [$ready]/[${humans.size}] ready"
+                    else "[$joined]/[${humans.size}] joined · [$ready]/[${humans.size}] ready"
+                add(counts.toLabel(Color.LIGHT_GRAY,18)).left().padTop(4f).padBottom(12f).row()
             }
             if (own == null && r.state == "WAITING") players.add("Rejoin room".toTextButton().apply {
                 onClick {
@@ -497,6 +505,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private fun playerCard(r: LobbyRoom, s: LobbySeat, own: LobbySeat?, width: Float): Table {
         val mine = s === own
         val empty = s.human && s.playerId.isEmpty()
+        val manualControl = s.manual && r.hostId == userId && own != null && r.state == "WAITING"
         val card = BorderedTable("MultiplayerLobbyScreen/PlayerCard",skinStrings.roundedEdgeRectangleSmallShape,skinStrings.roundedEdgeRectangleSmallShape).apply {
             bgColor = Color.valueOf(if (mine) "182c46" else "0d2140")
             bgBorderColor = if (mine) Color.GOLD else Color.valueOf("294568")
@@ -528,7 +537,25 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             if (s.human && !empty) add((if (s.ready) "Ready" else "Not ready").toLabel(if (s.ready) Color.GREEN else Color.LIGHT_GRAY,16)).padLeft(8f)
         }
         card.add(heading).growX().row()
+        if (s.manual) card.add(Table().apply {
+            add("Manually added".toLabel(Color.LIGHT_GRAY,16)).growX().left()
+            if (manualControl) add("Player ID".toTextButton().apply {
+                isEnabled = connected && !busy && !configurationPending
+                onClick { editManualPlayer(s) }
+            }).height(36f)
+        }).growX().padTop(4f).row()
         val controls = Table()
+        if (manualControl) controls.add((if (s.ready) "Cancel ready" else "Mark ready").toTextButton().apply {
+            isEnabled = connected && !busy && !configurationPending
+            onClick {
+                val update = seatCommand(s).apply { ready = !s.ready }
+                if (s.ready) runRequest { client.command(session.gameId,"ready",update) }
+                else ConfirmPopup(this@MultiplayerLobbyScreen,
+                    "Confirm this player is ready to play. Their app is not connected to this room.","Mark ready") {
+                    runRequest { client.command(session.gameId,"ready",update) }
+                }.open()
+            }
+        }).height(44f).padRight(8f)
         when {
             mine && r.state == "WAITING" -> {
                 if (r.hostId != userId) controls.add((if (s.ready) "Cancel ready" else "Ready").toTextButton().apply { onClick {
@@ -551,16 +578,21 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             }).height(44f).padLeft(8f)
         if (empty) {
             if (controls.hasChildren()) heading.add(controls).padLeft(8f)
+            if (r.hostId == userId && own != null && configurationSupported && r.state == "WAITING")
+                card.add("Add player manually".toTextButton().apply {
+                    isEnabled = connected && !busy && !configurationPending
+                    onClick { editManualPlayer(s) }
+                }).height(44f).padTop(12f).left()
         } else {
             val civilization = Table().apply {
                 val ruleset = RulesetCache.getComplexRuleset(setup!!.gameParameters)
                 val nation = ruleset.nations[s.civilization]
                 val portrait = if (nation == null) ImageGetter.getRandomNationPortrait(44f) else ImageGetter.getNationPortrait(nation,44f)
-                if (r.state == "WAITING" && (mine || (!s.human && r.hostId == userId && own != null && configurationSupported))) {
+                if (r.state == "WAITING" && (mine || manualControl || (!s.human && r.hostId == userId && own != null && configurationSupported))) {
                     portrait.touchable = Touchable.enabled
                     portrait.onClick {
                         if (busy || configurationPending) return@onClick
-                        if (mine) chooseCivilization(s) else chooseAiCivilization(s)
+                        if (mine || manualControl) chooseCivilization(s) else chooseAiCivilization(s)
                     }
                 }
                 add(portrait).size(44f).padRight(12f)
@@ -570,6 +602,29 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             card.add(civilization).width(width-32f).padTop(12f)
         }
         return card
+    }
+    private fun editManualPlayer(s: LobbySeat) {
+        val popup = Popup(this)
+        val field = UncivTextField("Please input Player ID!",s.playerId)
+        val update = seatCommand(s)
+        popup.addGoodSizedLabel(if (s.manual) "Edit manual player" else "Add player manually").row()
+        popup.addGoodSizedLabel("Paste the Player ID sent by the Android player. After starting, send them the Game ID.").row()
+        popup.add(field).width(stage.width * 0.6f).height(44f).row()
+        popup.add("Paste player ID from clipboard".toTextButton().apply {
+            onClick { field.text = Gdx.app.clipboard.contents }
+        }).height(44f).row()
+        popup.addCloseButton("Cancel")
+        popup.addButton("Save",KeyCharAndCode.RETURN) {
+            val id = IdChecker.checkAndReturnPlayerUuid(field.text)?.playerID
+            if (id == null) { ToastPopup("Player ID is incorrect",this); return@addButton }
+            if (room?.seats?.any { it.seatId != s.seatId && it.playerId == id } == true) {
+                ToastPopup("Player ID already used!",this); return@addButton
+            }
+            update.manualPlayerId = id
+            popup.close()
+            runRequest { client.command(session.gameId,"manualPlayer",update) }
+        }
+        popup.open()
     }
     private fun chooseAiCivilization(s: LobbySeat) {
         val player = gameSetupInfo.gameParameters.players[s.seatId]
@@ -588,7 +643,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val ruleset = RulesetCache.getComplexRuleset(json().fromJson(GameSetupInfo::class.java,r.setup).gameParameters)
         val available = ruleset.nations.values.filter { it.isMajorCiv && (it.name == s.civilization || r.seats.none { seat -> seat.civilization == it.name }) }
         NationPickerPopup(null,Player(s.civilization,PlayerType.Human),false,screen = this,ruleset = ruleset,availableCivs = available,
-            submit = { civ -> runRequest { client.command(session.gameId,"civilization",command().apply { seatId = s.seatId; civilization = civ }) } }).open()
+            submit = { civ -> runRequest { client.command(session.gameId,"civilization",seatCommand(s).apply { civilization = civ }) } }).open()
     }
     private fun requestStart() {
         if (room?.state == "WAITING") {
