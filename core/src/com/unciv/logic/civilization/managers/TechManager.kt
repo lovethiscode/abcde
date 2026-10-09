@@ -1,5 +1,8 @@
 package com.unciv.logic.civilization.managers
 
+import com.unciv.logic.automation.AutomationPreview
+
+
 import com.unciv.Constants
 import com.unciv.logic.IsPartOfGameInfoSerialization
 import com.unciv.logic.automation.Timers.Companion.timeThis
@@ -300,6 +303,7 @@ class TechManager : IsPartOfGameInfoSerialization {
     }
 
     fun getFreeTechnology(techName: String) {
+        AutomationPreview.choice(civInfo, "free_research", techName)
         freeTechs--
         addTechnology(techName)
     }

@@ -1,5 +1,7 @@
 package com.unciv
 
+import com.unciv.logic.automation.AutomationPreview
+
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.unciv.logic.civilization.Civilization
@@ -14,10 +16,12 @@ import yairm210.purity.annotations.Readonly
 object GUI {
 
     fun setUpdateWorldOnNextRender() {
+        if (AutomationPreview.active) return
         UncivGame.Current.worldScreen?.shouldUpdate = true
     }
 
     fun pushScreen(onScreenCreated: (BaseScreen) -> Unit = {}, getScreen: () -> BaseScreen) {
+        check(!AutomationPreview.active) { "AI preview attempted to open a screen" }
         UncivGame.Current.pushScreen(onScreenCreated, getScreen)
     }
 

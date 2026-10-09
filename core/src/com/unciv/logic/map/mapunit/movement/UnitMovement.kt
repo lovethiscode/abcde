@@ -2,6 +2,9 @@
 
 package com.unciv.logic.map.mapunit.movement
 
+import com.unciv.logic.automation.AutomationPreview
+
+
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.automation.Timers.Companion.timeThis
@@ -500,6 +503,7 @@ class UnitMovement(val unit: MapUnit) {
 
     fun moveToTile(destination: Tile, considerZoneOfControl: Boolean = true): Unit = timeThis<Unit>("moveToTile") {
         if (destination == unit.getTile() || unit.isDestroyed) return // already here (or dead)!
+        if (AutomationPreview.move(unit, destination)) return
         // Reset closestEnemy chache
         val escortUnit = if (unit.isEscorting()) unit.getOtherEscortUnit()!! else null
 
@@ -643,6 +647,11 @@ class UnitMovement(val unit: MapUnit) {
      * Precondition: this unit can swap-move to the given tile, as determined by canUnitSwapTo
      */
     fun swapMoveToTile(destination: Tile, keepEscorting: Boolean = false) {
+        if (AutomationPreview.active) {
+            AutomationPreview.choice(unit.civ, "swap", "Swap units", unit, tile = destination)
+            unit.currentMovement = 0f
+            return
+        }
         if (keepEscorting && unit.isEscorting()) return swapMoveEscortPair(destination)
 
         unit.stopEscorting()

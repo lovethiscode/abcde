@@ -34,7 +34,11 @@ object UnitAutomation {
     private const val CLOSE_ENEMY_TILES_AWAY_LIMIT = 5
     private const val CLOSE_ENEMY_TURNS_AWAY_LIMIT = 3f
 
-    fun automateUnitMoves(unit: MapUnit):Unit = timeThis("automateUnitMoves") {
+    fun automateUnitMoves(unit: MapUnit): Unit = timeThis("automateUnitMoves") {
+        com.unciv.logic.automation.AutomationPreview.withUnit(unit) { automateUnitMovesInternal(unit) }
+    }
+
+    private fun automateUnitMovesInternal(unit: MapUnit) {
         if (com.unciv.logic.PlayerDecisionControl.controls(unit.civ)) return
         check(!unit.civ.isBarbarian) { "Barbarians is not allowed here." }
 

@@ -528,8 +528,11 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
     fun canDeclareWar() = !civInfo.isDefeated() && !otherCiv.isDefeated()
             && turnsToPeaceTreaty() == 0 && diplomaticStatus != DiplomaticStatus.War
 
-    fun declareWar(declareWarReason: DeclareWarReason = DeclareWarReason(WarType.DirectWar)) =
+    fun declareWar(declareWarReason: DeclareWarReason = DeclareWarReason(WarType.DirectWar)) {
+        if (declareWarReason.warType == WarType.DirectWar)
+            com.unciv.logic.automation.AutomationPreview.choice(civInfo, "declare_war", otherCiv.civID)
         DeclareWar.declareWar(this, declareWarReason)
+    }
 
     //Used for nuke
     @Readonly fun canAttack() = turnsToPeaceTreaty() == 0
@@ -888,6 +891,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
     }
 
     fun agreeToDemand(demand: Demand){
+        com.unciv.logic.automation.AutomationPreview.choice(civInfo, "demand:accept", otherCiv.civID + "@" + demand.name)
         otherCivDiplomacy().setFlag(demand.agreedToDemand, 100, true)
         addModifier(DiplomaticModifiers.UnacceptableDemands, -10f)
         val text = demand.agreedToDemandText.fillPlaceholders(civInfo.civName)
@@ -896,6 +900,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
     }
     
     fun refuseDemand(demand: Demand) {
+        com.unciv.logic.automation.AutomationPreview.choice(civInfo, "demand:reject", otherCiv.civID + "@" + demand.name)
         addModifier(DiplomaticModifiers.UnacceptableDemands, -20f)
         otherCivDiplomacy().setFlag(demand.willIgnoreViolation, 100, true)
         val text = demand.refusedDemandText.fillPlaceholders(civInfo.civName)

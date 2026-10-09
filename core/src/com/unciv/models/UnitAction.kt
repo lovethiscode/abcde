@@ -1,5 +1,7 @@
 package com.unciv.models
 
+import com.unciv.logic.automation.AutomationPreview
+
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.unciv.Constants
 import com.unciv.models.ruleset.unique.Unique
@@ -29,8 +31,9 @@ open class UnitAction(
     val associatedUnique: Unique? = null,
     val actionKey: String = type.name,
     /** Action is Null if this unit *can* execute the action but *not right now* - it's embarked, out of moves, etc */
-    val action: (() -> Unit)? = null
+    action: (() -> Unit)? = null
 ) {
+    val action = AutomationPreview.wrapAction(type.name, action, actionKey)
     fun getIcon(size: Float = 20f): Actor {
         if (type.imageGetter != null)
             return type.imageGetter.invoke()

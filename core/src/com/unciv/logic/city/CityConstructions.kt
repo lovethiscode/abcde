@@ -1,5 +1,7 @@
 package com.unciv.logic.city
 
+import com.unciv.logic.automation.AutomationPreview
+
 import com.unciv.logic.achievements.AchievementTracker
 
 import com.unciv.GUI
@@ -77,6 +79,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
         return if (queue.isEmpty()) "" else queue.first()
     }
     fun setCurrentConstruction(value: String) = editQueue {
+        if (value != currentConstructionName()) AutomationPreview.choice(city.civ, "production", value, city = city)
         if (isEmpty()) add(value) else this[0] = value
     }
 
@@ -757,6 +760,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
         stat: Stat = Stat.Gold,
         tile: Tile? = null
     ): Boolean {
+        AutomationPreview.choice(city.civ, "purchase:${stat.name}", construction.name, city = city, tile = tile)
         // Support UniqueType.CreatesOneImprovement: it is active when getImprovementToCreate returns an improvement
         val improvementToPlace = (construction as? Building)?.getImprovementToCreate(city.getRuleset(), city.civ)
         if (improvementToPlace != null) {

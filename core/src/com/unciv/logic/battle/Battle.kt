@@ -1,5 +1,7 @@
 package com.unciv.logic.battle
 
+import com.unciv.logic.automation.AutomationPreview
+
 import com.unciv.logic.achievements.AchievementTracker
 
 import com.unciv.Constants
@@ -38,6 +40,7 @@ object Battle {
      * Currently not used by UI, only by automation via [BattleHelper.tryAttackNearbyEnemy][com.unciv.logic.automation.unit.BattleHelper.tryAttackNearbyEnemy]
      */
     fun moveAndAttack(attacker: MapUnitCombatant, attackableTile: AttackableTile) {
+        if (AutomationPreview.attack(attacker, attackableTile.tileToAttack, attackableTile.tileToAttackFrom)) return
         if (!movePreparingAttack(attacker, attackableTile, true)) return
         attackOrNuke(attacker, attackableTile)
     }
@@ -104,6 +107,7 @@ object Battle {
     }
 
     fun attack(attacker: ICombatant, defender: ICombatant): DamageDealt {
+        if (AutomationPreview.attack(attacker, defender.getTile())) return DamageDealt.None
         val game = attacker.getCivInfo().gameInfo
         AchievementTracker.beginAction(game)
         var successful = false
@@ -760,7 +764,7 @@ object Battle {
 
     /** Handle decision-making after city conquest, namely whether the AI should liberate, puppet,
      * or raze a city */
-    private fun automateCityConquer(civInfo: Civilization, city: City) {
+    fun automateCityConquer(civInfo: Civilization, city: City) {
         if (!city.hasDiplomaticMarriage()) {
             val foundingCiv = city.foundingCivObject!!
             var valueAlliance = NextTurnAutomation.valueCityStateAlliance(civInfo, foundingCiv)
@@ -769,6 +773,7 @@ object Battle {
             if (foundingCiv.isCityState && city.civ != civInfo && foundingCiv != civInfo
                 && !civInfo.isAtWarWith(foundingCiv)
                 && valueAlliance > 0) {
+                AutomationPreview.choice(civInfo, "city_disposition", "liberate", city = city)
                 city.liberateCity(civInfo)
                 return
             }
@@ -781,6 +786,7 @@ object Battle {
             if (!civInfo.hasUnique(UniqueType.MayNotAnnexCities)) city.annexCity()
             city.isBeingRazed = true
         }
+        AutomationPreview.choice(civInfo, "city_disposition", if (city.isBeingRazed) "raze" else "puppet", city = city)
     }
     
     @Readonly

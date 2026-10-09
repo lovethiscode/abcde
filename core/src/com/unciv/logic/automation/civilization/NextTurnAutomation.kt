@@ -1,5 +1,7 @@
 package com.unciv.logic.automation.civilization
 
+import com.unciv.logic.automation.AutomationPreview
+
 import com.unciv.UncivGame
 import com.unciv.logic.automation.Automation
 import com.unciv.logic.automation.ThreatLevel
@@ -75,13 +77,16 @@ object NextTurnAutomation {
             civInfo.cityStateFunctions.updateDiplomaticRelationshipForCityState()
         }
 
+        AutomationPreview.checkpoint(civInfo)
         chooseTechToResearch(civInfo)
+        AutomationPreview.checkpoint(civInfo)
         automateCityBombardment(civInfo)
         if (tradeAndChangeState) UseGoldAutomation.useGold(civInfo)
         if (tradeAndChangeState && !civInfo.isCityState) {
             protectCityStates(civInfo)
             bullyCityStates(civInfo)
         }
+        AutomationPreview.checkpoint(civInfo)
         automateUnits(civInfo)  // this is the most expensive part
 
         if (tradeAndChangeState && civInfo.isMajorCiv()) {
@@ -99,6 +104,7 @@ object NextTurnAutomation {
         if (tradeAndChangeState) trainSettler(civInfo)
         // I'm not sure what will happen if we *don't* vote when we can, so automate vote even when forced automation
         tryVoteForDiplomaticVictory(civInfo)
+        AutomationPreview.checkpoint(civInfo)
     }
 
     fun automateGoldToSciencePercentage(civInfo: Civilization) {
@@ -145,9 +151,11 @@ object NextTurnAutomation {
         val diploManager = civInfo.getDiplomacyManager(requestingCiv)!!
         if (civInfo.diplomacyFunctions.canSignDeclarationOfFriendshipWith(requestingCiv)
             && DiplomacyAutomation.wantsToSignDeclarationOfFrienship(civInfo, requestingCiv)) {
+            AutomationPreview.choice(civInfo, "friendship:accept", requestingCiv.civID)
             diploManager.signDeclarationOfFriendship()
             requestingCiv.addNotification("We have signed a Declaration of Friendship with [${civInfo.civName}]!", NotificationCategory.Diplomacy, NotificationIcon.Diplomacy, civInfo.civName)
         } else {
+            AutomationPreview.choice(civInfo, "friendship:reject", requestingCiv.civID)
             diploManager.otherCivDiplomacy().setFlag(DiplomacyFlags.DeclinedDeclarationOfFriendship, 10)
             requestingCiv.addNotification("[${civInfo.civName}] has denied our Declaration of Friendship!", NotificationCategory.Diplomacy, NotificationIcon.Diplomacy, civInfo.civName)
         }
@@ -361,6 +369,7 @@ object NextTurnAutomation {
         if (scienceGP != null)  greatPerson = scienceGP
         // Humans would pick a prophet or engineer, but it'd require more sophistication on part of the AI - a scientist is the safest option for now
 
+        AutomationPreview.choice(civInfo, "free_person", greatPerson.name)
         civInfo.greatPeople.chooseFreeGreatPerson(greatPerson.name)
     }
 

@@ -32,14 +32,17 @@ object TradeAutomation {
              */
             civInfo.tradeRequests.remove(tradeRequest)
             if (TradeEvaluation().isTradeAcceptable(tradeLogic.currentTrade, civInfo, otherCiv)) {
+                com.unciv.logic.automation.AutomationPreview.tradeChoice(civInfo, "accept_trade", tradeRequest)
                 tradeLogic.acceptTrade()
                 otherCiv.addNotification("[${civInfo.civName}] has accepted your trade request", NotificationCategory.Trade, NotificationIcon.Trade, civInfo.civName)
             } else {
                 val counteroffer = getCounteroffer(civInfo, tradeRequest)
                 if (counteroffer != null) {
+                    com.unciv.logic.automation.AutomationPreview.counterTradeChoice(civInfo, tradeRequest, counteroffer)
                     otherCiv.addNotification("[${civInfo.civName}] has made a counteroffer to your trade request", NotificationCategory.Trade, NotificationIcon.Trade, civInfo.civName)
                     otherCiv.tradeRequests.add(counteroffer)
                 } else{
+                    com.unciv.logic.automation.AutomationPreview.tradeChoice(civInfo, "reject_trade", tradeRequest)
                     otherCiv.addNotification("[${civInfo.civName}] has denied your trade request", NotificationCategory.Trade, civInfo.civName, NotificationIcon.Trade)
                     tradeRequest.decline(civInfo)
                 }
