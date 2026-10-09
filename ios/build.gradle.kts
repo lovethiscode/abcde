@@ -20,8 +20,6 @@ val selectedRoboVmProperties = file(providers.gradleProperty("iosRoboVmPropertie
 layout.buildDirectory.set(layout.projectDirectory.dir(
     if (extensionSourceDir == null) "build/default" else "build/extension"
 ))
-// RoboVM otherwise puts dependency JARs before the iOS compatibility replacements.
-extra["ios.compat.classes"] = layout.buildDirectory.dir("classes/java/main").get().asFile.absolutePath
 
 val publicSourceCommit = providers.exec {
     workingDir(rootProject.projectDir)
@@ -58,7 +56,25 @@ sourceSets {
     }
 }
 
+// Remove the dependency's date class so AOT cannot select it instead of the iOS replacement.
+val ktorUtilsForIos by configurations.creating {
+    isCanBeConsumed = false
+    isTransitive = false
+}
 dependencies {
+    ktorUtilsForIos("io.ktor:ktor-utils-jvm:${rootProject.libs.versions.ktor.get()}")
+}
+val stageIosKtorUtils by tasks.registering(Jar::class) {
+    archiveFileName.set("ktor-utils-ios.jar")
+    from(provider { zipTree(ktorUtilsForIos.singleFile) })
+    exclude("io/ktor/util/date/DateJvmKt.class")
+}
+listOf("runtimeClasspath", "testRuntimeClasspath").forEach { configurationName ->
+    configurations.named(configurationName) { exclude(group = "io.ktor", module = "ktor-utils-jvm") }
+}
+
+dependencies {
+    runtimeOnly(files(stageIosKtorUtils))
     testImplementation("junit:junit:4.13.2")
     if (extensionSourceDir != null) {
         implementation("com.mobidevelop.robovm:robopods-swift-storekit2:18.2.0.1")

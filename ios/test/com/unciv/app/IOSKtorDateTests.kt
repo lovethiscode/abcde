@@ -10,6 +10,11 @@ import org.junit.Test
 import java.util.TimeZone
 
 class IOSKtorDateTests {
+    @Test fun compatibilityClassHasOnlyOneRuntimeDefinition() {
+        val definitions = DateJvmKt::class.java.classLoader.getResources("io/ktor/util/date/DateJvmKt.class")
+        assertEquals(1, definitions.toList().size)
+    }
+
     @Test fun epochAndNegativeMillisecondsHaveUtcFields() {
         val previous = TimeZone.getDefault()
         try {
