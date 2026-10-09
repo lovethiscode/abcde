@@ -90,12 +90,10 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
                                           val remainingWork: Int, val production: Int)
 
     private fun addChoice(choices: ArrayList<ConstructionChoice>, choice: IConstruction, choiceModifier: Float) {
-        if (com.unciv.logic.automation.AutomationPreview.policy(civInfo)?.allowConstruction(city, choice) == false) return
         val extraAiModifier = if (civInfo.isAI() && choice is INonPerpetualConstruction)
             choice.getWeightForAiDecision(GameContext(civInfo, city))
         else 1f
-        choices.add(ConstructionChoice(choice, choiceModifier * extraAiModifier * (com.unciv.logic.automation.AutomationPreview.policy(civInfo)
-            ?.productionWeight(city, choice, null) ?: 1f),
+        choices.add(ConstructionChoice(choice, choiceModifier * extraAiModifier,
             cityConstructions.getRemainingWork(choice.name), cityConstructions.productionForConstruction(choice.name)))
     }
 
@@ -106,7 +104,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
             if (cache[it.name] == null) {
                 cache[it.name] = it.isBuildable(cityConstructions)
             }
-            cache[it.name]!! && com.unciv.logic.automation.AutomationPreview.policy(civInfo)?.allowConstruction(city, it) != false
+            cache[it.name]!!
         }
     }
 
@@ -123,10 +121,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
             addMilitaryUnitChoice()
         }
 
-        val policy = com.unciv.logic.automation.AutomationPreview.policy(civInfo)
-        val preferred = policy?.preferredProduction(city,
-            (buildings.filterBuildable().toList() + units.filterBuildable().toList()))
-        val chosenConstruction: IConstruction = preferred ?:
+        val chosenConstruction: IConstruction =
             if (relativeCostEffectiveness.isEmpty()) { // choose one of the special constructions instead
                 // add science!
                 when {

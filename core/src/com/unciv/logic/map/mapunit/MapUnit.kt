@@ -1,7 +1,5 @@
 package com.unciv.logic.map.mapunit
 
-import com.unciv.logic.automation.AutomationPreview
-
 import com.unciv.logic.achievements.AchievementTracker
 
 import com.unciv.Constants
@@ -1141,7 +1139,6 @@ class MapUnit : IsPartOfGameInfoSerialization {
     }
 
     fun disband() {
-        AutomationPreview.choice(civ, "disband", "Disband unit", this)
         // Safeguard against running on already destroyed instances
         if (isDestroyed) return
 

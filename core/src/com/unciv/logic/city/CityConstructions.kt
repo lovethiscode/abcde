@@ -1,7 +1,5 @@
 package com.unciv.logic.city
 
-import com.unciv.logic.automation.AutomationPreview
-
 import com.unciv.logic.achievements.AchievementTracker
 
 import com.unciv.GUI
@@ -76,9 +74,6 @@ class CityConstructions : IsPartOfGameInfoSerialization {
 
     @Readonly fun currentConstructionName() = if (constructionQueue.isEmpty()) "" else constructionQueue.first()
     fun setCurrentConstruction(value: String) {
-        val construction = city.civ.gameInfo.ruleset.buildings[value] ?: city.civ.gameInfo.ruleset.units[value]
-        if (construction != null && AutomationPreview.policy(city.civ)?.allowConstruction(city, construction) == false) return
-        if (value != currentConstructionName()) AutomationPreview.choice(city.civ, "production", value, city = city)
         if (constructionQueue.isEmpty()) constructionQueue.add(value) else constructionQueue[0] = value
     }
 
@@ -748,10 +743,6 @@ class CityConstructions : IsPartOfGameInfoSerialization {
         stat: Stat = Stat.Gold,
         tile: Tile? = null
     ): Boolean {
-        val purchasePolicy = AutomationPreview.policy(city.civ)
-        if (purchasePolicy != null && !purchasePolicy.allowPurchase(city, construction, stat,
-                construction.getStatBuyCost(city, stat) ?: return false)) return false
-        AutomationPreview.choice(city.civ, "purchase:${stat.name}", construction.name, city = city, tile = tile)
         // Support UniqueType.CreatesOneImprovement: it is active when getImprovementToCreate returns an improvement
         val improvementToPlace = (construction as? Building)?.getImprovementToCreate(city.getRuleset(), city.civ)
         if (improvementToPlace != null) {
@@ -849,7 +840,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
                 || !city.civ.gameInfo.gameParameters.isOnlineMultiplayer
         if ((isCurrentPlayersTurn && (UncivGame.Current.settings.autoAssignCityProduction
                 || UncivGame.Current.worldScreen?.autoPlay?.isAutoPlayingAndFullAutoPlayAI() == true)) // only automate if the active human player has the setting to automate production
-                || city.civ.isAI() || AutomationPreview.controls(city.civ) || city.isPuppet) {
+                || city.civ.isAI() || city.isPuppet) {
             ConstructionAutomation(this).chooseNextConstruction()
         }
 

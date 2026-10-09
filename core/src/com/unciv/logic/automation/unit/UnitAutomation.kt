@@ -33,15 +33,9 @@ object UnitAutomation {
     private const val CLOSE_ENEMY_TILES_AWAY_LIMIT = 5
     private const val CLOSE_ENEMY_TURNS_AWAY_LIMIT = 3f
 
-    fun automateUnitMoves(unit: MapUnit): Unit = timeThis("automateUnitMoves") {
-        com.unciv.logic.automation.AutomationPreview.withUnit(unit) { automateUnitMovesInternal(unit) }
-    }
-
-    private fun automateUnitMovesInternal(unit: MapUnit) {
+    fun automateUnitMoves(unit: MapUnit):Unit = timeThis("automateUnitMoves") {
         if (com.unciv.logic.PlayerDecisionControl.controls(unit.civ)) return
         check(!unit.civ.isBarbarian) { "Barbarians is not allowed here." }
-        if (com.unciv.logic.automation.AutomationPreview.controls(unit.civ) && !unit.hasMovement()) return
-        if (com.unciv.logic.automation.AutomationPreview.policy(unit.civ)?.automateUnit(unit) == true) return
 
         // Might die next turn - move!
         if (unit.getDamageFromTerrain() > 0 && tryHealUnit(unit)) return
@@ -53,7 +47,7 @@ object UnitAutomation {
         }
 
         val isHumanAndNotAutoplaying =
-            unit.civ.isHuman() && !com.unciv.logic.automation.AutomationPreview.controls(unit.civ) && GUI.getWorldScreenIfActive()?.autoPlay?.isAutoPlaying() != true
+            unit.civ.isHuman() && GUI.getWorldScreenIfActive()?.autoPlay?.isAutoPlaying() != true
         // AI promotes units via NextTurnAutomation.automateUnits
         if (isHumanAndNotAutoplaying) NextTurnAutomation.applyPromotions(unit)
         // AI upgrades units via UseGoldAutomation in NextTurnAutomation
@@ -238,14 +232,12 @@ object UnitAutomation {
     }
 
     internal fun tryUpgradeUnit(unit: MapUnit): Boolean {
-        if (unit.civ.isHuman() && !com.unciv.logic.automation.AutomationPreview.controls(unit.civ) && !UncivGame.Current.settings.automatedUnitsCanUpgrade
+        if (unit.civ.isHuman() && !UncivGame.Current.settings.automatedUnitsCanUpgrade
             && UncivGame.Current.worldScreen?.autoPlay?.isAutoPlayingAndFullAutoPlayAI() == false) return false
 
         val upgradeUnits = getUnitsToUpgradeTo(unit)
         if (upgradeUnits.none()) return false // for resource reasons, usually
         val upgradedUnit = upgradeUnits.minBy { it.cost }
-        if (com.unciv.logic.automation.AutomationPreview.policy(unit.civ)?.allowUpgrade(unit, upgradedUnit,
-                unit.upgrade.getCostOfUpgrade(upgradedUnit)) == false) return false
 
         if (upgradedUnit.getResourceRequirementsPerTurn(unit.cache.state).keys.any { !unit.requiresResource(it) }) {
             // The upgrade requires new resource types, so check if we are willing to invest them

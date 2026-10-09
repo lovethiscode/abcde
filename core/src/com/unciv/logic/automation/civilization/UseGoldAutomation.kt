@@ -1,7 +1,5 @@
 package com.unciv.logic.automation.civilization
 
-import com.unciv.logic.automation.AutomationPreview
-
 import com.unciv.logic.automation.unit.UnitAutomation
 import com.unciv.logic.city.City
 import com.unciv.logic.civilization.Civilization
@@ -21,7 +19,7 @@ object UseGoldAutomation {
     /** allow AI to spend money to purchase city-state friendship, buildings & unit */
     fun useGold(civ: Civilization) {
         for (unit in civ.units.getCivUnits())
-            AutomationPreview.withUnit(unit, reportIdle = false) { UnitAutomation.tryUpgradeUnit(unit) }
+            UnitAutomation.tryUpgradeUnit(unit)
 
         if (civ.isMajorCiv())
             useGoldForCityStates(civ)
