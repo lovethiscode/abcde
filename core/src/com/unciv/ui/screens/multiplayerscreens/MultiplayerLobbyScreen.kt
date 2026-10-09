@@ -549,11 +549,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             isEnabled = connected && !busy && !configurationPending
             onClick {
                 val update = seatCommand(s).apply { ready = !s.ready }
-                if (s.ready) runRequest { client.command(session.gameId,"ready",update) }
-                else ConfirmPopup(this@MultiplayerLobbyScreen,
-                    "Confirm this player is ready to play. Their app is not connected to this room.","Mark ready") {
-                    runRequest { client.command(session.gameId,"ready",update) }
-                }.open()
+                runRequest { client.command(session.gameId,"ready",update) }
             }
         }).height(44f).padRight(8f)
         when {
