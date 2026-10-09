@@ -5,7 +5,7 @@
     <arch>arm64</arch>
     <target>ios</target>
     <classpath>
-        <path>${ios.compat.classes}</path>
+        <classpathentry>${ios.compat.classes}</classpathentry>
     </classpath>
     <iosInfoPList>Info.plist.xml</iosInfoPList>
     <resources>
