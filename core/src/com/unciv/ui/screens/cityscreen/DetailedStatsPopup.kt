@@ -39,7 +39,7 @@ class DetailedStatsPopup(
     private var onlyWithStat: Stat? = null
     private var isDetailed: Boolean = false
 
-    private val colorTotal: Color = ExpeditionBlueTheme.color(Color.BLUE.brighten(0.5f), ExpeditionBlueTheme.gold)
+    private val colorTotal: Color = ExpeditionBlueTheme.color(Color.BLUE.brighten(0.5f), ExpeditionBlueTheme.raised)
     private val colorSelector: Color = ExpeditionBlueTheme.color(Color.GREEN.darken(0.5f), ExpeditionBlueTheme.raised)
 
     private val settings get() = cityScreen.game.settings
@@ -289,6 +289,8 @@ class DetailedStatsPopup(
     private fun wrapInTable(label: Label?, color: Color? = null, align: Int = Align.center) : Table {
         val tbl = Table()
         label?.setAlignment(align)
+        if (ExpeditionBlueTheme.enabled && color === colorTotal)
+            label?.color = ExpeditionBlueTheme.gold
         if (color != null)
             tbl.background = BaseScreen.skinStrings.getUiBackground("General/Border", tintColor = color)
         tbl.add(label).growX()
