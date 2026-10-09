@@ -398,11 +398,6 @@ class GameSettings {
         fun getCurrentServerPassword() = getPassword(server)
         fun setCurrentServerPassword(password: String) = setPassword(server, password)
         fun setPassword(serverUrl: String, password: String) {
-            val oldPassword = getPassword(serverUrl)
-            if (serverUrl == server && oldPassword != null && oldPassword != password) {
-                restartChatWebSocket()
-            }
-
             val securePlatform = securePasswordPlatform()
             val credentialKey = canonicalCredentialKey(serverUrl)
             if (securePlatform != null) {
@@ -410,10 +405,13 @@ class GameSettings {
                     throw UncivShowableException("Could not store the multiplayer password securely.")
                 }
                 credentialKeys(serverUrl).forEach(passwords::remove)
-                return
+            } else {
+                credentialKeys(serverUrl).forEach(passwords::remove)
+                passwords[credentialKey] = password
             }
-            credentialKeys(serverUrl).forEach(passwords::remove)
-            passwords[credentialKey] = password
+            if (credentialKey == canonicalCredentialKey(server)) {
+                restartChatWebSocket()
+            }
         }
 
         /** Moves legacy plaintext settings into platform secure storage and removes every plaintext copy. */

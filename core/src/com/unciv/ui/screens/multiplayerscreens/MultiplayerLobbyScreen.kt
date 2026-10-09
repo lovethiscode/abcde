@@ -670,8 +670,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         job = Concurrency.run("Enter lobby game") {
             try {
                 val latest = game.onlineMultiplayer.downloadInvitedGame(MultiplayerGameInvite(session.gameId,session.gameServerUrl))
-                game.loadGame(latest)
+                val worldScreen = game.loadGame(latest)
                 session.clearIfCurrent()
+                launchOnGLThread {
+                    Gdx.app.clipboard.contents = latest.gameId
+                    ToastPopup("Game ID copied to clipboard!".tr(),worldScreen,2500)
+                }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { launchOnGLThread { if (!disposed) { busy = false; enteringGame = false; drawMembers(); errorPopup(this@MultiplayerLobbyScreen,e) } } }
         }

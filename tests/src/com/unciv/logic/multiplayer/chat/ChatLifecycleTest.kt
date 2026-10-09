@@ -2,12 +2,15 @@ package com.unciv.logic.multiplayer.chat
 
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.utils.Base64Coder
 import com.unciv.UncivGame
 import com.unciv.logic.files.UncivFiles
+import com.unciv.logic.UncivShowableException
 import com.unciv.logic.multiplayer.Multiplayer
 import com.unciv.models.metadata.GameSettings
 import com.unciv.testing.BaseTestRunner
 import com.unciv.ui.screens.worldscreen.chat.ChatPopup
+import com.unciv.utils.PlatformCapabilities
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -16,6 +19,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,10 +36,19 @@ class ChatLifecycleTest {
         val directory = Files.createTempDirectory("unciv-chat-lifecycle-")
         val opened = Channel<Connection>(Channel.UNLIMITED)
         val game = object : UncivGame() {
+            override val platformCapabilities = PlatformCapabilities(secureMultiplayerServerPasswords = true)
+            private val passwords = mutableMapOf<String, String>()
+            var acceptsPasswordWrites = true
+            override fun getMultiplayerServerPassword(serverUrl: String) = passwords[serverUrl]
+            override fun setMultiplayerServerPassword(serverUrl: String, password: String): Boolean {
+                if (!acceptsPasswordWrites) return false
+                passwords[serverUrl] = password
+                return true
+            }
             override fun createChatTransport() = object : ChatTransport {
                 override suspend fun connect(url: String, authentication: String, userAgent: String): ChatConnection {
                     assertEquals("wss://example.com/chat", url)
-                    return Connection().also { opened.send(it) }
+                    return Connection(authentication).also { opened.send(it) }
                 }
             }
         }
@@ -78,7 +91,10 @@ class ChatLifecycleTest {
             withTimeout(3_000) { resumed.closed.await() }
             assertTrue(ChatStore.passwordRequired)
             Mockito.verify(popup).refreshPasswordReminder()
-            val reconnected = withTimeout(5_000) { opened.receive() }
+            // First password setup must reconnect immediately, even with a canonicalized URL.
+            game.settings.multiplayer.setPassword("https://example.com/", "first-password")
+            val reconnected = withTimeout(900) { opened.receive() }
+            assertEquals("Basic ${Base64Coder.encodeString(":first-password")}", reconnected.authentication)
             assertEquals(Message.Join(emptyList()), withTimeout(3_000) { reconnected.sent.receive() })
             assertFalse(ChatStore.passwordRequired)
             Mockito.verify(popup, Mockito.times(2)).refreshPasswordReminder()
@@ -91,8 +107,28 @@ class ChatLifecycleTest {
             assertTrue(globalMessages.isEmpty())
             assertEquals(2, chat.length)
 
-            reconnected.incoming.send(Result.failure(IOException("connection lost")))
+            game.settings.multiplayer.setPassword("https://other.example", "other-password")
+            assertTrue(opened.tryReceive().isFailure)
+            assertFalse(reconnected.closed.isCompleted)
+
+            game.acceptsPasswordWrites = false
+            assertThrows(UncivShowableException::class.java) {
+                game.settings.multiplayer.setCurrentServerPassword("rejected-password")
+            }
+            assertEquals("first-password", game.settings.multiplayer.getCurrentServerPassword())
+            assertFalse(reconnected.closed.isCompleted)
+            game.acceptsPasswordWrites = true
+
+            game.settings.multiplayer.setCurrentServerPassword("changed-password")
+            val updated = withTimeout(900) { opened.receive() }
             withTimeout(3_000) { reconnected.closed.await() }
+            assertEquals("Basic ${Base64Coder.encodeString(":changed-password")}", updated.authentication)
+            assertEquals(Message.Join(emptyList()), withTimeout(3_000) { updated.sent.receive() })
+            assertSame(chat, ChatStore.getChatByGameId(gameId, "https://example.com"))
+            assertEquals(2, chat.length)
+
+            updated.incoming.send(Result.failure(IOException("connection lost")))
+            withTimeout(3_000) { updated.closed.await() }
             ChatWebSocket.stop()
             delay(2_100)
             assertTrue(opened.tryReceive().isFailure)
@@ -106,7 +142,7 @@ class ChatLifecycleTest {
         }
     }
 
-    private class Connection : ChatConnection {
+    private class Connection(val authentication: String) : ChatConnection {
         val sent = Channel<Message>(Channel.UNLIMITED)
         val incoming = Channel<Result<Response>>(Channel.UNLIMITED)
         val closed = CompletableDeferred<Unit>()
