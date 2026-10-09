@@ -1,6 +1,7 @@
 package com.unciv.logic.multiplayer
 
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.Application
 import com.unciv.UncivGame
 import com.unciv.json.json
 import com.unciv.logic.civilization.PlayerType
@@ -19,9 +20,18 @@ import org.junit.Assert.*
 import org.junit.runner.RunWith
 import java.util.UUID
 import java.io.File
+import org.mockito.Mockito.*
 
 @RunWith(BaseTestRunner::class)
 class LobbyStartIntegrationTest {
+    private var previousApp: Application? = null
+    @Before fun setupApplication() {
+        previousApp = Gdx.app
+        Gdx.app = mock(Application::class.java).also { app ->
+            doAnswer { it.getArgument<Runnable>(0).run(); null }.`when`(app).postRunnable(any(Runnable::class.java))
+        }
+    }
+    @After fun restoreApplication() { Gdx.app = previousApp }
     @Test fun threeRealWebSocketsFreezeAndUploadTheSameGameToTheIndependentSaveServer() = runBlocking<Unit> { startGame(false) }
     @Test fun manualPlayerAndNativeGuestAreWrittenAsHumansToTheIndependentSaveServer() = runBlocking<Unit> { startGame(true) }
     private suspend fun startGame(manualGuest: Boolean) {
