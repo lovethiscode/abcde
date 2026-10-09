@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.pickerscreens
 
 import com.badlogic.gdx.graphics.Color
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -189,7 +190,7 @@ class ReligiousBeliefsPickerScreen (
         for (belief in currentReligion.getAllBeliefsOrdered()) {
             val beliefButton = getBeliefButton(belief)
             leftChosenBeliefs.add(beliefButton).row()
-            beliefButton.disable(Color.GREEN)
+            beliefButton.disable(ExpeditionBlueTheme.color(Color.GREEN, ExpeditionBlueTheme.raised))
         }
 
         for ((index, entry) in beliefsToChoose.withIndex()) {

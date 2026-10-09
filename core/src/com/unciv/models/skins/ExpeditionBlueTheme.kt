@@ -4,12 +4,23 @@ import com.badlogic.gdx.Application.ApplicationType
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.g2d.Batch
+import com.badlogic.gdx.scenes.scene2d.ui.Button.ButtonStyle
+import com.badlogic.gdx.scenes.scene2d.ui.CheckBox.CheckBoxStyle
+import com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle
+import com.badlogic.gdx.scenes.scene2d.ui.SelectBox.SelectBoxStyle
+import com.badlogic.gdx.scenes.scene2d.ui.Slider.SliderStyle
 import com.badlogic.gdx.scenes.scene2d.ui.Skin
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
+import com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable
+import com.badlogic.gdx.scenes.scene2d.utils.TransformDrawable
 import com.badlogic.gdx.utils.Json
 import com.badlogic.gdx.utils.JsonValue
 import com.unciv.Constants
 import com.unciv.UncivGame
+import com.unciv.ui.images.ImageGetter
 
 /** iOS default UI only. Explicit mod skin configs and gameplay colours keep their own meaning. */
 object ExpeditionBlueTheme {
@@ -123,6 +134,7 @@ object ExpeditionBlueTheme {
     }
 
     fun finishSkin(skin: Skin) {
+        skin.get(ButtonStyle::class.java).checked = skin.newDrawable("RoundedEdgeRectangle", raised)
         for (style in skin.getAll(TextButtonStyle::class.java).values()) {
             style.disabledFontColor = muted
             style.disabled = skin.getDrawable("button-disabled")
@@ -135,5 +147,45 @@ object ExpeditionBlueTheme {
             overFontColor = text
         }
         skin.get("disabled", TextButtonStyle::class.java).fontColor = muted
+        skin.get(CheckBoxStyle::class.java).apply {
+            checkboxOff = skin.newDrawable("Checkbox", muted)
+            checkboxOn = skin.newDrawable("Checkbox-pressed", gold)
+            checkboxOver = checkboxOff
+            checkboxOnOver = checkboxOn
+            checkboxOnDisabled = skin.newDrawable("Checkbox-pressed", border)
+            checkboxOffDisabled = skin.newDrawable("Checkbox", border)
+            checkedFontColor = gold
+        }
+        for (style in skin.getAll(ScrollPaneStyle::class.java).values()) {
+            style.hScrollKnob = skin.newDrawable("Scrollbar", border)
+            style.vScrollKnob = style.hScrollKnob
+        }
+        for (style in skin.getAll(SliderStyle::class.java).values()) {
+            style.background = skin.newDrawable("Rectangle", border)
+            style.knobBefore = skin.newDrawable("Rectangle", gold)
+            style.knob = skin.newDrawable("Circle", gold)
+            style.knobOver = style.knob
+            style.knobDown = style.knob
+        }
+        skin.get(ListStyle::class.java).fontColorSelected = gold
+        skin.get(SelectBoxStyle::class.java).apply {
+            background = selectBackground(skin, raised)
+            backgroundOver = selectBackground(skin, hero)
+            backgroundOpen = selectBackground(skin, panel)
+            backgroundDisabled = selectBackground(skin, panel)
+            disabledFontColor = muted
+        }
+    }
+
+    private fun selectBackground(skin: Skin, color: Color): Drawable {
+        val surface = skin.newDrawable("RoundedEdgeRectangle", color)
+        val arrow = ImageGetter.getDrawable("OtherIcons/ArrowRight").tint(text) as TransformDrawable
+        return object : BaseDrawable(surface) {
+            init { rightWidth += 26f }
+            override fun draw(batch: Batch, x: Float, y: Float, width: Float, height: Float) {
+                surface.draw(batch, x, y, width, height)
+                arrow.draw(batch, x + width - 26f, y + height / 2f - 8f, 8f, 8f, 16f, 16f, 1f, 1f, -90f)
+            }
+        }
     }
 }

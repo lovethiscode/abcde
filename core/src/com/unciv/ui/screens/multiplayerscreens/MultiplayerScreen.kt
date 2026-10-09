@@ -929,9 +929,9 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     }
 
     companion object {
-        private val PanelBackground = ExpeditionBlueTheme.color(Color.valueOf("0d2140"), ExpeditionBlueTheme.panel)
-        private val Positive = ExpeditionBlueTheme.color(Color.valueOf("66dfbd"), ExpeditionBlueTheme.success)
-        private val Negative = ExpeditionBlueTheme.color(Color.valueOf("ff7c8b"), ExpeditionBlueTheme.danger)
+        private val PanelBackground get() = ExpeditionBlueTheme.color(Color.valueOf("0d2140"), ExpeditionBlueTheme.panel)
+        private val Positive get() = ExpeditionBlueTheme.color(Color.valueOf("66dfbd"), ExpeditionBlueTheme.success)
+        private val Negative get() = ExpeditionBlueTheme.color(Color.valueOf("ff7c8b"), ExpeditionBlueTheme.danger)
     }
 }
 

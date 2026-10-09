@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.pickerscreens
 
 import com.badlogic.gdx.graphics.Color
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -208,10 +209,10 @@ class ImprovementPickerScreen(
 
         when {
             improvement.name == tile.improvementInProgress ->
-                improvementButton.color = Color.GREEN
+                improvementButton.color = ExpeditionBlueTheme.color(Color.GREEN, ExpeditionBlueTheme.gold)
             problemReport.isQueueable() ->
                 // TODO should be a skin ButtonStyle, this mixes with the style override from disable() below - which is a very wrong approach anyway
-                improvementButton.setColor(0.625f, 1f, 0.625f, 1f) // #a0ffa0 - brightened GREEN
+                improvementButton.color = ExpeditionBlueTheme.color(Color(0.625f, 1f, 0.625f, 1f), ExpeditionBlueTheme.success)
         }
 
         if (!problemReport.isEmpty() || tileMarkedForCreatesOneImprovement) {

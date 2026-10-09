@@ -235,7 +235,7 @@ private fun getSeparatorImage(color: Color) = Image(ImageGetter.getWhiteDotDrawa
  * Create a horizontal separator as an empty Container with a colored background.
  * @param colSpan Optionally override [colspan][Cell.colspan] which defaults to the current column count.
  */
-fun Table.addSeparator(color: Color = BaseScreen.skin.getColor("color"), colSpan: Int = 0, height: Float = 1f): Cell<Image> {
+fun Table.addSeparator(color: Color = ExpeditionBlueTheme.color(BaseScreen.skin.getColor("color"), ExpeditionBlueTheme.border), colSpan: Int = 0, height: Float = 1f): Cell<Image> {
     if (!cells.isEmpty && !cells.last().isEndRow) row()
     val separator = getSeparatorImage(color)
     val cell = add(separator)
@@ -250,7 +250,7 @@ fun Table.addSeparator(color: Color = BaseScreen.skin.getColor("color"), colSpan
  *
  * Note: Unlike the horizontal [addSeparator] this cannot automatically span several rows. Repeat the separator if needed.
  */
-fun Table.addSeparatorVertical(color: Color = Color.WHITE, width: Float = 2f): Cell<Image> {
+fun Table.addSeparatorVertical(color: Color = ExpeditionBlueTheme.color(Color.WHITE, ExpeditionBlueTheme.border), width: Float = 2f): Cell<Image> {
     return add(getSeparatorImage(color)).width(width).fillY()
 }
 

@@ -98,7 +98,9 @@ internal class CampaignHomeMenu(
         fun tool(text: String, icon: String, binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Table {
             val button = Table().apply {
                 pad(8f)
-                add(ImageGetter.getImage(icon, iconColor)).size(26f).padRight(8f)
+                val glyph = if (icon == "OtherIcons/Question" && ExpeditionBlueTheme.enabled)
+                    "?".toLabel(iconColor, 28, Align.center) else ImageGetter.getImage(icon, iconColor)
+                add(glyph).size(26f).padRight(8f)
                 add(text.toLabel(muted, 18).apply { wrap = true }).width(toolWidth - 50f)
                 touchable = Touchable.enabled
                 onActivation(binding = binding) { stopBackground(); action() }

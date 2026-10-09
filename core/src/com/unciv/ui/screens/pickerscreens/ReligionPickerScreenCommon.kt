@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.pickerscreens
 
 import com.badlogic.gdx.graphics.Color
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -133,8 +134,8 @@ abstract class ReligionPickerScreenCommon(
     protected fun String.toLabel() = Label(this.tr(), LabelStyle(skin[LabelStyle::class.java]))
 
     protected companion object {
-        val redDisableColor = Color.RED.darken(0.25f)
-        val greenDisableColor = Color.GREEN.darken(0.25f)
+        val redDisableColor get() = ExpeditionBlueTheme.color(Color.RED.darken(0.25f), ExpeditionBlueTheme.dangerSurface)
+        val greenDisableColor get() = ExpeditionBlueTheme.color(Color.GREEN.darken(0.25f), ExpeditionBlueTheme.raised)
         const val defaultLink = "Tutorial/Religion"
     }
 }

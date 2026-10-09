@@ -2,6 +2,8 @@ package com.unciv.ui.screens.worldscreen.status
 
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Label
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.logic.civilization.managers.TurnManager
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
@@ -65,11 +67,15 @@ class NextTurnButton(
 
     internal fun updateButton(nextTurnAction: NextTurnAction) {
         label.setText(nextTurnAction.getText(worldScreen).tr())
-        label.color = nextTurnAction.color
+        val primary = ExpeditionBlueTheme.enabled && nextTurnAction == NextTurnAction.NextTurn
+        val foreground = if (primary) ExpeditionBlueTheme.primaryInk else ExpeditionBlueTheme.labelColor(nextTurnAction.color)
+        if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get(if (primary) "positive" else "default", TextButtonStyle::class.java)
+        label.color = foreground
+        unitsDueLabel.color = if (primary) ExpeditionBlueTheme.primaryInk else ExpeditionBlueTheme.color(com.badlogic.gdx.graphics.Color.WHITE, ExpeditionBlueTheme.text)
         if (nextTurnAction.icon != null && ImageGetter.imageExists(nextTurnAction.icon!!))
             iconCell.setActor(ImageGetter.getImage(nextTurnAction.icon).apply {
                 setSize(30f)
-                color = nextTurnAction.color
+                color = foreground
             })
         else
             iconCell.clearActor()

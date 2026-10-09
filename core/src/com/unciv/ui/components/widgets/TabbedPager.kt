@@ -389,6 +389,10 @@ open class TabbedPager(
             val page = pages[activePage]
             (page.content as? IPageExtensions)?.deactivated(activePage, page.caption, this)
             page.button.color = Color.WHITE
+            if (ExpeditionBlueTheme.enabled) {
+                page.button.isChecked = false
+                (page.button as? IconTextButton)?.label?.color = Color.WHITE
+            }
             fixedContentScroll.actor = null
             page.scrollX = contentScroll.scrollX
             page.scrollY = contentScroll.scrollY
@@ -399,7 +403,10 @@ open class TabbedPager(
 
         if (index != -1) {
             val page = pages[index]
-            page.button.color = highlightColor
+            if (ExpeditionBlueTheme.enabled) {
+                page.button.isChecked = true
+                (page.button as? IconTextButton)?.label?.color = ExpeditionBlueTheme.gold
+            } else page.button.color = highlightColor
 
             if (page.scrollAlign != 0) {
                 if (Align.isCenterHorizontal(page.scrollAlign))
