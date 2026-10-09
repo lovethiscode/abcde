@@ -167,7 +167,9 @@ object BackwardCompatibility {
         }
         // Replace in construction queue
         if (!cityConstructions.isBuilt(newBuildingName) && !cityConstructions.constructionQueue.contains(newBuildingName))
-            cityConstructions.editQueue { replaceAll { if (it == oldBuildingName) newBuildingName else it } }
+            cityConstructions.editQueue {
+                for (index in indices) if (this[index] == oldBuildingName) this[index] = newBuildingName
+            }
         else
             cityConstructions.editQueue { removeAll { it == oldBuildingName } }
         // Replace in in-progress constructions

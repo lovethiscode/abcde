@@ -10,6 +10,7 @@ class RoboVmCompatibilityTest {
         val forbiddenReferences = mapOf(
             "com/unciv/models/translations/TranslationsKt.class" to "getOrDefault",
             "com/unciv/ui/components/widgets/SortableGrid.class" to "reversed",
+            "com/unciv/logic/BackwardCompatibility.class" to "replaceAll",
         )
 
         for ((classResource, methodName) in forbiddenReferences) {
