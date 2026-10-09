@@ -238,12 +238,14 @@ object UnitAutomation {
     }
 
     internal fun tryUpgradeUnit(unit: MapUnit): Boolean {
-        if (unit.civ.isHuman() && !UncivGame.Current.settings.automatedUnitsCanUpgrade
+        if (unit.civ.isHuman() && !com.unciv.logic.automation.AutomationPreview.controls(unit.civ) && !UncivGame.Current.settings.automatedUnitsCanUpgrade
             && UncivGame.Current.worldScreen?.autoPlay?.isAutoPlayingAndFullAutoPlayAI() == false) return false
 
         val upgradeUnits = getUnitsToUpgradeTo(unit)
         if (upgradeUnits.none()) return false // for resource reasons, usually
         val upgradedUnit = upgradeUnits.minBy { it.cost }
+        if (com.unciv.logic.automation.AutomationPreview.policy(unit.civ)?.allowUpgrade(unit, upgradedUnit,
+                unit.upgrade.getCostOfUpgrade(upgradedUnit)) == false) return false
 
         if (upgradedUnit.getResourceRequirementsPerTurn(unit.cache.state).keys.any { !unit.requiresResource(it) }) {
             // The upgrade requires new resource types, so check if we are willing to invest them

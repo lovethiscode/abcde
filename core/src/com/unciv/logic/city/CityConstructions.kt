@@ -746,6 +746,9 @@ class CityConstructions : IsPartOfGameInfoSerialization {
         stat: Stat = Stat.Gold,
         tile: Tile? = null
     ): Boolean {
+        val purchasePolicy = AutomationPreview.policy(city.civ)
+        if (purchasePolicy != null && !purchasePolicy.allowPurchase(city, construction, stat,
+                construction.getStatBuyCost(city, stat) ?: return false)) return false
         AutomationPreview.choice(city.civ, "purchase:${stat.name}", construction.name, city = city, tile = tile)
         // Support UniqueType.CreatesOneImprovement: it is active when getImprovementToCreate returns an improvement
         val improvementToPlace = (construction as? Building)?.getImprovementToCreate(city.getRuleset(), city.civ)

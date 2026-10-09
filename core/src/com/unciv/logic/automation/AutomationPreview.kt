@@ -31,6 +31,9 @@ object AutomationPreview {
         fun preferredResearch(civ: Civilization, technologies: List<Technology>): Technology? = null
         fun productionWeight(city: City, construction: IConstruction, benefits: Stats?): Float = 1f
         fun preferredProduction(city: City, choices: List<IConstruction>): IConstruction? = null
+        fun allowConstruction(city: City, construction: IConstruction): Boolean = true
+        fun allowPurchase(city: City, construction: IConstruction, currency: com.unciv.models.stats.Stat, price: Int): Boolean = true
+        fun allowUpgrade(unit: MapUnit, upgrade: com.unciv.models.ruleset.unit.BaseUnit, price: Int): Boolean = true
         fun preferredWar(civ: Civilization): Civilization? = null
         fun allowDeclaration(civ: Civilization, target: Civilization): Boolean = true
         fun allowTrade(civ: Civilization, trade: com.unciv.logic.trade.Trade): Boolean = true

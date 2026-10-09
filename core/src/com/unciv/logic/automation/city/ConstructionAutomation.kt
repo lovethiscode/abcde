@@ -105,7 +105,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
             if (cache[it.name] == null) {
                 cache[it.name] = it.isBuildable(cityConstructions)
             }
-            cache[it.name]!!
+            cache[it.name]!! && com.unciv.logic.automation.AutomationPreview.policy(civInfo)?.allowConstruction(city, it) != false
         }
     }
 
