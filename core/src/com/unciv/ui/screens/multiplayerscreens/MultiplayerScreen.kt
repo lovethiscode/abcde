@@ -723,23 +723,40 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     private fun showHelpPopup() {
         val helpPopup = Popup(this)
         helpPopup.addGoodSizedLabel(
-            "Multiplayer in three steps",
+            "How multiplayer works",
             size = multiplayerTitleFontSize,
         ).row()
-        helpPopup.addGoodSizedLabel(
-            "Invite players with a link. They choose their civilizations and get ready in the room.",
-            size = multiplayerSecondaryFontSize,
-            color = Color.LIGHT_GRAY,
-        ).row()
-        helpPopup.addGoodSizedLabel(
+
+        fun addSection(title: String, vararg lines: String) {
+            helpPopup.addGoodSizedLabel(title, size = multiplayerContentFontSize, color = Color.GOLD).apply {
+                width(stage.width * 0.72f)
+                actor.setAlignment(Align.left)
+            }.padTop(16f).row()
+            for (line in lines) {
+                helpPopup.addGoodSizedLabel(line, size = multiplayerSecondaryFontSize).apply {
+                    width(stage.width * 0.72f)
+                    actor.setAlignment(Align.left)
+                }.padTop(6f).row()
+            }
+        }
+
+        addSection("Play with iOS players",
             "1. Tap Create room, choose the rules and map, then share the invitation.",
-        ).padTop(8f).row()
-        helpPopup.addGoodSizedLabel(
-            "2. Players open the invitation, tap their civilization portrait to choose, then tap Ready. The host is ready automatically.",
-        ).row()
-        helpPopup.addGoodSizedLabel(
-            "3. When everyone is ready, the host starts the game. Download the latest save when it is your turn.",
-        ).row()
+            "2. Other iOS players open the invitation or paste it in Join by invitation, tap their civilization portrait to choose, then tap Ready.",
+            "3. The host is ready automatically. When everyone is ready, the host taps Start game. No Player ID or Game ID exchange is needed.",
+        )
+        addSection("Play with Android players",
+            "1. The Android player copies their Player ID from Multiplayer and sends it to the iOS host.",
+            "2. In an empty player seat, the host taps Add player manually, pastes the Player ID, taps the portrait to choose a civilization, then taps Mark ready.",
+            "3. After starting, the Game ID is copied automatically. Send it to the Android player to add the game in Multiplayer.",
+            "Android players join the started game by Game ID; they do not join the waiting room through its invitation link.",
+            "If Android hosts, send them your Player ID, then paste their Game ID in Join by invitation.",
+        )
+        addSection("After the game starts",
+            "Multiplayer is asynchronous and turn-based. When it is your turn, download the latest save, play, then end your turn to upload it.",
+            "All players must use the same game server and compatible game versions and rulesets.",
+            "For chat, set or check your server password in Options → Multiplayer. Saving it reconnects chat automatically without leaving the game.",
+        )
         helpPopup.addCloseButton("Got it")
         helpPopup.open()
     }
