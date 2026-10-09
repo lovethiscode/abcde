@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -38,8 +39,8 @@ class DetailedStatsPopup(
     private var onlyWithStat: Stat? = null
     private var isDetailed: Boolean = false
 
-    private val colorTotal: Color = Color.BLUE.brighten(0.5f)
-    private val colorSelector: Color = Color.GREEN.darken(0.5f)
+    private val colorTotal: Color = ExpeditionBlueTheme.color(Color.BLUE.brighten(0.5f), ExpeditionBlueTheme.gold)
+    private val colorSelector: Color = ExpeditionBlueTheme.color(Color.GREEN.darken(0.5f), ExpeditionBlueTheme.raised)
 
     private val settings get() = cityScreen.game.settings
     private val percentFormatter = settings.getAndModifyCurrentNumberFormat {

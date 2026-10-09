@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -68,7 +69,8 @@ open class UnitOverviewTabHelpers {
             val unitToUpgradeTo = (unitAction as UpgradeUnitAction).unitToUpgradeTo
             val selectKey = unitView.id.toString()
             val upgradeIcon = ImageGetter.getUnitIcon(unitToUpgradeTo,
-                if (enable) Color.GREEN else Color.GREEN.darken(0.5f))
+                if (enable) ExpeditionBlueTheme.color(Color.GREEN, ExpeditionBlueTheme.gold)
+                else ExpeditionBlueTheme.color(Color.GREEN.darken(0.5f), ExpeditionBlueTheme.muted))
             upgradeIcon.onClick {
                 UnitUpgradeMenu(actionContext.overviewScreen.stage, upgradeIcon, unitView, unitAction, enable) {
                     actionContext.update(true)

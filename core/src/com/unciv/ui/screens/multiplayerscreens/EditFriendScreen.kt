@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.ui.screens.basescreen.BaseScreen
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -48,7 +51,8 @@ class EditFriendScreen(selectedFriend: FriendList.Friend) : PickerScreen() {
                 goBack()
             }
             askPopup.open()
-        }.apply { color = Color.RED }
+        }.apply { if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("negative", TextButtonStyle::class.java)
+            else color = Color.RED }
         topTable.add(deleteFriendButton)
 
         //CloseButton Setup

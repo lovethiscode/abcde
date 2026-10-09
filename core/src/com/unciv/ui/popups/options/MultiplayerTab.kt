@@ -136,7 +136,7 @@ internal class MultiplayerTab(
                 validatedServerUrl = null
                 errorTextField.setText(ex.localizedMessage)
                 errorTextField.isVisible = true
-                multiplayerServerTextField.color = Color.RED
+                multiplayerServerTextField.color = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
             }
 
             val isCustomServer = validatedServerUrl != null && Multiplayer.usesCustomServer()

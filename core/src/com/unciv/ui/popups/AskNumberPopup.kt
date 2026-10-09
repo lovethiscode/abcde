@@ -1,5 +1,6 @@
 package com.unciv.ui.popups
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.Button
@@ -75,7 +76,7 @@ class AskNumberPopup(
         }
 
         val errorLabel = errorText.toLabel()
-        errorLabel.color = Color.RED
+        errorLabel.color = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
 
         addCloseButton()
         val okButton = addOKButton(

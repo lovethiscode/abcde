@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -88,7 +89,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
     private val posFromEdge = CityScreen.posFromEdge
     private val stageHeight = cityScreen.stage.height
 
-    private val highlightColor = Color.GREEN.darken(0.4f)
+    private val highlightColor = ExpeditionBlueTheme.color(Color.GREEN.darken(0.4f), ExpeditionBlueTheme.raised)
 
     /** Gets or sets visibility of [both widgets][CityConstructionsTable] */
     var isVisible: Boolean

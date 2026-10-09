@@ -1,5 +1,6 @@
 package com.unciv.models.ruleset
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.Constants
@@ -193,7 +194,10 @@ class Milestone(val uniqueDescription: String, private val parentVictory: Victor
     // Todo remove from here, this is models, not UI
     private fun getMilestoneButton(text: String, achieved: Boolean): TextButton {
         val textButton = text.toTextButton(hideIcons = true)
-        if (achieved) textButton.color = Color.GREEN
+        if (ExpeditionBlueTheme.enabled) {
+            textButton.isChecked = achieved
+            textButton.label.color = if (achieved) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.muted
+        } else if (achieved) textButton.color = Color.GREEN
         else textButton.color = Color.GRAY
         return textButton
     }

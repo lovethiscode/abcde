@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.utils.Align
@@ -93,7 +94,7 @@ enum class UnitOverviewTabColumn(
 
         override fun getEntryActor(item: MapUnitView, iconSize: Float, actionContext: UnitOverviewTab): Actor? {
             val closestCityTile = getClosestCityTile(item) ?: return null
-            val cityColor = if (item.getTile() == closestCityTile) Color.FOREST.brighten(0.5f) else Color.WHITE
+            val cityColor = if (item.getTile() == closestCityTile) ExpeditionBlueTheme.color(Color.FOREST.brighten(0.5f), ExpeditionBlueTheme.success) else Color.WHITE
             val label = closestCityTile.owningCity()!!.name.toLabel(fontColor = cityColor, alignment = Align.center)
             label.onClick { showWorldScreenAt(closestCityTile) }
             return label
