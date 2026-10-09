@@ -7,7 +7,8 @@ import com.unciv.ui.images.ImageGetter
 
 class SkinStrings(skin: String = UncivGame.Current.settings.skin) {
     private val skinLocation = "Skins/$skin/"
-    val skinConfig = SkinCache[skin] ?: SkinConfig()
+    val usesExpeditionBlue = ExpeditionBlueTheme.isDefaultSkin(skin)
+    val skinConfig = SkinCache[skin] ?: if (usesExpeditionBlue) ExpeditionBlueTheme.config() else SkinConfig()
     private val fallbackSkinLocation = if (skinConfig.fallbackSkin != null) "Skins/${skinConfig.fallbackSkin}/" else null
     private val fallbackSkinConfig = SkinCache[skinConfig.fallbackSkin]
 
@@ -79,7 +80,7 @@ class SkinStrings(skin: String = UncivGame.Current.settings.skin) {
             fallbackSkinLocation + fallbackSkinVariant.image 
         else 
             null
-        val fallbackTint = (fallbackSkinVariant?.tint ?: tintColor)?.run {
+        val fallbackTint = (fallbackSkinVariant?.tint ?: if (usesExpeditionBlue) tint else tintColor)?.run {
             if (fallbackSkinVariant?.alpha == null) this
             else cpy().apply { a = fallbackSkinVariant.alpha }
         }

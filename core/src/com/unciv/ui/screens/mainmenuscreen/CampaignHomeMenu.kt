@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.models.translations.tr
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.onActivation
@@ -34,16 +35,17 @@ internal class CampaignHomeMenu(
     private val quickstartNewGame: () -> Unit,
     private val stopBackground: () -> Unit
 ) : Table() {
-    private val ink = Color.valueOf("1b3542")
-    private val muted = Color.valueOf("5c737c")
-    private val blue = Color.valueOf("24536b")
-    private val gold = Color.valueOf("ecd19a")
-    private val surface = Color.valueOf("f8faf7")
+    private val ink = ExpeditionBlueTheme.color(Color.valueOf("1b3542"), ExpeditionBlueTheme.text)
+    private val muted = ExpeditionBlueTheme.color(Color.valueOf("5c737c"), ExpeditionBlueTheme.muted)
+    private val blue = ExpeditionBlueTheme.color(Color.valueOf("24536b"), ExpeditionBlueTheme.hero)
+    private val gold = ExpeditionBlueTheme.color(Color.valueOf("ecd19a"), ExpeditionBlueTheme.gold)
+    private val surface = ExpeditionBlueTheme.color(Color.valueOf("f8faf7"), ExpeditionBlueTheme.raised)
+    private val iconColor = ExpeditionBlueTheme.color(blue, gold)
     private val game = screen.game
 
     init {
         name = "ui-campaign-home"
-        background = ImageGetter.getWhiteDotDrawable().tint(Color.valueOf("e5edf0").apply { a = .97f })
+        background = ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.color(Color.valueOf("e5edf0"), ExpeditionBlueTheme.background))
         pad(28f)
         val portrait = screen.isPortrait()
         val width = (screen.stage.width - 56f).coerceAtMost(1600f)
@@ -52,7 +54,7 @@ internal class CampaignHomeMenu(
         val actionsWidth = if (portrait) width else width - coverWidth - 22f
 
         val header = Table()
-        header.add(ImageGetter.getImage("OtherIcons/HexagonOutline", blue)).size(42f).padRight(16f)
+        header.add(ImageGetter.getImage("OtherIcons/HexagonOutline", iconColor)).size(42f).padRight(16f)
         val brand = Table().apply {
             add("Unciv4iOS".toLabel(ink, 34)).left().row()
             add("Civilization, written by you".toLabel(muted, 18)).left()
@@ -79,7 +81,7 @@ internal class CampaignHomeMenu(
             KeyboardBinding.MainMenuLoad) { game.pushScreen { LoadGameScreen() } })
             .width((actionsWidth - 16f) / 2).height(bodyHeight * .20f).padRight(16f)
         secondary.add(menuButton("Multiplayer", "", "OtherIcons/Multiplayer", (actionsWidth - 16f) / 2,
-            KeyboardBinding.Multiplayer, ::showMultiplayer)).width((actionsWidth - 16f) / 2).height(bodyHeight * .20f)
+            KeyboardBinding.Multiplayer, action = ::showMultiplayer)).width((actionsWidth - 16f) / 2).height(bodyHeight * .20f)
         actions.add(secondary).width(actionsWidth)
 
         val body = Table()
@@ -96,7 +98,7 @@ internal class CampaignHomeMenu(
         fun tool(text: String, icon: String, binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Table {
             val button = Table().apply {
                 pad(8f)
-                add(ImageGetter.getImage(icon, blue)).size(26f).padRight(8f)
+                add(ImageGetter.getImage(icon, iconColor)).size(26f).padRight(8f)
                 add(text.toLabel(muted, 18).apply { wrap = true }).width(toolWidth - 50f)
                 touchable = Touchable.enabled
                 onActivation(binding = binding) { stopBackground(); action() }
@@ -124,13 +126,14 @@ internal class CampaignHomeMenu(
     }
 
     private fun menuButton(text: String, subtitle: String, icon: String, width: Float,
-                           binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Table {
+                           binding: KeyboardBinding = KeyboardBinding.None, primary: Boolean = false, action: () -> Unit): Table {
+        val foreground = if (primary) ExpeditionBlueTheme.color(Color.valueOf("1b3542"), ExpeditionBlueTheme.primaryInk) else ink
         val button = Table().apply {
-            background = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape, surface)
+            background = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape, if (primary) gold else surface)
             pad(16f)
-            add(ImageGetter.getImage(icon, blue)).size(30f).padRight(14f)
+            add(ImageGetter.getImage(icon, if (primary) foreground else iconColor)).size(30f).padRight(14f)
             val copy = Table()
-            val title = text.toLabel(ink, if (subtitle.isEmpty()) 22 else 30).apply { wrap = true }
+            val title = text.toLabel(foreground, if (subtitle.isEmpty()) 22 else 30).apply { wrap = true }
             copy.add(title).width((width - 76f).coerceAtLeast(60f)).left().row()
             if (subtitle.isNotEmpty()) copy.add(subtitle.toLabel(muted, 20).apply {
                 name = "subtitle"
@@ -169,11 +172,10 @@ internal class CampaignHomeMenu(
             add("Designed situations. Your own strategy.".toLabel(Color.WHITE, 22).apply { wrap = true })
                 .width(width * .68f).left().padTop(14f).row()
             add().expandY().row()
-            val enter = menuButton("Enter campaigns", "", "OtherIcons/ArrowRight", width * .58f) {
+            val enter = menuButton("Enter campaigns", "", "OtherIcons/ArrowRight", width * .58f, primary = true) {
                 game.pushScreen { CampaignPlaceholderScreen() }
             }.apply {
                 name = "ui-enter-campaigns"
-                background = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape, gold)
             }
             add(enter).width(width * .58f).height(80f).left()
         }

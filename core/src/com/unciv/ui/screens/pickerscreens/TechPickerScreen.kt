@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
@@ -171,7 +172,7 @@ class TechPickerScreen(
             val columnSpan = eraColumns.size
             val color = when {
                 civTech.era.name == era -> queuedTechColor
-                ruleset.eras[era]!!.eraNumber < civTech.era.eraNumber -> colorFromRGB(255, 175, 0)
+                ruleset.eras[era]!!.eraNumber < civTech.era.eraNumber -> ExpeditionBlueTheme.color(colorFromRGB(255, 175, 0), ExpeditionBlueTheme.gold)
                 else -> ImageGetter.CHARCOAL.cpy()
             }
 
@@ -184,7 +185,7 @@ class TechPickerScreen(
             val label = era.toLabel().apply {
                 setAlignment(Align.center)
                 if (ruleset.eras[era]!!.eraNumber < civTech.era.eraNumber)
-                    this.color = colorFromRGB(120, 46, 16) }
+                    this.color = ExpeditionBlueTheme.color(colorFromRGB(120, 46, 16), ExpeditionBlueTheme.primaryInk) }
 
             eraLabels.add(label)
 
@@ -237,7 +238,8 @@ class TechPickerScreen(
             })
 
             if (isResearched && techName != Constants.futureTech) {
-                techButton.text.color = colorFromRGB(154, 98, 16)
+                techButton.text.color = ExpeditionBlueTheme.color(colorFromRGB(154, 98, 16), ExpeditionBlueTheme.primaryInk)
+                if (ExpeditionBlueTheme.enabled) techButton.turns.color = ExpeditionBlueTheme.primaryInk
             }
 
             if (!isResearched || techName == Constants.futureTech) {

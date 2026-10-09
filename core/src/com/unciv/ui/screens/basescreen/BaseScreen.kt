@@ -26,6 +26,7 @@ import com.unciv.models.metadata.BaseRuleset
 import com.unciv.models.ruleset.Ruleset
 import com.unciv.models.ruleset.RulesetCache
 import com.unciv.models.skins.SkinStrings
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.isNarrowerThan4to3
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.fonts.Fonts
@@ -76,7 +77,7 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
     private val fpsLabel: Label? = if (this !is GameStartScreen && this !is CrashScreen) "".toLabel() else null
     private val fpsLabelContainer: Table? = fpsLabel?.let {
         Table().apply {
-            background = ImageGetter.getWhiteDotDrawable().tint(Color(0f, 0f, 0.4f, 1f))
+            background = ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.color(Color(0f, 0f, 0.4f, 1f), ExpeditionBlueTheme.panel))
             pad(4f)
             add(it)
         }
@@ -124,7 +125,8 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
             game.replaceCurrentScreen { recreate() }
             return
         }
-        Gdx.gl.glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a)
+        val renderColor = if (this is WorldScreen && skinStrings.usesExpeditionBlue) ExpeditionBlueTheme.unexplored else clearColor
+        Gdx.gl.glClearColor(renderColor.r, renderColor.g, renderColor.b, renderColor.a)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
         if (fpsLabel != null && fpsLabelContainer != null) {
@@ -208,7 +210,7 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
 
         /** Colour to use for empty sections of the screen.
          *  Gets overwritten by SkinConfig.clearColor after starting Unciv */
-        var clearColor = Color(0f, 0f, 0.2f, 1f)
+        var clearColor = ExpeditionBlueTheme.color(Color(0f, 0f, 0.2f, 1f), ExpeditionBlueTheme.background)
 
         /** Shared across all screens - wraps [Gdx.gl] to count draw calls etc. for [DebugUtils.SHOW_FPS]. */
         private val glProfiler by lazy { GLProfiler(Gdx.graphics) }
@@ -219,7 +221,8 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
         fun setSkin() {
             Fonts.resetFont()
             skinStrings = SkinStrings()
-            skin = Skin().apply {
+            clearColor = skinStrings.skinConfig.clearColor
+            skin = (if (skinStrings.usesExpeditionBlue) ExpeditionBlueTheme.createSkin() else Skin()).apply {
                 add("default-clear", clearColor, Color::class.java)
                 add("Nativefont", Fonts.font, BitmapFont::class.java)
                 add("RoundedEdgeRectangle", skinStrings.getUiBackground("", skinStrings.roundedEdgeRectangleShape), Drawable::class.java)
@@ -237,18 +240,18 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
             skin.get(TextButton.TextButtonStyle::class.java).font = Fonts.font
             skin.get(CheckBox.CheckBoxStyle::class.java).apply {
                 font = Fonts.font
-                fontColor = Color.WHITE
+                fontColor = ExpeditionBlueTheme.labelColor(Color.WHITE)
             }
             skin.get(Label.LabelStyle::class.java).apply {
                 font = Fonts.font
-                fontColor = Color.WHITE
+                fontColor = ExpeditionBlueTheme.labelColor(Color.WHITE)
             }
             skin.get(TextField.TextFieldStyle::class.java).font = Fonts.font
             skin.get(SelectBox.SelectBoxStyle::class.java).apply {
                 font = Fonts.font
                 listStyle.font = Fonts.font
             }
-            clearColor = skinStrings.skinConfig.clearColor
+            if (skinStrings.usesExpeditionBlue) ExpeditionBlueTheme.finishSkin(skin)
         }
     }
 

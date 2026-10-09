@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.civilopediascreen
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -124,7 +125,7 @@ class CivilopediaScreen(
         for (button in categoryToButtons.values) button.button.color = Color.WHITE
         val buttonInfo = categoryToButtons[category]
             ?: return        // defense against being passed a bad selector
-        buttonInfo.button.color = Color.BLUE
+        buttonInfo.button.color = ExpeditionBlueTheme.color(Color.BLUE, ExpeditionBlueTheme.gold)
         buttonTableScroll.scrollX = buttonInfo.x + (buttonInfo.width - buttonTableScroll.width) / 2
 
         if (category !in categoryToEntries) return        // defense, allowing buggy panes to remain empty while others work
@@ -210,7 +211,7 @@ class CivilopediaScreen(
             flavourTable.isVisible = false
         }
         entrySelectTable.children.forEach {
-            it.color = if (it.name == entry.name) Color.BLUE else Color.WHITE
+            it.color = if (it.name == entry.name) ExpeditionBlueTheme.color(Color.BLUE, ExpeditionBlueTheme.gold) else Color.WHITE
         }
     }
     private fun selectDefaultEntry() {

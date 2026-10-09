@@ -8,6 +8,8 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.VerticalGroup
 import com.unciv.Constants
 import com.unciv.GUI
+import com.unciv.models.skins.ExpeditionBlueTheme
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
 import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.screens.basescreen.BaseScreen
@@ -29,7 +31,8 @@ class PickerPane(
     /** A wrapper containing [rightSideButton]. You can add buttons, they will be arranged vertically */
     val rightSideGroup = VerticalGroup()
     /** A button on the lower right of [bottomTable] you can use for a "OK"-type action, starts disabled */
-    val rightSideButton = "".toTextButton()
+    val rightSideButton = "".toTextButton(if (ExpeditionBlueTheme.enabled)
+        BaseScreen.skin.get("positive", TextButtonStyle::class.java) else null)
 
     private val screenSplit = 0.85f
     private val maxBottomTableHeight = 150f     // about 7 lines of normal text

@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.modmanager
 
 import com.badlogic.gdx.graphics.Color
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.ui.components.extensions.setFontSize
@@ -11,15 +12,15 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 
 /** Shared presentation for the Mod list, details and controls. */
 internal object ModManagementStyle {
-    val background = Color.valueOf("101b2b")
-    val surface = Color.valueOf("172538")
-    val raised = Color.valueOf("203249")
-    val selected = Color.valueOf("343a3b")
-    val text = Color.valueOf("edf1f6")
-    val muted = Color.valueOf("adbdce")
-    val accent = Color.valueOf("e1bd78")
-    val line = Color.valueOf("33465b")
-    val danger = Color.valueOf("f1a8a2")
+    val background get() = ExpeditionBlueTheme.color(Color.valueOf("101b2b"), ExpeditionBlueTheme.background)
+    val surface get() = ExpeditionBlueTheme.color(Color.valueOf("172538"), ExpeditionBlueTheme.panel)
+    val raised get() = ExpeditionBlueTheme.color(Color.valueOf("203249"), ExpeditionBlueTheme.raised)
+    val selected get() = ExpeditionBlueTheme.color(Color.valueOf("343a3b"), ExpeditionBlueTheme.hero)
+    val text get() = ExpeditionBlueTheme.color(Color.valueOf("edf1f6"), ExpeditionBlueTheme.text)
+    val muted get() = ExpeditionBlueTheme.color(Color.valueOf("adbdce"), ExpeditionBlueTheme.muted)
+    val accent get() = ExpeditionBlueTheme.color(Color.valueOf("e1bd78"), ExpeditionBlueTheme.gold)
+    val line get() = ExpeditionBlueTheme.color(Color.valueOf("33465b"), ExpeditionBlueTheme.border)
+    val danger get() = ExpeditionBlueTheme.color(Color.valueOf("f1a8a2"), ExpeditionBlueTheme.danger)
 
     fun fill(color: Color) = ImageGetter.getWhiteDotDrawable().tint(color)
 

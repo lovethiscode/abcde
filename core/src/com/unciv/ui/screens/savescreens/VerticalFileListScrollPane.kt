@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.savescreens
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
@@ -114,7 +115,10 @@ open class VerticalFileListScrollPane(
     private fun selectExistingSave(index: Int, button: FileHandleButton) {
         selectedIndex = index
         selectedButton?.color = Color.WHITE
-        button.color = Color.GREEN
+        if (ExpeditionBlueTheme.enabled) {
+            selectedButton?.isChecked = false
+            button.isChecked = true
+        } else button.color = Color.GREEN
         selectedButton = button
 
         onChangeListener?.invoke(button.file)

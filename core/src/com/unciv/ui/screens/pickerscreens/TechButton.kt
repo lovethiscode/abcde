@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -65,9 +66,9 @@ class TechButton(
             val percentComplete = (techCost - remainingTech) / techCost.toFloat()
             val percentWillBeComplete = (techCost - (remainingTech-techThisTurn)) / techCost.toFloat()
             val progressBar = ImageGetter.ProgressBar(2f, 48f, true)
-                    .setBackground(Color.WHITE)
-                    .setSemiProgress(Color.BLUE.cpy().brighten(0.3f), percentWillBeComplete)
-                    .setProgress(Color.BLUE.cpy().darken(0.5f), percentComplete)
+                    .setBackground(ExpeditionBlueTheme.color(Color.WHITE, ExpeditionBlueTheme.border))
+                    .setSemiProgress(ExpeditionBlueTheme.color(Color.BLUE.cpy().brighten(0.3f), ExpeditionBlueTheme.success), percentWillBeComplete)
+                    .setProgress(ExpeditionBlueTheme.color(Color.BLUE.cpy().darken(0.5f), ExpeditionBlueTheme.gold), percentComplete)
             add(progressBar.addBorder(1f, Color.GRAY.cpy())).padLeft(0f).padRight(5f)
         }
 

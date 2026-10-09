@@ -15,13 +15,13 @@ class SkinConfig(initialCapacity: Int) {
     /** Skin element, read from UI SKin json
      *
      *  **Immutable** */
-    class SkinElement {
-        val image: String? = null
-        val tint: Color? = null
-        val alpha: Float? = null
-        val foregroundColor: Color? = null
+    class SkinElement(
+        val image: String? = null,
+        val tint: Color? = null,
+        val alpha: Float? = null,
+        val foregroundColor: Color? = null,
         val iconColor: Color? = null
-    }
+    )
 
     fun clone() = SkinConfig(skinVariants.size).also { it.updateConfig(this) }
 

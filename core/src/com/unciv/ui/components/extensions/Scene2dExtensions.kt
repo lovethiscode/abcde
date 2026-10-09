@@ -45,6 +45,7 @@ import com.unciv.ui.images.IconCircleGroup
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.images.Portrait
 import com.unciv.ui.screens.basescreen.BaseScreen
+import com.unciv.models.skins.ExpeditionBlueTheme
 import yairm210.purity.annotations.Pure
 import yairm210.purity.annotations.Readonly
 import kotlin.math.pow
@@ -356,7 +357,7 @@ fun String.toLabel(fontColor: Color = Color.WHITE,
     var labelStyle = BaseScreen.skin.get(Label.LabelStyle::class.java)
     if (fontColor != Color.WHITE || fontSize != Constants.defaultFontSize) { // if we want the default we don't need to create another style
         labelStyle = Label.LabelStyle(labelStyle) // clone this to another
-        labelStyle.fontColor = fontColor
+        labelStyle.fontColor = ExpeditionBlueTheme.labelColor(fontColor)
         if (fontSize != Constants.defaultFontSize) labelStyle.font = Fonts.font
     }
     val translatedText = this.tr(hideIcons) 

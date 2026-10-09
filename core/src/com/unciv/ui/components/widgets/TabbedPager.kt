@@ -1,5 +1,6 @@
 package com.unciv.ui.components.widgets
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.EventListener
@@ -72,7 +73,7 @@ open class TabbedPager(
     maximumHeight: Float = Float.MAX_VALUE,
     private val headerFontSize: Int = Constants.defaultFontSize,
     private val headerFontColor: Color = Color.WHITE,
-    private val highlightColor: Color = Color.BLUE,
+    private val highlightColor: Color = ExpeditionBlueTheme.color(Color.BLUE, ExpeditionBlueTheme.gold),
     backgroundColor: Color = BaseScreen.skinStrings.skinConfig.baseColor.darken(0.5f),
     private val headerPadding: Float = 10f,
     separatorColor: Color = Color.CLEAR,

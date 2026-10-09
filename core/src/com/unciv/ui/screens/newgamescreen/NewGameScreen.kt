@@ -4,6 +4,8 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.HorizontalGroup
+import com.unciv.models.skins.ExpeditionBlueTheme
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.GameInfo
@@ -141,7 +143,10 @@ class NewGameScreen(
             horizontalGroup.addActor(resetToDefaultsButton)
         }
 
-        val startGameButton = "Start game!".toTextButton().apply { color = Color.GREEN }        
+        val startGameButton = "Start game!".toTextButton(if (ExpeditionBlueTheme.enabled)
+            skin.get("positive", TextButtonStyle::class.java) else null).apply {
+            if (!ExpeditionBlueTheme.enabled) color = Color.GREEN
+        }
         startGameButton.onClick(this::startGameAvoidANRs)
         startGameButton.keyShortcuts.add(KeyCharAndCode.RETURN)
         horizontalGroup.addActor(startGameButton)

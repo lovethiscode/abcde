@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -137,7 +138,7 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
         val currentTech = viewingCiv.currentTechnologyName()
         if (currentTech != null) {
             val innerButton = TechButton(currentTech, viewingCiv.getCiv().tech)
-            innerButton.setButtonColor(colorFromRGB(7, 46, 43))
+            innerButton.setButtonColor(ExpeditionBlueTheme.color(colorFromRGB(7, 46, 43), ExpeditionBlueTheme.panel))
             techButtonHolder.actor = innerButton
             val turnsToTech = viewingCiv.turnsToTech(currentTech)
             innerButton.text.setText(currentTech.tr(true))

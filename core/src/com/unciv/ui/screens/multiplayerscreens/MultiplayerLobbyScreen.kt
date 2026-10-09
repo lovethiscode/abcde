@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -507,8 +508,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val empty = s.human && s.playerId.isEmpty()
         val manualControl = s.manual && r.hostId == userId && own != null && r.state == "WAITING"
         val card = BorderedTable("MultiplayerLobbyScreen/PlayerCard",skinStrings.roundedEdgeRectangleSmallShape,skinStrings.roundedEdgeRectangleSmallShape).apply {
-            bgColor = Color.valueOf(if (mine) "182c46" else "0d2140")
-            bgBorderColor = if (mine) Color.GOLD else Color.valueOf("294568")
+            bgColor = ExpeditionBlueTheme.color(Color.valueOf(if (mine) "182c46" else "0d2140"), if (mine) ExpeditionBlueTheme.raised else ExpeditionBlueTheme.panel)
+            bgBorderColor = ExpeditionBlueTheme.color(if (mine) Color.GOLD else Color.valueOf("294568"), if (mine) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.border)
             borderSize = 1f
             pad(16f)
         }

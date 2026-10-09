@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -928,9 +929,9 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     }
 
     companion object {
-        private val PanelBackground = Color.valueOf("0d2140")
-        private val Positive = Color.valueOf("66dfbd")
-        private val Negative = Color.valueOf("ff7c8b")
+        private val PanelBackground = ExpeditionBlueTheme.color(Color.valueOf("0d2140"), ExpeditionBlueTheme.panel)
+        private val Positive = ExpeditionBlueTheme.color(Color.valueOf("66dfbd"), ExpeditionBlueTheme.success)
+        private val Negative = ExpeditionBlueTheme.color(Color.valueOf("ff7c8b"), ExpeditionBlueTheme.danger)
     }
 }
 

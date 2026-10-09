@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -186,9 +187,9 @@ private class GameDisplay(
     }
 
     companion object {
-        private val NormalBackground = Color.valueOf("102544")
-        private val SelectedBackground = Color.valueOf("183e70")
-        private val Positive = Color.valueOf("66dfbd")
-        private val Negative = Color.valueOf("ff7c8b")
+        private val NormalBackground = ExpeditionBlueTheme.color(Color.valueOf("102544"), ExpeditionBlueTheme.panel)
+        private val SelectedBackground = ExpeditionBlueTheme.color(Color.valueOf("183e70"), ExpeditionBlueTheme.raised)
+        private val Positive = ExpeditionBlueTheme.color(Color.valueOf("66dfbd"), ExpeditionBlueTheme.success)
+        private val Negative = ExpeditionBlueTheme.color(Color.valueOf("ff7c8b"), ExpeditionBlueTheme.danger)
     }
 }

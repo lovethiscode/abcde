@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.modmanager
 
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
@@ -421,7 +422,7 @@ class ModManagementScreen private constructor(
     private fun syncSelected(modName: String, button: ModDecoratedButton, modNameToData: HashMap<String, ModUIData>, scroll: ScrollPane) {
         // manage selection color for user selection
         lastSelectedButton?.color = Color.WHITE
-        button.color = Color.BLUE
+        button.color = ExpeditionBlueTheme.color(Color.BLUE, ExpeditionBlueTheme.gold)
         lastSelectedButton = button
         if (lastSelectedButton != lastSyncMarkedButton)
             lastSyncMarkedButton?.color = Color.WHITE
@@ -431,7 +432,7 @@ class ModManagementScreen private constructor(
         // scroll into view - we know the containing Tables all have cell default padding 10f
         scroll.scrollTo(0f, buttonInOtherList.y - 10f, scroll.actor.width, buttonInOtherList.height + 20f, true, false)
         // and color it so it's easier to find. ROYAL and SLATE too dark.
-        buttonInOtherList.color = Color.valueOf("7499ab")  // about halfway between royal and sky
+        buttonInOtherList.color = ExpeditionBlueTheme.color(Color.valueOf("7499ab"), ExpeditionBlueTheme.muted)  // about halfway between royal and sky
         lastSyncMarkedButton = buttonInOtherList
     }
 

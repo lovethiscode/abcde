@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.mainmenuscreen
 
 import com.badlogic.gdx.graphics.Color
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
@@ -16,7 +17,7 @@ class CampaignPlaceholderScreen : BaseScreen(), RecreateOnResize {
         val root = Table().apply {
             name = "ui-campaign-placeholder"
             setFillParent(true)
-            background = ImageGetter.getWhiteDotDrawable().tint(Color.valueOf("e5edf0"))
+            background = ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.color(Color.valueOf("e5edf0"), ExpeditionBlueTheme.background))
             pad(36f)
             val back = "Back to home".toTextButton().apply {
                 name = "ui-campaign-back"
@@ -24,12 +25,12 @@ class CampaignPlaceholderScreen : BaseScreen(), RecreateOnResize {
             }
             add(back).left().height(70f).row()
             add().expandY().row()
-            add(ImageGetter.getImage("OtherIcons/Scenarios", Color.valueOf("24536b")))
+            add(ImageGetter.getImage("OtherIcons/Scenarios", ExpeditionBlueTheme.color(Color.valueOf("24536b"), ExpeditionBlueTheme.gold)))
                 .size(90f).padBottom(24f).row()
-            add("Original campaigns".toLabel(Color.valueOf("1b3542"), 44)).row()
-            add("Campaigns are being prepared".toLabel(Color.valueOf("5c737c"), 26).apply { wrap = true })
+            add("Original campaigns".toLabel(ExpeditionBlueTheme.color(Color.valueOf("1b3542"), ExpeditionBlueTheme.text), 44)).row()
+            add("Campaigns are being prepared".toLabel(ExpeditionBlueTheme.color(Color.valueOf("5c737c"), ExpeditionBlueTheme.muted), 26).apply { wrap = true })
                 .width(this@CampaignPlaceholderScreen.stage.width * .72f).padTop(18f).row()
-            add("Return home to continue your game or start free play.".toLabel(Color.valueOf("5c737c"), 22).apply { wrap = true })
+            add("Return home to continue your game or start free play.".toLabel(ExpeditionBlueTheme.color(Color.valueOf("5c737c"), ExpeditionBlueTheme.muted), 22).apply { wrap = true })
                 .width(this@CampaignPlaceholderScreen.stage.width * .72f).padTop(12f).row()
             add().expandY()
         }
