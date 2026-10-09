@@ -286,8 +286,11 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
 
         if (worldScreen.canChangeState) {
             val attackText: String = if (attacker.isCity()) "Bombard" else "Attack"
-            val attackButton = attackText.toTextButton().apply { if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("negative", TextButtonStyle::class.java)
-                else color = Color.RED; name = "ui-attack" }
+            val attackButton = attackText.toTextButton().apply {
+                if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("negative", TextButtonStyle::class.java)
+                else color = Color.RED
+                name = "ui-attack"
+            }
 
             var attackableTileView: AttackableTileView? = null
 
@@ -381,8 +384,11 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         addSeparator().pad(0f)
         row().pad(5f)
 
-        val attackButton = "NUKE".toTextButton().apply { if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("negative", TextButtonStyle::class.java)
-                else color = Color.RED; name = "ui-attack" }
+        val attackButton = "NUKE".toTextButton().apply {
+                if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("negative", TextButtonStyle::class.java)
+                else color = Color.RED
+                name = "ui-attack"
+            }
 
         if (!worldScreen.isPlayersTurn || !attackerView.canAttack() || !canNuke) {
             attackButton.disable()
@@ -451,8 +457,11 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         add(getHealthBar(attacker.getMaxHealth(), attacker.getMaxHealth(), attacker.getMaxHealth(), attacker.getMaxHealth()))
         row().pad(5f)
 
-        val attackButton = "Air Sweep".toTextButton().apply { if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("negative", TextButtonStyle::class.java)
-                else color = Color.RED; name = "ui-attack" }
+        val attackButton = "Air Sweep".toTextButton().apply {
+                if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("negative", TextButtonStyle::class.java)
+                else color = Color.RED
+                name = "ui-attack"
+            }
 
         val canReach = attackerView.getTilesInAttackRange().contains(targetTileView)
 

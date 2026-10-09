@@ -51,7 +51,7 @@ class EditFriendScreen(selectedFriend: FriendList.Friend) : PickerScreen() {
                 goBack()
             }
             askPopup.open()
-        }.apply { if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("negative", TextButtonStyle::class.java)
+        }.apply { if (ExpeditionBlueTheme.enabled) deleteFriendButton.style = BaseScreen.skin.get("negative", TextButtonStyle::class.java)
             else color = Color.RED }
         topTable.add(deleteFriendButton)
 
