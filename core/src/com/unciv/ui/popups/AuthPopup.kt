@@ -102,7 +102,7 @@ class AuthPopup(
         addGoodSizedLabel(headerLabelText).colspan(2).row()
         targetServerUrl?.let { addGoodSizedLabel(it).colspan(2).row() }
         add(passwordField).colspan(2).growX().pad(16f, 0f, 16f, 0f).row()
-        addCloseButton(com.unciv.Constants.cancel, style = if (UiNavigation.isIos) null else negativeButtonStyle).growX().padRight(8f)
+        addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.cancel else com.unciv.Constants.close, style = if (UiNavigation.isIos) null else negativeButtonStyle).growX().padRight(8f)
         add(button).growX().padLeft(8f)
     }
 }

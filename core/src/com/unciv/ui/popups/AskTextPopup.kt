@@ -1,5 +1,6 @@
 package com.unciv.ui.popups
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -50,7 +51,7 @@ class AskTextPopup(
         val errorLabel = errorText.toLabel()
         errorLabel.color = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
 
-        addCloseButton(com.unciv.Constants.cancel)
+        addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.cancel else com.unciv.Constants.close)
         addOKButton(
             validate = {
                 val errorFound = !validate(nameField.text)
