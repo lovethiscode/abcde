@@ -120,7 +120,8 @@ class OffersListScroll(
                     // highlight unique suggestions
                     if (offerType in listOf(Luxury_Resource, Strategic_Resource)
                             && otherSideOffers.all { it.type != offer.type || it.name != offer.name || it.amount < 0}) // we can 'have' negative amounts of resources 
-                        tradeButton.color = ExpeditionBlueTheme.color(Color.GREEN, ExpeditionBlueTheme.gold)
+                        if (ExpeditionBlueTheme.enabled) tradeButton.label.color = ExpeditionBlueTheme.gold
+                        else tradeButton.color = Color.GREEN
 
                     tradeButton.onClick {
                         val amountTransferred = min(amountPerClick, offer.amount)

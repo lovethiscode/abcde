@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Button
+import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.SplitPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.UncivGame
@@ -122,10 +123,19 @@ class CivilopediaScreen(
         entryIndex.clear()
         flavourTable.clear()
 
-        for (button in categoryToButtons.values) button.button.color = Color.WHITE
+        for (button in categoryToButtons.values) {
+            button.button.color = Color.WHITE
+            if (ExpeditionBlueTheme.enabled) {
+                button.button.isChecked = false
+                (button.button as? IconTextButton)?.label?.color = ExpeditionBlueTheme.text
+            }
+        }
         val buttonInfo = categoryToButtons[category]
             ?: return        // defense against being passed a bad selector
-        buttonInfo.button.color = ExpeditionBlueTheme.color(Color.BLUE, ExpeditionBlueTheme.gold)
+        if (ExpeditionBlueTheme.enabled) {
+            buttonInfo.button.isChecked = true
+            (buttonInfo.button as? IconTextButton)?.label?.color = ExpeditionBlueTheme.gold
+        } else buttonInfo.button.color = Color.BLUE
         buttonTableScroll.scrollX = buttonInfo.x + (buttonInfo.width - buttonTableScroll.width) / 2
 
         if (category !in categoryToEntries) return        // defense, allowing buggy panes to remain empty while others work
@@ -211,7 +221,13 @@ class CivilopediaScreen(
             flavourTable.isVisible = false
         }
         entrySelectTable.children.forEach {
-            it.color = if (it.name == entry.name) ExpeditionBlueTheme.color(Color.BLUE, ExpeditionBlueTheme.gold) else Color.WHITE
+            if (ExpeditionBlueTheme.enabled && it.name != null && it is Table) {
+                val selected = it.name == entry.name
+                it.background = skinStrings.getUiBackground("CivilopediaScreen/EntryButton",
+                    tintColor = if (selected) ExpeditionBlueTheme.raised else ExpeditionBlueTheme.panel)
+                for (child in it.children)
+                    if (child is Label) child.color = if (selected) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.text
+            } else it.color = if (it.name == entry.name) Color.BLUE else Color.WHITE
         }
     }
     private fun selectDefaultEntry() {

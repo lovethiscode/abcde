@@ -174,7 +174,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         // If peripheral keyboard not detected, hotkeys will not be displayed
         val binding = unitAction.type.binding
 
-        val fontColor = if (unitAction.isCurrentAction) Color.YELLOW else Color.WHITE
+        val fontColor = if (unitAction.isCurrentAction) ExpeditionBlueTheme.color(Color.YELLOW, ExpeditionBlueTheme.gold) else Color.WHITE
         val actionButton = IconTextButton(unitAction.title, icon, fontColor = fontColor)
         actionButton.name = "ui-unit-action:${unitAction.type.name}"
         if (unitAction is UpgradeUnitAction) actionButton.name += ":${unitAction.unitToUpgradeTo.name}"
@@ -182,7 +182,8 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         actionButton.labelCell.padTop(0f) // aligned with icon 
 
         if (unitAction.type == UnitActionType.Promote && unitAction.action != null)
-            actionButton.color = ExpeditionBlueTheme.color(Color.GREEN.brighten(0.5f), ExpeditionBlueTheme.gold)
+            if (ExpeditionBlueTheme.enabled) actionButton.label.color = ExpeditionBlueTheme.gold
+            else actionButton.color = Color.GREEN.brighten(0.5f)
 
         actionButton.pack()
 
