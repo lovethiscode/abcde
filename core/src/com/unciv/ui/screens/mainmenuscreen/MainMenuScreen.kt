@@ -150,6 +150,23 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
         if (game.settings.tileSet in TileSetCache)
             startBackgroundMapGeneration()
 
+        createMenu()
+    }
+
+    private fun createMenu() {
+        if (Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
+            val menu = CampaignHomeMenu(this, ::resumeGame, ::quickstartNewGame, ::stopBackgroundMapGeneration)
+            val scrollPane = AutoScrollPane(menu).apply {
+                setFillParent(true)
+                setScrollingDisabled(true, false)
+            }
+            stage.addActor(scrollPane)
+            globalShortcuts.add(KeyboardBinding.QuitMainMenu) {
+                if (hasOpenPopups()) closeAllPopups() else game.popScreen()
+            }
+            return
+        }
+
         val column1 = Table().apply { defaults().pad(10f).fillX() }
         val column2 = if (singleColumn) column1 else Table().apply { defaults().pad(10f).fillX() }
 
