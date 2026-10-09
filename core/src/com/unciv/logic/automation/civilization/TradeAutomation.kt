@@ -26,8 +26,13 @@ object TradeAutomation {
                 continue
             }
             // Treat 'no trade' state as if all trades are invalid - thus AIs will not update its "turns to offer"
-            if (!tradeAndChangeState || !TradeEvaluation().isTradeValid(tradeRequest.trade, civInfo, otherCiv))
+            if (!tradeAndChangeState) continue
+            val valid = com.unciv.logic.automation.AutomationPreview.tradeValid(civInfo, tradeRequest)
+                ?: TradeEvaluation().isTradeValid(tradeRequest.trade, civInfo, otherCiv)
+            if (!valid) {
+                com.unciv.logic.automation.AutomationPreview.tradeChoice(civInfo, "reject_trade", tradeRequest)
                 continue
+            }
 
             val tradeLogic = TradeLogic(civInfo, otherCiv)
             tradeLogic.currentTrade.set(tradeRequest.trade)
@@ -39,7 +44,7 @@ object TradeAutomation {
             civInfo.tradeRequests.remove(tradeRequest)
             if (TradeEvaluation().isTradeAcceptable(tradeLogic.currentTrade, civInfo, otherCiv)) {
                 com.unciv.logic.automation.AutomationPreview.tradeChoice(civInfo, "accept_trade", tradeRequest)
-                tradeLogic.acceptTrade()
+                if (!com.unciv.logic.automation.AutomationPreview.controls(civInfo)) tradeLogic.acceptTrade()
                 otherCiv.addNotification("[${civInfo.civName}] has accepted your trade request", NotificationCategory.Trade, NotificationIcon.Trade, civInfo.civName)
             } else {
                 val counteroffer = getCounteroffer(civInfo, tradeRequest)
