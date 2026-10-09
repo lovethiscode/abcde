@@ -1,5 +1,6 @@
 package com.unciv.ui.popups
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -97,6 +98,8 @@ open class Popup(
                         * topTable
                     * bottomTable
     */
+    private val dismissHeader = Table(BaseScreen.skin)
+    private val popupFrame = Table(BaseScreen.skin)
     protected val innerTable = Table(BaseScreen.skin)
 
     /** This contains most of the Popup content.
@@ -141,19 +144,29 @@ open class Popup(
             tintColor = BaseScreen.skinStrings.skinConfig.baseColor.darken(0.5f)
         )
         innerTable.touchable = Touchable.enabled
+        val frame = if (UiNavigation.isIos) popupFrame else this
+        if (UiNavigation.isIos) {
+            popupFrame.background = innerTable.background
+            popupFrame.touchable = Touchable.enabled
+            innerTable.background = null
+            popupFrame.add(dismissHeader).growX().row()
+            super.add(popupFrame)
+        }
 
+        fun addContent(actor: WidgetGroup): Cell<WidgetGroup> =
+            if (UiNavigation.isIos) frame.add(actor) else super.add(actor)
         fun wrapInScrollPane(table: Table) = AutoScrollPane(table, BaseScreen.skin)
             .apply { setOverscroll(false, false) }
         when (scrollable) {
             Scrollability.None -> {
                 topTable = innerTable
                 bottomTable = innerTable
-                topTableCell = super.add(innerTable)
+                topTableCell = addContent(innerTable)
             }
             Scrollability.All, Scrollability.DevConsole -> {
                 topTable = innerTable
                 bottomTable = innerTable
-                topTableCell = super.add(wrapInScrollPane(innerTable))
+                topTableCell = addContent(wrapInScrollPane(innerTable))
             }
             Scrollability.WithoutButtons -> {
                 topTable = Table(BaseScreen.skin)
@@ -164,7 +177,7 @@ open class Popup(
                 innerTable.defaults().fillX()
                 innerTable.row()
                 innerTable.add(bottomTable)
-                super.add(innerTable)
+                addContent(innerTable)
             }
         }
 
@@ -180,13 +193,13 @@ open class Popup(
     }
 
     private fun recalculateInnerTableMaxHeight() {
-        if (topTable === bottomTable) return
-        topTableCell.maxHeight(maxPopupHeight - bottomTable.prefHeight)
+        val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight
+        topTableCell.maxHeight((maxPopupHeight - buttonsHeight - dismissHeader.prefHeight).coerceAtLeast(0f))
         innerTable.invalidate()
     }
 
     private fun recalculateInnerTableMaxWidth() {
-        val minWidth = innerTable.minWidth.coerceAtMost(stageToShowOn.width)
+        val minWidth = maxOf(innerTable.minWidth, dismissHeader.minWidth).coerceAtMost(stageToShowOn.width)
         if (minWidth < maxPopupWidth) return
         topTableCell.maxWidth(minWidth)
         innerTable.invalidate()
@@ -216,7 +229,7 @@ open class Popup(
     protected open fun onVisibleAreaChanged(visibleArea: Rectangle) {
         if (com.badlogic.gdx.Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
             val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight
-            topTableCell.maxSize(maxPopupWidth, (visibleArea.height * maxSizePercentage - buttonsHeight).coerceAtLeast(0f))
+            topTableCell.maxSize(maxPopupWidth, (visibleArea.height * maxSizePercentage - buttonsHeight - dismissHeader.prefHeight).coerceAtLeast(0f))
             innerTable.invalidateHierarchy()
         }
         fitOrCenterContentIntoVisibleArea(visibleArea)
@@ -252,8 +265,8 @@ open class Popup(
 
     private fun fitContentIntoVisibleArea(visibleArea: Rectangle) {
         // The content, when centered, has this margin around, padded by 5f
-        val xMargin = (stageToShowOn.width - innerTable.prefWidth) / 2f - 5f
-        val yMargin = (stageToShowOn.height - innerTable.prefHeight) / 2f - 5f
+        val xMargin = (stageToShowOn.width - maxOf(innerTable.prefWidth, popupFrame.prefWidth)) / 2f - 5f
+        val yMargin = (stageToShowOn.height - maxOf(innerTable.prefHeight, popupFrame.prefHeight)) / 2f - 5f
         val visibleRight = stageToShowOn.width - visibleArea.right
         val visibleTop = stageToShowOn.height - visibleArea.top
         // Now push innerTable "out of the way" only if overlapping,
@@ -322,6 +335,7 @@ open class Popup(
     override fun clear() {
         topTable.clear()
         bottomTable.clear()
+        dismissHeader.clear()
         clickBehindToClose = false
         onCloseCallback = null
     }
@@ -356,7 +370,7 @@ open class Popup(
         val button = text.toTextButton(style)
         button.onActivation { action() }
         button.keyShortcuts.add(key)
-        return bottomTable.add(button)
+        return bottomTable.add(button).apply { if (UiNavigation.isIos) minSize(UiNavigation.minimumTouchSize()) }
     }
     fun addButton(text: String, key: Char, style: TextButtonStyle? = null, action: () -> Unit)
         = addButton(text, KeyCharAndCode(key), style, action)
@@ -366,7 +380,7 @@ open class Popup(
     fun addButton(text: String, binding: KeyboardBinding, style: TextButtonStyle? = null, action: () -> Unit): Cell<TextButton> {
         val button = text.toTextButton(style)
         button.onActivation(binding = binding) { action() }
-        return bottomTable.add(button)
+        return bottomTable.add(button).apply { if (UiNavigation.isIos) minSize(UiNavigation.minimumTouchSize()) }
     }
 
     /**
@@ -384,7 +398,14 @@ open class Popup(
     ): Cell<TextButton> {
         clickBehindToClose = true
         onCloseCallback = action
-        val cell = addButton(text, additionalKey, style) {
+        val cell = if (UiNavigation.isIos && text == Constants.close) {
+            dismissHeader.clear()
+            val button = UiNavigation.dismissButton()
+            button.onActivation { close(); action?.invoke() }
+            button.keyShortcuts.add(additionalKey)
+            dismissHeader.add().expandX()
+            dismissHeader.add(button).size(button.width, button.height).pad(8f)
+        } else addButton(text, additionalKey, style) {
             close()
             action?.invoke()
         }

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -87,7 +88,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
     private val pad = 10f
     private val miniQueueHeight = 54f
     private val posFromEdge = CityScreen.posFromEdge
-    private val stageHeight = cityScreen.stage.height
+    private val stageHeight = cityScreen.stage.height - if (UiNavigation.isIos) UiNavigation.minimumTouchSize() + 20f else 0f
 
     private val highlightColor = ExpeditionBlueTheme.color(Color.GREEN.darken(0.4f), ExpeditionBlueTheme.raised)
 

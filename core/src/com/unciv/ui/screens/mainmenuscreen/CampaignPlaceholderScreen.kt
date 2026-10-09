@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.mainmenuscreen
 
+import com.unciv.ui.components.input.keyShortcuts
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -19,9 +21,10 @@ class CampaignPlaceholderScreen : BaseScreen(), RecreateOnResize {
             setFillParent(true)
             background = ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.color(Color.valueOf("e5edf0"), ExpeditionBlueTheme.background))
             pad(36f)
-            val back = "Back to home".toTextButton().apply {
+            val back = UiNavigation.backButton().apply {
                 name = "ui-campaign-back"
                 onActivation { game.popScreen() }
+                keyShortcuts.add(com.unciv.ui.components.input.KeyCharAndCode.BACK)
             }
             add(back).left().height(70f).row()
             add().expandY().row()

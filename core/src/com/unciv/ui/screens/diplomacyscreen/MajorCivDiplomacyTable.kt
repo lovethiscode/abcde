@@ -3,6 +3,7 @@ package com.unciv.ui.screens.diplomacyscreen
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.civilization.AlertType
@@ -221,6 +222,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
     }
 
     private fun getDemandsTable(viewingCiv: Civilization, otherCiv: Civilization): Table {
+        diplomacyScreen.subPageCiv = otherCiv
         val demandsTable = Table()
         demandsTable.defaults().pad(10f)
 
@@ -245,7 +247,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             demandsTable.add(button).row()
         }
 
-        demandsTable.add(Constants.close.toTextButton().onClick { diplomacyScreen.updateRightSide(otherCiv) })
+        if (!UiNavigation.isIos) demandsTable.add(Constants.close.toTextButton().onClick { diplomacyScreen.updateRightSide(otherCiv) })
         return demandsTable
     }
 }

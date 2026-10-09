@@ -78,7 +78,7 @@ class AskNumberPopup(
         val errorLabel = errorText.toLabel()
         errorLabel.color = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
 
-        addCloseButton()
+        addCloseButton(com.unciv.Constants.cancel)
         val okButton = addOKButton(
             validate = {
                 val errorFound = valueField.intValue?.let { validate(it) } != true

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen.unit
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -190,8 +191,8 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
         
         pack()
         closeButton.setPosition(
-            width - closeButton.width * 3 / 4,
-            height - closeButton.height * 3 / 4
+            width - closeButton.width * (if (UiNavigation.isIos) 1f else .75f) - (if (UiNavigation.isIos) 8f else 0f),
+            height - closeButton.height * (if (UiNavigation.isIos) 1f else .75f) - (if (UiNavigation.isIos) 8f else 0f)
         )
         closeButton.toFront()
         bg.setSize(width - 3f, height - 3f)

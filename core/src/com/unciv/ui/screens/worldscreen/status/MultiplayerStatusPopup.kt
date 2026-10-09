@@ -14,7 +14,7 @@ class MultiplayerStatusPopup(
     screen: BaseScreen,
 ) : Popup(screen) {
 
-    val pickerPane = PickerPane()
+    val pickerPane = PickerPane(isPopup = true)
     var selectedGame: MultiplayerGamePreview? = null
     private val gameList = GameList(::gameSelected)
 

@@ -193,6 +193,7 @@ class VictoryScreen(
             game.pushScreen{ NewGameScreen(newGameSetupInfo) }
         }
 
+        pickerPane.useCloseButtonAsAction()
         closeButton.setText("One more turn...!".tr())
         closeButton.onClick {
             gameInfo.oneMoreTurnMode = true

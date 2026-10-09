@@ -1,5 +1,6 @@
 package com.unciv.ui.popups
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.utils.Align
 import com.unciv.ui.components.extensions.addRoundCloseButton
@@ -71,6 +72,10 @@ class ToastPopup (message: String, stageToShowOn: Stage, val time: Long = 2000) 
         stopTimer()
         clearActivationActions(ActivationTypes.Tap, false)
         onClick(::close)
-        addRoundCloseButton(this, ::close)
+        if (UiNavigation.isIos) {
+            addCloseButton()
+            pack()
+            y = stageToShowOn.height - (height + 20f)
+        } else addRoundCloseButton(this, ::close)
     }
 }

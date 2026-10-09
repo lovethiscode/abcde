@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.savescreens
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
@@ -168,12 +169,12 @@ class LoadGameScreen : LoadOrSaveScreen(saveButtonFontSize = loadGameContentFont
                 skinStrings.roundedEdgeRectangleSmallShape,
                 skinStrings.skinConfig.baseColor.darken(0.35f),
             )
-            add(closeButton).height(46f).padLeft(8f)
+            add(closeButton).minHeight(maxOf(46f, UiNavigation.minimumTouchSize())).padLeft(8f)
             add(heading).growX().minWidth(0f).left().padLeft(10f)
             add().growX()
             add(importSaveButton).height(46f).padRight(8f)
         }
-        screenTable.add(header).growX().height(64f).pad(8f, 10f, 4f, 10f).row()
+        screenTable.add(header).growX().minHeight(maxOf(64f, UiNavigation.minimumTouchSize())).pad(8f, 10f, 4f, 10f).row()
 
         if (cloudSaveSync.isSupported) {
             val cloudTable = Table().apply { initCloudSaveControls() }

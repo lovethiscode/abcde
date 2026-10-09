@@ -5,6 +5,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.utils.Align
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.civilization.AlertType
@@ -35,6 +36,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
     val viewingCiv = diplomacyScreen.viewingCiv
 
     fun getCityStateDiplomacyTable(otherCiv: Civilization): Table {
+        diplomacyScreen.subPageCiv = null
         val otherCivDiplomacyManager = otherCiv.getDiplomacyManager(viewingCiv)!!
 
         val diplomacyTable = getCityStateDiplomacyTableHeader(otherCiv)
@@ -331,6 +333,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
     }
 
     private fun getGoldGiftTable(otherCiv: Civilization): Table {
+        diplomacyScreen.subPageCiv = otherCiv
         val diplomacyTable = getCityStateDiplomacyTableHeader(otherCiv)
         diplomacyTable.addSeparator()
 
@@ -352,7 +355,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             diplomacyScreen.rightSideTable.clear()
             diplomacyScreen.rightSideTable.add(ScrollPane(getCityStateDiplomacyTable(otherCiv)))
         }
-        diplomacyTable.add(backButton)
+        if (!UiNavigation.isIos) diplomacyTable.add(backButton)
         return diplomacyTable
     }
 
@@ -364,6 +367,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
     }
 
     private fun getImprovementGiftTable(otherCiv: Civilization): Table {
+        diplomacyScreen.subPageCiv = otherCiv
         val improvementGiftTable = getCityStateDiplomacyTableHeader(otherCiv)
         improvementGiftTable.addSeparator()
 
@@ -398,12 +402,13 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             diplomacyScreen.rightSideTable.clear()
             diplomacyScreen.rightSideTable.add(ScrollPane(getCityStateDiplomacyTable(otherCiv)))
         }
-        improvementGiftTable.add(backButton)
+        if (!UiNavigation.isIos) improvementGiftTable.add(backButton)
         return improvementGiftTable
 
     }
 
     private fun getDemandTributeTable(otherCiv: Civilization): Table {
+        diplomacyScreen.subPageCiv = otherCiv
         val diplomacyTable = getCityStateDiplomacyTableHeader(otherCiv)
         diplomacyTable.addSeparator()
         diplomacyTable.add("Tribute Willingness".toLabel()).row()
@@ -443,7 +448,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             diplomacyScreen.rightSideTable.clear()
             diplomacyScreen.rightSideTable.add(ScrollPane(getCityStateDiplomacyTable(otherCiv)))
         }
-        diplomacyTable.add(backButton)
+        if (!UiNavigation.isIos) diplomacyTable.add(backButton)
         return diplomacyTable
     }
 

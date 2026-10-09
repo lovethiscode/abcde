@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.UncivGame
@@ -39,7 +40,7 @@ class AddFriendScreen(
         topTable.add(gameIDTable).padBottom(30f).row()
 
         //CloseButton Setup
-        closeButton.setText("Back".tr())
+        closeButton.setText(UiNavigation.backCaption)
         closeButton.onClick {
             UncivGame.Current.popScreen()
         }

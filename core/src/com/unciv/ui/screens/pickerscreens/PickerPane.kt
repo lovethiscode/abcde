@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -20,10 +21,14 @@ import com.unciv.ui.components.extensions.toTextButton
 
 class PickerPane(
     disableScroll: Boolean = false,
+    isPopup: Boolean = false,
 ) : Table() {
-    /** The close button on the lower left of [bottomTable], see [PickerScreen.setDefaultCloseAction].
+    /** The navigation button in the fixed header on iOS, otherwise lower left of [bottomTable], see [PickerScreen.setDefaultCloseAction].
      *  Note if you don't use that helper, you'll need to do both click and keyboard support yourself. */
-    val closeButton = Constants.close.toTextButton()
+    val closeButton = if (UiNavigation.isIos) {
+        if (isPopup) UiNavigation.dismissButton() else UiNavigation.backButton()
+    } else Constants.close.toTextButton()
+    private val navigationHeader = Table()
     /** A scrollable wrapped Label you can use to show descriptions in the [bottomTable], starts empty */
     val descriptionLabel = DescriptionLabel()
     /** Wraps descriptionLabel - a subclass may replace the content, but beware: zero padding around this */
@@ -50,7 +55,12 @@ class PickerPane(
     val splitPane = SplitPane(scrollPane, bottomTable, true, BaseScreen.skin)
 
     init {
-        bottomTable.add(closeButton).pad(10f)
+        if (UiNavigation.isIos) {
+            if (isPopup) navigationHeader.add().expandX()
+            navigationHeader.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
+            if (!isPopup) navigationHeader.add().expandX()
+            add(navigationHeader).growX().row()
+        } else bottomTable.add(closeButton).pad(10f)
 
         descriptionLabel.wrap = true
         val descriptionWithPad = Table()
@@ -69,9 +79,23 @@ class PickerPane(
     }
 
     override fun layout() {
+        if (UiNavigation.isIos) {
+            val hasNavigation = closeButton.parent === navigationHeader && closeButton.isVisible
+            navigationHeader.isVisible = hasNavigation
+            getCell(navigationHeader).height(if (hasNavigation) closeButton.height + 16f else 0f)
+        }
         super.layout()
         bottomTable.height = bottomTable.height.coerceAtMost(maxBottomTableHeight)
         splitPane.splitAmount = (scrollPane.height / (scrollPane.height + bottomTable.height)).coerceAtLeast(screenSplit)
+    }
+
+    fun useCloseButtonAsAction() {
+        if (!UiNavigation.isIos) return
+        navigationHeader.clear()
+        bottomTable.clear()
+        bottomTable.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(10f)
+        bottomTable.add(descriptionScroll).grow()
+        bottomTable.add(rightSideGroup).pad(10f).right()
     }
 
     /** Enables the [rightSideButton]. See [pick] for a way to set the text. */

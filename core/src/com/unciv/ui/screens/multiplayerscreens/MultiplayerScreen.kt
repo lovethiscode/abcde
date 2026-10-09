@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
@@ -249,7 +250,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         bottomTable.clear()
         pickerPane.remove()
 
-        closeButton.setText("Back".tr())
+        closeButton.setText(UiNavigation.backCaption)
         closeButton.label.setFontSize(multiplayerSecondaryFontSize)
         listOf(createRoomButton, helpButton, copyUserIdButton, addGameButton, refreshButton).forEach {
             it.label.setFontSize(multiplayerSecondaryFontSize)
@@ -301,7 +302,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
                 skinStrings.roundedEdgeRectangleSmallShape,
                 skinStrings.skinConfig.baseColor.darken(0.35f),
             )
-            add(closeButton).height(46f).padLeft(8f)
+            add(closeButton).minHeight(maxOf(46f, UiNavigation.minimumTouchSize())).padLeft(8f)
             add(heading).growX().minWidth(0f).left().padLeft(10f)
             add(actionGrid).width(actionGridWidth).padRight(8f)
         }
@@ -758,7 +759,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
             "All players must use the same game server and compatible game versions and rulesets.",
             "For chat, set or check your server password in Options → Multiplayer. Saving it reconnects chat automatically without leaving the game.",
         )
-        helpPopup.addCloseButton("Got it")
+        helpPopup.addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.close else "Got it")
         helpPopup.open()
     }
 

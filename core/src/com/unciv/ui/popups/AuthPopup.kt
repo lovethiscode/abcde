@@ -1,5 +1,6 @@
 package com.unciv.ui.popups
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.UncivGame
@@ -101,7 +102,7 @@ class AuthPopup(
         addGoodSizedLabel(headerLabelText).colspan(2).row()
         targetServerUrl?.let { addGoodSizedLabel(it).colspan(2).row() }
         add(passwordField).colspan(2).growX().pad(16f, 0f, 16f, 0f).row()
-        addCloseButton(style = negativeButtonStyle).growX().padRight(8f)
+        addCloseButton(com.unciv.Constants.cancel, style = if (UiNavigation.isIos) null else negativeButtonStyle).growX().padRight(8f)
         add(button).growX().padLeft(8f)
     }
 }

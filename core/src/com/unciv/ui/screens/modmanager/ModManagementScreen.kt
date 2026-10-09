@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.modmanager
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
@@ -95,7 +96,7 @@ class ModManagementScreen private constructor(
     private val detailPane = Table()
     private val listHolder = Table()
     private val actionFooter = Table()
-    private val closeButton = ModManagementStyle.button("Close")
+    private val closeButton = if (UiNavigation.isIos) UiNavigation.backButton() else ModManagementStyle.button("Close")
     private val rightSideButton = ModManagementStyle.button("Download", primary = true)
     private val discoverButton = ModManagementStyle.button("Discover mods")
     private val installedButton = ModManagementStyle.button("Installed")
@@ -204,7 +205,7 @@ class ModManagementScreen private constructor(
             add(discoverButton).minWidth(0f).width(if (singleColumn) 180f else 200f).minHeight(58f).padRight(4f)
             add(installedButton).minWidth(0f).width(if (singleColumn) 180f else 200f).minHeight(58f)
         }
-        header.add(closeButton).width(110f).minHeight(58f).padRight(16f)
+        header.add(closeButton).minWidth(110f).minHeight(maxOf(58f, UiNavigation.minimumTouchSize())).padRight(16f)
         header.add(title).left().expandX().padRight(16f)
         if (singleColumn) {
             header.row()
@@ -255,7 +256,7 @@ class ModManagementScreen private constructor(
         }
         detailPane.background = ModManagementStyle.rounded(ModManagementStyle.surface)
         detailPane.pad(16f, 20f, 14f, 20f)
-        if (singleColumn) detailPane.add(detailsBackButton).left().minHeight(58f).padBottom(8f).row()
+        if (singleColumn && !UiNavigation.isIos) detailPane.add(detailsBackButton).left().minHeight(58f).padBottom(8f).row()
         detailPane.add(scrollActionTable).grow().minHeight(0f).row()
         actionFooter.add(rightSideButton).growX().minWidth(0f).minHeight(64f).row()
         actionFooter.add(actionHint).growX().minWidth(0f).padTop(8f)
@@ -512,11 +513,13 @@ class ModManagementScreen private constructor(
             if (localModTransferServer === receiver) localModTransferServer = null
         }
         val closeButton = popup.addCloseButton().actor
-        closeButton.remove()
-        popup.add(Table().apply {
-            add().expandX()
-            add(closeButton)
-        }).row()
+        if (!UiNavigation.isIos) {
+            closeButton.remove()
+            popup.add(Table().apply {
+                add().expandX()
+                add(closeButton)
+            }).row()
+        }
         popup.addGoodSizedLabel("Open this address on your computer:", size = 20).row()
         val rawLabelStyle = Label.LabelStyle(BaseScreen.skin.get(Label.LabelStyle::class.java)).apply {
             font = Fonts.font

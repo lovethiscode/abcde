@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.mapeditorscreen.tabs
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -69,7 +70,7 @@ class MapEditorSaveTab(
         buttonTable.add(deleteButton)
 
         quitButton.onClick(editorScreen::closeEditor)
-        buttonTable.add(quitButton)
+        if (!UiNavigation.isIos) buttonTable.add(quitButton)
         buttonTable.pack()
 
         val fileTableHeight = editorScreen.stage.height - headerHeight - mapNameTextField.prefHeight - buttonTable.height - 22f

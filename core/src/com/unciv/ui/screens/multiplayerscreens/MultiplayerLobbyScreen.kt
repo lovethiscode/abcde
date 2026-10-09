@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
@@ -165,12 +166,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }
     }
     init {
-        val back = "Back".toTextButton().apply {
+        val back = UiNavigation.backButton().apply {
             onClick { if (configurationPending && connected && !busy) saveConfiguration(backAfter = true) else game.popScreen() }
             keyShortcuts.add(KeyCharAndCode.BACK)
         }
         val header = Table().apply {
-            add(back).height(44f).padRight(16f)
+            add(back).minHeight(UiNavigation.minimumTouchSize()).padRight(16f)
             add("Multiplayer room".toLabel(fontSize = 28)).left().growX()
             if (this@MultiplayerLobbyScreen.stage.width < 850f) row()
             add(inviteButton).height(44f).padRight(8f)

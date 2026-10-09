@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
@@ -694,9 +695,12 @@ private class RandomNationPickerPopup(
         update()
         pack()
 
-        val closeButton = getCloseButton(buttonsCircleSize, buttonsIconSize, buttonsBackColor, Color.FIREBRICK) { close() }
-        closeButton.setPosition(buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomLeft)
-        innerTable.addActor(closeButton)
+        if (UiNavigation.isIos) addCloseButton()
+        else {
+            val closeButton = getCloseButton(buttonsCircleSize, buttonsIconSize, buttonsBackColor, Color.FIREBRICK) { close() }
+            closeButton.setPosition(buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomLeft)
+            innerTable.addActor(closeButton)
+        }
         clickBehindToClose = true
 
         val okButton = "OtherIcons/Checkmark".toImageButton(Color.LIME)

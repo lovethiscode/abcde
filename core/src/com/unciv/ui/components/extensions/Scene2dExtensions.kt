@@ -1,5 +1,6 @@
 package com.unciv.ui.components.extensions
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.Pixmap
@@ -319,7 +320,11 @@ fun getCloseButton(
     overColor: Color = Color.RED,
     action: () -> Unit
 ): Group {
-    val closeButton = "OtherIcons/Close".toImageButton(iconSize, size, circleColor, overColor)
+    val closeButton = if (UiNavigation.isIos) Group().apply {
+        val button = UiNavigation.dismissButton()
+        setSize(button.width, button.height)
+        addActor(button)
+    } else "OtherIcons/Close".toImageButton(iconSize, size, circleColor, overColor)
     closeButton.onActivation(action)
     closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
     return closeButton
@@ -333,6 +338,13 @@ fun addRoundCloseButton(
     parent: Group,
     action: () -> Unit
 ): Group {
+    if (UiNavigation.isIos) {
+        val button = getCloseButton(action = action)
+        if (parent is Table) parent.padRight(maxOf(parent.padRight, button.width + 8f))
+        parent.addActor(button)
+        button.setPosition(parent.width - button.width - 8f, parent.height - button.height - 8f)
+        return button
+    }
     val size = 30f
     val button = getCloseButton(size, size-15f, Color.CLEAR, Color.RED, action = action)
         .surroundWithCircle(size, false, BaseScreen.clearColor)

@@ -59,8 +59,8 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 /*
    Notes - this is implemented as 2x3 Table with 4 Cells.
    First row is (scrolling header, fixed decoration) - second cell empty and size 0 until you use decorateHeader.
-   Second row / third Cell is "fixed" content, colspan 2. Used for pages that implement IPageExtensions.getFixedContent, otherwise size zero.
-   Third row / fourth Cell is scrolling content, colspan 2. Can scroll in both axes, while "fixed" only scrolls horizontally -
+   Second row contains "fixed" content, colspan 3. Used for pages that implement IPageExtensions.getFixedContent, otherwise size zero.
+   Third row contains scrolling content, colspan 3. Can scroll in both axes, while "fixed" only scrolls horizontally -
    horizontal scroll is synchronized (for that to look good, both content parts must match in size and visual layout).
 */
 
@@ -95,6 +95,7 @@ open class TabbedPager(
     private val header = Table(BaseScreen.skin)
     val headerScroll = LinkedScrollPane(horizontalOnly = true, header)
     protected var headerHeight = 0f
+    private val headerDecorationLeftCell: Cell<Actor?>
     private val headerDecorationRightCell: Cell<Actor?>
 
     private val fixedContentScroll = LinkedScrollPane(horizontalOnly = true)
@@ -323,6 +324,7 @@ open class TabbedPager(
         header.defaults().pad(headerPadding, headerPadding * 0.5f)
         // Measure header height, most likely its final value
         removePage(addPage("Dummy"))
+        headerDecorationLeftCell = add().pad(0f)
         add(headerScroll).growX().minHeight(headerHeight)
         headerDecorationRightCell = add().pad(0f)
         row()
@@ -330,8 +332,8 @@ open class TabbedPager(
             addSeparator(separatorColor)
 
         fixedContentScrollCell = add(fixedContentScroll)
-        fixedContentScrollCell.colspan(2).growX().row()
-        add(contentScroll).colspan(2).grow().row()
+        fixedContentScrollCell.colspan(3).growX().row()
+        add(contentScroll).colspan(3).grow().row()
     }
 
     //endregion
@@ -625,6 +627,7 @@ open class TabbedPager(
             init {
                 passEntry.isPasswordMode = true
                 add(passEntry).row()
+                if (UiNavigation.isIos) addCloseButton(com.unciv.Constants.cancel, action = lockAction)
                 addOKButton {
                     if (passEntry.text.hashCode() == secretHashCode) unlockAction() else lockAction()
                 }
@@ -653,14 +656,15 @@ open class TabbedPager(
      *
      *  Notes:
      *  *  [fixed] decorations have predefined cells, thus decorateHeader will replace any previous decoration. Non-[fixed] are cumulative and cannot be removed.
-     *  *  [leftSide] and [fixed] both true is not implemented.
+     *  *  Fixed left and right decorations remain outside the header ScrollPane.
      *
      *  @param leftSide If `true` then [actor] is inserted on the left, otherwise on the right of the page buttons.
      *  @param fixed If `true` [actor] is outside the header ScrollPane and thus always shown.
      */
     fun decorateHeader(actor: Actor, leftSide: Boolean = false, fixed: Boolean = true) {
-        if (fixed) headerDecorationRightCell.pad(headerPadding).setActor(actor)
+        if (fixed) (if (leftSide) headerDecorationLeftCell else headerDecorationRightCell).pad(headerPadding).setActor(actor)
         else insertHeaderCellAt(if (leftSide) 0 else -1).setActor(actor)
+        if (fixed) headerHeight = maxOf(headerHeight, actor.height + 2 * headerPadding)
         invalidate()
         if (!leftSide || fixed) return
         val addWidth = actor.width

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.savescreens
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
@@ -183,7 +184,7 @@ class SaveGameScreen(private val gameInfo: GameInfo) :
                 skinStrings.roundedEdgeRectangleSmallShape,
                 skinStrings.skinConfig.baseColor.darken(0.35f),
             )
-            add(closeButton).width(closeButtonWidth).minHeight(48f).padLeft(8f)
+            add(closeButton).width(closeButtonWidth).minHeight(maxOf(48f, UiNavigation.minimumTouchSize())).padLeft(8f)
             add(titleLabel).growX().minWidth(0f).center().pad(0f, 10f, 0f, 10f)
             add().width(closeButtonWidth).padRight(8f)
         }

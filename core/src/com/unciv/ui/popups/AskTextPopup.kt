@@ -50,7 +50,7 @@ class AskTextPopup(
         val errorLabel = errorText.toLabel()
         errorLabel.color = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
 
-        addCloseButton()
+        addCloseButton(com.unciv.Constants.cancel)
         addOKButton(
             validate = {
                 val errorFound = !validate(nameField.text)

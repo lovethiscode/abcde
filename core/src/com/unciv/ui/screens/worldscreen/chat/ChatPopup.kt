@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen.chat
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.InputEvent
@@ -143,12 +144,13 @@ class ChatPopup(
 
         add(chatHeader).left().pad(5f).expandX()
         add(
-            ImageButton(ImageGetter.getImage("OtherIcons/Close").drawable)
+            (if (UiNavigation.isIos) UiNavigation.dismissButton()
+             else ImageButton(ImageGetter.getImage("OtherIcons/Close").drawable))
                 .onClick {
                     ChatStore.chatPopup = null
                     close()
                 }
-        ).size(chatLabel.height * 1.3f).right().row()
+        ).size(if (UiNavigation.isIos) UiNavigation.minimumTouchSize() else chatLabel.height * 1.3f).right().row()
 
         scrollPane.setFadeScrollBars(false)
         scrollPane.setScrollingDisabled(true, false)

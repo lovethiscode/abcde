@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.diplomacyscreen
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.SplitPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -81,7 +82,16 @@ class DiplomacyScreen(
 
     private val splitPane = SplitPaneCenteringLeftSide()
 
-    private val closeButton = getCloseButton(closeButtonSize) { game.popScreen() }.apply { name = "ui-diplomacy-close" }
+    internal var subPageCiv: Civilization? = null
+
+    private fun navigateBack() {
+        val civ = subPageCiv
+        if (UiNavigation.isIos && civ != null) updateRightSide(civ) else game.popScreen()
+    }
+
+    private val closeButton = (if (UiNavigation.isIos) UiNavigation.backButton().apply {
+        onActivation { navigateBack() }; keyShortcuts.add(KeyCharAndCode.BACK)
+    } else getCloseButton(closeButtonSize) { game.popScreen() }).apply { name = "ui-diplomacy-close" }
 
     internal fun isNotPlayersTurn() = !GUI.isAllowedChangeState()
 
@@ -135,12 +145,13 @@ class DiplomacyScreen(
     }
 
     private fun positionCloseButton() {
-        closeButton.setPosition(stage.width - closeButtonPad, stage.height - closeButtonPad, Align.topRight)
+        if (UiNavigation.isIos) closeButton.setPosition(closeButtonPad, stage.height - closeButtonPad, Align.topLeft)
+        else closeButton.setPosition(stage.width - closeButtonPad, stage.height - closeButtonPad, Align.topRight)
     }
 
     internal fun updateLeftSideTable(selectCiv: Civilization?) {
         leftSideTable.clear()
-        leftSideTable.add().padBottom(closeButtonPad).row()  // no default pad, and make distance of first civ to top same as for the close button
+        leftSideTable.add().padBottom(if (UiNavigation.isIos) closeButton.height + 2 * closeButtonPad else closeButtonPad).row()  // no default pad, and make distance of first civ to top same as for the close button
 
         var selectCivY = 0f
 
@@ -218,6 +229,7 @@ class DiplomacyScreen(
     }
 
     internal fun updateRightSide(otherCiv: Civilization) {
+        subPageCiv = null
         rightSideTable.clear()
         UncivGame.Current.musicController.chooseTrack(otherCiv.civName,
             MusicMood.peaceOrWar(viewingCiv.isAtWarWith(otherCiv)),MusicTrackChooserFlags.setSelectNation)
@@ -230,6 +242,7 @@ class DiplomacyScreen(
     //region Major Civ Diplomacy
 
     internal fun setTrade(otherCiv: Civilization): TradeTable {
+        subPageCiv = otherCiv
         rightSideTable.clear()
         val tradeTable = TradeTable(viewingCivView, viewingCivView.gameView.getForeignCivView(otherCiv), this)
         rightSideTable.add(tradeTable)

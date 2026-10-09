@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -97,7 +98,7 @@ class CityScreen(
     private var cityPickerTable = CityScreenCityPickerTable(this)
 
     /** Button for exiting the city - sits on BOTTOM CENTER */
-    private val exitCityButton = "Exit city".toTextButton().apply {
+    private val exitCityButton = (if (UiNavigation.isIos) UiNavigation.backButton() else "Exit city".toTextButton()).apply {
         name = "ui-city-exit"
         labelCell.pad(10f)
         keyShortcuts.add(KeyCharAndCode.BACK)
@@ -223,9 +224,10 @@ class CityScreen(
 
         // Bottom center: Name, paging, exit city button
         val centeredX = (stage.width - leftMargin - rightMargin) / 2 + leftMargin
-        exitCityButton.setPosition(centeredX, 10f, Align.bottom)
+        if (UiNavigation.isIos) exitCityButton.setPosition(posFromEdge, stage.height - posFromEdge, Align.topLeft)
+        else exitCityButton.setPosition(centeredX, 10f, Align.bottom)
         cityPickerTable.update()
-        cityPickerTable.setPosition(centeredX, exitCityButton.top + 10f, Align.bottom)
+        cityPickerTable.setPosition(centeredX, if (UiNavigation.isIos) 10f else exitCityButton.top + 10f, Align.bottom)
 
         // Top right of screen: Stats / Specialists
         updateCityStats()

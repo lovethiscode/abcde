@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
 import com.unciv.models.skins.ExpeditionBlueTheme
@@ -56,7 +57,7 @@ class EditFriendScreen(selectedFriend: FriendList.Friend) : PickerScreen() {
         topTable.add(deleteFriendButton)
 
         //CloseButton Setup
-        closeButton.setText("Back".tr())
+        closeButton.setText(UiNavigation.backCaption)
         closeButton.onClick {
             goBack()
         }

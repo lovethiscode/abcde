@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.mapeditorscreen
 
+import com.unciv.ui.components.input.onActivation
+import com.badlogic.gdx.utils.Align
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
@@ -116,6 +119,10 @@ class MapEditorScreen(map: TileMap? = null) : BaseScreen(), RecreateOnResize {
 
         tabs = MapEditorMainTabs(this)
         MapEditorToolsDrawer(tabs, stage, mapHolder)
+        if (UiNavigation.isIos) stage.addActor(UiNavigation.backButton().apply {
+            onActivation { closeEditor() }
+            setPosition(10f, this@MapEditorScreen.stage.height - 10f, Align.topLeft)
+        })
 
         // The top level pager assigns its own key bindings, but making nested TabbedPagers bind keys
         // so all levels select to show the tab in question is too complex. Sub-Tabs need to maintain

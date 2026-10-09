@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.actions.TemporalAction
@@ -120,9 +121,12 @@ internal class NationPickerPopup(
 
     private fun addActionIcons() {
         // Despite being a Popup we use our own buttons - floating circular ones
-        val closeButton = getCloseButton(buttonsCircleSize, buttonsIconSize, buttonsBackColor, Color.FIREBRICK) { close() }
-        closeButton.setPosition(buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomLeft)
-        innerTable.addActor(closeButton)
+        if (UiNavigation.isIos) addCloseButton()
+        else {
+            val closeButton = getCloseButton(buttonsCircleSize, buttonsIconSize, buttonsBackColor, Color.FIREBRICK) { close() }
+            closeButton.setPosition(buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomLeft)
+            innerTable.addActor(closeButton)
+        }
 
         val okButton = "OtherIcons/Checkmark".toImageButton(Color.LIME)
         okButton.onActivation { returnSelected() }

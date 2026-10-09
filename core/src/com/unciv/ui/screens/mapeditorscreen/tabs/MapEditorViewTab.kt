@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.mapeditorscreen.tabs
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -157,7 +158,7 @@ class MapEditorViewTab(
         row()
 
         addSeparator()
-        add("Exit map editor".toTextButton().apply { onClick(editorScreen::closeEditor) }).row()
+        if (!UiNavigation.isIos) add("Exit map editor".toTextButton().apply { onClick(editorScreen::closeEditor) }).row()
 
         invalidateHierarchy()  //todo - unsure this helps
         validate()

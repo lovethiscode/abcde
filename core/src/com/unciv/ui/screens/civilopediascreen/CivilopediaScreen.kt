@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.civilopediascreen
 
+import com.unciv.ui.components.input.KeyCharAndCode
+import com.unciv.ui.components.input.keyShortcuts
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
@@ -278,12 +281,15 @@ class CivilopediaScreen(
         val searchButton = "OtherIcons/Search".toImageButton(imageSize - 16f, imageSize, skinStrings.skinConfig.baseColor, Color.GOLD)
         searchButton.onActivation(binding = KeyboardBinding.PediaSearch) { searchPopup.open(true) }
 
-        val closeButton = getCloseButton(imageSize) { game.popScreen() }
+        val closeButton = if (UiNavigation.isIos) UiNavigation.backButton().apply {
+            onActivation { game.popScreen() }; keyShortcuts.add(KeyCharAndCode.BACK)
+        } else getCloseButton(imageSize) { game.popScreen() }
 
         val topTable = Table()
+        if (UiNavigation.isIos) topTable.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
         topTable.add(buttonTableScroll).growX()
         topTable.add(searchButton).padLeft(10f)
-        topTable.add(closeButton).padLeft(10f).padRight(10f)
+        if (!UiNavigation.isIos) topTable.add(closeButton).padLeft(10f).padRight(10f)
         topTable.width = stage.width
         topTable.layout()
 

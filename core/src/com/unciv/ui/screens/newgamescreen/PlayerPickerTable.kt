@@ -414,7 +414,7 @@ class FriendSelectionPopup(
     screen: BaseScreen,
 ) : Popup(screen) {
 
-    private val pickerPane = PickerPane()
+    private val pickerPane = PickerPane(isPopup = true)
     private var selectedFriendId: String? = null
 
     init {

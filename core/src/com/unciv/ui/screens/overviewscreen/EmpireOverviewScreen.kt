@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.input.keyShortcuts
+import com.unciv.ui.components.input.onActivation
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.unciv.Constants
 import com.unciv.GUI
@@ -66,8 +69,10 @@ class EmpireOverviewScreen(
         }
         persistState.update(pageObjects)
 
-        val closeButton = getCloseButton { game.popScreen() }.apply { name = "ui-overview-close" }
-        tabbedPager.decorateHeader(closeButton)
+        val closeButton = if (UiNavigation.isIos) UiNavigation.backButton().apply {
+            onActivation { game.popScreen() }; keyShortcuts.add(com.unciv.ui.components.input.KeyCharAndCode.BACK)
+        } else getCloseButton { game.popScreen() }.apply { name = "ui-overview-close" }
+        tabbedPager.decorateHeader(closeButton, leftSide = UiNavigation.isIos)
 
         tabbedPager.setFillParent(true)
         stage.addActor(tabbedPager)
