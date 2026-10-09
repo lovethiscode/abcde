@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen.bottombar
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color

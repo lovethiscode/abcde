@@ -9,6 +9,7 @@ import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.utils.Display
+import kotlin.math.roundToInt
 
 /** iOS navigation controls use point-sized targets, independently of the selected UI scale. */
 object UiNavigation {
@@ -31,7 +32,7 @@ object UiNavigation {
 
     fun dismissButton(): TextButton = "×".toTextButton().apply {
         name = "ui-popup-close"
-        label.setFontSize(30)
+        label.setFontSize((18f * minimumTouchSize() / 44f).roundToInt())
         val size = maxOf(50f, minimumTouchSize())
         setSize(size, size)
     }
