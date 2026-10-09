@@ -20,6 +20,8 @@ val selectedRoboVmProperties = file(providers.gradleProperty("iosRoboVmPropertie
 layout.buildDirectory.set(layout.projectDirectory.dir(
     if (extensionSourceDir == null) "build/default" else "build/extension"
 ))
+// RoboVM otherwise puts dependency JARs before the iOS compatibility replacements.
+extra["ios.compat.classes"] = layout.buildDirectory.dir("classes/java/main").get().asFile.absolutePath
 
 val publicSourceCommit = providers.exec {
     workingDir(rootProject.projectDir)
