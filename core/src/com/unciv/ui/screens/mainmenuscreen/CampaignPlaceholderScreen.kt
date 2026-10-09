@@ -6,7 +6,6 @@ import com.badlogic.gdx.graphics.Color
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.ui.components.extensions.toLabel
-import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.images.ImageGetter
