@@ -76,6 +76,8 @@ class CityConstructions : IsPartOfGameInfoSerialization {
 
     @Readonly fun currentConstructionName() = if (constructionQueue.isEmpty()) "" else constructionQueue.first()
     fun setCurrentConstruction(value: String) {
+        val construction = city.civ.gameInfo.ruleset.buildings[value] ?: city.civ.gameInfo.ruleset.units[value]
+        if (construction != null && AutomationPreview.policy(city.civ)?.allowConstruction(city, construction) == false) return
         if (value != currentConstructionName()) AutomationPreview.choice(city.civ, "production", value, city = city)
         if (constructionQueue.isEmpty()) constructionQueue.add(value) else constructionQueue[0] = value
     }

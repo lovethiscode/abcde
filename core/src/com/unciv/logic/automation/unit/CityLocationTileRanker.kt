@@ -79,6 +79,7 @@ object CityLocationTileRanker {
 
     @Readonly
     private fun canSettleTile(tile: Tile, civ: Civilization, nearbyCities: Sequence<City>): Boolean {
+        if (com.unciv.logic.automation.AutomationPreview.settlementValid(civ, tile) == false) return false
         val modConstants = civ.gameInfo.ruleset.modOptions.constants
         if (!tile.isLand || tile.isImpassible()) return false
         if (tile.getOwner() != null && tile.getOwner() != civ) return false

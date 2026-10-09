@@ -46,7 +46,8 @@ object AutomationPreview {
 
     private class Session(val game: GameInfo, val sink: Sink, val policy: Policy?,
         val defeated: Map<String, Boolean>, val wonders: Set<String>?,
-        val tradeValidity: Map<String, Boolean>, var unit: MapUnit? = null)
+        val tradeValidity: Map<String, Boolean>,
+        val settlementValidity: Map<com.unciv.logic.map.HexCoord, Boolean>, var unit: MapUnit? = null)
     private class SelectedAction : RuntimeException()
     private val session = ThreadLocal<Session>()
     val active get() = session.get() != null
@@ -60,12 +61,15 @@ object AutomationPreview {
     @Readonly fun wonderBuilt(game: GameInfo, name: String) = session.get()?.takeIf { it.game === game }?.wonders?.contains(name)
     fun tradeValid(civ: Civilization, request: com.unciv.logic.trade.TradeRequest): Boolean? =
         if (controls(civ)) session.get()?.tradeValidity?.get(json().toJson(request)) else null
+    @Readonly fun settlementValid(civ: Civilization, tile: Tile): Boolean? =
+        if (controls(civ)) session.get()?.settlementValidity?.get(tile.position) else null
 
     fun capture(game: GameInfo, sink: Sink, policy: Policy? = null,
         defeatedCivs: Map<String, Boolean> = emptyMap(), builtWonders: Set<String>? = null,
-        tradeValidity: Map<String, Boolean> = emptyMap(), block: () -> Unit) {
+        tradeValidity: Map<String, Boolean> = emptyMap(),
+        settlementValidity: Map<com.unciv.logic.map.HexCoord, Boolean> = emptyMap(), block: () -> Unit) {
         check(!active) { "Nested AI preview" }
-        session.set(Session(game, sink, policy, defeatedCivs, builtWonders, tradeValidity))
+        session.set(Session(game, sink, policy, defeatedCivs, builtWonders, tradeValidity, settlementValidity))
         try { block() } finally { session.remove() }
     }
 

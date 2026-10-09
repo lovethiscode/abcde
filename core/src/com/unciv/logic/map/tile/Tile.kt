@@ -686,6 +686,7 @@ class Tile : IsPartOfGameInfoSerialization {
 
     @Readonly
     fun canBeSettled(civ: Civilization): Boolean {
+        com.unciv.logic.automation.AutomationPreview.settlementValid(civ, this)?.let { return it }
         val modConstants = tileMap.gameInfo.ruleset.modOptions.constants
         return when {
             isWater || isImpassible() -> false
