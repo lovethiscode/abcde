@@ -33,7 +33,7 @@ object UiNavigation {
         } else null
 
     private fun button(caption: String): TextButton = object : TextButton(
-        caption, style() ?: BaseScreen.skin.get(TextButtonStyle::class.java)
+        caption, style() ?: BaseScreen.skin.get(TextButton.TextButtonStyle::class.java)
     ) {
         override fun getMinWidth() = maxOf(super.getMinWidth(), minimumTouchSize())
         override fun getMinHeight() = maxOf(super.getMinHeight(), minimumTouchSize())
