@@ -69,9 +69,9 @@ class EmpireOverviewScreen(
         }
         persistState.update(pageObjects)
 
-        val closeButton = if (UiNavigation.isIos) UiNavigation.backButton().apply {
+        val closeButton = (if (UiNavigation.isIos) UiNavigation.backButton().apply {
             onActivation { game.popScreen() }; keyShortcuts.add(com.unciv.ui.components.input.KeyCharAndCode.BACK)
-        } else getCloseButton { game.popScreen() }.apply { name = "ui-overview-close" }
+        } else getCloseButton { game.popScreen() }).apply { name = "ui-overview-close" }
         tabbedPager.decorateHeader(closeButton, leftSide = UiNavigation.isIos)
 
         tabbedPager.setFillParent(true)

@@ -4,6 +4,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.Constants
 import com.unciv.logic.map.MapParameters
 import com.unciv.models.ruleset.Ruleset
@@ -143,11 +144,16 @@ class MapEditorModsTab(
             add(ScrollPane(incompatibilityTable)).colspan(2)
                 .maxHeight(stageToShowOn.height * 0.8f).row()
             addGoodSizedLabel("Change map to fit selected ruleset?", 24).colspan(2).row()
-            addButton(Constants.yes, 'y') {
-                onOK()
-                close()
+            if (UiNavigation.isIos) {
+                addCloseButton(Constants.cancel, com.unciv.ui.components.input.KeyCharAndCode('n'))
+                addOKButton("Change map", com.unciv.ui.components.input.KeyCharAndCode('y'), action = onOK)
+            } else {
+                addButton(Constants.yes, 'y') {
+                    onOK()
+                    close()
+                }
+                addButton(Constants.no, 'n') { close() }
             }
-            addButton(Constants.no, 'n') { close() }
             equalizeLastTwoButtonWidths()
             open(true)
         }
