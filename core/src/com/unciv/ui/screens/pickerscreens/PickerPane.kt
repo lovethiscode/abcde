@@ -21,13 +21,10 @@ import com.unciv.ui.components.extensions.toTextButton
 
 class PickerPane(
     disableScroll: Boolean = false,
-    isPopup: Boolean = false,
 ) : Table() {
     /** The navigation button in the fixed header on iOS, otherwise lower left of [bottomTable], see [PickerScreen.setDefaultCloseAction].
      *  Note if you don't use that helper, you'll need to do both click and keyboard support yourself. */
-    val closeButton = if (UiNavigation.isIos) {
-        if (isPopup) UiNavigation.dismissButton() else UiNavigation.backButton()
-    } else Constants.close.toTextButton()
+    val closeButton = if (UiNavigation.isIos) UiNavigation.backButton() else Constants.close.toTextButton()
     private val navigationHeader = Table()
     /** A scrollable wrapped Label you can use to show descriptions in the [bottomTable], starts empty */
     val descriptionLabel = DescriptionLabel()
@@ -56,9 +53,8 @@ class PickerPane(
 
     init {
         if (UiNavigation.isIos) {
-            if (isPopup) navigationHeader.add().expandX()
             navigationHeader.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
-            if (!isPopup) navigationHeader.add().expandX()
+            navigationHeader.add().expandX()
             add(navigationHeader).growX().row()
         } else bottomTable.add(closeButton).pad(10f)
 

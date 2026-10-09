@@ -102,7 +102,7 @@ class DiplomacyScreen(
 
         updateLeftSideTable(selectCiv)
 
-        splitPane.setFillParent(true)
+        splitPane.setFillParent(!UiNavigation.isIos)
         stage.addActor(splitPane)
 
         positionCloseButton()
@@ -145,13 +145,15 @@ class DiplomacyScreen(
     }
 
     private fun positionCloseButton() {
-        if (UiNavigation.isIos) closeButton.setPosition(closeButtonPad, stage.height - closeButtonPad, Align.topLeft)
-        else closeButton.setPosition(stage.width - closeButtonPad, stage.height - closeButtonPad, Align.topRight)
+        if (UiNavigation.isIos) {
+            closeButton.setPosition(closeButtonPad, stage.height - closeButtonPad, Align.topLeft)
+            splitPane.setSize(stage.width, stage.height - closeButton.height - 2 * closeButtonPad)
+        } else closeButton.setPosition(stage.width - closeButtonPad, stage.height - closeButtonPad, Align.topRight)
     }
 
     internal fun updateLeftSideTable(selectCiv: Civilization?) {
         leftSideTable.clear()
-        leftSideTable.add().padBottom(if (UiNavigation.isIos) closeButton.height + 2 * closeButtonPad else closeButtonPad).row()  // no default pad, and make distance of first civ to top same as for the close button
+        leftSideTable.add().padBottom(closeButtonPad).row()  // no default pad, and make distance of first civ to top same as for the close button
 
         var selectCivY = 0f
 
@@ -236,7 +238,7 @@ class DiplomacyScreen(
         rightSideTable.add(ScrollPane(
             if (otherCiv.isCityState) CityStateDiplomacyTable(this).getCityStateDiplomacyTable(otherCiv)
             else MajorCivDiplomacyTable(this).getMajorCivDiplomacyTable(otherCiv)
-        )).height(stage.height)
+        )).height(if (UiNavigation.isIos) splitPane.height else stage.height)
     }
 
     //region Major Civ Diplomacy

@@ -3,6 +3,8 @@ package com.unciv.ui.components.widgets
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
+import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.models.translations.tr
@@ -24,13 +26,21 @@ object UiNavigation {
 
     fun touchSize(virtualSize: Float, safePoints: Float) = 44f * virtualSize / safePoints
 
-    fun backButton(): TextButton = backCaption.toTextButton().apply {
+    private fun style() = if (ExpeditionBlueTheme.enabled)
+        TextButton.TextButtonStyle(BaseScreen.skin.get(TextButton.TextButtonStyle::class.java)).apply {
+            over = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.border)
+            down = over
+            checked = up
+            checkedFontColor = ExpeditionBlueTheme.text
+        } else null
+
+    fun backButton(): TextButton = backCaption.toTextButton(style()).apply {
         name = "ui-navigation-back"
         labelCell.pad(8f)
         setSize(maxOf(prefWidth, minimumTouchSize()), maxOf(prefHeight, minimumTouchSize()))
     }
 
-    fun dismissButton(): TextButton = "×".toTextButton().apply {
+    fun dismissButton(): TextButton = "×".toTextButton(style()).apply {
         name = "ui-popup-close"
         label.setFontSize((18f * minimumTouchSize() / 44f).roundToInt())
         val size = maxOf(50f, minimumTouchSize())

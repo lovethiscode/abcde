@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
@@ -414,7 +415,7 @@ class FriendSelectionPopup(
     screen: BaseScreen,
 ) : Popup(screen) {
 
-    private val pickerPane = PickerPane(isPopup = true)
+    private val pickerPane = PickerPane()
     private var selectedFriendId: String? = null
 
     init {
@@ -426,8 +427,14 @@ class FriendSelectionPopup(
         val friendList = FriendPickerList(playerPicker, ::friendSelected)
         pickerPane.topTable.add(friendList)
         pickerPane.rightSideButton.setText("Select friend".tr())
-        pickerPane.closeButton.onActivation(::close)
+        if (UiNavigation.isIos) {
+            pickerPane.closeButton.remove()
+            addCloseButton()
+            clickBehindToClose = false
+        } else {
+            pickerPane.closeButton.onActivation(::close)
         pickerPane.closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
+        }
         pickerCell.setActor(pickerPane)
         pickerPane.rightSideButton.onClick {
             close()

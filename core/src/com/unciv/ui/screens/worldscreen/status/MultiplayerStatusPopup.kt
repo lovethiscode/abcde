@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen.status
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.UncivGame
 import com.unciv.logic.multiplayer.MultiplayerGamePreview
 import com.unciv.models.translations.tr
@@ -14,7 +15,7 @@ class MultiplayerStatusPopup(
     screen: BaseScreen,
 ) : Popup(screen) {
 
-    val pickerPane = PickerPane(isPopup = true)
+    val pickerPane = PickerPane()
     var selectedGame: MultiplayerGamePreview? = null
     private val gameList = GameList(::gameSelected)
 
@@ -26,7 +27,13 @@ class MultiplayerStatusPopup(
 
         pickerPane.topTable.add(gameList)
         pickerPane.rightSideButton.setText("Load game".tr())
-        pickerPane.closeButton.onClick(::close)
+        if (UiNavigation.isIos) {
+            pickerPane.closeButton.remove()
+            addCloseButton()
+            clickBehindToClose = false
+        } else {
+            pickerPane.closeButton.onClick(::close)
+        }
         pickerCell.setActor<PickerPane>(pickerPane)
         pickerPane.rightSideButton.onClick {
             close()
