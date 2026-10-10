@@ -102,4 +102,32 @@ class CampaignProgress {
     /** Maximum from one attempt per scoring version, never a union of bonus flags. */
     var bestStars = hashMapOf<String, Int>()
     var medals = hashSetOf<String>()
+
+    fun validate() {
+        require(schemaVersion == 1) { "Unsupported campaign progress version" }
+        require(bestStars.values.all { it in 0..3 }) { "Invalid campaign stars" }
+    }
+
+    /** Only permanent facts cross devices. Unknown level/version keys are deliberately retained. */
+    fun permanentCopy() = CampaignProgress().also {
+        validate()
+        it.cleared.addAll(cleared)
+        it.unlocked.addAll(unlocked)
+        it.bestStars.putAll(bestStars)
+        it.medals.addAll(medals)
+    }
+
+    fun merge(other: CampaignProgress) {
+        validate()
+        other.validate()
+        cleared.addAll(other.cleared)
+        unlocked.addAll(other.unlocked)
+        other.bestStars.forEach { (key, stars) -> bestStars[key] = maxOf(bestStars[key] ?: 0, stars) }
+        medals.addAll(other.medals)
+    }
+
+    fun samePermanentFacts(other: CampaignProgress) = cleared == other.cleared && unlocked == other.unlocked &&
+        bestStars == other.bestStars && medals == other.medals
+
+    fun isEmpty() = cleared.isEmpty() && unlocked.isEmpty() && bestStars.isEmpty() && medals.isEmpty()
 }

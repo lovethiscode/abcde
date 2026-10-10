@@ -57,6 +57,7 @@ class UncivFiles(
     val saveMetrics = SaveFileMetrics()
 
     var cloudSaveSync: CloudSaveSync = CloudSaveSync.None
+    var campaignProgressSync: com.unciv.logic.campaign.CampaignProgressSync = com.unciv.logic.campaign.CampaignProgressSync.None
 
     //region Helpers
 

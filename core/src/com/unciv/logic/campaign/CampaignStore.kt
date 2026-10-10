@@ -93,7 +93,7 @@ class CampaignStore(private val files: UncivFiles) {
         SaveFileWriter.recover(progressFile)
         if (!progressFile.exists()) CampaignProgress()
         else requireNotNull(FileConversions.readJson(progressFile, CampaignProgress::class.java)).also {
-            check(it.schemaVersion == 1) { "Unsupported campaign progress version" }
+            it.validate()
         }
     }
 
@@ -123,17 +123,42 @@ class CampaignStore(private val files: UncivFiles) {
     fun reconcile(game: GameInfo) {
         val state = game.campaign ?: return
         if (state.resultStars == 0) return
-        SaveFileLocks.withLock(progressFile) {
+        val changed = SaveFileLocks.withLock(progressFile) {
             val progress = progress()
+            val before = progress.permanentCopy()
             progress.cleared.add(state.definition.id)
             if (state.definition.nextLevel.isNotEmpty()) progress.unlocked.add(state.definition.nextLevel)
             val key = "${state.definition.id}:${state.definition.scoringVersion}"
             progress.bestStars[key] = maxOf(progress.bestStars[key] ?: 0, state.resultStars)
-            for (chapter in 0..3) {
-                val definitions = (chapter * 4 + 1..chapter * 4 + 4).map { CampaignCatalog.definition(CampaignCatalog.levelId(it)) }
-                if (definitions.all { stars(it, progress) == 3 }) progress.medals.add(medalKey(chapter, definitions))
+            completeDerivedProgress(progress)
+            if (before.samePermanentFacts(progress)) false else {
+                SaveFileWriter.write(progressFile) { FileConversions.writeJson(it, progress, zip = false) }
+                true
             }
+        }
+        if (changed) try { files.campaignProgressSync.onProgressSaved() }
+        catch (ex: Exception) { com.unciv.utils.Log.error("Cannot schedule campaign progress sync", ex) }
+    }
+
+    /** Merge under the same lock as local settlements; never read or replace any resume slot. */
+    fun mergeProgress(remote: CampaignProgress): CampaignProgress = SaveFileLocks.withLock(progressFile) {
+        remote.validate()
+        val progress = progress()
+        val before = progress.permanentCopy()
+        progress.merge(remote)
+        completeDerivedProgress(progress)
+        if (!before.samePermanentFacts(progress))
             SaveFileWriter.write(progressFile) { FileConversions.writeJson(it, progress, zip = false) }
+        progress
+    }
+
+    private fun completeDerivedProgress(progress: CampaignProgress) {
+        val definitions = CampaignCatalog.definitions()
+        definitions.filter { it.id in progress.cleared }.forEach {
+            if (it.nextLevel.isNotEmpty()) progress.unlocked.add(it.nextLevel)
+        }
+        for ((chapter, levels) in definitions.chunked(4).withIndex()) {
+            if (levels.all { stars(it, progress) == 3 }) progress.medals.add(medalKey(chapter, levels))
         }
     }
 

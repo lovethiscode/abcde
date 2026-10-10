@@ -12,6 +12,8 @@ interface IOSRuntimeFeatures {
     val oggAudioAvailable: Boolean
     val achievementsAvailable: Boolean
     fun createCloudSaveSync(files: UncivFiles): CloudSaveSync
+    fun createCampaignProgressSync(files: UncivFiles): com.unciv.logic.campaign.CampaignProgressSync =
+        com.unciv.logic.campaign.CampaignProgressSync.None
     fun getMultiplayerPassword(serverUrl: String): String?
     fun setMultiplayerPassword(serverUrl: String, password: String): Boolean
     fun createAudio(configuration: IOSApplicationConfiguration): IOSAudio?

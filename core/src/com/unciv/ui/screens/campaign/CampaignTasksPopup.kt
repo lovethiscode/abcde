@@ -128,7 +128,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
             add(campaignStars(if (terminal) state.resultStars else result.stars, 24f)).row()
             val caption = when {
                 result.failed -> "可返回战役，重新挑战"
-                terminal -> "成绩已保存"
+                terminal -> "成绩已保存到本机 · 云同步状态见战役总览"
                 d.automatic -> "按本关目标自动结算"
                 result.main -> "当前可获得 ${result.stars} 星 · 结算时检查目标"
                 else -> "完成通关目标后可结算"

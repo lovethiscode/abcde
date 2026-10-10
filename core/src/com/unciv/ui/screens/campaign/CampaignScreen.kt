@@ -11,6 +11,8 @@ import com.unciv.logic.campaign.CampaignCatalog
 import com.unciv.logic.campaign.CampaignDefinition
 import com.unciv.logic.campaign.CampaignProgress
 import com.unciv.logic.campaign.CampaignStore
+import com.unciv.logic.campaign.CampaignSyncState
+import com.unciv.logic.campaign.CampaignSyncStatus
 import com.unciv.models.skins.ExpeditionBlueTheme as Theme
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.setFontSize
@@ -38,12 +40,26 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     private val definitions = CampaignCatalog.definitions()
     private val root = Table()
     private var progress = CampaignProgress()
+    private val sync = game.files.campaignProgressSync
+    private val syncPanel = Table()
+    private var disposed = false
+    private val syncListener: (CampaignSyncStatus) -> Unit = { status ->
+        Concurrency.runOnGLThread {
+            if (!disposed) {
+                updateSyncPanel(status)
+                val latest = runCatching { store.progress() }.getOrNull()
+                if (latest == null || !progress.samePermanentFacts(latest)) rebuild()
+            }
+        }
+    }
 
     init {
         root.setFillParent(true)
         root.background = ImageGetter.getWhiteDotDrawable().tint(Theme.background)
         stage.addActor(root)
         rebuild()
+        sync.addStatusListener(syncListener)
+        sync.requestSync()
     }
 
     private fun rebuild() {
@@ -64,13 +80,45 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             progress = store.progress()
             val content = Table().apply { pad(22f); defaults().pad(8f) }
             content.add("新手战役  ·  当前版本  ·  四章十六关  ·  ${definitions.sumOf { store.stars(it, progress) }} / 48 星".toLabel(Theme.text)).left().row()
-            content.add("进度仅保存在本机".toLabel(Theme.muted, 15)).left().row()
+            updateSyncPanel(sync.status)
+            content.add(syncPanel).growX().row()
             if (chapter < 0) overview(content) else chapter(content)
             root.add(AutoScrollPane(content)).grow()
         } catch (ex: Exception) {
             com.unciv.utils.Log.error("Cannot open campaign catalog", ex)
             root.add("战役暂时无法读取，已有存档与成绩仍保留。".toLabel()).grow()
         }
+    }
+
+    private fun updateSyncPanel(status: CampaignSyncStatus) {
+        syncPanel.clearChildren()
+        val message = when (status.state) {
+            CampaignSyncState.LocalOnly -> "战役成绩已保存在本机"
+            CampaignSyncState.Pending -> "成绩已保存在本机 · 等待 iCloud 同步"
+            CampaignSyncState.Syncing -> "正在同步战役成绩…"
+            CampaignSyncState.Synced -> "战役成绩已同步到 iCloud"
+            CampaignSyncState.NoAccount -> "成绩已保存在本机 · 登录 iCloud 后可同步"
+            CampaignSyncState.Restricted -> "成绩已保存在本机 · iCloud 访问受限"
+            CampaignSyncState.AccountChanged -> "iCloud 账户已更换，自动同步已暂停；本机成绩仍保留"
+            CampaignSyncState.WaitingForNetwork -> "成绩已保存在本机 · 等待重试 iCloud 同步"
+            CampaignSyncState.Failed -> "iCloud 同步失败，本机成绩仍保留；可点击重试"
+        }
+        syncPanel.add("$message\n关内对局仅在本机续玩".toLabel(Theme.muted, 15).apply { setWrap(true) })
+            .growX().minWidth(0f).left()
+        if (status.state == CampaignSyncState.LocalOnly) return
+        if (stage.width < 700f) syncPanel.row()
+        val changed = status.state == CampaignSyncState.AccountChanged
+        syncPanel.add((if (changed) "合并到当前 iCloud" else "同步成绩").toTextButton().apply {
+            isDisabled = status.state == CampaignSyncState.Syncing
+            onActivation {
+                val account = status.accountToConfirm
+                if (changed && account != null) {
+                    ConfirmPopup(this@CampaignScreen,
+                        "将本机所有战役成绩合并到当前 iCloud 账户？\n这会包含之前账户的通关、星级和勋章。\n两端已有成绩都会保留，关内对局不会上传。",
+                        "确认合并", true) { sync.requestSync(account) }.open()
+                } else sync.requestSync()
+            }
+        }).minHeight(UiNavigation.minimumTouchSize()).padLeft(10f)
     }
 
     private fun overview(content: Table) {
@@ -383,4 +431,10 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     }
 
     override fun recreate(): BaseScreen = CampaignScreen(chapter, selected)
+
+    override fun dispose() {
+        disposed = true
+        sync.removeStatusListener(syncListener)
+        super.dispose()
+    }
 }

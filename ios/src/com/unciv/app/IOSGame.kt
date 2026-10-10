@@ -123,6 +123,7 @@ class IOSGame @JvmOverloads constructor(
             files.cloudSaveSync = it
             it.requestSync(CloudSyncTrigger.Startup)
         }
+        files.campaignProgressSync = runtimeFeatures.createCampaignProgressSync(files).also { it.requestSync() }
         runtimeFeatures.initialize()
     }
 
@@ -132,6 +133,7 @@ class IOSGame @JvmOverloads constructor(
         ChatWebSocket.resume()
         (Display.platform as IOSDisplay).restoreOrientation()
         cloudSaveService?.requestSync(CloudSyncTrigger.Foreground)
+        files.campaignProgressSync.requestSync()
         runtimeFeatures.onForeground()
     }
 
@@ -229,6 +231,7 @@ class IOSGame @JvmOverloads constructor(
         ChatWebSocket.stop()
         files.cloudSaveSync = CloudSaveSync.None
         cloudSaveService?.close()
+        files.campaignProgressSync.close()
         cloudSaveService = null
         runtimeFeatures.dispose()
         super.dispose()
