@@ -182,6 +182,45 @@ class CampaignTest {
         assertEquals(game.gameId, store.saved(CampaignCatalog.construction)!!.gameId)
     }
 
+    @Test fun `failed slot publication preserves the previous attempt and publishes no score`() {
+        val game = CampaignCatalog.newAttempt()
+        store.start(game, null)
+        val slot = store.slot(CampaignCatalog.construction)
+        val original = slot.readBytes()
+        val temporary = slot.sibling(".${slot.name()}.unciv-tmp")
+        temporary.mkdirs()
+        temporary.child("blocker").writeString("Prevent temporary file creation", false)
+        try {
+            val replacement = CampaignCatalog.newAttempt()
+            assertThrows(Exception::class.java) { store.start(replacement, game.campaign!!.attemptId) }
+            assertArrayEquals(original, slot.readBytes())
+            game.campaign!!.produced.addAll(listOf("Monument", "Scout"))
+            assertThrows(Exception::class.java) { store.submit(game) }
+            assertArrayEquals(original, slot.readBytes())
+            assertEquals(0, game.campaign!!.resultStars)
+            assertTrue(store.progress().cleared.isEmpty())
+            assertTrue(store.progress().unlocked.isEmpty())
+        } finally { temporary.deleteDirectory() }
+        assertEquals(game.gameId, store.resume(CampaignCatalog.construction).gameId)
+        assertEquals(1, store.submit(game))
+    }
+
+    @Test fun `defeat takes priority over completed objectives and survives saving`() {
+        val game = CampaignCatalog.newAttempt()
+        store.start(game, null)
+        game.campaign!!.produced.addAll(listOf("Monument", "Scout"))
+        // Deliberately constructed failure; this is not legal-route or combat evidence.
+        game.civilizations.remove(game.getCurrentPlayerCivilization())
+        assertTrue(CampaignRules.evaluate(game).failed)
+        assertEquals(0, CampaignRules.evaluate(game).stars)
+        CampaignRules.roundCompleted(game)
+        assertTrue(game.campaign!!.failed)
+        store.save(game)
+        assertTrue(store.saved(CampaignCatalog.construction)!!.campaign!!.failed)
+        assertThrows(Exception::class.java) { store.submit(game) }
+        assertTrue(store.progress().cleared.isEmpty())
+    }
+
     @com.unciv.testing.RedirectOutput(com.unciv.testing.RedirectPolicy.Show)
     @Test fun `two independent packaged starts reach all four star combinations by legal turns`() {
         repeat(2) { seedIndex ->
