@@ -6,7 +6,7 @@ import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.models.stats.Stat
 
 object CampaignRules {
-    data class Evaluation(val main: Boolean, val worker: Boolean, val population: Boolean, val failed: Boolean) {
+    class Evaluation(val main: Boolean, val worker: Boolean, val population: Boolean, val failed: Boolean) {
         val stars get() = if (failed || !main) 0 else 1 + (if (worker) 1 else 0) + (if (population) 1 else 0)
     }
 

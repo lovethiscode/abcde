@@ -182,6 +182,8 @@ class CampaignTest {
             for ((worker, population) in listOf(false to false, true to false, false to true, true to true)) {
                 val game = initial.clone().also { it.setTransients() }
                 UncivGame.Current.gameInfo = game
+                val routeStore = CampaignStore(UncivFiles(Gdx.files, temporary.newFolder("route-$seedIndex-$worker-$population").path))
+                routeStore.start(game, null)
                 val capital = game.getCurrentPlayerCivilization().getCapital()!!
                 // Both are player-facing city controls; no production, population or treasury injection.
                 capital.avoidGrowth = !population
@@ -199,6 +201,8 @@ class CampaignTest {
                 val stars = 1 + (if (worker) 1 else 0) + (if (population) 1 else 0)
                 println("CAMPAIGN_ROUTE seed=${game.campaign!!.seed} gameId=${game.gameId} worker=$worker population=$population turns=${game.turns} stars=$stars")
                 assertEquals(stars, CampaignRules.evaluate(game).stars)
+                assertEquals(stars, routeStore.submit(game))
+                assertEquals(stars, routeStore.progress().bestStars["beginner-construction:1"])
                 evidence?.let { FileConversions.writeJson(it.child("worker-$worker-population-$population.json"), game, false) }
             }
         }
