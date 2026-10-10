@@ -16,6 +16,7 @@ import com.unciv.models.translations.tr
 import com.unciv.ui.audio.MusicMood
 import com.unciv.ui.audio.MusicTrackChooserFlags
 import com.unciv.ui.components.widgets.TabbedPager
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.extensions.areSecretKeysPressed
 import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.extensions.toLabel
@@ -147,7 +148,7 @@ class VictoryScreen(
         }
         val difficultyLabel = "{Difficulty}: {${gameInfo.difficulty}}".toLabel()
         val neededSpace = topRightPanel.width.coerceAtLeast(difficultyLabel.width) * 2 + tabs.getHeaderPrefWidth()
-        if (neededSpace > stage.width) {
+        if (UiNavigation.isIos || neededSpace > stage.width) {
             // Let additions take part in TabbedPager's header scrolling
             tabs.decorateHeader(difficultyLabel, leftSide = true, fixed = false)
             tabs.decorateHeader(topRightPanel, leftSide = false, fixed = false)
