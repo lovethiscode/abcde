@@ -447,14 +447,15 @@ class ModManagementScreen private constructor(
         val downloadButton = "Download mod from URL".toTextButton()
         downloadButton.onClick {
             val popup = Popup(this)
-            popup.addGoodSizedLabel("Please enter the mod repository -or- archive zip -or- branch -or- release -or- commit url:").row()
+            val columns = if (UiNavigation.isIos) 2 else 1
+            popup.addGoodSizedLabel("Please enter the mod repository -or- archive zip -or- branch -or- release -or- commit url:").colspan(columns).row()
             val textField = UncivTextField("").apply { maxLength = 666 }
-            popup.add(textField).width(stage.width / 2).row()
+            popup.add(textField).width(stage.width / 2).colspan(columns).row()
             val pasteLinkButton = "Paste from clipboard".toTextButton()
             pasteLinkButton.onClick {
                 textField.text = Gdx.app.clipboard.contents
             }
-            popup.add(pasteLinkButton).row()
+            popup.add(pasteLinkButton).colspan(columns).row()
             val actualDownloadButton = "Download".toTextButton()
             actualDownloadButton.onClick {
                 actualDownloadButton.setStartingDownload()
@@ -473,8 +474,9 @@ class ModManagementScreen private constructor(
                     }
                 }
             }
-            popup.add(actualDownloadButton).row()
-            popup.addCloseButton()
+            if (UiNavigation.isIos) popup.addCloseButton(com.unciv.Constants.cancel).growX()
+            popup.add(actualDownloadButton).minSize(UiNavigation.minimumTouchSize()).growX().row()
+            if (!UiNavigation.isIos) popup.addCloseButton()
             popup.open()
         }
         return downloadButton

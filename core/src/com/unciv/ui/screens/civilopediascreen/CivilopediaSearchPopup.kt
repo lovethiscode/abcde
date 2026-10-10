@@ -14,6 +14,7 @@ import com.unciv.models.ruleset.unique.IHasUniques
 import com.unciv.models.stats.INamed
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.widgets.UncivTextField
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.extensions.toLabel
@@ -55,10 +56,11 @@ class CivilopediaSearchPopup(
         resultCell = add().colspan(2).growX()
         row()
 
+        if (UiNavigation.isIos) addCloseButton(com.unciv.Constants.cancel).growX()
         searchButton = addButton("Search!", KeyCharAndCode.RETURN) {
             startSearch(searchText.text)
         }.actor
-        addCloseButton()
+        if (!UiNavigation.isIos) addCloseButton()
         showListeners.add {
             keyboardFocus = searchText
             searchText.selectAll()
