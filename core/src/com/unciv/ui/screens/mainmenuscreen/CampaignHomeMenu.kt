@@ -12,6 +12,7 @@ import com.unciv.UncivGame
 import com.unciv.models.translations.tr
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onLongPress
@@ -88,7 +89,7 @@ internal class CampaignHomeMenu(
         body.add(campaignCover(coverWidth, bodyHeight)).size(coverWidth, bodyHeight)
         if (portrait) body.row() else body.add().width(22f)
         body.add(actions).width(actionsWidth).padTop(if (portrait) 20f else 0f)
-        add(body).width(width).padBottom(24f).row()
+        add(body).width(width).padBottom(12f).row()
 
         val tools = Table()
         val toolCount = if (game.achievementsAvailable) 6 else 5
@@ -106,7 +107,7 @@ internal class CampaignHomeMenu(
                 onActivation(binding = binding) { stopBackground(); action() }
             }
             button.name = "ui-home-${text.lowercase().replace(' ', '-')}"
-            tools.add(button).width(toolWidth).height(78f).pad(3f)
+            tools.add(button).width(toolWidth).height(maxOf(48f, UiNavigation.minimumTouchSize())).pad(3f)
             if (++added % columns == 0) tools.row()
             return button
         }
@@ -123,7 +124,7 @@ internal class CampaignHomeMenu(
 
         val version = game.displayBuildNumber?.let { "{Version} ${UncivGame.VERSION.text} ($it)" }
             ?: "{Version} ${UncivGame.VERSION.text}"
-        add(version.toLabel(muted, 18)).padTop(14f).row()
+        add(version.toLabel(muted, 16)).padTop(4f).row()
         pack()
     }
 

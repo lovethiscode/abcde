@@ -18,6 +18,7 @@ import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.extensions.isEnabled
 import com.unciv.ui.components.extensions.toTextButton
+import com.badlogic.gdx.utils.Align
 
 class PickerPane(
     disableScroll: Boolean = false,
@@ -50,6 +51,8 @@ class PickerPane(
     val scrollPane = AutoScrollPane(topTable)
     /** A fixed SplitPane holds [scrollPane] and [bottomTable] */
     val splitPane = SplitPane(scrollPane, bottomTable, true, BaseScreen.skin)
+    private var sideDescriptionTitle: Label? = null
+    private var horizontalDescription = false
 
     init {
         if (UiNavigation.isIos) {
@@ -75,14 +78,44 @@ class PickerPane(
     }
 
     override fun layout() {
+        val showSideDescription = sideDescriptionTitle != null && width > height
+        if (showSideDescription != horizontalDescription) {
+            horizontalDescription = showSideDescription
+            splitPane.setVertical(!showSideDescription)
+            bottomTable.clear()
+            rightSideGroup.fill(if (showSideDescription) 1f else 0f)
+            rightSideButton.label.wrap = showSideDescription
+            if (showSideDescription) {
+                bottomTable.pad(12f)
+                bottomTable.add(sideDescriptionTitle).minWidth(0f).growX().pad(10f).row()
+                bottomTable.add(descriptionScroll).minWidth(0f).grow().row()
+                bottomTable.add(rightSideGroup).minWidth(0f).growX().pad(10f)
+                descriptionScroll.setScrollingDisabled(true, false)
+            } else {
+                bottomTable.pad(0f)
+                bottomTable.add(descriptionScroll).grow()
+                bottomTable.add(rightSideGroup).pad(10f).right()
+            }
+        }
+        if (showSideDescription)
+            splitPane.splitAmount = 1f - (width * .32f).coerceIn(280f, 400f) / width
         if (UiNavigation.isIos) {
             val hasNavigation = closeButton.parent === navigationHeader && closeButton.isVisible
             navigationHeader.isVisible = hasNavigation
             getCell(navigationHeader).height(if (hasNavigation) maxOf(closeButton.height + 16f, navigationHeader.prefHeight) else 0f)
         }
         super.layout()
-        bottomTable.height = bottomTable.height.coerceAtMost(maxBottomTableHeight)
-        splitPane.splitAmount = (scrollPane.height / (scrollPane.height + bottomTable.height)).coerceAtLeast(screenSplit)
+        if (!showSideDescription) {
+            bottomTable.height = bottomTable.height.coerceAtMost(maxBottomTableHeight)
+            splitPane.splitAmount = (scrollPane.height / (scrollPane.height + bottomTable.height)).coerceAtLeast(screenSplit)
+        }
+    }
+
+    /** Technology descriptions use a full-height panel in landscape and the usual footer in portrait. */
+    fun useSideDescription(title: Label) {
+        sideDescriptionTitle = title.apply { wrap = true; setAlignment(Align.left) }
+        descriptionLabel.setAlignment(Align.topLeft)
+        invalidateHierarchy()
     }
 
     fun setNavigationContent(content: Actor) {

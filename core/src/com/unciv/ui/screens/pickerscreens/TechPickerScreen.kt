@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.pickerscreens
 
 import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
@@ -48,6 +49,7 @@ class TechPickerScreen(
     private val ruleset = civInfo.gameInfo.ruleset
     private var techNameToButton = HashMap<String, TechButton>()
     private var selectedTech: Technology? = null
+    private val detailsTitle = "".toLabel(fontSize = 24)
     private var civTech: TechManager = civInfo.tech
     private var tempTechsToResearch: ArrayList<String>
     private var lines = NonTransformGroup().apply { touchable = Touchable.disabled }
@@ -84,6 +86,7 @@ class TechPickerScreen(
         Gdx.input.inputProcessor = null // Avoid ANRs while building the tech screen
 
         setDefaultCloseAction()
+        if (UiNavigation.isIos) pickerPane.useSideDescription(detailsTitle)
         scrollPane.setOverscroll(false, false)
 
         descriptionLabel.onActivation {
@@ -397,6 +400,7 @@ class TechPickerScreen(
 
         val previousSelectedTech = selectedTech
         selectedTech = tech
+        detailsTitle.setText(tech?.name?.tr() ?: "")
         descriptionLabel.setText(tech?.getDescription(civInfo))
 
         if (!switchFromWorldScreen)
