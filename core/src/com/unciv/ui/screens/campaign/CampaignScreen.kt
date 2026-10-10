@@ -183,7 +183,8 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             line(map, x, 300f, x + 16f, 328f, Theme.border, 2f)
             line(map, x + 16f, 328f, x + 32f, 300f, Theme.border, 2f)
         }
-        val positions = listOf(.24f to .18f, .72f to .38f, .27f to .62f, .70f to .85f)
+        // Scene2D coordinates start at the bottom, so earlier levels need higher Y positions.
+        val positions = listOf(.24f to .85f, .72f to .62f, .27f to .38f, .70f to .18f)
         for (i in 0..2) {
             val a = positions[i]; val b = positions[i+1]
             line(map, a.first * width, a.second * 410, b.first * width, b.second * 410,
