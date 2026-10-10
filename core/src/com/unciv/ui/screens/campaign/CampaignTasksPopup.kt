@@ -42,7 +42,8 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         }
         val met = listOf(result.main, result.worker, result.population)
         for ((i, goal) in goals.withIndex()) {
-            addBodyText("${if (met[i] && !result.failed) "✓" else "○"} $goal").row()
+            val kind = if (i == 0) "通关目标" else "挑战 ${if (i == 1) "A" else "B"}（额外 1 星）"
+            addBodyText("${if (met[i] && !result.failed) "✓" else "○"} $kind：$goal").row()
             result.details.getOrNull(i)?.let { addBodyText(it).row() }
             if (i in result.impossible) addBodyText("本次挑战星已无法获得；仍可争取其他目标，或重新挑战。").row()
         }
@@ -50,7 +51,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
             for (restriction in d.restrictions) addBodyText(restriction).row()
             if (result.main && !d.automatic) {
                 addBodyText("主目标已达成。点击下方“结算通关”保存成绩并解锁下一关，也可继续争取挑战星。").row()
-            } else addBodyText(if (d.automatic) "按本关规则自动结算。" else "完成主目标后可主动结算。").row()
+            } else addBodyText(if (d.automatic) "按本关规则自动结算。" else "完成通关目标即可结算；挑战 A、B 各增加 1 星。").row()
             for (area in d.areas) location("定位：${area.title}", area.tiles.first())
             for ((i, tile) in d.targetTiles.withIndex()) {
                 val name = screen.gameInfo.tileMap[tile].resource?.let { "${it.tr()}地块" } ?: "改良地块 ${i+1}"
