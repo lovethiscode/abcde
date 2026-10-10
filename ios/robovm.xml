@@ -34,7 +34,7 @@
         </resource>
         <resource>
             <directory>build/default/generated/launch-screen</directory>
-            <includes><include>LaunchScreen.storyboardc/**</include></includes>
+            <includes><include>ExpeditionLaunchScreen.storyboardc/**</include></includes>
         </resource>
     </resources>
     <forceLinkClasses>
