@@ -456,8 +456,8 @@ class ModManagementScreen private constructor(
                 textField.text = Gdx.app.clipboard.contents
             }
             popup.add(pasteLinkButton).colspan(columns).row()
-            val actualDownloadButton = "Download".toTextButton()
-            actualDownloadButton.onClick {
+            lateinit var actualDownloadButton: TextButton
+            val downloadAction: () -> Unit = {
                 actualDownloadButton.setStartingDownload()
                 Concurrency.run {
                     val repo = GithubAPI.Repo.parseUrl(textField.text)
@@ -474,9 +474,14 @@ class ModManagementScreen private constructor(
                     }
                 }
             }
-            if (UiNavigation.isIos) popup.addCloseButton(com.unciv.Constants.cancel).growX()
-            popup.add(actualDownloadButton).minSize(UiNavigation.minimumTouchSize()).growX().row()
-            if (!UiNavigation.isIos) popup.addCloseButton()
+            if (UiNavigation.isIos) {
+                popup.addCloseButton(com.unciv.Constants.cancel).growX()
+                actualDownloadButton = popup.addButton("Download", action = downloadAction).growX().actor
+            } else {
+                actualDownloadButton = "Download".toTextButton().apply { onClick(downloadAction) }
+                popup.add(actualDownloadButton).row()
+                popup.addCloseButton()
+            }
             popup.open()
         }
         return downloadButton
