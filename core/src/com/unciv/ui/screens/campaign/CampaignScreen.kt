@@ -127,7 +127,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                     defaults().pad(10f).left()
                     add(d.title.toLabel(Theme.gold, 24)).row()
                     add("固定联邦视角 · 最高 3 星 · 建议先掌握移动、战斗、攻城与生产".toLabel(Theme.muted).apply { wrap = true })
-                        .width((stage.width - 100f).coerceAtMost(820f)).row()
+                        .width((this@CampaignScreen.stage.width - 100f).coerceAtMost(820f)).row()
                     add("查看战役".toTextButton().apply {
                         name = "ui-campaign-historical:civil-war-east"
                         onActivation { selected = d.id; rebuild() }
