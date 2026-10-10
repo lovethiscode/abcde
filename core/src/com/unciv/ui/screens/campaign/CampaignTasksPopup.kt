@@ -1,15 +1,21 @@
 package com.unciv.ui.screens.campaign
 
+import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
-import com.badlogic.gdx.utils.Align
 import com.unciv.logic.campaign.CampaignCatalog
 import com.unciv.logic.campaign.CampaignRules
 import com.unciv.logic.campaign.CampaignStore
 import com.unciv.logic.map.HexCoord
+import com.unciv.models.skins.ExpeditionBlueTheme as Theme
 import com.unciv.models.translations.tr
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.LoadingPopup
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.popups.ToastPopup
@@ -17,7 +23,7 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.WorldScreen
 import com.unciv.utils.Concurrency
 
-/** The same panel presents live progress and frozen, recoverable results. */
+/** Fixed heading and settlement controls surround a scrollable, two-column task board. */
 class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
     init {
         val state = requireNotNull(screen.gameInfo.campaign)
@@ -28,76 +34,152 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         } ?: d
         val result = CampaignRules.evaluate(screen.gameInfo)
         val terminal = state.resultStars > 0 || result.failed
-        addGoodSizedLabel(d.title).row()
-        addGoodSizedLabel("行动回合 ${state.completedRounds + 1} · 已完成 ${state.completedRounds} 回合").row()
+        val boardWidth = (maxPopupWidth - 50f).coerceAtMost(1100f)
+        val wide = boardWidth >= 700f
+        val goalsWidth = if (wide) (boardWidth - 24f) * .61f else boardWidth
+        val sideWidth = if (wide) boardWidth - goalsWidth - 24f else boardWidth
+        innerTable.background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.panel)
+
+        val heading = Table().apply {
+            add(d.number.toString().padStart(2, '0').toLabel(Theme.gold, 28)).padRight(16f)
+            add(Table().apply {
+                defaults().left()
+                add("文明的诞生 / ${CampaignCatalog.chapters[(d.number - 1) / 4]}".toLabel(Theme.muted, 14)).row()
+                add(d.title.toLabel(Theme.text, 25)).padTop(3f).row()
+                add("行动回合 ${state.completedRounds + 1} · 已完成 ${state.completedRounds} 回合".toLabel(Theme.muted, 15)).padTop(4f)
+            }).expandX().left()
+        }
+        addTitleWithCloseButton(heading)
+
+        val goals = Table().apply { top(); defaults().left().growX() }
         if (terminal) {
             screen.campaignResultShown = true
-            addBodyText(if (result.failed) "本次挑战失败：${result.failureReason}" else "通关 · ${state.resultStars} / 3 星").row()
+            goals.add(bodyText(if (result.failed) "本次挑战失败" else "战役通关", goalsWidth,
+                if (result.failed) Theme.danger else Theme.gold, 23)).padBottom(6f).row()
             val best = CampaignStore(screen.game.files).progress().bestStars["${d.id}:${d.scoringVersion}"] ?: 0
-            addBodyText("本版本最高成绩：${maxOf(best, state.resultStars)} / 3 星").row()
-        }
-        val goals = copy.objectives.ifEmpty {
-            listOf("本次生产完成：" + d.requiredProduction.joinToString("、") { it.tr() },
-                "本次生产并保留：" + d.worker.tr(), "初始首都人口至少 ${d.population}")
+            goals.add(bodyText(if (result.failed) result.failureReason else
+                "本次获得 ${state.resultStars} 星 · 本版本最高 ${maxOf(best, state.resultStars)} 星", goalsWidth, Theme.muted, 16))
+                .padBottom(12f).row()
         }
         val met = listOf(result.main, result.worker, result.population)
-        for ((i, goal) in goals.withIndex()) {
-            val kind = if (i == 0) "通关目标" else "挑战 ${if (i == 1) "A" else "B"}（额外 1 星）"
-            addBodyText("${if (met[i] && !result.failed) "✓" else "○"} $kind：$goal").row()
-            result.details.getOrNull(i)?.let { addBodyText(it).row() }
-            if (i in result.impossible) addBodyText("本次挑战星已无法获得；仍可争取其他目标，或重新挑战。").row()
+        for ((i, goal) in copy.objectives.withIndex()) {
+            if (i < 2) goals.add(bodyText(if (i == 0) "通关目标 · 必做 1 星" else "挑战目标 · 可选，各 1 星",
+                goalsWidth, Theme.gold, 16)).padTop(if (i == 0) 0f else 12f).padBottom(7f).row()
+            val card = Table().apply {
+                background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", if (i == 0) Theme.raised else Theme.background)
+                pad(12f)
+                add((if (met[i] && !result.failed) "✓" else "○").toLabel(
+                    if (met[i] && !result.failed) Theme.gold else Theme.muted, 22)).top().width(26f).padRight(8f)
+                val textWidth = goalsWidth - 58f
+                add(Table().apply {
+                    defaults().left()
+                    add(bodyText(goal, textWidth, Theme.text, 18)).row()
+                    result.details.getOrNull(i)?.let {
+                        add(bodyText(it, textWidth, if (met[i] && !result.failed) Theme.success else Theme.muted, 15)).padTop(5f).row()
+                    }
+                    if (i in result.impossible) add(bodyText("本次已错过这颗星，仍可完成通关及其他挑战。",
+                        textWidth, Theme.danger, 15)).padTop(5f).row()
+                }).width(textWidth)
+            }
+            goals.add(card).width(goalsWidth).padBottom(8f).row()
         }
+
+        val side = Table().apply { top(); defaults().left().growX().spaceBottom(8f) }
         if (!terminal) {
-            for (restriction in d.restrictions) addBodyText(restriction).row()
-            if (result.main && !d.automatic) {
-                addBodyText("主目标已达成。点击下方“结算通关”保存成绩并解锁下一关，也可继续争取挑战星。").row()
-            } else addBodyText(if (d.automatic) "按本关规则自动结算。" else "完成通关目标即可结算；挑战 A、B 各增加 1 星。").row()
-            for (area in d.areas) location("定位：${area.title}", area.tiles.first())
+            val locations = d.areas.map { it.title to it.tiles.first() }.toMutableList()
             for ((i, tile) in d.targetTiles.withIndex()) {
-                val name = screen.gameInfo.tileMap[tile].resource?.let { "${it.tr()}地块" } ?: "改良地块 ${i+1}"
-                location("定位：$name", tile)
+                val name = screen.gameInfo.tileMap[tile].resource?.let { "${it.tr()}地块" } ?: "目标地块 ${i + 1}"
+                locations.add(name to tile)
             }
-            screen.gameInfo.getCities().firstOrNull { it.id == d.targetCity }?.let { location("定位：目标城市", it.location) }
-            if (!state.hintsDismissed) {
-                for (hint in copy.hints) addBodyText("提示 · $hint").row()
+            screen.gameInfo.getCities().firstOrNull { it.id == d.targetCity }?.let {
+                val title = when (d.number) { 12 -> "目标要塞"; 13 -> "占领城市"; else -> "目标首都" }
+                locations.add(title to it.location)
             }
-            contentButton(if (state.hintsDismissed) "展开教学提示" else "收起教学提示") {
-                state.hintsDismissed = !state.hintsDismissed
-                close(); CampaignTasksPopup(screen)
+            if (locations.isNotEmpty()) {
+                side.add(bodyText("地图定位", sideWidth, Theme.gold, 16)).row()
+                for ((title, position) in locations) side.add(boardButton("定位 · $title") { locate(position) })
+                    .width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).row()
             }
-            if (result.main && !d.automatic) {
-                addButton("Submit campaign result", style = BaseScreen.skin.get("positive", TextButtonStyle::class.java)) {
-                    submit()
-                }.apply {
-                    actor.name = "ui-campaign-submit"
-                    colspan(2).growX().row()
-                }
-            }
-        } else {
-            if (state.resultStars > 0 && d.nextLevel.isNotEmpty())
-                addButton("前往下一关") { leave(d.nextLevel) }.colspan(2).growX().row()
-            addButton("查看本关 / 重新挑战") { leave(d.id) }.colspan(2).growX().row()
         }
-        addButton("Save and return to campaigns") { leave(d.id) }.actor.name = "ui-campaign-return"
-        addCloseButton(if (terminal) "查看地图（只读）" else "继续挑战")
+        side.add(boardButton(if (state.hintsDismissed) "展开教学提示 ›" else "收起教学提示 ⌄") {
+            state.hintsDismissed = !state.hintsDismissed
+            close(); CampaignTasksPopup(screen)
+        }).width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).row()
+        if (!state.hintsDismissed) {
+            for ((i, hint) in copy.hints.withIndex())
+                side.add(bodyText("${i + 1}. $hint", sideWidth, Theme.text, 16)).row()
+            side.add(bodyText("本关设置", sideWidth, Theme.gold, 16)).padTop(6f).row()
+            for (restriction in copy.restrictions) side.add(bodyText(restriction, sideWidth, Theme.muted, 14)).row()
+        }
+        side.add(boardButton(if (terminal) "返回战役 / 重新挑战" else "保存并返回战役") { leave(d.id) }.apply {
+            name = "ui-campaign-return"
+        }).width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).padTop(8f).row()
+        val board = Table().apply {
+            add(goals).width(goalsWidth).top()
+            if (wide) add(side).width(sideWidth).padLeft(24f).top()
+            else { row(); add(side).width(sideWidth).padTop(16f) }
+        }
+        add(board).width(boardWidth).row()
+        getScrollPane()?.setScrollingDisabled(true, false)
+
+        val statusWidth = if (wide) boardWidth * .43f else boardWidth
+        val status = Table().apply {
+            defaults().left()
+            add(campaignStars(if (terminal) state.resultStars else result.stars, 24f)).row()
+            val caption = when {
+                result.failed -> "可返回战役，重新挑战"
+                terminal -> "成绩已保存"
+                d.automatic -> "按本关目标自动结算"
+                result.main -> "当前可获得 ${result.stars} 星 · 结算时检查目标"
+                else -> "完成通关目标后可结算"
+            }
+            add(bodyText(caption, statusWidth, Theme.muted, 14)).padTop(5f)
+        }
+        bottomTable.pad(14f, 25f, 18f, 25f)
+        bottomTable.defaults().pad(0f).space(10f)
+        val primary = when {
+            state.resultStars > 0 && d.nextLevel.isNotEmpty() -> "前往下一关"
+            terminal -> "返回战役"
+            !d.automatic -> "结算通关"
+            else -> null
+        }
+        bottomTable.add(status).width(statusWidth).expandX().left().apply {
+            if (!wide) colspan(if (primary == null) 1 else 2).row()
+        }
+        addCloseButton(if (terminal) "查看地图" else "继续挑战")
+            .width(if (wide) boardWidth * .24f else if (primary == null) boardWidth else (boardWidth - 10f) / 2)
+            .minHeight(UiNavigation.minimumTouchSize())
+        if (primary != null) addButton(primary, style = BaseScreen.skin.get("positive", TextButtonStyle::class.java)) {
+            when {
+                !terminal -> submit()
+                state.resultStars > 0 && d.nextLevel.isNotEmpty() -> leave(d.nextLevel)
+                else -> leave(d.id)
+            }
+        }.apply {
+            width(if (wide) boardWidth * .29f else (boardWidth - 10f) / 2)
+            minHeight(UiNavigation.minimumTouchSize())
+            actor.label.setFontSize(18)
+            if (!terminal) {
+                actor.name = "ui-campaign-submit"
+                actor.isDisabled = !result.main || !screen.isPlayersTurn || screen.isNextTurnUpdateRunning()
+            }
+        }
         open()
     }
 
-    private fun addBodyText(text: String) = addGoodSizedLabel(text).apply {
-        actor.setAlignment(Align.left)
+    private fun bodyText(text: String, width: Float, color: Color = Theme.text, size: Int = 18) =
+        Table().apply { add(text.toLabel(color, size).apply { wrap = true }).width(width).left() }
+
+    private fun boardButton(title: String, action: () -> Unit): TextButton = title.toTextButton().apply {
+        label.setFontSize(17)
+        label.wrap = true
+        onActivation { action() }
     }
 
-    private fun location(title: String, position: HexCoord) {
-        contentButton(title) {
-            // Centering does not change explored tiles or remove fog of war.
-            screen.mapHolder.setCenterPosition(position, immediately = true, selectUnit = false)
-            close()
-        }
-    }
-
-    private fun contentButton(title: String, action: () -> Unit) {
-        add(title.toTextButton().apply { onActivation { action() } })
-            .minHeight(UiNavigation.minimumTouchSize()).row()
+    private fun locate(position: HexCoord) {
+        // Centering does not change explored tiles or remove fog of war.
+        screen.mapHolder.setCenterPosition(position, immediately = true, selectUnit = false)
+        close()
     }
 
     private fun submit() {

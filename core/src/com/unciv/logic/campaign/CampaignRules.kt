@@ -8,6 +8,7 @@ import com.unciv.logic.civilization.AlertType
 import com.unciv.logic.civilization.Civilization
 import com.unciv.logic.map.HexCoord
 import com.unciv.logic.map.mapunit.MapUnit
+import com.unciv.models.translations.tr
 import com.unciv.models.stats.Stat
 import yairm210.purity.annotations.Readonly
 
@@ -142,18 +143,29 @@ object CampaignRules {
         var bonusA = false
         var bonusB = false
         val detail: List<String>
+        fun done(value: Boolean) = if (value) "已完成" else "未完成"
         when (d.number) {
             1 -> {
                 main = capKept && capital!!.id in s.foundedCities && d.areas.any { capital.location in it.tiles }
                 bonusA = s.scoutedBeforeFounding && s.foundedTurn > 0
                 bonusB = s.foundedTurn in 1..d.efficiencyTurn
-                detail = listOf(if (main) "已在候选区域建立首都" else "在标记区域建立并保留首都", "建城前完整侦察：${if (bonusA) "完成" else "未完成"}", "建城行动回合：${s.foundedTurn.takeIf { it > 0 } ?: "尚未建城"} / ${d.efficiencyTurn}")
+                detail = listOf(
+                    if (main) "首都已建在候选区，且仍属于你" else "任选粮食或产能候选区建城；结算时首都仍须属于你",
+                    if (s.foundedTurn > 0) "建城前探索两处区域：${done(s.scoutedBeforeFounding)}" else
+                        d.areas.joinToString("\n") { a -> "${a.title}：已探索 ${a.tiles.count { game.tileMap[it].isExplored(p) }} / ${a.tiles.size} 块地" },
+                    if (s.foundedTurn > 0) "建城于第 ${s.foundedTurn} 回合；要求不晚于第 ${d.efficiencyTurn} 回合" else
+                        "当前第 ${s.completedRounds + 1} 回合；最晚第 ${d.efficiencyTurn} 回合建城"
+                )
             }
             2 -> {
                 main = d.requiredProduction.all { it in s.produced }
                 bonusA = units.any { it.id in s.producedWorkers && it.name == d.worker }
                 bonusB = pop >= d.population
-                detail = listOf("生产完成：${s.produced.size} / ${d.requiredProduction.size}", "生产并保留工人：${if (bonusA) 1 else 0} / 1", "首都人口：$pop / ${d.population}")
+                detail = listOf(
+                    d.requiredProduction.joinToString("\n") { "${it.tr()}：${if (it in s.produced) "已生产完成" else "尚未生产完成"}" },
+                    "本次生产、目前仍属于你的工人：${if (bonusA) 1 else 0} / 1",
+                    "开局首都人口：$pop / ${d.population}"
+                )
             }
             3 -> {
                 main = improved
@@ -179,73 +191,122 @@ object CampaignRules {
                 main = capKept && pop >= d.populationMain && has(capital, "Monument")
                 bonusA = pop >= d.population
                 bonusB = capKept && capital!!.cityStats.currentCityStats.production >= d.productionTarget && capital.cityStats.currentCityStats.food >= 0
-                detail = listOf("人口 $pop / ${d.populationMain}；纪念碑：${has(capital, "Monument")}", "人口 $pop / ${d.population}", "产能 ${capital?.cityStats?.currentCityStats?.production?.toInt() ?: 0} / ${d.productionTarget}；粮食盈余须非负")
+                detail = listOf(
+                    "开局首都人口：$pop / ${d.populationMain}；纪念碑：${if (has(capital, "Monument") && capKept) "已拥有" else "未拥有"}",
+                    "开局首都人口：$pop / ${d.population}",
+                    "每回合产能：${capital?.takeIf { capKept }?.cityStats?.currentCityStats?.production ?: 0f} / ${d.productionTarget}\n粮食盈余：${capital?.takeIf { capKept }?.cityStats?.currentCityStats?.food ?: 0f}（须至少为 0）"
+                )
             }
             5 -> {
                 main = explored.take(3).size == 3 && explored.take(3).all { it }
                 bonusA = p.getKnownCivs().any { it.civName == d.enemy }
                 bonusB = explored.getOrNull(3) == true
-                detail = listOf("主线区域：${explored.take(3).count { it }} / 3", "已接触指定邻国：$bonusA", "支线区域完整侦察：$bonusB")
+                detail = listOf(
+                    d.areas.take(3).joinToString("\n") { a -> "${a.title}：已探索 ${a.tiles.count { game.tileMap[it].isExplored(p) }} / ${a.tiles.size} 块地" },
+                    "与${d.enemy.tr()}建立联系：${done(bonusA)}",
+                    "支线高地：已探索 ${d.areas.getOrNull(3)?.tiles?.count { game.tileMap[it].isExplored(p) } ?: 0} / ${d.areas.getOrNull(3)?.tiles?.size ?: 0} 块地"
+                )
             }
             6 -> {
                 main = "Writing" in p.tech.techsResearched && capKept && has(capital, "Library")
                 bonusA = "Animal Husbandry" in p.tech.techsResearched
                 bonusB = pop >= d.population
-                detail = listOf("文字科技与首都图书馆：$main", "畜牧业：$bonusA", "首都人口：$pop / ${d.population}")
+                detail = listOf(
+                    "文字科技：${if ("Writing" in p.tech.techsResearched) "已研究" else "未研究"}\n开局首都的图书馆：${if (capKept && has(capital, "Library")) "已建成" else "未建成"}",
+                    "畜牧业科技：${if (bonusA) "已研究" else "未研究"}", "开局首都人口：$pop / ${d.population}"
+                )
             }
             7 -> {
                 main = s.incomeStreak >= rounds && income >= 0
                 bonusA = initial.size == 2 && initial.all { kept(it, p) && has(it, "Market") }
                 bonusB = p.gold >= d.goldTarget && income >= d.incomeTarget
-                detail = listOf("非负净收入连续回合：${s.incomeStreak} / $rounds；当前 ${income.toInt()}", "两座初始城市保留市场：$bonusA", "金币 ${p.gold} / ${d.goldTarget}；净收入 ${income.toInt()} / ${d.incomeTarget}")
+                detail = listOf(
+                    "已连续不亏损 ${s.incomeStreak.coerceAtMost(rounds)} / $rounds 轮；当前每回合净收入 $income",
+                    "开局城市中，属于你且有市场的城市：${initial.count { kept(it, p) && has(it, "Market") }} / 2",
+                    "金币：${p.gold} / ${d.goldTarget}；每回合净收入：$income / +${d.incomeTarget}"
+                )
             }
             8 -> {
                 main = connected && s.stableStreak >= rounds && happy >= 0
                 bonusA = kept(second, p) && has(second, "Granary")
                 bonusB = connected && s.incomeStreak >= rounds && income >= d.incomeTarget
-                detail = listOf("新城连接：$connected；幸福度 $happy；连续回合 ${s.stableStreak} / $rounds", "新城粮仓：$bonusA", "净收入 ${income.toInt()} / ${d.incomeTarget}；连续回合 ${s.incomeStreak} / $rounds")
+                detail = listOf(
+                    "两城连接：${if (connected) "已连接" else "未连接"}；幸福度：$happy\n已连续达标 ${s.stableStreak.coerceAtMost(rounds)} / $rounds 轮",
+                    "新城粮仓：${if (bonusA) "已建成且属于你" else "未完成"}",
+                    "每回合净收入：$income / +${d.incomeTarget}；已连续达标 ${s.incomeStreak.coerceAtMost(rounds)} / $rounds 轮"
+                )
             }
             9 -> {
                 main = army && p.gold >= 0 && income >= 0
                 bonusA = melee >= 3
                 bonusB = army && s.incomeStreak >= rounds && income >= d.incomeTarget
-                detail = listOf("生产保留近战 $melee / 2、远程 $ranged / 2；金币 ${p.gold}；净收入 ${income.toInt()}", "生产保留近战：$melee / 3", "编制完整且净收入达标：${s.incomeStreak} / $rounds 回合")
+                detail = listOf(
+                    "自产部队：近战 $melee / 2，远程 $ranged / 2\n金币：${p.gold}；每回合净收入：$income（两项须至少为 0）",
+                    "本次生产、目前仍归你的近战部队：$melee / 3",
+                    "部队齐备且每回合收入至少 +${d.incomeTarget}：${s.incomeStreak.coerceAtMost(rounds)} / $rounds 轮\n当前每回合净收入：$income"
+                )
             }
             10 -> {
                 main = s.killedUnits.size >= 3 || s.enemyEliminated
                 bonusA = losses == 0
                 bonusB = s.killRoles.containsAll(listOf("melee", "ranged"))
-                detail = listOf("战斗击败 ${s.killedUnits.size} / 3；消灭指定敌国：${s.enemyEliminated}", "军事单位战损：$losses / 0", "近战与远程各击败敌军：${s.killRoles.size} / 2")
+                detail = listOf(
+                    "已击败${d.enemy.tr()}军事单位 ${s.killedUnits.size} / 3 支；通过战斗消灭${d.enemy.tr()}：${done(s.enemyEliminated)}",
+                    "战斗中已损失 $losses 支军事单位（要求 0 支）",
+                    "近战完成击杀：${done("melee" in s.killRoles)}；远程完成击杀：${done("ranged" in s.killRoles)}"
+                )
             }
             11 -> {
                 main = !s.capitalLost && capKept && s.completedRounds >= d.defendRounds
                 bonusA = initial.size == 3 && initial.all { kept(it, p) }
                 bonusB = losses <= d.lossLimit
-                detail = listOf("首都从未失守；完整回合 ${s.completedRounds} / ${d.defendRounds}", "保留初始城市：${initial.count { kept(it, p) }} / 3", "军事战损：$losses / ${d.lossLimit}")
+                detail = listOf(
+                    "首都：${if (s.capitalLost || !capKept) "已失守" else "仍在坚守"}；已守过 ${s.completedRounds} / ${d.defendRounds} 个完整回合",
+                    "目前仍属于你的初始城市：${initial.count { kept(it, p) }} / 3",
+                    "战斗中已损失 $losses 支军事单位（最多 ${d.lossLimit} 支）"
+                )
             }
             12 -> {
                 main = targetKept && target!!.id in s.capturedCities && s.completedRounds + 1 <= d.hardTurnLimit
                 bonusA = s.completedRounds + 1 <= d.efficiencyTurn
                 bonusB = !s.protectedUnitLost && s.protectedUnits.size == 2 && units.count { it.id in s.protectedUnits } == 2
-                detail = listOf("完成占领处置并保留要塞：$main；最晚行动回合 ${d.hardTurnLimit}", "行动回合 ${s.completedRounds + 1} / ${d.efficiencyTurn}", "初始攻城部队完整保留：$bonusB")
+                detail = listOf(
+                    "攻下并留住要塞：${done(main)}\n当前第 ${s.completedRounds + 1} 回合；最晚第 ${d.hardTurnLimit} 回合完成处置",
+                    "当前第 ${s.completedRounds + 1} 回合；须在第 ${d.efficiencyTurn} 回合内通关",
+                    if (s.protectedUnitLost) "已失去初始攻城部队，补造也无法恢复这颗星" else
+                        "目前仍属于你的初始攻城部队：${units.count { it.id in s.protectedUnits }} / 2 支"
+                )
             }
             13 -> {
                 main = cityReady && stable
                 bonusA = targetKept && target!!.isConnectedToCapital()
                 bonusB = targetKept && has(target, "Market")
-                detail = listOf("城市恢复：$cityReady；净收入 ${income.toInt()}、幸福度 $happy；稳定 ${s.stableStreak} / $rounds 回合", "目标城市连接首都：$bonusA", "目标城市市场：$bonusB")
+                detail = listOf(
+                    "占领城市：${if (!targetKept) "未由你控制" else if (cityReady) "抵抗已结束" else "仍在抵抗"}\n净收入：$income；幸福度：$happy；已连续达标 ${s.stableStreak.coerceAtMost(rounds)} / $rounds 轮",
+                    "占领城市与首都：${if (bonusA) "已连接" else "未连接"}", "占领城市的市场：${if (bonusB) "已建成且属于你" else "未完成"}"
+                )
             }
             14 -> {
                 main = targetKept && target!!.id in s.capturedCities
                 bonusA = siege >= 1
                 bonusB = losses <= d.lossLimit
-                detail = listOf("战斗夺取并保留目标原始首都：$main", "生产并保留攻城单位：$siege / 1", "军事战损：$losses / ${d.lossLimit}")
+                detail = listOf(
+                    "攻下目标首都并选择傀儡或吞并：${done(main)}；结算时城市仍须属于你",
+                    "本次生产、目前仍归你的攻城部队：$siege / 1",
+                    "战斗中已损失 $losses 支军事单位（最多 ${d.lossLimit} 支）"
+                )
             }
             15, 16 -> {
                 main = game.victoryData?.let { it.winningCiv == p.civID && it.victoryType == "Domination" } == true
                 bonusA = if (d.number == 15) losses <= d.lossLimit else s.completedRounds + 1 <= d.efficiencyTurn
                 bonusB = stable && (d.number == 15 || p.gold >= d.goldTarget)
-                detail = listOf("引擎判定征服胜利：$main", if (d.number == 15) "军事战损：$losses / ${d.lossLimit}" else "胜利行动回合：${s.completedRounds + 1} / ${d.efficiencyTurn}", "经济与幸福度稳定 ${s.stableStreak} / $rounds 回合；净收入 ${income.toInt()}、幸福度 $happy、金币 ${p.gold}")
+                detail = listOf(
+                    if (main) "已取得征服胜利" else "尚未取得征服胜利；攻占并控制各文明最早建立的首都",
+                    if (d.number == 15) "战斗中已损失 $losses 支军事单位（最多 ${d.lossLimit} 支）" else
+                        "当前第 ${s.completedRounds + 1} 回合；最晚第 ${d.efficiencyTurn} 回合获胜",
+                    "收入与幸福度已连续达标 ${s.stableStreak.coerceAtMost(rounds)} / $rounds 轮\n净收入：$income；幸福度：$happy" +
+                        if (d.number == 16) "；金币：${p.gold} / ${d.goldTarget}" else ""
+                )
             }
             else -> error("Unknown campaign lesson")
         }

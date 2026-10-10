@@ -241,17 +241,27 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 else -> "可挑战"
             }
             val stars = store.stars(d, progress)
-            val node = "${d.number}  ${d.title}\n${"★".repeat(stars)}${"☆".repeat(3-stars)}  $status".toTextButton().apply {
+            val node = "".toTextButton().apply {
                 name = "ui-campaign-level:${d.id}"
+                clearChildren()
+                add(Table().apply {
+                    add("${d.number}  ${d.title}".toLabel(if (unlocked) Theme.text else Theme.muted, 18)).row()
+                    add(Table().apply {
+                        add(campaignStars(stars, 16f)).padRight(5f)
+                        add(status.toLabel(Theme.muted, 14))
+                    }).padTop(4f)
+                }).expandX().pad(6f)
                 add(ImageGetter.getImage(when {
                     !unlocked && saved == null -> "OtherIcons/LockSmall"
                     d.id in progress.cleared -> "OtherIcons/Checkmark"
                     else -> "OtherIcons/Capital"
-                })).size(16f).padLeft(4f)
-                label.wrap = true
+                }).apply { color = if (unlocked) Theme.gold else Theme.muted }).size(16f).padRight(8f)
                 setSize((width * .42f).coerceAtMost(210f), 74f)
                 setPosition(positions[i].first * width - this.width / 2, positions[i].second * 410 - height / 2)
-                color = if (d.id == selected) Theme.gold else if (unlocked) Color.WHITE else Theme.muted
+                if (d.id == selected) style = TextButton.TextButtonStyle(style).apply {
+                    up = Theme.outlinedControl(BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.raised),
+                        BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.gold))
+                }
                 onActivation { selected = d.id; rebuild() }
             }
             map.addActor(node)
