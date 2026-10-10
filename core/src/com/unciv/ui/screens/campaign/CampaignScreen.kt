@@ -12,10 +12,12 @@ import com.unciv.logic.campaign.CampaignProgress
 import com.unciv.logic.campaign.CampaignStore
 import com.unciv.models.skins.ExpeditionBlueTheme as Theme
 import com.unciv.models.translations.tr
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.widgets.AutoScrollPane
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.popups.LoadingPopup
@@ -45,22 +47,28 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
 
     private fun rebuild() {
         root.clearChildren()
+        val header = Table().apply {
+            background = skinStrings.getUiBackground(
+                "CampaignScreen/Header", skinStrings.roundedEdgeRectangleSmallShape, Theme.raised)
+            add(UiNavigation.backButton().apply {
+                label.setFontSize(22)
+                onActivation { if (chapter >= 0) { chapter = -1; rebuild() } else game.popScreen() }
+            }).minHeight(maxOf(46f, UiNavigation.minimumTouchSize())).padLeft(8f)
+            add("文明的诞生".toLabel(Theme.gold, 28)).growX().minWidth(0f).left().pad(10f)
+        }
+        root.add(header).growX().minHeight(maxOf(64f, UiNavigation.minimumTouchSize()))
+            .pad(8f, 10f, 4f, 10f).row()
         try {
             definitions.forEach { store.saved(it.id)?.let(store::reconcile) }
             progress = store.progress()
             val content = Table().apply { pad(22f); defaults().pad(8f) }
-            content.add("文明的诞生".toLabel(Theme.gold, 32)).left().row()
             content.add("新手战役  ·  当前版本  ·  四章十六关  ·  ${definitions.sumOf { store.stars(it, progress) }} / 48 星".toLabel(Theme.text)).left().row()
             content.add("进度仅保存在本机".toLabel(Theme.muted, 15)).left().row()
             if (chapter < 0) overview(content) else chapter(content)
-            content.add("Back".toTextButton().apply {
-                onActivation { if (chapter >= 0) { chapter = -1; rebuild() } else game.popScreen() }
-            }).height(50f).fillX().row()
             root.add(AutoScrollPane(content)).grow()
         } catch (ex: Exception) {
             com.unciv.utils.Log.error("Cannot open campaign catalog", ex)
-            root.add("战役暂时无法读取，已有存档与成绩仍保留。".toLabel()).row()
-            root.add("Back".toTextButton().apply { onActivation { game.popScreen() } })
+            root.add("战役暂时无法读取，已有存档与成绩仍保留。".toLabel()).grow()
         }
     }
 
