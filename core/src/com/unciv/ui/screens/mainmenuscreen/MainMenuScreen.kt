@@ -23,6 +23,7 @@ import com.unciv.models.metadata.BaseRuleset
 import com.unciv.models.metadata.GameSetupInfo
 import com.unciv.models.ruleset.Ruleset
 import com.unciv.models.ruleset.RulesetCache
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.tilesets.TileSetCache
 import com.unciv.ui.audio.SoundPlayer
 import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
@@ -123,7 +124,9 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
     init {
         SoundPlayer.initializeForMainMenu()
 
-        val background = skinStrings.getUiBackground("MainMenuScreen/Background", tintColor = clearColor)
+        val background = if (Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS)
+            ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.color(Color.valueOf("e5edf0"), ExpeditionBlueTheme.background))
+        else skinStrings.getUiBackground("MainMenuScreen/Background", tintColor = clearColor)
         backgroundStack.add(BackgroundActor(background, Align.center))
         stage.addActor(backgroundStack)
         backgroundStack.setFillParent(false)
@@ -302,6 +305,8 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
     }
 
     private fun startBackgroundMapGeneration() {
+        // The iOS campaign home uses a solid background across the full drawing bounds.
+        if (Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) return
         stopBackgroundMapGeneration()  // shouldn't be necessary as resize re-instantiates this class
         backgroundMapGenerationJob = Concurrency.run("ShowMapBackground") {
             // MapSize.Small has easily enough tiles to fill the entire background - unless the user sized their window to some extreme aspect ratio
