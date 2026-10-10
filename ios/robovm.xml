@@ -44,7 +44,12 @@
         <pattern>kotlinx.serialization.**</pattern>
         <pattern>org.apache.harmony.security.provider.crypto.**</pattern>
     </forceLinkClasses>
+    <frameworkPaths>
+        <path platform="ios" variant="device" arch="arm64">build/default/generated/gdx-framework/ios-arm64</path>
+        <path platform="ios" variant="simulator">build/default/generated/gdx-framework/ios-arm64_x86_64-simulator</path>
+    </frameworkPaths>
     <frameworks>
+        <framework>gdx</framework>
         <framework>UIKit</framework>
         <framework>QuartzCore</framework>
         <framework>CoreGraphics</framework>

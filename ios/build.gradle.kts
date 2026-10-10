@@ -21,6 +21,24 @@ layout.buildDirectory.set(layout.projectDirectory.dir(
     if (extensionSourceDir == null) "build/default" else "build/extension"
 ))
 
+// Give RoboVM explicit platform paths so gdx is embedded as well as linked.
+val iosGdxNatives by configurations.creating {
+    isCanBeConsumed = false
+    isTransitive = false
+}
+dependencies {
+    iosGdxNatives("com.badlogicgames.gdx:gdx-platform:${rootProject.libs.versions.gdx.get()}:natives-ios")
+}
+val stageIosGdxFramework by tasks.registering(Sync::class) {
+    from(provider { zipTree(iosGdxNatives.singleFile) }) {
+        include("META-INF/robovm/ios/libs/gdx.xcframework/**")
+        eachFile { relativePath = RelativePath(true, *relativePath.segments.drop(5).toTypedArray()) }
+        includeEmptyDirs = false
+    }
+    into(layout.buildDirectory.dir("generated/gdx-framework"))
+}
+tasks.named("classes") { dependsOn(stageIosGdxFramework) }
+
 val publicSourceCommit = providers.exec {
     workingDir(rootProject.projectDir)
     commandLine("git", "rev-parse", "HEAD")
