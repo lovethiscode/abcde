@@ -2,7 +2,11 @@ package com.unciv.ui.components.widgets
 
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.ui.Label
+import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
+import com.badlogic.gdx.utils.Align
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.UncivGame
@@ -54,5 +58,18 @@ object UiNavigation {
         label.setFontSize((18f * minimumTouchSize() / 44f).roundToInt())
         val size = maxOf(50f, minimumTouchSize())
         setSize(size, size)
+    }
+
+    fun popupHeader(title: Actor, closeButton: Actor): Table {
+        if (title is Label) {
+            title.setAlignment(Align.center)
+            title.wrap = true
+        }
+        if (title is Table) title.center()
+        return Table(BaseScreen.skin).apply {
+            add().width(closeButton.width).padRight(12f)
+            add(title).minWidth(0f).growX().center()
+            add(closeButton).size(closeButton.width, closeButton.height).padLeft(12f)
+        }
     }
 }

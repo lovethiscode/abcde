@@ -11,7 +11,6 @@ import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.models.translations.tr
 import com.unciv.models.skins.ExpeditionBlueTheme
-import com.unciv.ui.components.extensions.getCloseButton
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.onActivation
@@ -207,14 +206,8 @@ internal class CampaignHomeMenu(
     }
 
     private fun showFreePlay() {
-        object : Popup(screen) {
-            init { clickBehindToClose = true }
-        }.apply {
-            val header = Table().apply {
-                add("Free play".toLabel(fontSize = 30)).expandX().left()
-                add(getCloseButton { close() }).padLeft(12f)
-            }
-            add(header).growX().row()
+        Popup(screen).apply {
+            addTitleWithCloseButton("Free play".toLabel(fontSize = 30))
             add(menuButton("Quickstart", "Start a game with the default settings", "OtherIcons/Quickstart",
                 screen.stage.width * .50f, KeyboardBinding.Quickstart) { close(); quickstartNewGame() })
                 .height(110f).padBottom(12f).row()

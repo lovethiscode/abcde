@@ -409,7 +409,7 @@ open class Popup(
         return cell
     }
 
-    /** Adds a title and X in the same row, fixed above the scrollable content. */
+    /** Adds a centered title and right-hand X, fixed above the scrollable content. */
     fun addTitleWithCloseButton(
         title: Actor,
         additionalKey: KeyCharAndCode? = null,
@@ -419,10 +419,7 @@ open class Popup(
         onCloseCallback = action
         val closeButton = getCloseButton { close(); action?.invoke() }
         if (additionalKey != null) closeButton.keyShortcuts.add(additionalKey)
-        val header = Table(BaseScreen.skin).apply {
-            add(title).minWidth(0f).growX().left()
-            add(closeButton).padLeft(12f)
-        }
+        val header = UiNavigation.popupHeader(title, closeButton)
         if (topTable === bottomTable) add(header).growX().row()
         else {
             titleTable.pad(20f, 25f, 0f, 25f)
