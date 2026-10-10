@@ -250,6 +250,27 @@ val verifyIosConfiguration by tasks.registering {
 
 val compiledIosAppIconDirectory = layout.buildDirectory.dir("generated/app-store-icon")
 
+val compiledIosLaunchScreenDirectory = layout.buildDirectory.dir("generated/launch-screen")
+val compileIosLaunchScreen by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Compiles the adaptive expedition launch storyboard for iPhone and iPad."
+    inputs.file("LaunchScreen.storyboard")
+    outputs.dir(compiledIosLaunchScreenDirectory)
+    doFirst {
+        compiledIosLaunchScreenDirectory.get().asFile.mkdirs()
+    }
+    commandLine(
+        "xcrun", "ibtool",
+        "--compile", compiledIosLaunchScreenDirectory.get().file("LaunchScreen.storyboardc").asFile.absolutePath,
+        "--minimum-deployment-target", expectedIosMinimumVersion,
+        "--target-device", "iphone", "--target-device", "ipad",
+        file("LaunchScreen.storyboard").absolutePath,
+    )
+}
+
+listOf("launchIPhoneSimulator", "launchIPadSimulator", "launchIOSDevice", "createIPA", "robovmArchive")
+    .forEach { name -> tasks.named(name) { dependsOn(compileIosLaunchScreen) } }
+
 val compileIosAppIcon by tasks.registering(Exec::class) {
     group = "build"
     description = "Compiles the 1024px iPhone+iPad AppIcon asset catalog for device builds."
