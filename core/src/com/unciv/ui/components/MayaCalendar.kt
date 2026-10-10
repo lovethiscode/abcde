@@ -9,6 +9,8 @@ import com.unciv.models.translations.tr
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.components.input.KeyCharAndCode.Companion.makeChar
 import com.unciv.ui.components.input.KeyCharAndCode.Companion.toCode
+import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
 import kotlin.math.abs
 
@@ -95,7 +97,10 @@ object MayaCalendar {
     fun openPopup(previousScreen: BaseScreen, civInfo: Civilization, year: Int) {
         Popup(previousScreen).apply {
             name = "MayaCalendar"
-            addGoodSizedLabel("The Mayan Long Count", Constants.headingFontSize).apply {
+            if (UiNavigation.isIos) addTitleWithCloseButton(
+                "The Mayan Long Count".toLabel(fontSize = Constants.headingFontSize, fontColor = civInfo.nation.getOuterColor())
+            )
+            else addGoodSizedLabel("The Mayan Long Count", Constants.headingFontSize).apply {
                 actor.color = civInfo.nation.getOuterColor()
             }.row()
             addSeparator(color = Color.DARK_GRAY)
@@ -105,7 +110,7 @@ object MayaCalendar {
             val mayaYear = MayaYear(year)
             addGoodSizedLabel(mayaYear.toString(), 42).row()
             addGoodSizedLabel("[${mayaYear.baktuns}] b'ak'tun, [${mayaYear.katuns}] k'atun, [${mayaYear.tuns}] tun").padBottom(10f).row()
-            addCloseButton()
+            if (!UiNavigation.isIos) addCloseButton()
         }.open(true)
     }
 }

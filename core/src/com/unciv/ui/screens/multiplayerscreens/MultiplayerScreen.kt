@@ -724,10 +724,9 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
 
     private fun showHelpPopup() {
         val helpPopup = Popup(this)
-        helpPopup.addGoodSizedLabel(
-            "How multiplayer works",
-            size = multiplayerTitleFontSize,
-        ).row()
+        if (UiNavigation.isIos)
+            helpPopup.addTitleWithCloseButton("How multiplayer works".toLabel(fontSize = multiplayerTitleFontSize))
+        else helpPopup.addGoodSizedLabel("How multiplayer works", size = multiplayerTitleFontSize).row()
 
         fun addSection(title: String, vararg lines: String) {
             helpPopup.addGoodSizedLabel(title, size = multiplayerContentFontSize, color = Color.GOLD).apply {
@@ -759,7 +758,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
             "All players must use the same game server and compatible game versions and rulesets.",
             "For chat, set or check your server password in Options → Multiplayer. Saving it reconnects chat automatically without leaving the game.",
         )
-        helpPopup.addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.close else "Got it")
+        if (!UiNavigation.isIos) helpPopup.addCloseButton("Got it")
         helpPopup.open()
     }
 

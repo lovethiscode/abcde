@@ -4,6 +4,7 @@ import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -25,6 +26,7 @@ import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.addSeparator
 import com.unciv.ui.components.extensions.center
 import com.unciv.ui.components.extensions.darken
+import com.unciv.ui.components.extensions.getCloseButton
 import com.unciv.ui.components.extensions.right
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
@@ -106,6 +108,7 @@ open class Popup(
      *  In other modes, this is an alias for [innerTable]. */
     private val topTable: Table
     private val topTableCell: Cell<WidgetGroup>
+    private val titleTable = Table(BaseScreen.skin)
 
     /** This contains the bottom row buttons and does not participate in scrolling
      *  (for [Scrollability.WithoutButtons], otherwise alias for [innerTable]). */
@@ -161,6 +164,7 @@ open class Popup(
                 topTable.pad(20f).padBottom(0f)
                 topTable.defaults().fillX().pad(5f)
                 bottomTable = Table(BaseScreen.skin)
+                innerTable.add(titleTable).growX().row()
                 topTableCell = innerTable.add(wrapInScrollPane(topTable))
                 innerTable.defaults().fillX()
                 innerTable.row()
@@ -181,7 +185,7 @@ open class Popup(
     }
 
     private fun recalculateInnerTableMaxHeight() {
-        val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight
+        val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight + titleTable.prefHeight
         topTableCell.maxHeight((maxPopupHeight - buttonsHeight).coerceAtLeast(0f))
         innerTable.invalidate()
     }
@@ -201,6 +205,7 @@ open class Popup(
         stageToShowOn.addActor(this)
         recalculateInnerTableMaxHeight()
         innerTable.pack()
+        if (titleTable.hasChildren()) recalculateInnerTableMaxHeight()
         recalculateInnerTableMaxWidth()
         pack()
         center(stageToShowOn)
@@ -215,7 +220,7 @@ open class Popup(
 
     protected open fun onVisibleAreaChanged(visibleArea: Rectangle) {
         if (com.badlogic.gdx.Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
-            val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight
+            val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight + titleTable.prefHeight
             topTableCell.maxSize(maxPopupWidth, (visibleArea.height * maxSizePercentage - buttonsHeight).coerceAtLeast(0f))
             innerTable.invalidateHierarchy()
         }
@@ -322,6 +327,8 @@ open class Popup(
     override fun clear() {
         topTable.clear()
         bottomTable.clear()
+        titleTable.clear()
+        titleTable.pad(0f)
         clickBehindToClose = false
         onCloseCallback = null
     }
@@ -400,6 +407,28 @@ open class Popup(
         if (UiNavigation.isIos && text == Constants.close) cell.actor.name = "ui-popup-close"
         cell.actor.keyShortcuts.add(KeyCharAndCode.BACK)
         return cell
+    }
+
+    /** Adds a title and X in the same row, fixed above the scrollable content. */
+    fun addTitleWithCloseButton(
+        title: Actor,
+        additionalKey: KeyCharAndCode? = null,
+        action: (() -> Unit)? = null
+    ): Group {
+        clickBehindToClose = true
+        onCloseCallback = action
+        val closeButton = getCloseButton { close(); action?.invoke() }
+        if (additionalKey != null) closeButton.keyShortcuts.add(additionalKey)
+        val header = Table(BaseScreen.skin).apply {
+            add(title).minWidth(0f).growX().left()
+            add(closeButton).padLeft(12f)
+        }
+        if (topTable === bottomTable) add(header).growX().row()
+        else {
+            titleTable.pad(20f, 25f, 0f, 25f)
+            titleTable.add(header).growX()
+        }
+        return closeButton
     }
 
     /**

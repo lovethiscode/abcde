@@ -6,6 +6,7 @@ import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.input.onChange
 import com.unciv.ui.components.widgets.TranslatedSelectBox
 import com.unciv.ui.components.widgets.UncivTextField
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.popups.Popup
 import kotlin.math.sign
 
@@ -105,7 +106,9 @@ internal class ModManagementOptions(private val modManagementScreen: ModManageme
     fun openPopup() {
         val popup = Popup(modManagementScreen)
         val width = (modManagementScreen.stage.width - 80f).coerceAtMost(540f)
-        popup.add("Sort and Filter".toLabel(fontSize = 24)).padBottom(16f).row()
+        val title = "Sort and Filter".toLabel(fontSize = 24)
+        if (UiNavigation.isIos) popup.addTitleWithCloseButton(title)
+        else popup.add(title).padBottom(16f).row()
         for ((label, select) in listOf(
             "Category:" to categorySelect,
             "Sort Current:" to sortInstalledSelect,
@@ -114,7 +117,7 @@ internal class ModManagementOptions(private val modManagementScreen: ModManageme
             popup.add(ModManagementStyle.label(label, 20)).width(width).left().padBottom(6f).row()
             popup.add(select).width(width).minHeight(56f).padBottom(16f).row()
         }
-        popup.addCloseButton()
+        if (!UiNavigation.isIos) popup.addCloseButton()
         popup.open()
     }
 }

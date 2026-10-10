@@ -2,6 +2,7 @@ package com.unciv.ui.screens.cityscreen
 
 import com.unciv.logic.city.GreatPersonPointsBreakdown
 import com.unciv.ui.components.extensions.toStringSigned
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.screens.civilopediascreen.FormattedLine
 import com.unciv.ui.screens.civilopediascreen.MarkupRenderer
@@ -10,7 +11,9 @@ class GreatPersonPointsBreakdownPopup(cityScreen: CityScreen, gppBreakdown: Grea
     init {
         val lines = ArrayList<FormattedLine>()
         val headerText = "«GOLD»{${greatPerson ?: "Great person points"}}«» ({${cityScreen.cityView.name}})"
-        lines += FormattedLine(headerText, header = 2, centered = true)
+        val title = FormattedLine(headerText, header = 2, centered = true)
+        if (UiNavigation.isIos) addTitleWithCloseButton(MarkupRenderer.render(listOf(title)))
+        else lines += title
         lines += FormattedLine(separator = true)
 
         fun addFormattedEntry(entry: GreatPersonPointsBreakdown.Entry, isPercentage: Boolean) {
@@ -37,7 +40,7 @@ class GreatPersonPointsBreakdownPopup(cityScreen: CityScreen, gppBreakdown: Grea
             cityScreen.openCivilopedia(it)
         })
 
-        addCloseButton()
+        if (!UiNavigation.isIos) addCloseButton()
         open(true)
     }
 

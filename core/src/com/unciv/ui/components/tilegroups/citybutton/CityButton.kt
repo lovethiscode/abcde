@@ -14,6 +14,7 @@ import com.unciv.ui.components.extensions.centerX
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onRightClick
 import com.unciv.ui.components.tilegroups.TileGroup
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.screens.basescreen.BaseScreen
@@ -243,7 +244,11 @@ class CityButton(val foreignCityView: ForeignCityView, private val tileGroup: Ti
 
         val popup = Popup(GUI.getWorldScreen()).apply {
             name = "ForeignCityInfoPopup"
-            add(CityTable(foreignCityView, true)).fillX().padBottom(5f).colspan(3).row()
+            val title = CityTable(foreignCityView, true)
+            if (UiNavigation.isIos) addTitleWithCloseButton(title) {
+                GUI.getWorldScreen().nextTurnButton.update()
+            }
+            else add(title).fillX().padBottom(5f).colspan(3).row()
             if (foreignCityView.isReligionEnabled())
                 add(CityReligionInfoTable(foreignCityView, true)).colspan(3).row()
             addOKButton("Diplomacy") { openDiplomacy() }
@@ -251,7 +256,7 @@ class CityButton(val foreignCityView: ForeignCityView, private val tileGroup: Ti
                 CityScreen(espionageCityView)
             } }
             add().expandX()
-            addCloseButton {
+            if (!UiNavigation.isIos) addCloseButton {
                 GUI.getWorldScreen().run { nextTurnButton.update() }
             }
         }

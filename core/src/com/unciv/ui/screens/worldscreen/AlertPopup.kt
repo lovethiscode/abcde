@@ -28,9 +28,11 @@ import com.unciv.ui.components.extensions.pad
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.KeyboardBinding
+import com.unciv.ui.components.input.KeyboardBindings
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.screens.diplomacyscreen.LeaderIntroTable
 import com.unciv.ui.screens.victoryscreen.VictoryScreen
@@ -84,6 +86,13 @@ class AlertPopup(
     // This redirects all addCloseButton uses with only text and no action to accept the space key
     private fun addCloseButton(text: String = Constants.close) =
         addCloseButton(text, KeyboardBinding.NextTurnAlternate, null).apply { actor.name = "ui-alert-close" }
+
+    private fun addInformationTitle(text: String) {
+        if (UiNavigation.isIos)
+            addTitleWithCloseButton(text.toLabel(), KeyboardBindings[KeyboardBinding.NextTurnAlternate])
+                .name = "ui-alert-close"
+        else addGoodSizedLabel(text)
+    }
 
     init {
         var shouldOpen = true
@@ -150,9 +159,13 @@ class AlertPopup(
     private fun addTilesStolen(): Boolean {
         val civInfo = getCiv(popupAlert.value)
         if (civInfo.isDefeated()) return false
-        addLeaderName(civInfo)
+        if (UiNavigation.isIos) {
+            addTitleWithCloseButton(LeaderIntroTable(civInfo), KeyboardBindings[KeyboardBinding.NextTurnAlternate])
+                .name = "ui-alert-close"
+            addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
+        } else addLeaderName(civInfo)
         addGoodSizedLabel("Those lands were not yours to take. This has not gone unnoticed.")
-        addCloseButton()
+        if (!UiNavigation.isIos) addCloseButton()
         return true
     }
 
@@ -409,10 +422,10 @@ class AlertPopup(
     }
 
     private fun addGoldenAge() {
-        addGoodSizedLabel("GOLDEN AGE")
+        addInformationTitle("GOLDEN AGE")
         addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
         addGoodSizedLabel("Your citizens have been happy with your rule for so long that the empire enters a Golden Age!").row()
-        addCloseButton()
+        if (!UiNavigation.isIos) addCloseButton()
         music.chooseTrack(viewingCiv.civName, MusicMood.Golden, MusicTrackChooserFlags.setSpecific)
     }
 
@@ -481,7 +494,7 @@ class AlertPopup(
 
     private fun addTechResearched() {
         val tech = gameInfo.ruleset.technologies[popupAlert.value]!!
-        addGoodSizedLabel(tech.name)
+        addInformationTitle(tech.name)
         addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
         val centerTable = Table()
         centerTable.add(tech.quote.toLabel().apply { wrap = true }).width(stageWidth / 3)
@@ -489,7 +502,7 @@ class AlertPopup(
         val descriptionScroll = ScrollPane(tech.getDescription(viewingCiv).toLabel().apply { wrap = true })
         centerTable.add(descriptionScroll).width(stageWidth / 3).maxHeight(stageHeight / 2)
         add(centerTable).row()
-        addCloseButton()
+        if (!UiNavigation.isIos) addCloseButton()
         music.chooseTrack(tech.name, MusicMood.Researched, MusicTrackChooserFlags.setSpecific)
     }
 
@@ -517,7 +530,7 @@ class AlertPopup(
 
     private fun addWonderBuilt() {
         val wonder = gameInfo.ruleset.buildings[popupAlert.value]!!
-        addGoodSizedLabel(wonder.name)
+        addInformationTitle(wonder.name)
         addSeparator().padBottom(10f)
         if(ImageGetter.wonderImageExists(wonder.name)) {    // Wonder Graphic exists
             if(stageHeight * 3 > stageWidth * 4) {    // Portrait
@@ -547,7 +560,7 @@ class AlertPopup(
             .width(centerTableColumnWidth)
             .pad(10f)
         add(centerTable).row()
-        addCloseButton()
+        if (!UiNavigation.isIos) addCloseButton()
         music.chooseTrack(wonder.name, MusicMood.Wonder, MusicTrackChooserFlags.setSpecific)
     }
 
