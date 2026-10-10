@@ -98,6 +98,11 @@ object AirInterception {
                 AchievementTracker.killedMilitaryUnit(attacker.unit, interceptor.id,
                     interceptor.civ.isMajorCiv() && interceptor.isMilitary(), true)
 
+            if (attacker.isDefeated() && damageDealt.defenderDealt > 0)
+                com.unciv.logic.campaign.CampaignRules.combatDefeat(MapUnitCombatant(interceptor), attacker.unit)
+            if (interceptor.isDestroyed && damageDealt.attackerDealt > 0)
+                com.unciv.logic.campaign.CampaignRules.combatDefeat(attacker, interceptor)
+
             // 5 XP to both
             Battle.addXp(MapUnitCombatant(interceptor), 5, attacker)
             Battle.addXp(attacker, 5, MapUnitCombatant(interceptor))
@@ -206,6 +211,8 @@ object AirInterception {
         if (attacker.isDefeated() && damage > 0)
             AchievementTracker.killedMilitaryUnit(interceptor, attacker.unit.id,
                 attacker.getCivInfo().isMajorCiv() && attacker.unit.isMilitary(), false)
+        if (attacker.isDefeated() && damage > 0)
+            com.unciv.logic.campaign.CampaignRules.combatDefeat(MapUnitCombatant(interceptor), attacker.unit)
         if (damage > 0)
             Battle.addXp(MapUnitCombatant(interceptor), 2, attacker)
 

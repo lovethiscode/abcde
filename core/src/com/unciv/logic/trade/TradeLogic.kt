@@ -42,7 +42,7 @@ class TradeLogic(val ourCivilization: Civilization, val otherCivilization: Civil
         val offers = TradeOffersList()
         if (civInfo.isCityState || otherCiv.isCityState) return offers
         
-        if (civInfo.isAtWarWith(otherCiv))
+        if (civInfo.isAtWarWith(otherCiv) && !com.unciv.logic.campaign.CampaignRules.peaceBlocked(civInfo, otherCiv))
             offers.add(TradeOffer(Constants.peaceTreaty, TradeOfferType.Treaty, speed = civInfo.gameInfo.speed))
         
         if (civInfo.diplomacyFunctions.meetsEmbassyRequirementFor(otherCiv)
@@ -101,7 +101,7 @@ class TradeLogic(val ourCivilization: Civilization, val otherCivilization: Civil
         }
         
         val thirdCivsAtWarTheyKnow = otherCiv.getKnownCivs().filter {
-            it.isAtWarWith(civInfo) && !it.isDefeated()
+            it.isAtWarWith(civInfo) && !com.unciv.logic.campaign.CampaignRules.peaceBlocked(civInfo, it) && !it.isDefeated()
                 && !it.gameInfo.ruleset.modOptions.hasUnique(UniqueType.DiplomaticRelationshipsCannotChange)
         }
 
@@ -115,6 +115,8 @@ class TradeLogic(val ourCivilization: Civilization, val otherCivilization: Civil
     }
 
     fun acceptTrade(applyGifts: Boolean = true): Unit = AchievementTracker.action(ourCivilization.gameInfo) {
+        if (com.unciv.logic.campaign.CampaignRules.peaceBlocked(ourCivilization, otherCivilization) &&
+            (currentTrade.ourOffers + currentTrade.theirOffers).any { it.name == Constants.peaceTreaty }) return@action
         val ourDiploManager = ourCivilization.getDiplomacyManager(otherCivilization)!!
         val theirDiploManager = otherCivilization.getDiplomacyManager(ourCivilization)!!
 

@@ -94,7 +94,7 @@ class UnitUpgradeManager(val unit: MapUnit) {
         if (unit.isDestroyed) return  
             
         val wasEscorting = unit.isEscorting()
-        unit.destroy(destroyTransportedUnit = false)
+        unit.destroy(destroyTransportedUnit = false, preserveCampaignIdentity = true)
         val civ = unit.civ
         val position = unit.currentTile.position
         val newUnit = civ.units.placeUnitNearTile(position, upgradedUnit, unit.id, copiedFrom = unit)

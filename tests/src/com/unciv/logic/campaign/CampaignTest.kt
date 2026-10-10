@@ -147,6 +147,7 @@ class CampaignTest {
         game.campaign!!.produced.addAll(listOf("Monument", "Scout"))
         game.getCurrentPlayerCivilization().getCapital()!!.population.setPopulation(4)
         val progress = files.getLocalFile("Campaigns/progress.json")
+        assertTrue(progress.delete()) // Last-played metadata now creates this file when starting.
         progress.mkdirs() // A real publication failure, after the fixed result was written.
         assertThrows(Exception::class.java) { store.submit(game) }
         assertEquals(2, store.saved(CampaignCatalog.construction)!!.campaign!!.resultStars)

@@ -1,10 +1,29 @@
 {
   "id": "foundation-02",
-  "title": "Build a thriving capital",
+  "number": 2,
+  "title": "城市开始运转",
+  "description": "安排生产队列，让首都成长。",
   "configVersion": 1,
   "scoringVersion": 1,
-  "requiredProduction": ["Monument", "Scout"],
+  "objectives": [
+    "本次生产完成纪念碑与斥候",
+    "本次生产并保留一名工人",
+    "初始首都人口达到 4"
+  ],
+  "hints": [
+    "纪念碑与斥候必须在生产队列完成。",
+    "主目标完成后，可继续生产工人或等待人口增长再结算。"
+  ],
+  "nextLevel": "foundation-03",
+  "restrictions": [
+    "固定罗马、王子难度、快速速度；关闭城邦、野蛮人、营地与遗迹。",
+    "每关独立本地续玩；进度仅保存在本机。",
+    "纪念碑和斥候禁止金币购买，必须通过生产完成。"
+  ],
+  "requiredProduction": [
+    "Monument",
+    "Scout"
+  ],
   "worker": "Worker",
-  "population": 4,
-  "nextLevel": "foundation-03"
+  "population": 4
 }

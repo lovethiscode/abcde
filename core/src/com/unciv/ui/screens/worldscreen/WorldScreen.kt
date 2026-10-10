@@ -141,7 +141,8 @@ class WorldScreen(
 
     /** `true` when it's the player's turn unless he is a spectator */
     val canChangeState
-        get() = isPlayersTurn && !viewingCiv.isSpectator()
+        get() = isPlayersTurn && !viewingCiv.isSpectator() &&
+            gameInfo.campaign?.let { it.resultStars > 0 || it.failed } != true
 
     val mapHolder = WorldMapHolder(this, gameInfo.tileMap)
 
@@ -162,6 +163,7 @@ class WorldScreen(
     internal val nextTurnButton = NextTurnButton(this)
     internal val statusButtons = StatusButtons(nextTurnButton)
     internal val smallUnitButton = SmallUnitButton(this, statusButtons)
+    private var campaignResultShown = false
     private val campaignButton = "Campaign objectives".toTextButton().apply {
         name = "ui-campaign-objectives"
         onActivation { com.unciv.ui.screens.campaign.CampaignTasksPopup(this@WorldScreen) }
@@ -478,6 +480,11 @@ class WorldScreen(
         topBar.update(selectedCiv)
         campaignButton.isVisible = uiEnabled && gameInfo.campaign != null
         if (campaignButton.isVisible) {
+            com.unciv.logic.campaign.CampaignRules.actionSettled(gameInfo)
+            val state = gameInfo.campaign!!
+            val result = com.unciv.logic.campaign.CampaignRules.evaluate(gameInfo)
+            campaignButton.setText(if (state.resultStars > 0 || state.failed) "查看战役结果" else
+                "战役任务 · ${listOf(result.main, result.worker, result.population).count { it }} / 3")
             campaignButton.pack()
             campaignButton.setPosition((stage.width - campaignButton.width) / 2, stage.height - topBar.height - campaignButton.height - 6f)
         }
@@ -498,13 +505,31 @@ class WorldScreen(
 
         if (!hasOpenPopups() && !autoPlay.isAutoPlaying() && isPlayersTurn) {
             when {
+                gameInfo.campaign?.let { it.resultStars > 0 || it.failed } == true && !campaignResultShown -> {
+                    campaignResultShown = true
+                    autoPlay.stopAutoPlay()
+                    Concurrency.runOnGLThread {
+                        try {
+                            game.files.autosaves.autoSaveJob?.join()
+                            com.unciv.logic.campaign.CampaignStore(game.files).save(gameInfo)
+                            com.unciv.ui.screens.campaign.CampaignTasksPopup(this@WorldScreen)
+                        } catch (ex: Exception) {
+                            com.unciv.utils.Log.error("Campaign result save failed", ex)
+                            com.unciv.ui.popups.ToastPopup("战役成绩尚未保存，请通过任务面板重试保存。", this@WorldScreen)
+                        }
+                    }
+                }
+                gameInfo.campaign?.let { !it.briefingSeen && it.resultStars == 0 && !it.failed } == true -> {
+                    gameInfo.campaign!!.briefingSeen = true
+                    com.unciv.ui.screens.campaign.CampaignTasksPopup(this)
+                }
                 viewingCiv.shouldShowDiplomaticVotingResults() ->
                     UncivGame.Current.pushScreen{ DiplomaticVoteResultScreen(gameInfo.diplomaticVictoryVotesCast, viewingCiv) }
-                !gameInfo.oneMoreTurnMode && (viewingCiv.isDefeated() || gameInfo.checkForVictory()) ->
+                gameInfo.campaign == null && !gameInfo.oneMoreTurnMode && (viewingCiv.isDefeated() || gameInfo.checkForVictory()) ->
                     game.pushScreen{ VictoryScreen(this) }
                 hasPendingFreeGreatPerson() && !deferFreeGreatPersonPicker ->
                     openGreatPersonPicker()
-                viewingCiv.popupAlerts.any() -> AlertPopup(this, viewingCiv.popupAlerts.first())
+                gameInfo.campaign?.let { it.resultStars > 0 || it.failed } != true && viewingCiv.popupAlerts.any() -> AlertPopup(this, viewingCiv.popupAlerts.first())
                 viewingCiv.tradeRequests.isNotEmpty() -> {
                     // In the meantime this became invalid, perhaps because we accepted previous trades
                     for (tradeRequest in viewingCiv.tradeRequests.toList())

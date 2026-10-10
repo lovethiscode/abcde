@@ -55,7 +55,7 @@ object UnitActionsFromUniques {
         if (unit.civ.isOneCityChallenger() && unit.civ.hasEverOwnedOriginalCapital) return null
         val useFrequency = getUseFrequency(unit, unique, 80f)
 
-        if (!unit.hasMovement() || !tile.canBeSettled(unit.civ))
+        if (!unit.hasMovement() || !tile.canBeSettled(unit.civ) || com.unciv.logic.campaign.CampaignRules.foundingBlocked(unit.civ))
             return UnitAction(UnitActionType.FoundCity, useFrequency, action = null)
 
         val hasActionModifiers = unique.modifiers.any { it.type?.targetTypes?.contains(

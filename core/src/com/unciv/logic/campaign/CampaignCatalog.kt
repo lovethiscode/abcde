@@ -10,28 +10,36 @@ import java.security.MessageDigest
 import java.util.UUID
 import kotlin.random.Random
 
-/** Stage-two catalog: only real, playable content is exposed. */
+/** Packaged scenarios are the sole source of starting assets. */
 object CampaignCatalog {
     const val construction = "foundation-02"
-    private const val folder = "campaigns/foundation/levels/foundation-02"
-
-    fun definition(): CampaignDefinition = requireNotNull(
-        FileConversions.readJson(Gdx.files.internal("$folder/level.json"), CampaignDefinition::class.java)
-    ).also {
-        require(it.id == construction && it.requiredProduction.isNotEmpty() && it.population > 0)
+    val chapters = listOf("建造城邦", "发展国家", "掌握战争", "赢得胜利")
+    val futureThemes = listOf("科技", "文化", "外交", "经济", "海洋", "宗教")
+    fun levelId(number: Int) = "foundation-" + number.toString().padStart(2, '0')
+    fun definitions() = (1..16).map { definition(levelId(it)) }
+    private fun folder(id: String): String {
+        require(id in (1..16).map(::levelId))
+        return "campaigns/foundation/levels/$id"
     }
 
-    fun template(): GameInfo = requireNotNull(
-        FileConversions.readJson(Gdx.files.internal("$folder/initial-state.json"), GameInfo::class.java)
+    fun definition(id: String = construction): CampaignDefinition = requireNotNull(
+        FileConversions.readJson(Gdx.files.internal("${folder(id)}/level.json"), CampaignDefinition::class.java)
+    ).also {
+        require(it.id == id && it.number in 1..16 && it.population > 0)
+    }
+
+    fun template(id: String = construction): GameInfo = requireNotNull(
+        FileConversions.readJson(Gdx.files.internal("${folder(id)}/initial-state.json"), GameInfo::class.java)
     ).also { it.setTransients() }
 
-    fun newAttempt(): GameInfo {
-        val definition = definition()
-        val game = template()
+    fun newAttempt(id: String = construction): GameInfo {
+        val definition = definition(id)
+        val game = template(id)
         require(game.campaign == null && game.turns == 0 && !game.gameParameters.isOnlineMultiplayer)
         require(game.gameParameters.mods.isEmpty() && game.gameParameters.noBarbarians)
         val player = game.civilizations.single { it.isHuman() }
-        require(game.civilizations.size == 1 && game.gameParameters.victoryTypes.isEmpty())
+        require(game.gameParameters.numberOfCityStates == 0 && game.tileMap.mapParameters.noRuins)
+        require(if (definition.number >= 15) game.gameParameters.victoryTypes.toSet() == setOf("Domination") else game.gameParameters.victoryTypes.isEmpty())
         require(definition.requiredProduction.all { it in game.ruleset.buildings || it in game.ruleset.units })
         require(definition.worker in game.ruleset.units)
         game.gameId = UUID.randomUUID().toString()
@@ -44,7 +52,10 @@ object CampaignCatalog {
             engineVersion = UncivGame.VERSION.toString()
             rulesVersion = rulesFingerprint()
             playerId = player.civID
-            capitalId = requireNotNull(player.getCapital()).id
+            capitalId = player.getCapital()?.id.orEmpty()
+            initialCities.addAll(player.cities.map { it.id })
+            if (definition.number == 12) protectedUnits.addAll(player.units.getCivUnits()
+                .filter { it.name in definition.siegeUnits }.map { it.id })
         }
         game.tileMap.mapParameters.seed = game.campaign!!.seed
         return game
@@ -52,8 +63,8 @@ object CampaignCatalog {
 
     fun requireCompatible(game: GameInfo) {
         val state = game.campaign ?: return
-        if (state.schemaVersion != 1 || state.engineVersion != UncivGame.VERSION.toString() ||
-            state.rulesVersion != rulesFingerprint() || state.definition.id != construction)
+        if (state.schemaVersion != 1 || state.evaluatorVersion != 1 || state.engineVersion != UncivGame.VERSION.toString() ||
+            state.rulesVersion != rulesFingerprint() || state.definition.id !in (1..16).map(::levelId))
             throw UncivShowableException("This campaign needs a compatibility update. Your save and results have been kept.")
     }
 

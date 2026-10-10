@@ -157,11 +157,13 @@ object Battle {
 
         if (defender is MapUnitCombatant && defender.unit.isMilitary() && defender.isDefeated() &&
             !captureMilitaryUnitSuccess && damageDealt.attackerDealt > 0) {
+            com.unciv.logic.campaign.CampaignRules.combatDefeat(attacker, defender.unit)
             if (attacker is MapUnitCombatant)
                 AchievementTracker.killedMilitaryUnit(attacker.unit, defender.unit.id, defenderWasMajorMilitary, true)
             else AchievementTracker.eventCompleted(attacker.getCivInfo(), "N06")
         }
         if (attacker is MapUnitCombatant && attacker.unit.isMilitary() && attacker.isDefeated() && damageDealt.defenderDealt > 0) {
+            com.unciv.logic.campaign.CampaignRules.combatDefeat(defender, attacker.unit)
             if (defender is MapUnitCombatant)
                 AchievementTracker.killedMilitaryUnit(defender.unit, attacker.unit.id, attackerWasMajorMilitary, false)
             else AchievementTracker.eventCompleted(defender.getCivInfo(), "N06")
@@ -799,6 +801,7 @@ object Battle {
 
     fun destroyIfDefeated(attackedCiv: Civilization, attacker: Civilization, notificationLocation: HexCoord? = null) {
         if (attackedCiv.isDefeated()) {
+            com.unciv.logic.campaign.CampaignRules.enemyDefeated(attackedCiv, attacker)
             if (attackedCiv.isCityState)
                 attackedCiv.cityStateFunctions.cityStateDestroyed(attacker)
             attackedCiv.destroy(notificationLocation)

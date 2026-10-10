@@ -388,6 +388,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
      *  @param shouldGainTime on a multiplayer game, if true, makes the player whose turn is ended recover time to play before risking getting forced to resign, 'false' by default 
      */
     fun nextTurn(progressBar: NextTurnProgress? = null, shouldGainTime: Boolean = false): Unit = timeThis("GameInfo.nextTurn") {
+        if (campaign?.let { it.resultStars > 0 || it.failed } == true) return@timeThis
         var player = currentPlayerCiv
         var playerIndex = civilizations.indexOf(player)
 
@@ -483,8 +484,9 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
 
         com.unciv.logic.campaign.CampaignRules.roundCompleted(this)
 
-        // Starting their turn
-        TurnManager(player).startTurn(progressBar)
+        // Automatic campaign results settle before granting another human action round.
+        if (campaign?.let { it.resultStars > 0 || it.failed } != true)
+            TurnManager(player).startTurn(progressBar)
 
         // No popups for spectators
         if (currentPlayerCiv.isSpectator())

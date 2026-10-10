@@ -1,0 +1,29 @@
+{
+  "id": "foundation-11",
+  "number": 11,
+  "title": "河谷保卫战",
+  "description": "在真实进攻中坚持二十轮。",
+  "configVersion": 1,
+  "scoringVersion": 1,
+  "objectives": [
+    "初始首都从未失守，完成第 20 轮全部 AI 行动",
+    "结算时保留全部 3 座初始城市",
+    "军事单位战斗损失不超过 2"
+  ],
+  "hints": [
+    "利用城市与远程交叉火力；初始首都失守立即失败。",
+    "第 20 轮结束自动结算，先检查失败；本关不能新建城市或议和。"
+  ],
+  "nextLevel": "foundation-12",
+  "restrictions": [
+    "固定罗马、王子难度、快速速度；关闭城邦、野蛮人、营地与遗迹。",
+    "每关独立本地续玩；进度仅保存在本机。",
+    "与德国保持战争，双方均不能提出或接受议和。",
+    "本关不能建立新城市。"
+  ],
+  "lockedWar": true,
+  "forbidFounding": true,
+  "automatic": true,
+  "defendRounds": 20,
+  "lossLimit": 2
+}

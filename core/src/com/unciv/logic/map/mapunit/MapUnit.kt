@@ -958,7 +958,8 @@ class MapUnit : IsPartOfGameInfoSerialization {
         else cache.updateUniques()
     }
 
-    fun destroy(destroyTransportedUnit: Boolean = true) {
+    fun destroy(destroyTransportedUnit: Boolean = true, preserveCampaignIdentity: Boolean = false) {
+        if (!preserveCampaignIdentity) com.unciv.logic.campaign.CampaignRules.unitLost(this)
         stopEscorting()
         currentMovement = 0f
         civ.units.removeUnit(this)
@@ -979,6 +980,7 @@ class MapUnit : IsPartOfGameInfoSerialization {
     }
 
     fun gift(recipient: Civilization) {
+        com.unciv.logic.campaign.CampaignRules.unitLost(this)
         stopEscorting()
         civ.units.removeUnit(this)
         civ.cache.updateViewableTiles()
@@ -1181,6 +1183,7 @@ class MapUnit : IsPartOfGameInfoSerialization {
      *  Cannot be used to reassign from one civ to another - doesn't remove from old owner.
      */
     fun assignOwner(civInfo: Civilization, updateCivInfo: Boolean = true) {
+        if (::civ.isInitialized && owner != civInfo.civID) com.unciv.logic.campaign.CampaignRules.unitLost(this)
         owner = civInfo.civID
         this.civ = civInfo
         civInfo.units.addUnit(this, updateCivInfo)

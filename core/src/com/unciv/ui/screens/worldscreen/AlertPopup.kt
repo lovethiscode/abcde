@@ -690,6 +690,7 @@ class AlertPopup(
 
     override fun close() {
         viewingCiv.popupAlerts.remove(popupAlert)
+        com.unciv.logic.campaign.CampaignRules.actionSettled(gameInfo)
         worldScreen.shouldUpdate = true
         super.close()
     }

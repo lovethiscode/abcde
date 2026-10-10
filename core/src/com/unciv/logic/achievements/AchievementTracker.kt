@@ -15,9 +15,13 @@ import java.io.IOException
 object AchievementTracker {
     var service: AchievementService? = null
 
-    fun beginAction(game: GameInfo) { game.achievements?.let { it.actionDepth++ } }
+    fun beginAction(game: GameInfo) {
+        game.achievements?.let { it.actionDepth++ }
+        game.campaign?.let { it.actionDepth++ }
+    }
     fun endAction(game: GameInfo, successful: Boolean = true) {
         game.achievements?.let { it.actionDepth-- }
+        game.campaign?.let { it.actionDepth-- }
         if (successful) settle(game)
     }
 
@@ -32,7 +36,10 @@ object AchievementTracker {
     }
 
     fun settle(game: GameInfo, atTurnEnd: Boolean = false, winner: Civilization? = null, victoryRoute: String? = null) {
-        if (game.campaign != null) return
+        if (game.campaign != null) {
+            com.unciv.logic.campaign.CampaignRules.actionSettled(game)
+            return
+        }
         val state = game.achievements ?: return
         if (state.ended || !state.initializationComplete || state.actionDepth != 0 ||
             state.recordingVersion != AchievementCatalog.firstCompleteRecordingVersion) return

@@ -27,6 +27,7 @@ class CampaignStore(private val files: UncivFiles) {
         CampaignCatalog.requireCompatible(game)
         game.setTransients()
         reconcile(game)
+        remember(level)
         return game
     }
 
@@ -36,8 +37,17 @@ class CampaignStore(private val files: UncivFiles) {
         SaveFileLocks.withLock(slot(state.definition.id)) {
             val old = saved(state.definition.id)
             check(old?.campaign?.attemptId == replacingAttempt) { "Campaign save changed; please reopen the level." }
-            old?.let(::reconcile)
+            old?.let { previous ->
+                reconcile(previous)
+                try { CampaignCatalog.requireCompatible(previous) }
+                catch (_: com.unciv.logic.UncivShowableException) {
+                    val archive = root.child("Archive").also { it.mkdirs() }
+                        .child("${state.definition.id}-${previous.campaign!!.attemptId.replace(Regex("[^a-zA-Z0-9-]"), "_")}.json")
+                    SaveFileWriter.write(archive) { FileConversions.writeJson(it, previous, zip = true) }
+                }
+            }
             write(game)
+            remember(state.definition.id)
         }
     }
 
@@ -65,8 +75,12 @@ class CampaignStore(private val files: UncivFiles) {
             val old = previous?.campaign
             // A delayed autosave may arrive after a restart or submission; never roll either back.
             if (old != null && (old.attemptId != state.attemptId || old.resultStars > 0 || old.failed ||
-                    previous.turns > game.turns || old.saveSequence >= state.saveSequence)) return@withLock
+                    previous.turns > game.turns || old.saveSequence >= state.saveSequence)) {
+                reconcile(previous)
+                return@withLock
+            }
             write(game)
+            reconcile(game)
         }
     }
 
@@ -96,11 +110,7 @@ class CampaignStore(private val files: UncivFiles) {
             val result = CampaignRules.evaluate(game)
             check(result.stars > 0) { "Complete the main objective before submitting." }
             val snapshot = game.clone()
-            snapshot.campaign!!.apply {
-                resultStars = result.stars
-                resultWorker = result.worker
-                resultPopulation = result.population
-            }
+            CampaignRules.freeze(snapshot.campaign!!, result)
             // The frozen game is the recovery journal. Never expose a score before it is durable.
             write(snapshot)
             game.campaign = snapshot.campaign
@@ -119,7 +129,27 @@ class CampaignStore(private val files: UncivFiles) {
             if (state.definition.nextLevel.isNotEmpty()) progress.unlocked.add(state.definition.nextLevel)
             val key = "${state.definition.id}:${state.definition.scoringVersion}"
             progress.bestStars[key] = maxOf(progress.bestStars[key] ?: 0, state.resultStars)
+            for (chapter in 0..3) {
+                val definitions = (chapter * 4 + 1..chapter * 4 + 4).map { CampaignCatalog.definition(CampaignCatalog.levelId(it)) }
+                if (definitions.all { stars(it, progress) == 3 }) progress.medals.add(medalKey(chapter, definitions))
+            }
             SaveFileWriter.write(progressFile) { FileConversions.writeJson(it, progress, zip = false) }
         }
     }
+
+    private fun remember(level: String) = SaveFileLocks.withLock(progressFile) {
+        val progress = progress()
+        progress.lastPlayed = level
+        SaveFileWriter.write(progressFile) { FileConversions.writeJson(it, progress, zip = false) }
+    }
+
+    fun isUnlocked(definition: CampaignDefinition, progress: CampaignProgress): Boolean =
+        definition.number == 1 || definition.id in progress.cleared || definition.id in progress.unlocked ||
+            CampaignCatalog.levelId(definition.number - 1) in progress.cleared
+
+    fun stars(definition: CampaignDefinition, progress: CampaignProgress) =
+        progress.bestStars["${definition.id}:${definition.scoringVersion}"] ?: 0
+
+    fun medalKey(chapter: Int, definitions: List<CampaignDefinition>) =
+        "$chapter:" + definitions.joinToString("-") { it.scoringVersion.toString() }
 }

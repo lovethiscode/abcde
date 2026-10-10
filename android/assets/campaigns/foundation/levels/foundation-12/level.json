@@ -1,0 +1,30 @@
+{
+  "id": "foundation-12",
+  "number": 12,
+  "title": "直取要塞",
+  "description": "掩护攻城部队，夺取指定城市。",
+  "configVersion": 1,
+  "scoringVersion": 1,
+  "objectives": [
+    "第 25 行动回合内占领目标要塞，完成处置并保留",
+    "第 15 行动回合内完成主目标",
+    "两支初始攻城单位从未丢失"
+  ],
+  "hints": [
+    "攻城单位需要近战掩护，最后由近战进入城市。",
+    "傀儡或吞并都有效；解放或烧毁不算保留。升级保留原部队身份。"
+  ],
+  "nextLevel": "foundation-13",
+  "restrictions": [
+    "固定罗马、王子难度、快速速度；关闭城邦、野蛮人、营地与遗迹。",
+    "每关独立本地续玩；进度仅保存在本机。",
+    "与德国保持战争，双方均不能提出或接受议和。",
+    "本关不能建立新城市。"
+  ],
+  "lockedWar": true,
+  "forbidFounding": true,
+  "automatic": true,
+  "targetCity": "enemy-fort",
+  "hardTurnLimit": 25,
+  "efficiencyTurn": 15
+}

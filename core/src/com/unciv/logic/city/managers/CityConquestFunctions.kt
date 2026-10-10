@@ -152,6 +152,7 @@ class CityConquestFunctions(val city: City) {
 
     /** This happens when we either puppet OR annex, basically whenever we conquer a city and don't liberate it */
     fun puppetCity(conqueringCiv: Civilization): Unit = AchievementTracker.action(conqueringCiv.gameInfo) {
+        com.unciv.logic.campaign.CampaignRules.cityConquered(city, conqueringCiv)
         val oldCiv = city.civ
 
         // must be before moving the city to the conquering civ,
@@ -314,6 +315,7 @@ class CityConquestFunctions(val city: City) {
 
     fun moveToCiv(newCiv: Civilization) {
         val oldCiv = city.civ
+        com.unciv.logic.campaign.CampaignRules.cityTransferred(city, oldCiv, newCiv)
 
         // Remove/relocate palace for old Civ - need to do this BEFORE we move the cities between
         //  civs so the capitalCityIndicator recognizes the unique buildings of the conquered civ

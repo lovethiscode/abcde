@@ -261,6 +261,8 @@ object Nuke {
             if (unit.isMilitary() && unit.isDestroyed && unit.civ != attacker.getCivInfo() &&
                 attacker.getCivInfo().isAtWarWith(unit.civ))
                 AchievementTracker.eventCompleted(attacker.getCivInfo(), "N06")
+            if (unit.isMilitary() && unit.isDestroyed)
+                com.unciv.logic.campaign.CampaignRules.combatDefeat(attacker, unit)
             Battle.postBattleNotifications(attacker, defender, defender.getTile())
             Battle.destroyIfDefeated(defender.getCivInfo(), attacker.getCivInfo())
         }

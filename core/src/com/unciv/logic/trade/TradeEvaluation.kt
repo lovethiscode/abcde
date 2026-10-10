@@ -24,6 +24,8 @@ class TradeEvaluation {
 
     @Readonly
     fun isTradeValid(trade: Trade, offerer: Civilization, tradePartner: Civilization): Boolean {
+        if (com.unciv.logic.campaign.CampaignRules.peaceBlocked(offerer, tradePartner) &&
+            (trade.ourOffers + trade.theirOffers).any { it.name == Constants.peaceTreaty }) return false
 
         // Edge case time! Guess what happens if you offer a peace agreement to the AI for all their cities except for the capital,
         // and then capture their capital THAT SAME TURN? It can agree, leading to the civilization getting instantly destroyed!

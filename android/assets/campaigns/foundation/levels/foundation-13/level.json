@@ -1,0 +1,23 @@
+{
+  "id": "foundation-13",
+  "number": 13,
+  "title": "战后的城市",
+  "description": "让占领区恢复生产与财政。",
+  "configVersion": 1,
+  "scoringVersion": 1,
+  "objectives": [
+    "目标城市结束抵抗并保留，随后连续 3 回合净收入、幸福度非负",
+    "目标城市与首都连接",
+    "在目标城市保留市场"
+  ],
+  "hints": [
+    "抵抗结束前无法正常生产，先修道路、改良资源。",
+    "金币购买、政策与城市安排都可用于恢复收支。"
+  ],
+  "nextLevel": "foundation-14",
+  "restrictions": [
+    "固定罗马、王子难度、快速速度；关闭城邦、野蛮人、营地与遗迹。",
+    "每关独立本地续玩；进度仅保存在本机。"
+  ],
+  "targetCity": "occupied-city"
+}

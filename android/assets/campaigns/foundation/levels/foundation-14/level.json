@@ -1,0 +1,24 @@
+{
+  "id": "foundation-14",
+  "number": 14,
+  "title": "决定胜利目标",
+  "description": "练习征服目标与后勤准备。",
+  "configVersion": 1,
+  "scoringVersion": 1,
+  "objectives": [
+    "本次战斗夺取指定原始首都，完成处置并保留",
+    "本次生产并保留至少 1 支攻城单位",
+    "军事单位战斗损失不超过 1"
+  ],
+  "hints": [
+    "先研究并生产攻城单位，再组织进攻。",
+    "这一关仍有另一座敌方原始首都，目标是教学占领。"
+  ],
+  "nextLevel": "foundation-15",
+  "restrictions": [
+    "固定罗马、王子难度、快速速度；关闭城邦、野蛮人、营地与遗迹。",
+    "每关独立本地续玩；进度仅保存在本机。"
+  ],
+  "targetCity": "enemy-capital",
+  "lossLimit": 1
+}
