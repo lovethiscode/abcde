@@ -1,13 +1,18 @@
 package com.unciv.ui.screens.campaign
 
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
 import com.unciv.logic.campaign.CampaignCatalog
 import com.unciv.logic.campaign.CampaignRules
 import com.unciv.logic.campaign.CampaignStore
 import com.unciv.logic.map.HexCoord
 import com.unciv.models.translations.tr
+import com.unciv.ui.components.extensions.toTextButton
+import com.unciv.ui.components.input.onActivation
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.popups.LoadingPopup
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.popups.ToastPopup
+import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.WorldScreen
 import com.unciv.utils.Concurrency
 
@@ -39,9 +44,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         if (!terminal) {
             for (restriction in d.restrictions) addGoodSizedLabel(restriction).row()
             if (result.main && !d.automatic) {
-                addGoodSizedLabel("主目标已达成。现在结算，或继续争取挑战星；结算时重新检查当前条件。").row()
-                addButton("Submit campaign result") { submit() }.actor.name = "ui-campaign-submit"
-                row()
+                addGoodSizedLabel("主目标已达成。点击下方“结算通关”保存成绩并解锁下一关，也可继续争取挑战星。").row()
             } else addGoodSizedLabel(if (d.automatic) "按本关规则自动结算。" else "完成主目标后可主动结算。").row()
             for (area in d.areas) location("定位：${area.title}", area.tiles.first())
             for ((i, tile) in d.targetTiles.withIndex()) location("定位：改良地块 ${i+1}", tile)
@@ -49,27 +52,39 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
             if (!state.hintsDismissed) {
                 for (hint in d.hints) addGoodSizedLabel("提示 · $hint").row()
             }
-            addButton(if (state.hintsDismissed) "展开教学提示" else "收起教学提示") {
+            contentButton(if (state.hintsDismissed) "展开教学提示" else "收起教学提示") {
                 state.hintsDismissed = !state.hintsDismissed
                 close(); CampaignTasksPopup(screen)
-            }.row()
+            }
+            if (result.main && !d.automatic) {
+                addButton("Submit campaign result", style = BaseScreen.skin.get("positive", TextButtonStyle::class.java)) {
+                    submit()
+                }.apply {
+                    actor.name = "ui-campaign-submit"
+                    colspan(2).growX().row()
+                }
+            }
         } else {
             if (state.resultStars > 0 && d.nextLevel.isNotEmpty())
-                addButton("前往下一关") { leave(d.nextLevel) }.row()
-            addButton("查看本关 / 重新挑战") { leave(d.id) }.row()
+                addButton("前往下一关") { leave(d.nextLevel) }.colspan(2).growX().row()
+            addButton("查看本关 / 重新挑战") { leave(d.id) }.colspan(2).growX().row()
         }
         addButton("Save and return to campaigns") { leave(d.id) }.actor.name = "ui-campaign-return"
-        row()
         addCloseButton(if (terminal) "查看地图（只读）" else "继续挑战")
         open()
     }
 
     private fun location(title: String, position: HexCoord) {
-        addButton(title) {
+        contentButton(title) {
             // Centering does not change explored tiles or remove fog of war.
             screen.mapHolder.setCenterPosition(position, immediately = true, selectUnit = false)
             close()
-        }.row()
+        }
+    }
+
+    private fun contentButton(title: String, action: () -> Unit) {
+        add(title.toTextButton().apply { onActivation { action() } })
+            .minHeight(UiNavigation.minimumTouchSize()).row()
     }
 
     private fun submit() {

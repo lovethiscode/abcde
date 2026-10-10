@@ -483,8 +483,12 @@ class WorldScreen(
             com.unciv.logic.campaign.CampaignRules.actionSettled(gameInfo)
             val state = gameInfo.campaign!!
             val result = com.unciv.logic.campaign.CampaignRules.evaluate(gameInfo)
-            campaignButton.setText(if (state.resultStars > 0 || state.failed) "查看战役结果" else
-                "战役任务 · ${listOf(result.main, result.worker, result.population).count { it }} / 3")
+            val progress = "${listOf(result.main, result.worker, result.population).count { it }} / 3"
+            campaignButton.setText(when {
+                state.resultStars > 0 || state.failed -> "查看战役结果"
+                result.main && !state.definition.automatic -> "战役可结算 · $progress"
+                else -> "战役任务 · $progress"
+            })
             campaignButton.pack()
             campaignButton.setPosition((stage.width - campaignButton.width) / 2, stage.height - topBar.height - campaignButton.height - 6f)
         }
