@@ -72,8 +72,13 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private var connectionGeneration = 0
     private var job: Job? = null
     private val layout = Table()
+    private val body = Table()
     private val content = Table()
     private val scroll = AutoScrollPane(content)
+    private val gameOptionsScroll = AutoScrollPane(null)
+    private val mapOptionsScroll = AutoScrollPane(null)
+    private val playersScroll = AutoScrollPane(null)
+    private val scrollPanes = listOf(scroll, gameOptionsScroll, mapOptionsScroll, playersScroll)
     private val footer = Table()
     private val startButton = "Start game!".toTextButton(skin.get("positive", com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle::class.java))
     private val inviteButton = "Invite friends".toTextButton()
@@ -183,13 +188,15 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         startButton.onClick { requestStart() }
         status.setWrap(true)
         content.top()
-        scroll.setScrollingDisabled(true, false)
-        scroll.setOverscroll(false, false)
+        scrollPanes.forEach {
+            it.setScrollingDisabled(true, false)
+            it.setOverscroll(false, false)
+        }
         layout.background = skinStrings.getUiBackground("MultiplayerLobbyScreen/Background", tintColor = Color.valueOf("08172d"))
         layout.setFillParent(true)
         layout.pad(16f)
         layout.add(header).growX().padBottom(16f).row()
-        layout.add(scroll).grow().top().row()
+        layout.add(body).grow().top().row()
         layout.add(footer).growX().padTop(12f)
         stage.addActor(layout)
         drawMembers(force = true)
@@ -316,8 +323,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val signature = "$connected|$busy|$configurationPending|${r?.configurationVersion}|${r?.state}|${r?.reason}|${r?.seats?.map { listOf(it.seatId,it.playerId,it.occupancy,it.manual,it.civilization,it.ready) }}"
         if (!force && updateStatus && renderedState == signature) return
         renderedState = signature
-        val scrollY = scroll.scrollY
+        val scrollPositions = scrollPanes.map { it.scrollY }
         content.clear()
+        body.clear()
         footer.clear()
         val own = r?.seats?.firstOrNull { it.playerId == userId && it.occupancy == session.occupancy }
         val humans = r?.seats?.filter { it.human }.orEmpty()
@@ -342,28 +350,37 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         inviteButton.isEnabled = connected && r?.state == "WAITING" && own != null && !busy && !configurationPending
         copyInvitationButton.isEnabled = inviteButton.isEnabled
         val width = stage.width - 32f
+        val landscape = r != null && !isNarrowerThan4to3()
+        if (landscape) {
+            scroll.actor = null
+            body.add(content).grow()
+        } else {
+            scroll.actor = content
+            body.add(scroll).grow()
+        }
         if (r != null) {
             val gameSetup = setup ?: json().fromJson(GameSetupInfo::class.java,r.setup).also { setup = it }
             val editable = host && own != null && configurationSupported && r.state == "WAITING"
-            val landscape = width >= 1100f && stage.width > stage.height
-            val settingsWidth = if (editable) width * 2f / 3f else 230f
+            val settingsWidth = if (landscape) (width - 32f) * 2f / 3f + 16f else width
             val cardsWidth = if (landscape) width - settingsWidth - 16f else width
-            val summary = Table().apply {
+            fun summary(values: List<String>) = Table().apply {
                 background = skinStrings.getUiBackground("MultiplayerLobbyScreen/GameSummary", skinStrings.roundedEdgeRectangleSmallShape, Color.valueOf("0d2140"))
                 pad(18f)
                 defaults().left().growX().padBottom(10f)
-                add("Game setup".toLabel(Color.GOLD,22)).row()
-                for (value in listOf(gameSetup.mapParameters.type, gameSetup.mapParameters.mapSize.name,
-                    gameSetup.gameParameters.baseRuleset, gameSetup.gameParameters.speed,
-                    gameSetup.gameParameters.difficulty, gameSetup.gameParameters.startingEra))
+                for (value in values)
                     add(value.toLabel(fontSize = 18).apply { setWrap(true) }).row()
             }
-            val players = Table().apply {
+            val gameValues = listOf(gameSetup.gameParameters.baseRuleset, gameSetup.gameParameters.speed,
+                gameSetup.gameParameters.difficulty, gameSetup.gameParameters.startingEra)
+            val mapValues = listOf(gameSetup.mapParameters.type, gameSetup.mapParameters.mapSize.name)
+            val playersHeading = Table().apply {
                 add("Players".toLabel(fontSize = 24)).left().row()
                 val counts = if (humans.any { it.manual }) "[$joined]/[${humans.size}] seats filled · [$ready]/[${humans.size}] ready"
                     else "[$joined]/[${humans.size}] joined · [$ready]/[${humans.size}] ready"
                 add(counts.toLabel(Color.LIGHT_GRAY,18)).left().padTop(4f).padBottom(12f).row()
             }
+            val players = Table()
+            if (!landscape) players.add(playersHeading).growX().row()
             if (own == null && r.state == "WAITING") players.add("Rejoin room".toTextButton().apply {
                 onClick {
                     session.occupancy = ""; session.pendingAction = ""; session.pendingRequestId = ""; session.pendingCommand = ""
@@ -397,17 +414,24 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 }
             }
             players.add(details).growX()
-            val settings = if (editable) configurationTable ?: buildConfiguration(if(landscape) settingsWidth else width).also { configurationTable = it } else summary
+            val settings = if (editable) configurationTable ?: buildConfiguration(settingsWidth).also { configurationTable = it }
+                else if (landscape) Table().apply {
+                    add(scrollColumn("Game Options".toLabel(fontSize = 24), summary(gameValues), gameOptionsScroll)).width(cardsWidth).growY().padRight(16f)
+                    add(scrollColumn("Map Options".toLabel(fontSize = 24), summary(mapValues), mapOptionsScroll)).width(cardsWidth).growY()
+                } else Table().apply {
+                    add("Game setup".toLabel(Color.GOLD,22)).left().row()
+                    add(summary(mapValues + gameValues)).growX()
+                }
             settings.touchable = if (!connected || busy || r.state != "WAITING") Touchable.disabled else Touchable.childrenOnly
             if (landscape) {
-                content.add(settings).width(settingsWidth).top().padRight(16f)
-                content.add(players).width(cardsWidth).top()
+                content.add(settings).width(settingsWidth).growY().padRight(16f)
+                content.add(scrollColumn(playersHeading, players, playersScroll)).width(cardsWidth).growY()
             } else if (editable) {
                 content.add(settings).width(width).top().row()
                 content.add(players).width(width).padTop(16f)
             } else {
                 content.add(players).width(width).top().row()
-                content.add(summary).width(width).padTop(12f)
+                content.add(settings).width(width).padTop(12f)
             }
         }
         val leave = (if(r == null) "Cancel" else if(host) "Close room" else "Leave room").toTextButton().apply {
@@ -430,8 +454,18 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         if (r?.state == "STARTED" && !busy && !enteringGame && own != null)
             footer.add("Retry".toTextButton().apply { onClick { enterGame() } }).height(44f)
         layout.invalidateHierarchy()
-        scroll.layout()
-        scroll.scrollY = scrollY
+        layout.validate()
+        scrollPanes.forEachIndexed { index, pane ->
+            pane.validate()
+            pane.scrollY = scrollPositions[index]
+            pane.updateVisualScroll()
+        }
+    }
+    private fun scrollColumn(heading: Actor, options: Table, pane: AutoScrollPane) = Table().apply {
+        top()
+        add(heading).growX().left().padBottom(12f).row()
+        pane.actor = options
+        add(pane).grow().minHeight(0f)
     }
     private fun buildConfiguration(width: Float): Table {
         ImageGetter.setNewRuleset(ruleset)
@@ -440,17 +474,18 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }, updatePlayerPickerRandomLabel = {}, allowOnlineToggle = false, forInviteRoom = true,
             onConfigurationChanged = { markConfigurationChanged(immediate = true) })
         mapSettings = MapParametersTable(this,gameSetupInfo.mapParameters,MapGeneratedMainType.generated)
-        val twoColumns = width >= 700f
+        val twoColumns = !isNarrowerThan4to3()
         val columnWidth = if(twoColumns) (width-16f)/2f else width
-        fun column(title: String, options: Table) = Table().apply {
+        fun column(title: String, options: Table, pane: AutoScrollPane) = if (twoColumns)
+            scrollColumn(title.toLabel(fontSize = 24), options, pane) else Table().apply {
             add(title.toLabel(fontSize = 24)).left().padBottom(12f).row()
             add(options).width(columnWidth).top()
         }
         return Table().apply {
             top()
-            add(column("Game Options",gameOptions)).width(columnWidth).top().padRight(if(twoColumns) 16f else 0f)
+            add(column("Game Options",gameOptions,gameOptionsScroll)).width(columnWidth).growY().padRight(if(twoColumns) 16f else 0f)
             if(!twoColumns) row()
-            add(column("Map Options",mapSettings!!)).width(columnWidth).top().padTop(if(twoColumns) 0f else 16f)
+            add(column("Map Options",mapSettings!!,mapOptionsScroll)).width(columnWidth).growY().padTop(if(twoColumns) 0f else 16f)
             addListener(object : ChangeListener() {
                 override fun changed(event: ChangeEvent, actor: Actor) {
                     markConfigurationChanged(immediate = actor !is Slider && actor !is TextField)
