@@ -176,7 +176,7 @@ internal class CampaignHomeMenu(
                 .width(width * .68f).left().padTop(14f).row()
             add().expandY().row()
             val enter = menuButton("Enter campaigns", "", "OtherIcons/ArrowRight", width * .58f, primary = true) {
-                game.pushScreen { CampaignPlaceholderScreen() }
+                game.pushScreen { com.unciv.ui.screens.campaign.CampaignScreen() }
             }.apply {
                 name = "ui-enter-campaigns"
             }

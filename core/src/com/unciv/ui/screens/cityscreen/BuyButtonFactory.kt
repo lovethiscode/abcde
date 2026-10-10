@@ -71,7 +71,10 @@ class BuyButtonFactory(val cityScreen: CityScreen) {
             button.isEnabled = cityScreen.canChangeState &&
                 cityView.constructions.isConstructionPurchaseAllowed(construction, stat, constructionBuyCost)
             preferredBuyStat = stat  // Not very intelligent, but the least common currency "wins"
-            if (cityView.constructions.isConstructionPurchaseBlockedByUnit(construction)) {
+            if (cityView.constructions.isCampaignPurchaseBlocked(construction, stat)) {
+                button.setText("Production required".tr())
+                button.addTooltip("This campaign objective must be produced.", 26f, false)
+            } else if (cityView.constructions.isConstructionPurchaseBlockedByUnit(construction)) {
                 button.addTooltip("Move unit out of city first", 26f, false)
             }
         }

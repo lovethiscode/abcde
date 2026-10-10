@@ -193,7 +193,7 @@ class UncivFiles(
     }
 
     fun saveGame(game: GameInfo, gameName: String, saveCompletionCallback: (Exception?) -> Unit = ::rethrowIfNotNull): FileHandle {
-        val file = getSave(gameName)
+        val file = game.campaign?.let { com.unciv.logic.campaign.CampaignStore(this).slot(it.definition.id) } ?: getSave(gameName)
         saveGame(game, file, saveCompletionCallback)
         return file
     }
@@ -203,6 +203,11 @@ class UncivFiles(
      */
     fun saveGame(game: GameInfo, file: FileHandle, saveCompletionCallback: (Exception?) -> Unit = ::rethrowIfNotNull) {
         try {
+            if (game.campaign != null) {
+                com.unciv.logic.campaign.CampaignStore(this).save(game)
+                saveCompletionCallback(null)
+                return
+            }
             debug("Saving GameInfo %s to %s", game.gameId, file.path())
             game.version = CompatibilityVersion.CURRENT_COMPATIBILITY_VERSION
             SaveFileLocks.withLock(file) {
@@ -257,6 +262,12 @@ class UncivFiles(
         onSaved: () -> Unit,
         onError: (Exception) -> Unit
     ) {
+        if (game.campaign != null) {
+            saveGame(game, "Campaign") { error ->
+                Concurrency.runOnGLThread { if (error == null) onSaved() else onError(error) }
+            }
+            return
+        }
         val saveLocation = game.customSaveLocation ?: UncivGame.Current.files.getLocalFile(gameName).path()
 
         try {
@@ -304,6 +315,7 @@ class UncivFiles(
             }
             parsed
         }
+        com.unciv.logic.campaign.CampaignCatalog.requireCompatible(gameInfo)
         gameInfo.setTransients()
         return gameInfo
     }
@@ -587,15 +599,21 @@ class Autosaves(val files: UncivFiles) {
     @Synchronized
     fun requestAutoSaveUnCloned(gameInfo: GameInfo, nextTurn: Boolean = false): Job {
         val previous = autoSaveJob
+        val campaignSnapshot = if (gameInfo.campaign != null) com.unciv.logic.campaign.CampaignStore(files).snapshot(gameInfo) else null
         val job = Concurrency.run("autoSaveUnCloned") {
             previous?.join()
-            autoSave(gameInfo, nextTurn)
+            if (campaignSnapshot != null) com.unciv.logic.campaign.CampaignStore(files).saveSnapshot(campaignSnapshot)
+            else autoSave(gameInfo, nextTurn)
         }
         autoSaveJob = job
         return job
     }
 
     fun autoSave(gameInfo: GameInfo, nextTurn: Boolean = false): Boolean {
+        if (gameInfo.campaign != null) {
+            files.saveGame(gameInfo, "Campaign")
+            return true
+        }
         // get GameSettings to check the maxAutosavesStored in the autoSave function
         val settings = files.getGeneralSettings()
 

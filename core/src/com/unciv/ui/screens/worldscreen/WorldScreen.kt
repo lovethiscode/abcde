@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.ui.components.input.onActivation
+import com.unciv.ui.components.extensions.toTextButton
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
@@ -160,6 +162,10 @@ class WorldScreen(
     internal val nextTurnButton = NextTurnButton(this)
     internal val statusButtons = StatusButtons(nextTurnButton)
     internal val smallUnitButton = SmallUnitButton(this, statusButtons)
+    private val campaignButton = "Campaign objectives".toTextButton().apply {
+        name = "ui-campaign-objectives"
+        onActivation { com.unciv.ui.screens.campaign.CampaignTasksPopup(this@WorldScreen) }
+    }
     private val tutorialTaskTable = TutorialTaskTable(this).apply { name = "ui-tutorial-task" }
 
     private var nextTurnUpdateJob: Job? = null
@@ -187,6 +193,7 @@ class WorldScreen(
         stage.addActor(mapHolder)
         stage.scrollFocus = mapHolder
         stage.addActor(notificationsScroll)  // very low in z-order, so we're free to let it extend _below_ tile info and minimap if we want
+        stage.addActor(campaignButton)
         stage.addActor(tutorialTaskTable)    // behind topBar!
         stage.addActor(topBar)
         stage.addActor(statusButtons)
@@ -290,6 +297,10 @@ class WorldScreen(
     fun openSaveGameScreen() {
         // See #10353 - we don't support locally saving an online multiplayer game
         if (gameInfo.gameParameters.isOnlineMultiplayer) return
+        if (gameInfo.campaign != null) {
+            QuickSave.save(gameInfo, this)
+            return
+        }
         game.pushScreen{ SaveGameScreen(gameInfo) }
     }
 
@@ -347,7 +358,8 @@ class WorldScreen(
         topBar.isVisible = uiEnabled
         statusButtons.isVisible = uiEnabled
         techPolicyAndDiplomacy.isVisible = uiEnabled
-        tutorialTaskTable.isVisible = uiEnabled
+        tutorialTaskTable.isVisible = uiEnabled && gameInfo.campaign == null
+        campaignButton.isVisible = uiEnabled && gameInfo.campaign != null
         bottomTileInfoTable.isVisible = uiEnabled
         unitActionsTable.isVisible = uiEnabled
         notificationsScroll.isVisible = uiEnabled
@@ -464,6 +476,11 @@ class WorldScreen(
         mapHolder.updateTiles(getGameViewConsideringForOfWar().civView)
 
         topBar.update(selectedCiv)
+        campaignButton.isVisible = uiEnabled && gameInfo.campaign != null
+        if (campaignButton.isVisible) {
+            campaignButton.pack()
+            campaignButton.setPosition((stage.width - campaignButton.width) / 2, stage.height - topBar.height - campaignButton.height - 6f)
+        }
 
         if (techPolicyAndDiplomacy.update())
             displayTutorial(TutorialTrigger.OtherCivEncountered)
@@ -504,7 +521,8 @@ class WorldScreen(
         updateGameplayButtons()
 
         // Late: the task card is fitted into the room left by the widgets around it, so they must have their final size
-        if (uiEnabled) tutorialTaskTable.update()
+        if (uiEnabled && gameInfo.campaign == null) tutorialTaskTable.update()
+        else tutorialTaskTable.isVisible = false
 
         val coveredNotificationsTop = stage.height - statusButtons.y
         val coveredNotificationsBottom = (bottomTileInfoTable.height + bottomTileInfoTable.y)
@@ -786,6 +804,10 @@ class WorldScreen(
     }
 
     fun nextTurn(fromAutoPlay: Boolean = false) {
+        if (gameInfo.campaign?.let { it.resultStars > 0 || it.failed } == true) {
+            com.unciv.ui.screens.campaign.CampaignTasksPopup(this)
+            return
+        }
         if (!isActiveWorldScreen()) return
         val autoPlayAuthorized = fromAutoPlay && autoPlay.consumeTurnEndAuthorization()
         if (!isPlayersTurn && !failedUpload && !autoPlayAuthorized) return

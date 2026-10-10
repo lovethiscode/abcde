@@ -38,6 +38,7 @@
         </resource>
     </resources>
     <forceLinkClasses>
+        <pattern>com.unciv.logic.campaign.**</pattern>
         <pattern>com.badlogic.gdx.backends.iosrobovm.IOSApplication$SceneDelegate</pattern>
         <pattern>com.badlogic.gdx.scenes.scene2d.ui.**</pattern>
         <pattern>com.android.org.conscrypt.**</pattern>

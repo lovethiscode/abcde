@@ -37,6 +37,8 @@ tasks {
 
         jvmArgumentProviders.add(MockitoAgentArgumentProvider(mockitoAgent))
 
+        System.getProperty("unciv.campaignEvidenceDir")?.let { systemProperty("unciv.campaignEvidenceDir", it) }
+
         // Forward latency-test save file path to the test JVM
         System.getProperty("unciv.nextTurnSaveFile")?.let { systemProperty("unciv.nextTurnSaveFile", it) }
     }
@@ -78,4 +80,12 @@ eclipse.project {
 tasks.register("ojhClasspath") {
     val cp = sourceSets["test"].runtimeClasspath
     doLast { println(cp.asPath) }
+}
+
+// Explicit authoring command; tests and game startup never rewrite packaged campaign scenes.
+tasks.register<JavaExec>("writeCampaignScenario") {
+    group = "development"
+    mainClass.set("com.unciv.dev.CampaignScenarioWriter")
+    classpath = sourceSets["test"].runtimeClasspath
+    workingDir = file("../android/assets")
 }

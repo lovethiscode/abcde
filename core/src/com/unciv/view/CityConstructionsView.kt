@@ -43,6 +43,9 @@ class CityConstructionsView(private val cityConstructions: CityConstructions, ga
     @Readonly fun getCurrentConstruction(): IConstruction = cityConstructions.getCurrentConstruction()
     @Readonly fun getStatBuyCost(construction: INonPerpetualConstruction, stat: Stat): Int? =
         construction.getStatBuyCost(cityConstructions.city, stat)
+    @Readonly fun isCampaignPurchaseBlocked(construction: INonPerpetualConstruction, stat: Stat): Boolean =
+        com.unciv.logic.campaign.CampaignRules.purchaseBlocked(cityConstructions.city, construction.name, stat)
+
     @Readonly fun isConstructionPurchaseAllowed(construction: INonPerpetualConstruction, stat: Stat, cost: Int): Boolean =
         cityConstructions.isConstructionPurchaseAllowed(construction, stat, cost)
     @Readonly fun isConstructionPurchaseBlockedByUnit(construction: INonPerpetualConstruction): Boolean =

@@ -50,6 +50,7 @@ class AchievementService(private val directory: File, private val changed: () ->
     }
 
     @Synchronized fun canContribute(game: GameInfo): Boolean {
+        if (game.campaign != null) return false
         val state = game.achievements ?: return false
         if (state.accountKey.isNotEmpty() && !state.accountKey.matches(Regex("[0-9a-f]{64}"))) return false
         return game.gameId !in blockedGames && ownerForGame(game) == accountKey && state.canContribute(game, profile)

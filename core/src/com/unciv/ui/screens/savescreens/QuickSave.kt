@@ -43,7 +43,9 @@ object QuickSave {
         val toast = ToastPopup("Quickloading...", screen)
         Concurrency.run("QuickLoadGame") {
             try {
-                val loadedGame = files.loadGameByName("QuickSave")
+                val loadedGame = screen.gameInfo.campaign?.let {
+                    com.unciv.logic.campaign.CampaignStore(files).resume(it.definition.id)
+                } ?: files.loadGameByName("QuickSave")
                 launchOnGLThread {
                     toast.close()
                     UncivGame.Current.loadGame(loadedGame)

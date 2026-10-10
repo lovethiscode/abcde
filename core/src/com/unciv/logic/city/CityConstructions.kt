@@ -586,6 +586,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
                     pediaAction, NotificationCategory.General, NotificationIcon.Construction, buildingIcon)
             }
         }
+        com.unciv.logic.campaign.CampaignRules.productionCompleted(city, construction.name, unit)
         if (construction is Building) AchievementTracker.buildingProduced(city, construction)
         true
     }
@@ -760,6 +761,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
         stat: Stat = Stat.Gold,
         tile: Tile? = null
     ): Boolean {
+        if (com.unciv.logic.campaign.CampaignRules.purchaseBlocked(city, construction.name, stat)) return false
         AutomationPreview.choice(city.civ, "purchase:${stat.name}", construction.name, city = city, tile = tile)
         // Support UniqueType.CreatesOneImprovement: it is active when getImprovementToCreate returns an improvement
         val improvementToPlace = (construction as? Building)?.getImprovementToCreate(city.getRuleset(), city.civ)
@@ -825,6 +827,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
     @Readonly
     fun isConstructionPurchaseAllowed(construction: INonPerpetualConstruction, stat: Stat, constructionBuyCost: Int): Boolean {
         return when {
+            com.unciv.logic.campaign.CampaignRules.purchaseBlocked(city, construction.name, stat) -> false
             city.isPuppet && !city.getMatchingUniques(UniqueType.MayBuyConstructionsInPuppets).any() -> false
             city.isInResistance() -> false
             !construction.isPurchasable(city.cityConstructions) -> false    // checks via 'rejection reason'

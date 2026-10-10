@@ -120,6 +120,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
 
     /** Absent in legacy saves. Loading or cloning must never create achievement eligibility. */
     var achievements: AchievementGameState? = null
+    var campaign: com.unciv.logic.campaign.CampaignState? = null
 
     /** Maps a civ to the civ they voted for - `null` on the value side means they abstained */
     var diplomaticVictoryVotesCast = HashMap<String, String?>()
@@ -219,6 +220,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
         toReturn.customSaveLocation = customSaveLocation
         toReturn.victoryData = victoryData?.copy()
         toReturn.achievements = achievements?.clone()
+        toReturn.campaign = campaign?.clone()
         toReturn.historyStartTurn = historyStartTurn
         toReturn.lastUnitId = lastUnitId
         toReturn.unitNamesTaken.addAll(unitNamesTaken)
@@ -478,6 +480,8 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
         currentTurnStartTime = System.currentTimeMillis()
         currentPlayer = player.civID
         currentPlayerCiv = player
+
+        com.unciv.logic.campaign.CampaignRules.roundCompleted(this)
 
         // Starting their turn
         TurnManager(player).startTurn(progressBar)

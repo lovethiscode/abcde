@@ -32,6 +32,7 @@ object AchievementTracker {
     }
 
     fun settle(game: GameInfo, atTurnEnd: Boolean = false, winner: Civilization? = null, victoryRoute: String? = null) {
+        if (game.campaign != null) return
         val state = game.achievements ?: return
         if (state.ended || !state.initializationComplete || state.actionDepth != 0 ||
             state.recordingVersion != AchievementCatalog.firstCompleteRecordingVersion) return
