@@ -10,6 +10,10 @@ import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.multiplayer.lobby.*
 import com.unciv.logic.multiplayer.lobby.protocol.*
 import com.unciv.models.metadata.GameSettings
+import com.unciv.models.metadata.GameSetupInfo
+import com.unciv.logic.civilization.PlayerType
+import com.unciv.Constants
+import com.unciv.json.json
 import com.unciv.testing.*
 import kotlinx.coroutines.*
 import org.junit.*
@@ -193,6 +197,113 @@ class LobbyClientTest {
         withTimeout(2_000) { while (socket.requests.size < 2) delay(5) }
         pending.cancelAndJoin(); client.close()
         assertTrue(operations.isEmpty())
+    }
+
+    private fun expiredHostRoom(): LobbyRoom = room.apply {
+        if (session.playerId.isEmpty()) session.playerId = UUID.randomUUID().toString()
+        state = "CLOSED"; reason = "Host timed out"; hostId = session.playerId
+        val setup = GameSetupInfo().apply {
+            gameParameters.difficulty = "King"
+            gameParameters.speed = "Quick"
+            gameParameters.isOnlineMultiplayer = true
+            gameParameters.multiplayerServerUrl = saves
+            mapParameters.seed = 123456L
+        }
+        this.setup = json().toJson(setup)
+        seats[0].apply { human = true; playerId = session.playerId; civilization = "Rome"; ready = true }
+        seats.add(LobbySeat().apply {
+            seatId = 1; human = true; playerId = UUID.randomUUID().toString()
+            occupancy = "guest"; civilization = "Greece"; ready = true; manual = true
+        })
+        seats.add(LobbySeat().apply { seatId = 2; human = false; civilization = "Egypt" })
+    }
+    @Test fun timedOutHostRecreatesDirectlyWithFreshIdentityAndOriginalConfiguration() = runBlocking {
+        session.occupancy = "seat"; session.createKey = "old key"; session.save()
+        val expired = expiredHostRoom()
+        val original = LobbyProtocol.json().toJson(expired)
+        val socket = TestLobbyTransport(saves) { expired }
+        val oldClient = LobbyClient(api,socket)
+        val confirmed = oldClient.open(session)
+        assertNull(LobbySession.current())
+        val replacement = session.newRoomAfterHostTimeout(confirmed)!!
+        assertNotEquals(session.sessionId,replacement.sessionId)
+        assertNotEquals(session.createKey,replacement.createKey)
+        assertEquals("",replacement.gameId)
+        assertEquals("",replacement.occupancy)
+        assertEquals("",replacement.pendingAction)
+        val draft = json().fromJson(GameSetupInfo::class.java,replacement.setup)
+        assertEquals("King",draft.gameParameters.difficulty)
+        assertEquals("Quick",draft.gameParameters.speed)
+        assertEquals(123456L,draft.mapParameters.seed)
+        assertEquals("Rome",draft.gameParameters.players[0].chosenCiv)
+        assertEquals(session.playerId,draft.gameParameters.players[0].playerId)
+        assertEquals(Constants.random,draft.gameParameters.players[1].chosenCiv)
+        assertEquals("",draft.gameParameters.players[1].playerId)
+        assertEquals(PlayerType.Human,draft.gameParameters.players[1].playerType)
+        assertEquals("Egypt",draft.gameParameters.players[2].chosenCiv)
+        assertEquals(PlayerType.AI,draft.gameParameters.players[2].playerType)
+        replacement.save()
+        // A final snapshot from the old connection must not erase the new association.
+        session.confirmed(expired)
+        assertEquals(replacement.sessionId,LobbySession.current()!!.sessionId)
+        oldClient.close()
+        socket.reply = { request ->
+            assertEquals("create",request.action)
+            assertEquals(replacement.createKey,request.command!!.createKey)
+            assertEquals("",request.command!!.occupancy)
+            assertEquals("",request.command!!.seats[1].playerId)
+            LobbyProtocol.snapshot(expired).apply {
+                gameId = UUID.randomUUID().toString(); state = "WAITING"; reason = ""; version = 1
+                seats[0].occupancy = "new host"
+                seats[1].apply { playerId = ""; occupancy = ""; manual = false; ready = false }
+            }
+        }
+        val newClient = LobbyClient(api,socket)
+        val created = newClient.open(replacement)
+        assertNotEquals(expired.gameId,created.gameId)
+        assertEquals("new host",LobbySession.current()!!.occupancy)
+        assertEquals(listOf("resume","create"),socket.requests.map { it.action })
+        assertEquals(original,LobbyProtocol.json().toJson(expired))
+        newClient.close()
+    }
+    @Test fun timeoutRecoveryNeverCreatesRoomsForGuestsOrOtherClosureReasons() {
+        val expired = expiredHostRoom()
+        assertNotNull(session.newRoomAfterHostTimeout(expired))
+        for (state in listOf("WAITING","STARTING","STARTED"))
+            assertNull(session.newRoomAfterHostTimeout(LobbyProtocol.snapshot(expired).apply { this.state = state }))
+        for (reason in listOf("Host closed the room","Start timed out before upload was registered"))
+            assertNull(session.newRoomAfterHostTimeout(LobbyProtocol.snapshot(expired).apply { this.reason = reason }))
+        assertNull(session.newRoomAfterHostTimeout(LobbyProtocol.snapshot(expired).apply { hostId = UUID.randomUUID().toString() }))
+        assertNull(session.newRoomAfterHostTimeout(LobbyProtocol.snapshot(expired).apply { gameId = UUID.randomUUID().toString() }))
+        assertNull(session.newRoomAfterHostTimeout(LobbyProtocol.snapshot(expired).apply { gameServerUrl = "https://other.example" }))
+    }
+    @Test fun newRoomKeepsComputerSeatsWhenHostHadNoOtherHumanSeats() {
+        val expired = expiredHostRoom()
+        expired.seats.removeAt(1)
+        val draft = json().fromJson(GameSetupInfo::class.java,session.newRoomAfterHostTimeout(expired)!!.setup)
+        assertEquals(listOf(PlayerType.Human,PlayerType.AI),draft.gameParameters.players.map { it.playerType })
+        assertEquals("Egypt",draft.gameParameters.players[1].chosenCiv)
+    }
+    @Test fun lostReplacementCreateAckUsesSameIntentOnRetry() = runBlocking {
+        val replacement = session.newRoomAfterHostTimeout(expiredHostRoom())!!
+        replacement.save()
+        val socket = TestLobbyTransport(saves) { null }
+        val first = LobbyClient(api,socket,requestTimeoutMillis = 100)
+        assertTrue(runCatching { first.open(replacement) }.isFailure)
+        first.close()
+        val request = socket.requests.single()
+        val persisted = LobbySession.current()!!
+        assertEquals("create",persisted.pendingAction)
+        assertEquals(request.requestId,persisted.pendingRequestId)
+        socket.reply = { retry ->
+            assertEquals(request.requestId,retry.requestId)
+            assertEquals(request.command!!.createKey,retry.command!!.createKey)
+            LobbyProtocol.snapshot(room).apply { gameId = UUID.randomUUID().toString(); state = "WAITING" }
+        }
+        val retry = LobbyClient(api,socket)
+        retry.open(persisted)
+        assertEquals("",LobbySession.current()!!.pendingAction)
+        retry.close()
     }
 
 }

@@ -1,11 +1,17 @@
 package com.unciv.logic.multiplayer.lobby
 
 import com.unciv.UncivGame
+import com.unciv.Constants
+import com.unciv.json.json
+import com.unciv.logic.civilization.PlayerType
 import com.unciv.logic.files.SaveFileWriter
 import com.unciv.logic.multiplayer.lobby.protocol.LobbyProtocol
+import com.unciv.logic.multiplayer.lobby.protocol.LobbyRoom
 import com.unciv.logic.UncivShowableException
 import com.unciv.logic.multiplayer.MultiplayerOperation
 import com.unciv.logic.multiplayer.reportMultiplayerOperation
+import com.unciv.models.metadata.GameSetupInfo
+import com.unciv.models.metadata.Player
 
 class LobbySession {
     var sessionId = java.util.UUID.randomUUID().toString()
@@ -42,6 +48,21 @@ class LobbySession {
         if (current()?.sessionId == sessionId) save()
     }
     fun clearIfCurrent() = synchronized(lock) { if (current()?.sessionId == sessionId) clear() }
+    fun newRoomAfterHostTimeout(room: LobbyRoom): LobbySession? {
+        if (room.state != "CLOSED" || room.reason != "Host timed out" || playerId.isEmpty() ||
+            room.hostId != playerId || room.gameId != gameId || room.gameServerUrl != gameServerUrl) return null
+        val draft = json().fromJson(GameSetupInfo::class.java,room.setup)
+        draft.gameParameters.players = ArrayList(room.seats.map {
+            val self = it.playerId == playerId
+            Player(if (it.human && !self) Constants.random else it.civilization,
+                if (it.human) PlayerType.Human else PlayerType.AI, if (self) playerId else "")
+        })
+        return LobbySession().also {
+            it.playerId = playerId; it.roomApiUrl = roomApiUrl; it.gameServerUrl = gameServerUrl
+            it.createKey = java.util.UUID.randomUUID().toString()
+            it.setup = json().toJson(draft)
+        }
+    }
     fun pending(action: String, command: com.unciv.logic.multiplayer.lobby.protocol.LobbyCommand, requestId: String) {
         pendingAction = action; pendingRequestId = requestId
         pendingCommand = LobbyProtocol.json().toJson(command)

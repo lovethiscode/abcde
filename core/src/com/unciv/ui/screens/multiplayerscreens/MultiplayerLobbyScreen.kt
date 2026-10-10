@@ -206,6 +206,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val generation = ++connectionGeneration
         client.onRoom = { latest -> Concurrency.runOnGLThread {
             if (!disposed && !paused && generation == connectionGeneration) {
+                session.newRoomAfterHostTimeout(latest)?.let { replacement ->
+                    replacement.save()
+                    disconnectRoom()
+                    game.replaceCurrentScreen { MultiplayerLobbyScreen(replacement) }
+                    return@runOnGLThread
+                }
                 configurationSupported = true
                 accept(latest); drawMembers()
                 if (latest.state == "STARTED" && !busy && !enteringGame && session.occupancy.isNotEmpty()) enterGame()
