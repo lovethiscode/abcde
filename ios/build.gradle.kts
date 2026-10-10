@@ -254,17 +254,17 @@ val compiledIosLaunchScreenDirectory = layout.buildDirectory.dir("generated/laun
 val compileIosLaunchScreen by tasks.registering(Exec::class) {
     group = "build"
     description = "Compiles the adaptive expedition launch storyboard for iPhone and iPad."
-    inputs.file("ExpeditionLaunchScreen.storyboard")
+    inputs.file("AppIconLaunchScreen.storyboard")
     outputs.dir(compiledIosLaunchScreenDirectory)
     doFirst {
         compiledIosLaunchScreenDirectory.get().asFile.mkdirs()
     }
     commandLine(
         "xcrun", "ibtool",
-        "--compile", compiledIosLaunchScreenDirectory.get().file("ExpeditionLaunchScreen.storyboardc").asFile.absolutePath,
+        "--compile", compiledIosLaunchScreenDirectory.get().file("AppIconLaunchScreen.storyboardc").asFile.absolutePath,
         "--minimum-deployment-target", expectedIosMinimumVersion,
         "--target-device", "iphone", "--target-device", "ipad",
-        file("ExpeditionLaunchScreen.storyboard").absolutePath,
+        file("AppIconLaunchScreen.storyboard").absolutePath,
     )
 }
 

@@ -59,7 +59,7 @@
         <integer>2</integer>
     </array>
     <key>UILaunchStoryboardName</key>
-    <string>ExpeditionLaunchScreen</string>
+    <string>AppIconLaunchScreen</string>
     <key>UIRequiresFullScreen</key>
     <true/>
     <key>UIStatusBarHidden</key>
