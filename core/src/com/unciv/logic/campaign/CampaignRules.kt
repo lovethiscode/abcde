@@ -87,7 +87,7 @@ object CampaignRules {
         if (unit.id in s.protectedUnits) s.protectedUnitLost = true
         if (CivilWarCampaign.isActive(unit.civ.gameInfo) && unit.name in CivilWarCampaign.militaryUnits && reason.counts) {
             s.lostMilitary.add(unit.id)
-            s.lossReasons.putIfAbsent(unit.id.toString(), reason.name)
+            if (unit.id.toString() !in s.lossReasons) s.lossReasons[unit.id.toString()] = reason.name
         }
     }
 
