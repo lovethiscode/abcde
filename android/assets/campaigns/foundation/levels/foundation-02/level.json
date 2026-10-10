@@ -1,10 +1,10 @@
 {
-  "id": "beginner-construction",
+  "id": "foundation-02",
   "title": "Build a thriving capital",
   "configVersion": 1,
   "scoringVersion": 1,
   "requiredProduction": ["Monument", "Scout"],
   "worker": "Worker",
   "population": 4,
-  "nextLevel": "beginner-improvements"
+  "nextLevel": "foundation-03"
 }

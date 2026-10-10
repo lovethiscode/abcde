@@ -16,7 +16,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         addGoodSizedLabel(state.definition.title).row()
         addGoodSizedLabel("Action turn [${state.completedRounds + 1}], completed rounds [${state.completedRounds}]").row()
         for (item in state.definition.requiredProduction)
-            addGoodSizedLabel("${if (item in state.produced) "✓" else "○"} " + "Produce [$item]".tr()).row()
+            addGoodSizedLabel("${if (item in state.produced) "✓" else "○"} " + "Campaign production: [$item]".tr()).row()
         addGoodSizedLabel("${if (result.worker) "✓" else "○"} " + "Produce and keep a Worker".tr()).row()
         addGoodSizedLabel("${if (result.population) "✓" else "○"} " + "Initial capital population: [${state.definition.population}]".tr()).row()
         addGoodSizedLabel("Monument and Scout must be produced; their gold purchases are disabled.").row()

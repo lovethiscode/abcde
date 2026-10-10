@@ -4,6 +4,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.logic.campaign.CampaignCatalog
 import com.unciv.logic.campaign.CampaignStore
 import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.onActivation
@@ -35,6 +36,16 @@ class CampaignScreen : BaseScreen(), RecreateOnResize {
             content.add(definition.title.toLabel(fontSize = 27)).row()
             content.add("Best result: [$best]/3".toLabel()).row()
             content.add("Starting gold: [${player.gold}], capital population: [${capital.population.population}]".toLabel()).row()
+            for ((label, values) in listOf(
+                "Initial buildings" to capital.cityConstructions.getBuiltBuildings().map { it.name }.toList(),
+                "Initial units" to player.units.getCivUnits().map { it.name }.toList(),
+                "Initial technologies" to player.tech.techsResearched.sorted(),
+            )) content.add((label.tr() + ": " + values.joinToString(", ") { it.tr() }).toLabel().apply { wrap = true })
+                .width(stage.width.coerceAtMost(650f) - 80f).row()
+            if (saved?.campaign?.let { it.resultStars == 0 && !it.failed } == true) {
+                val actual = saved.civilizations.single { it.civID == saved.campaign!!.playerId }
+                content.add("Saved attempt: turn [${saved.campaign!!.completedRounds + 1}], gold [${actual.gold}]".toLabel()).row()
+            }
             content.add("Produce a Monument and a Scout. Gold purchases do not count and are disabled.".toLabel().apply { wrap = true })
                 .width(stage.width.coerceAtMost(650f) - 80f).row()
             content.add("Bonus: produce and keep a Worker. Bonus: grow the initial capital to [${definition.population}] population.".toLabel().apply { wrap = true })

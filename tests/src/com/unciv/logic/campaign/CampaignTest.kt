@@ -7,6 +7,7 @@ import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.files.FileConversions
 import com.unciv.logic.files.cloud.CloudSaveSync
 import com.unciv.models.stats.Stat
+import com.unciv.models.translations.tr
 import com.unciv.testing.BaseTestRunner
 import com.unciv.testing.TestGame
 import org.junit.Assert.*
@@ -26,6 +27,15 @@ class CampaignTest {
         TestGame() // Initializes the real base ruleset and settings, not the campaign scene.
         files = UncivFiles(Gdx.files, temporary.root.path)
         store = CampaignStore(files)
+    }
+
+    @Test fun `Chinese objective uses the actual construction name`() {
+        UncivGame.Current.translations.readAllLanguagesTranslation()
+        UncivGame.Current.settings.language = "Simplified_Chinese"
+        try {
+            assertTrue("Campaign production: [Monument]".tr(hideIcons = true).contains("纪念碑"))
+            assertTrue("Campaign production: [Scout]".tr(hideIcons = true).contains("斥候"))
+        } finally { UncivGame.Current.settings.language = "English" }
     }
 
     @Test fun `packaged initial assets are exact and each attempt has fresh identity`() {
@@ -128,7 +138,7 @@ class CampaignTest {
         store.start(next, game.campaign!!.attemptId)
         store.save(stale)
         assertEquals(next.gameId, store.saved(CampaignCatalog.construction)!!.gameId)
-        assertEquals(1, store.progress().bestStars["beginner-construction:1"])
+        assertEquals(1, store.progress().bestStars["foundation-02:1"])
     }
 
     @Test fun `result journal recovers a failed progress write and never stitches stars`() {
@@ -150,8 +160,8 @@ class CampaignTest {
         val worker = another.ruleset.units.getValue("Worker").construct(city.cityConstructions, null)!!
         CampaignRules.productionCompleted(city, "Worker", worker)
         assertEquals(2, store.submit(another))
-        assertEquals(2, store.progress().bestStars["beginner-construction:1"])
-        assertTrue("beginner-improvements" in store.progress().unlocked)
+        assertEquals(2, store.progress().bestStars["foundation-02:1"])
+        assertTrue("foundation-03" in store.progress().unlocked)
     }
 
     @Test fun `delayed autosave cannot overwrite newer spending within the same turn`() {
@@ -202,7 +212,7 @@ class CampaignTest {
                 println("CAMPAIGN_ROUTE seed=${game.campaign!!.seed} gameId=${game.gameId} worker=$worker population=$population turns=${game.turns} stars=$stars")
                 assertEquals(stars, CampaignRules.evaluate(game).stars)
                 assertEquals(stars, routeStore.submit(game))
-                assertEquals(stars, routeStore.progress().bestStars["beginner-construction:1"])
+                assertEquals(stars, routeStore.progress().bestStars["foundation-02:1"])
                 evidence?.let { FileConversions.writeJson(it.child("worker-$worker-population-$population.json"), game, false) }
             }
         }

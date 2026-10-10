@@ -12,8 +12,8 @@ import kotlin.random.Random
 
 /** Stage-two catalog: only real, playable content is exposed. */
 object CampaignCatalog {
-    const val construction = "beginner-construction"
-    private const val folder = "campaigns/beginner/construction"
+    const val construction = "foundation-02"
+    private const val folder = "campaigns/foundation/levels/foundation-02"
 
     fun definition(): CampaignDefinition = requireNotNull(
         FileConversions.readJson(Gdx.files.internal("$folder/level.json"), CampaignDefinition::class.java)

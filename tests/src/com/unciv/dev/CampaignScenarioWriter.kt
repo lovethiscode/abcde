@@ -45,7 +45,7 @@ object CampaignScenarioWriter {
         player.cache.updateViewableTiles()
         capital.reassignPopulation()
         capital.cityStats.update()
-        FileConversions.writeJson(Gdx.files.local("campaigns/beginner/construction/initial-state.json"), game, false)
+        FileConversions.writeJson(Gdx.files.local("campaigns/foundation/levels/foundation-02/initial-state.json"), game, false)
         com.unciv.utils.Concurrency.stopThreadPools()
         println("Wrote construction scene: ${player.gold} gold, population ${capital.population.population}")
     }
