@@ -42,6 +42,9 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     private var progress = CampaignProgress()
     private val sync = game.files.campaignProgressSync
     private val syncPanel = Table()
+    private var mapScrollPane: AutoScrollPane? = null
+    private var detailScrollPane: AutoScrollPane? = null
+    private var renderedChapter = -1
     private var disposed = false
     private val syncListener: (CampaignSyncStatus) -> Unit = { status ->
         Concurrency.runOnGLThread {
@@ -63,6 +66,10 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     }
 
     private fun rebuild() {
+        val mapScrollY = if (renderedChapter == chapter) mapScrollPane?.scrollY ?: 0f else 0f
+        val detailScrollY = if (renderedChapter == chapter) detailScrollPane?.scrollY ?: 0f else 0f
+        mapScrollPane = null
+        detailScrollPane = null
         root.clearChildren()
         val header = Table().apply {
             background = skinStrings.getUiBackground(
@@ -79,11 +86,18 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             definitions.forEach { store.saved(it.id)?.let(store::reconcile) }
             progress = store.progress()
             val content = Table().apply { pad(22f); defaults().pad(8f) }
-            content.add("新手战役  ·  当前版本  ·  四章十六关  ·  ${definitions.sumOf { store.stars(it, progress) }} / 48 星".toLabel(Theme.text)).left().row()
+            content.add("新手战役  ·  当前版本  ·  四章十六关  ·  ${definitions.sumOf { store.stars(it, progress) }} / 48 星"
+                .toLabel(Theme.text).apply { wrap = true }).growX().minWidth(0f).left().row()
             updateSyncPanel(sync.status)
             content.add(syncPanel).growX().row()
-            if (chapter < 0) overview(content) else chapter(content)
-            root.add(AutoScrollPane(content)).grow()
+            if (chapter < 0) {
+                overview(content)
+                root.add(AutoScrollPane(content)).grow()
+            } else chapter(content)
+            renderedChapter = chapter
+            root.validate()
+            mapScrollPane?.apply { scrollY = mapScrollY; updateVisualScroll() }
+            detailScrollPane?.apply { scrollY = detailScrollY; updateVisualScroll() }
         } catch (ex: Exception) {
             com.unciv.utils.Log.error("Cannot open campaign catalog", ex)
             root.add("战役暂时无法读取，已有存档与成绩仍保留。".toLabel()).grow()
@@ -103,7 +117,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             CampaignSyncState.WaitingForNetwork -> "成绩已保存在本机 · 等待重试 iCloud 同步"
             CampaignSyncState.Failed -> "iCloud 同步失败，本机成绩仍保留；可点击重试"
         }
-        syncPanel.add("$message\n关内对局仅在本机续玩".toLabel(Theme.muted, 15).apply { setWrap(true) })
+        syncPanel.add(message.toLabel(Theme.muted, 15).apply { setWrap(true) })
             .growX().minWidth(0f).left()
         if (status.state == CampaignSyncState.LocalOnly) return
         if (stage.width < 700f) syncPanel.row()
@@ -237,23 +251,42 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             } }).minWidth(105f)
         }
         content.add(navigation).left().row()
-        val wide = stage.width >= 1000f
-        val width = if (wide) (stage.width * .49f).coerceAtMost(650f) else (stage.width - 65f).coerceAtMost(700f)
-        val map = routeMap(levels, width)
-        val detailWidth = if (wide) (stage.width * .40f).coerceAtMost(600f) else width
-        val body = Table().apply { defaults().pad(8f).top() }
-        body.add(map).size(width, 410f)
-        if (!wide) body.row()
-        body.add(details(d, detailWidth)).width(detailWidth).growY()
-        content.add(body).row()
+        val availableWidth = stage.width - 44f - 18f
+        val leftWidth = availableWidth * .52f
+        val detailWidth = availableWidth - leftWidth
+        val width = leftWidth - 60f // Content padding and the map cell's padding.
+        val detailPane = AutoScrollPane(details(d, detailWidth)).apply {
+            name = "ui-campaign-detail-scroll"
+            setScrollingDisabled(true, false)
+            setOverscroll(false, false)
+        }
+        val map = routeMap(levels, width) { definition ->
+            detailPane.actor = details(definition, detailWidth)
+            detailPane.scrollY = 0f
+            detailPane.updateVisualScroll()
+        }
+        content.add(map).size(width, 410f).row()
         if (levels.all { it.id in progress.cleared }) {
             content.add("章节完成 · 在自由对局中练习".toTextButton().apply {
                 onActivation { game.pushScreen { NewGameScreen() } }
             }).height(52f).fillX().row()
         }
+        val mapPane = AutoScrollPane(content).apply {
+            name = "ui-campaign-map-scroll"
+            setScrollingDisabled(true, false)
+            setOverscroll(false, false)
+        }
+        val body = Table().apply {
+            pad(12f, 22f, 16f, 22f)
+            add(mapPane).width(leftWidth).growY().minHeight(0f)
+            add(detailPane).width(detailWidth).growY().minHeight(0f).padLeft(18f)
+        }
+        mapScrollPane = mapPane
+        detailScrollPane = detailPane
+        root.add(body).grow().minHeight(0f)
     }
 
-    private fun routeMap(levels: List<CampaignDefinition>, width: Float): Group {
+    private fun routeMap(levels: List<CampaignDefinition>, width: Float, onSelect: (CampaignDefinition) -> Unit): Group {
         val map = Group().apply { setSize(width, 410f) }
         // Subdued hex terrain and a meandering river keep the path readable at phone size.
         for (x in 0..(width / 44).toInt()) for (y in 0..8) {
@@ -306,11 +339,18 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 }).apply { color = if (unlocked) Theme.gold else Theme.muted }).size(16f).padRight(8f)
                 setSize((width * .42f).coerceAtMost(210f), 74f)
                 setPosition(positions[i].first * width - this.width / 2, positions[i].second * 410 - height / 2)
-                if (d.id == selected) style = TextButton.TextButtonStyle(style).apply {
-                    up = Theme.outlinedControl(BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.raised),
+                style = TextButton.TextButtonStyle(style).apply {
+                    checked = Theme.outlinedControl(BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.raised),
                         BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.gold))
                 }
-                onActivation { selected = d.id; rebuild() }
+                isChecked = d.id == selected
+                onActivation {
+                    map.children.filterIsInstance<TextButton>().forEach { it.isChecked = it === this }
+                    if (selected != d.id) {
+                        selected = d.id
+                        onSelect(d)
+                    }
+                }
             }
             map.addActor(node)
         }
