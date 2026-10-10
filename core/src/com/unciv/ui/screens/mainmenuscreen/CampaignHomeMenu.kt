@@ -28,6 +28,7 @@ import com.unciv.ui.screens.savescreens.LoadGameScreen
 import com.unciv.utils.Concurrency
 import com.unciv.utils.ONLINE_MULTIPLAYER_UNAVAILABLE
 import com.unciv.utils.launchOnGLThread
+import kotlin.math.roundToInt
 
 /** iOS home layout; game creation, loading and tools keep their existing implementations. */
 internal class CampaignHomeMenu(
@@ -47,12 +48,17 @@ internal class CampaignHomeMenu(
     init {
         name = "ui-campaign-home"
         background = ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.color(Color.valueOf("e5edf0"), ExpeditionBlueTheme.background))
-        pad(28f)
+        val touchSize = UiNavigation.minimumTouchSize()
+        val pointScale = touchSize / 44f
+        pad(28f).padBottom(12f * pointScale)
         val portrait = screen.isPortrait()
         val width = (screen.stage.width - 56f).coerceAtMost(1600f)
-        val bodyHeight = (screen.stage.height * .48f).coerceAtMost(400f)
         val coverWidth = if (portrait) width else width * .55f
         val actionsWidth = if (portrait) width else width - coverWidth - 22f
+        val toolCount = if (game.achievementsAvailable) 6 else 5
+        val columns = if (portrait) 3 else toolCount
+        val toolbarHeight = ((toolCount + columns - 1) / columns) * touchSize + 12f * pointScale
+        val sectionGap = 16f * pointScale
 
         val header = Table()
         header.add(ImageGetter.getImage("OtherIcons/HexagonOutline", iconColor)).size(42f).padRight(16f)
@@ -61,7 +67,18 @@ internal class CampaignHomeMenu(
             add("Civilization, written by you".toLabel(muted, 18)).left()
         }
         header.add(brand).expandX().left()
-        add(header).width(width).padBottom(24f).row()
+        val version = game.displayBuildNumber?.let { "v${UncivGame.VERSION.text} ($it)" }
+            ?: "v${UncivGame.VERSION.text}"
+        header.add(version.toLabel(muted, (13f * pointScale).roundToInt()).apply {
+            name = "ui-home-version"
+        }).right().top().padTop(2f)
+        header.pack()
+        add(header).width(width).padBottom(sectionGap).row()
+        val bodyHeight = if (portrait) (screen.stage.height * .48f).coerceAtMost(400f) else
+            (screen.stage.height - padTop - padBottom - header.prefHeight - sectionGap * 2f - toolbarHeight)
+                .coerceAtLeast(220f)
+        val secondaryHeight = maxOf(bodyHeight * .20f, touchSize)
+        val actionHeight = (bodyHeight - secondaryHeight - 32f) / 2f
 
         val actions = Table()
         val hasSave = game.files.autosaves.autosaveExists()
@@ -72,42 +89,45 @@ internal class CampaignHomeMenu(
             resume.touchable = Touchable.disabled
             resume.color.a = .6f
         } else loadResumeSubtitle(resume.findActor("subtitle"))
-        actions.add(resume).width(actionsWidth).height(bodyHeight * .36f).padBottom(16f).row()
+        actions.add(resume).width(actionsWidth).height(actionHeight).padBottom(16f).row()
         actions.add(menuButton("Free play", "Quickstart or customize a singleplayer game",
             "OtherIcons/Nations", actionsWidth, action = ::showFreePlay)).width(actionsWidth)
-            .height(bodyHeight * .36f).padBottom(16f).row()
+            .height(actionHeight).padBottom(16f).row()
 
         val secondary = Table()
         secondary.add(menuButton("Load game", "", "OtherIcons/Load", (actionsWidth - 16f) / 2,
             KeyboardBinding.MainMenuLoad) { game.pushScreen { LoadGameScreen() } })
-            .width((actionsWidth - 16f) / 2).height(bodyHeight * .20f).padRight(16f)
+            .width((actionsWidth - 16f) / 2).height(secondaryHeight).padRight(16f)
         secondary.add(menuButton("Multiplayer", "", "OtherIcons/Multiplayer", (actionsWidth - 16f) / 2,
-            KeyboardBinding.Multiplayer, action = ::showMultiplayer)).width((actionsWidth - 16f) / 2).height(bodyHeight * .20f)
+            KeyboardBinding.Multiplayer, action = ::showMultiplayer)).width((actionsWidth - 16f) / 2).height(secondaryHeight)
         actions.add(secondary).width(actionsWidth)
 
         val body = Table()
         body.add(campaignCover(coverWidth, bodyHeight)).size(coverWidth, bodyHeight)
         if (portrait) body.row() else body.add().width(22f)
         body.add(actions).width(actionsWidth).padTop(if (portrait) 20f else 0f)
-        add(body).width(width).padBottom(12f).row()
+        add(body).width(width).padBottom(sectionGap).row()
 
-        val tools = Table()
-        val toolCount = if (game.achievementsAvailable) 6 else 5
-        val columns = if (portrait) 3 else toolCount
+        val tools = Table().apply { padTop(6f * pointScale).padBottom(6f * pointScale) }
         val toolWidth = width / columns - 6f
+        val iconSize = 24f * pointScale
+        val iconGap = 8f * pointScale
         var added = 0
         fun tool(text: String, icon: String, binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Table {
             val button = Table().apply {
-                pad(8f)
+                background = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape,
+                    surface.cpy().apply { a = .45f })
+                pad(0f, 8f, 0f, 8f)
                 val glyph = if (icon == "OtherIcons/Question" && ExpeditionBlueTheme.enabled)
-                    "?".toLabel(iconColor, 28, Align.center) else ImageGetter.getImage(icon, iconColor)
-                add(glyph).size(26f).padRight(8f)
-                add(text.toLabel(muted, 18).apply { wrap = true }).width(toolWidth - 50f)
+                    "?".toLabel(iconColor, (24f * pointScale).roundToInt(), Align.center) else ImageGetter.getImage(icon, iconColor)
+                add(glyph).size(iconSize).padRight(iconGap)
+                add(text.toLabel(ink, (17f * pointScale).roundToInt()).apply { wrap = true })
+                    .width(toolWidth - 16f - iconSize - iconGap)
                 touchable = Touchable.enabled
                 onActivation(binding = binding) { stopBackground(); action() }
             }
             button.name = "ui-home-${text.lowercase().replace(' ', '-')}"
-            tools.add(button).width(toolWidth).height(maxOf(48f, UiNavigation.minimumTouchSize())).pad(3f)
+            tools.add(button).width(toolWidth).height(touchSize).padLeft(3f).padRight(3f)
             if (++added % columns == 0) tools.row()
             return button
         }
@@ -121,10 +141,6 @@ internal class CampaignHomeMenu(
             .onLongPress { screen.openOptionsPopup(withDebug = true) }
         tool("About", "OtherIcons/MenuIcon", action = ::showAbout)
         add(tools).width(width).row()
-
-        val version = game.displayBuildNumber?.let { "{Version} ${UncivGame.VERSION.text} ($it)" }
-            ?: "{Version} ${UncivGame.VERSION.text}"
-        add(version.toLabel(muted, 16)).padTop(4f).row()
         pack()
     }
 
