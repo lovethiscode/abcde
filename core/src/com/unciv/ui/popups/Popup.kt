@@ -98,7 +98,7 @@ open class Popup(
                         * topTable
                     * bottomTable
     */
-    private val dismissHeader = Table(BaseScreen.skin)
+    private val dismissControls = Table(BaseScreen.skin)
     private val popupFrame = Table(BaseScreen.skin)
     protected val innerTable = Table(BaseScreen.skin)
 
@@ -149,12 +149,11 @@ open class Popup(
             popupFrame.background = innerTable.background
             popupFrame.touchable = Touchable.enabled
             innerTable.background = null
-            popupFrame.add(dismissHeader).growX().row()
             super.add(popupFrame)
         }
 
         fun addContent(actor: WidgetGroup): Cell<WidgetGroup> =
-            if (UiNavigation.isIos) frame.add(actor) else super.add(actor)
+            if (UiNavigation.isIos) frame.add(actor).top() else super.add(actor)
         fun wrapInScrollPane(table: Table) = AutoScrollPane(table, BaseScreen.skin)
             .apply { setOverscroll(false, false) }
         when (scrollable) {
@@ -180,6 +179,7 @@ open class Popup(
                 addContent(innerTable)
             }
         }
+        if (UiNavigation.isIos) popupFrame.add(dismissControls).top()
 
         bottomTable.pad(20f)
         bottomTable.defaults().pad(5f)
@@ -194,14 +194,14 @@ open class Popup(
 
     private fun recalculateInnerTableMaxHeight() {
         val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight
-        topTableCell.maxHeight((maxPopupHeight - buttonsHeight - dismissHeader.prefHeight).coerceAtLeast(0f))
+        topTableCell.maxHeight((maxPopupHeight - buttonsHeight).coerceAtLeast(0f))
         innerTable.invalidate()
     }
 
     private fun recalculateInnerTableMaxWidth() {
-        val minWidth = maxOf(innerTable.minWidth, dismissHeader.minWidth).coerceAtMost(stageToShowOn.width)
-        if (minWidth < maxPopupWidth) return
-        topTableCell.maxWidth(minWidth)
+        val closeWidth = dismissControls.prefWidth
+        val minWidth = innerTable.minWidth.coerceAtMost((stageToShowOn.width - closeWidth).coerceAtLeast(0f))
+        topTableCell.maxWidth(maxOf((maxPopupWidth - closeWidth).coerceAtLeast(0f), minWidth))
         innerTable.invalidate()
     }
 
@@ -229,7 +229,7 @@ open class Popup(
     protected open fun onVisibleAreaChanged(visibleArea: Rectangle) {
         if (com.badlogic.gdx.Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
             val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight
-            topTableCell.maxSize(maxPopupWidth, (visibleArea.height * maxSizePercentage - buttonsHeight - dismissHeader.prefHeight).coerceAtLeast(0f))
+            topTableCell.maxSize((maxPopupWidth - dismissControls.prefWidth).coerceAtLeast(0f), (visibleArea.height * maxSizePercentage - buttonsHeight).coerceAtLeast(0f))
             innerTable.invalidateHierarchy()
         }
         fitOrCenterContentIntoVisibleArea(visibleArea)
@@ -335,7 +335,7 @@ open class Popup(
     override fun clear() {
         topTable.clear()
         bottomTable.clear()
-        dismissHeader.clear()
+        dismissControls.clear()
         clickBehindToClose = false
         onCloseCallback = null
     }
@@ -399,12 +399,13 @@ open class Popup(
         clickBehindToClose = true
         onCloseCallback = action
         val cell = if (UiNavigation.isIos && text == Constants.close) {
-            dismissHeader.clear()
+            dismissControls.clear()
             val button = UiNavigation.dismissButton()
             button.onActivation { close(); action?.invoke() }
             button.keyShortcuts.add(additionalKey)
-            dismissHeader.add().expandX()
-            dismissHeader.add(button).size(button.width, button.height).pad(8f)
+            dismissControls.add(button).size(button.width, button.height).pad(8f).also {
+                recalculateInnerTableMaxWidth()
+            }
         } else addButton(text, additionalKey, style) {
             close()
             action?.invoke()

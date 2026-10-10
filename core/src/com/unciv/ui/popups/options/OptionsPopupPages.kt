@@ -13,7 +13,6 @@ enum class OptionsPopupPages(
     internal val iconPath: String,
     internal val getContent: OptionsPopup.() -> OptionsPopupTab
 ) {
-    About("About", "Icons/Unciv128.png", { AboutTab(this) }),
     Display("Display", "UnitPromotionIcons/Scouting", { DisplayTab(this) }),
     Gameplay("Gameplay", "OtherIcons/Options", { GameplayTab(this) }),
     Automation("Automation", "OtherIcons/NationSwap", { AutomationTab(this) }),
