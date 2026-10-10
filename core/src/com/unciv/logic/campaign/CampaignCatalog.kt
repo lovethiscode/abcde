@@ -30,7 +30,11 @@ object CampaignCatalog {
 
     fun template(id: String = construction): GameInfo = requireNotNull(
         FileConversions.readJson(Gdx.files.internal("${folder(id)}/initial-state.json"), GameInfo::class.java)
-    ).also { it.setTransients() }
+    ).also { game ->
+        game.setTransients()
+        // The ordinary loader updates stats via cities; settler-only scenes also need their base values.
+        game.civilizations.forEach { it.updateStatsForNextTurn() }
+    }
 
     fun newAttempt(id: String = construction): GameInfo {
         val definition = definition(id)

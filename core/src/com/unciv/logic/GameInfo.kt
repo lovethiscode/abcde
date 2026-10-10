@@ -871,6 +871,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
                 // No uniques have changed since the cache was created, so we can still use it
                 city.cityStats.update()
             }
+            if (campaign != null && civInfo.cities.isEmpty()) civInfo.updateStatsForNextTurn()
         }
     }
 

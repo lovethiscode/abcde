@@ -4,6 +4,7 @@ import com.unciv.logic.campaign.CampaignCatalog
 import com.unciv.logic.campaign.CampaignRules
 import com.unciv.logic.campaign.CampaignStore
 import com.unciv.logic.map.HexCoord
+import com.unciv.models.translations.tr
 import com.unciv.ui.popups.LoadingPopup
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.popups.ToastPopup
@@ -20,11 +21,15 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         addGoodSizedLabel(d.title).row()
         addGoodSizedLabel("行动回合 ${state.completedRounds + 1} · 已完成 ${state.completedRounds} 回合").row()
         if (terminal) {
+            screen.campaignResultShown = true
             addGoodSizedLabel(if (result.failed) "本次挑战失败：${result.failureReason}" else "通关 · ${state.resultStars} / 3 星").row()
             val best = CampaignStore(screen.game.files).progress().bestStars["${d.id}:${d.scoringVersion}"] ?: 0
             addGoodSizedLabel("本版本最高成绩：${maxOf(best, state.resultStars)} / 3 星").row()
         }
-        val goals = d.objectives.ifEmpty { CampaignCatalog.definition(d.id).objectives }
+        val goals = d.objectives.ifEmpty {
+            listOf("本次生产完成：" + d.requiredProduction.joinToString("、") { it.tr() },
+                "本次生产并保留：" + d.worker.tr(), "初始首都人口至少 ${d.population}")
+        }
         val met = listOf(result.main, result.worker, result.population)
         for ((i, goal) in goals.withIndex()) {
             addGoodSizedLabel("${if (met[i] && !result.failed) "✓" else "○"} $goal").row()

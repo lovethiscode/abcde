@@ -49,6 +49,13 @@ class CampaignAllLevelsTest {
             assertFalse("$n starts completed", CampaignRules.evaluate(g).main)
             assertFalse("$n starts failed", CampaignRules.evaluate(g).failed)
             assertEquals(0, s.completedRounds)
+            if (n == 1 || n == 16) assertEquals(9, g.getCurrentPlayerCivilization().getHappiness())
+            if (n == 7) {
+                assertTrue(g.getCurrentPlayerCivilization().stats.statsForNextTurn.gold in -4f..-2f)
+                assertEquals(5, g.getCurrentPlayerCivilization().getHappiness())
+            }
+            if (n == 11) assertEquals(1, g.getCurrentPlayerCivilization().getHappiness())
+            if (n == 13) assertEquals(-10, g.getCurrentPlayerCivilization().getHappiness())
             assertEquals(1, g.civilizations.count { it.isHuman() })
             assertTrue(g.gameParameters.noBarbarians)
             assertEquals(0, g.gameParameters.numberOfCityStates)
@@ -65,6 +72,7 @@ class CampaignAllLevelsTest {
             for (tile in d.areas.flatMap { it.tiles } + d.targetTiles) assertNotNull(g.tileMap[tile])
             if (d.targetCity.isNotEmpty()) assertTrue(g.getCities().any { it.id == d.targetCity })
             val clone = g.clone().also { it.setTransients() }
+            if (n == 1 || n == 16) assertEquals(9, clone.getCurrentPlayerCivilization().getHappiness())
             assertEquals(s.seed, clone.campaign!!.seed)
             assertEquals(d.objectives, clone.campaign!!.definition.objectives)
             assertFalse(s.protectedUnitLost)

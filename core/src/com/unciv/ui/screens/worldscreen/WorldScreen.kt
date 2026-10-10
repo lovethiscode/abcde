@@ -163,7 +163,7 @@ class WorldScreen(
     internal val nextTurnButton = NextTurnButton(this)
     internal val statusButtons = StatusButtons(nextTurnButton)
     internal val smallUnitButton = SmallUnitButton(this, statusButtons)
-    private var campaignResultShown = false
+    internal var campaignResultShown = false
     private val campaignButton = "Campaign objectives".toTextButton().apply {
         name = "ui-campaign-objectives"
         onActivation { com.unciv.ui.screens.campaign.CampaignTasksPopup(this@WorldScreen) }
