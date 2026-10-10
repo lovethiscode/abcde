@@ -1,6 +1,7 @@
 // Run with `swift ios/app-store-assets/generate-launch-artwork.swift` from the public repository.
 // Both UIKit and the pre-skin game startup screen use these exact 3x assets.
 import AppKit
+import zlib
 
 let root = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
     .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
@@ -9,6 +10,41 @@ let blue = NSColor(srgbRed: 23/255, green: 52/255, blue: 63/255, alpha: 1)
 let gold = NSColor(srgbRed: 226/255, green: 200/255, blue: 147/255, alpha: 1)
 let text = NSColor(srgbRed: 243/255, green: 243/255, blue: 234/255, alpha: 1)
 let muted = NSColor(srgbRed: 189/255, green: 208/255, blue: 212/255, alpha: 1)
+
+// AppKit's PNG writer reduces the profile to an sRGB hint. Embed the actual ICC data so
+// UIKit launch snapshots and the game's raw texture pixels agree on wide-colour displays.
+func encodePNG(_ bitmap: NSBitmapImageRep) -> Data {
+    let png = bitmap.representation(using: .png, properties: [:])!
+    let profile = NSColorSpace.sRGB.iccProfileData!
+    var compressed = [UInt8](repeating: 0, count: Int(compressBound(uLong(profile.count))))
+    var length = uLongf(compressed.count)
+    let status = profile.withUnsafeBytes { source in
+        compressed.withUnsafeMutableBufferPointer { destination in
+            compress2(destination.baseAddress, &length, source.bindMemory(to: UInt8.self).baseAddress,
+                uLong(profile.count), Z_BEST_COMPRESSION)
+        }
+    }
+    precondition(status == Z_OK)
+    func word(_ value: UInt32) -> Data {
+        var bigEndian = value.bigEndian
+        return withUnsafeBytes(of: &bigEndian) { Data($0) }
+    }
+    let payload = Data("sRGB\0\0".utf8) + Data(compressed.prefix(Int(length)))
+    let body = Data("iCCP".utf8) + payload
+    let crc = body.withUnsafeBytes { crc32(0, $0.bindMemory(to: UInt8.self).baseAddress, uInt(body.count)) }
+    let chunk = word(UInt32(payload.count)) + body + word(UInt32(crc))
+    var result = Data(png.prefix(8))
+    var offset = 8
+    while offset < png.count {
+        let count = png[offset..<offset+4].reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+        let end = offset + Int(count) + 12
+        let type = String(data: png[offset+4..<offset+8], encoding: .ascii)!
+        if type != "sRGB" { result.append(png[offset..<end]) }
+        if type == "IHDR" { result.append(chunk) }
+        offset = end
+    }
+    return result
+}
 
 func render(_ name: String, width: Int, height: Int, draw: (CGContext) -> Void) throws {
     let context = CGContext(data: nil, width: width * 3, height: height * 3,
@@ -21,8 +57,7 @@ func render(_ name: String, width: Int, height: Int, draw: (CGContext) -> Void) 
     draw(context)
     NSGraphicsContext.restoreGraphicsState()
     let bitmap = NSBitmapImageRep(cgImage: context.makeImage()!)
-    bitmap.setProperty(.colorSyncProfileData, withValue: NSColorSpace.sRGB.iccProfileData!)
-    let png = bitmap.representation(using: .png, properties: [:])!
+    let png = encodePNG(bitmap)
     try png.write(to: output.appendingPathComponent(name + "@3x.png"))
 }
 
