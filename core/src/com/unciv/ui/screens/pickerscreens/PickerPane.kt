@@ -98,7 +98,7 @@ class PickerPane(
             }
         }
         if (showSideDescription)
-            splitPane.splitAmount = 1f - (width * .32f).coerceIn(280f, 400f) / width
+            splitPane.splitAmount = 1f - (width * .26f).coerceIn(240f, 320f) / width
         if (UiNavigation.isIos) {
             val hasNavigation = closeButton.parent === navigationHeader && closeButton.isVisible
             navigationHeader.isVisible = hasNavigation
