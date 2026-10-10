@@ -17,6 +17,7 @@ import com.unciv.GUI
 import com.unciv.logic.civilization.Notification
 import com.unciv.logic.civilization.NotificationCategory
 import com.unciv.models.translations.tr
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.MayaCalendar.toMayaNumerals
 import com.unciv.ui.components.extensions.packIfNeeded
 import com.unciv.ui.components.extensions.removeFontColorFromStatIcons
@@ -340,7 +341,8 @@ class NotificationsScroll(
                 .minHeight(2f).width(minCategoryLineWidth)
             add(Table().apply {
                 background = backgroundDrawable
-                val label = ColorMarkupLabel(category.name, ImageGetter.CHARCOAL, fontSize = fontSize)
+                val label = ColorMarkupLabel(category.name,
+                    ExpeditionBlueTheme.color(ImageGetter.CHARCOAL, ExpeditionBlueTheme.text), fontSize = fontSize)
                 add(label)
                 captionWidth = prefWidth  // of this wrapper including background rims
                 captionWidth
@@ -387,7 +389,8 @@ class NotificationsScroll(
             }
 
             val maxLabelWidth = maxEntryWidth - (itemIconSize + 5f) * notification.icons.size - 10f
-            val label = WrappableLabel(notification.text, maxLabelWidth, ImageGetter.CHARCOAL, labelFontSize, hideIcons = true)
+            val label = WrappableLabel(notification.text, maxLabelWidth,
+                ExpeditionBlueTheme.color(ImageGetter.CHARCOAL, ExpeditionBlueTheme.text), labelFontSize, hideIcons = true)
             label.setAlignment(Align.center)
             label.removeFontColorFromStatIcons()
             if (label.prefWidth > maxLabelWidth * scaleFactor) {  // can't explain why the comparison needs scaleFactor

@@ -163,6 +163,9 @@ object ExpeditionBlueTheme {
         }
         skin.get("disabled", TextButtonStyle::class.java).fontColor = muted
         skin.get(CheckBoxStyle::class.java).apply {
+            fontColor = text
+            overFontColor = text
+            downFontColor = text
             checkboxOff = skin.newDrawable("Checkbox", muted)
             checkboxOn = skin.newDrawable("Checkbox-pressed", gold)
             checkboxOver = checkboxOff
@@ -170,6 +173,8 @@ object ExpeditionBlueTheme {
             checkboxOnDisabled = skin.newDrawable("Checkbox-pressed", border)
             checkboxOffDisabled = skin.newDrawable("Checkbox", border)
             checkedFontColor = gold
+            checkedOverFontColor = gold
+            checkedDownFontColor = gold
         }
         for (style in skin.getAll(ScrollPaneStyle::class.java).values()) {
             style.hScrollKnob = skin.newDrawable("Scrollbar", border)

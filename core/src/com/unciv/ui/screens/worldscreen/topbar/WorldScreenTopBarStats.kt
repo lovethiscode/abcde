@@ -5,6 +5,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.unciv.Constants
 import com.unciv.logic.civilization.Civilization
 import com.unciv.models.stats.Stats
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.colorFromRGB
 import com.unciv.ui.components.extensions.setFontColor
@@ -28,9 +29,9 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
     private val goldPerTurnLabel = "+0"
         .toLabel(colorFromRGB(225, 217, 71), 14)
 
-    private val scienceLabel = "0".toLabel(colorFromRGB(78, 140, 151)).apply { name = "ui-tech-stat-open" } // #4e8c97
+    private val scienceLabel = "0".toLabel(ExpeditionBlueTheme.color(colorFromRGB(78, 140, 151), ExpeditionBlueTheme.text)).apply { name = "ui-tech-stat-open" } // #4e8c97
     private val happinessLabel = "0".toLabel()
-    private val cultureLabel = "0".toLabel(colorFromRGB(210, 94, 210)) // #d25ed2
+    private val cultureLabel = "0".toLabel(ExpeditionBlueTheme.color(colorFromRGB(210, 94, 210), ExpeditionBlueTheme.text)) // #d25ed2
 
     private val faithLabel = "0".toLabel(colorFromRGB(168, 196, 241)) // #a8c4f1
     private val faithPerTurnLabel = "+0"
@@ -39,8 +40,8 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
     private val happinessContainer = Group()
 
     // These are all to improve performance IE reduce update time (was 150 ms on my phone, which is a lot!)
-    private val malcontentColor = colorFromRGB(239,83,80) // Color.valueOf("ef5350")
-    private val happinessColor = colorFromRGB(92, 194, 77) // Color.valueOf("8cc24d")
+    private val malcontentColor = ExpeditionBlueTheme.color(colorFromRGB(239,83,80), ExpeditionBlueTheme.danger) // Color.valueOf("ef5350")
+    private val happinessColor = ExpeditionBlueTheme.color(colorFromRGB(92, 194, 77), ExpeditionBlueTheme.success) // Color.valueOf("8cc24d")
     private val malcontentImage = ImageGetter.getStatIcon("Malcontent")
     private val happinessImage = ImageGetter.getStatIcon("Happiness")
 

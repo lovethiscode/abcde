@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.overviewscreen
 
 import com.badlogic.gdx.graphics.Color
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.actions.Actions
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -186,15 +187,17 @@ class NotificationsOverviewTable(
     }
 
     private fun getNotificationTable(index: Int, notification: Notification, doHighlight: Boolean) = Table(BaseScreen.skin).apply {
-        val label = ColorMarkupLabel(notification.text, ImageGetter.CHARCOAL, fontSize = 20)
+        val label = ColorMarkupLabel(notification.text,
+            ExpeditionBlueTheme.color(ImageGetter.CHARCOAL, ExpeditionBlueTheme.text), fontSize = 20)
             .apply { wrap = true }
         add(label).width(notificationWidth - iconSize * notification.icons.size)
 
+        val normalTint = if (ExpeditionBlueTheme.enabled) ExpeditionBlueTheme.panel else null
         val tintColor = when {
-            !doHighlight -> null
+            !doHighlight -> normalTint
             index >= highlightCount2 -> highlightColor2
             index >= highlightCount1 -> highlightColor1
-            else -> null
+            else -> normalTint
         }
         background = skinStrings.getUiBackground("OverviewScreen/NotificationOverviewTable/Notification", skinStrings.roundedEdgeRectangleShape, tintColor)
 

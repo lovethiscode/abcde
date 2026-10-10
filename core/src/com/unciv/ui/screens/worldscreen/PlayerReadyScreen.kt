@@ -3,6 +3,7 @@ package com.unciv.ui.screens.worldscreen
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.Constants
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.keyShortcuts
@@ -19,7 +20,8 @@ class PlayerReadyScreen(worldScreen: WorldScreen) : BaseScreen() {
             tintColor = curCiv.getOuterColor()
         )
 
-        table.add("[${curCiv.civName}] ready?".toLabel(curCiv.getInnerColor(), Constants.headingFontSize))
+        table.add("[${curCiv.civName}] ready?".toLabel(
+            ExpeditionBlueTheme.color(curCiv.getInnerColor(), ExpeditionBlueTheme.text), Constants.headingFontSize))
 
         table.onActivation {
             game.replaceCurrentScreen{ worldScreen }
