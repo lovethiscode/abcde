@@ -78,11 +78,19 @@ class PickerPane(
         if (UiNavigation.isIos) {
             val hasNavigation = closeButton.parent === navigationHeader && closeButton.isVisible
             navigationHeader.isVisible = hasNavigation
-            getCell(navigationHeader).height(if (hasNavigation) closeButton.height + 16f else 0f)
+            getCell(navigationHeader).height(if (hasNavigation) maxOf(closeButton.height + 16f, navigationHeader.prefHeight) else 0f)
         }
         super.layout()
         bottomTable.height = bottomTable.height.coerceAtMost(maxBottomTableHeight)
         splitPane.splitAmount = (scrollPane.height / (scrollPane.height + bottomTable.height)).coerceAtLeast(screenSplit)
+    }
+
+    fun setNavigationContent(content: Actor) {
+        if (!UiNavigation.isIos) return
+        navigationHeader.clear()
+        navigationHeader.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
+        navigationHeader.add(content).growX().minWidth(0f).left().pad(8f)
+        invalidateHierarchy()
     }
 
     fun useCloseButtonAsAction() {

@@ -40,6 +40,7 @@ import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.ExpanderTab
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.popups.Popup
@@ -111,12 +112,16 @@ class NewGameScreen(
         val heading = "Singleplayer".toLabel(fontSize = 28)
         val roomHint = "Choose the rules, map and civilizations for your game.".toLabel(Color.LIGHT_GRAY,18).apply { setWrap(true) }
         val banner = Table().apply {
-            background = skinStrings.getUiBackground("NewGameScreen/RoomHeader",skinStrings.roundedEdgeRectangleSmallShape,Color.valueOf("0d2140"))
-            pad(14f)
+            if (!UiNavigation.isIos) {
+                background = skinStrings.getUiBackground("NewGameScreen/RoomHeader",skinStrings.roundedEdgeRectangleSmallShape,Color.valueOf("0d2140"))
+                pad(14f)
+            }
             add(heading).left().growX().row()
             add(roomHint).left().growX().padTop(6f)
         }
-        if (game.platformCapabilities.multiplayerInviteLinks)
+        if (UiNavigation.isIos)
+            pickerPane.setNavigationContent(banner)
+        else if (game.platformCapabilities.multiplayerInviteLinks)
             topTable.add(banner).colspan(if (isPortrait) 1 else 5).width(stage.width-20f).padBottom(12f).row()
         if (isPortrait) initPortrait()
         else initLandscape()
