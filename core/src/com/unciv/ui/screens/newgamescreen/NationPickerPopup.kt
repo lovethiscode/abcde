@@ -44,7 +44,7 @@ internal class NationPickerPopup(
     private val ruleset: com.unciv.models.ruleset.Ruleset = playerPicker!!.previousScreen.ruleset,
     private val availableCivs: List<Nation>? = null,
     private val submit: ((String) -> Unit)? = null,
-) : Popup(screen, Scrollability.None) {
+) : Popup(screen, if (UiNavigation.isIos) Scrollability.WithoutButtons else Scrollability.None) {
     companion object {
         // Note - innerTable has pad(20f) and defaults().pad(5f), so content bottomLeft is at x=25/y=25
         // These are used for the Close/OK buttons in the lower left/right corners:
@@ -121,8 +121,7 @@ internal class NationPickerPopup(
 
     private fun addActionIcons() {
         // Despite being a Popup we use our own buttons - floating circular ones
-        if (UiNavigation.isIos) addCloseButton()
-        else {
+        if (!UiNavigation.isIos) {
             val closeButton = getCloseButton(buttonsCircleSize, buttonsIconSize, buttonsBackColor, Color.FIREBRICK) { close() }
             closeButton.setPosition(buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomLeft)
             innerTable.addActor(closeButton)
@@ -131,14 +130,21 @@ internal class NationPickerPopup(
         val okButton = "OtherIcons/Checkmark".toImageButton(Color.LIME)
         okButton.onActivation { returnSelected() }
         okButton.keyShortcuts.add(KeyCharAndCode.RETURN)
-        okButton.setPosition(innerTable.width - buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomRight)
-        innerTable.addActor(okButton)
 
         val switchViewButton = "OtherIcons/NationSwap".toImageButton(Color.ROYAL)
         switchViewButton.onActivation { toggleListMode() }
         // No keyboard support yet - file manager conventions: Ctrl-1 Icons, Ctrl-2 List
-        switchViewButton.setPosition(2 * buttonsOffsetFromEdge + buttonsCircleSize, buttonsOffsetFromEdge, Align.bottomLeft)
-        innerTable.addActor(switchViewButton)
+        if (UiNavigation.isIos) {
+            addCloseButton()
+            val touchSize = maxOf(buttonsCircleSize, UiNavigation.minimumTouchSize())
+            bottomTable.add(switchViewButton).size(touchSize)
+            bottomTable.add(okButton).size(touchSize)
+        } else {
+            okButton.setPosition(innerTable.width - buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomRight)
+            innerTable.addActor(okButton)
+            switchViewButton.setPosition(2 * buttonsOffsetFromEdge + buttonsCircleSize, buttonsOffsetFromEdge, Align.bottomLeft)
+            innerTable.addActor(switchViewButton)
+        }
     }
 
     private fun returnSelected() {

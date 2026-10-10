@@ -14,6 +14,7 @@ import com.unciv.ui.components.extensions.setSize
 import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.ExpanderTab
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.screens.basescreen.BaseScreen
@@ -61,8 +62,16 @@ class WorldScreenMusicPopup(
 
         addMusicMods(settings)
         historyExpander = addHistory()
-        bottomTable.addMusicControls(settings, musicController)
-        addCloseButton().colspan(2)
+        if (UiNavigation.isIos) {
+            bottomTable.addMusicVolumeSlider(settings, musicController)
+            bottomTable.addMusicPauseSlider(settings, musicController)
+            bottomTable.addMusicCurrentlyPlaying(musicController)
+            bottomTable.addSimplePlayerControls(musicController).colspan(1)
+            addCloseButton()
+        } else {
+            bottomTable.addMusicControls(settings, musicController)
+            addCloseButton().colspan(2)
+        }
 
         musicController.onChange {
             historyExpander.innerTable.clear()

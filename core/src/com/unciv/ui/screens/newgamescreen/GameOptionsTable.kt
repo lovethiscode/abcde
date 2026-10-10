@@ -695,8 +695,7 @@ private class RandomNationPickerPopup(
         update()
         pack()
 
-        if (UiNavigation.isIos) addCloseButton()
-        else {
+        if (!UiNavigation.isIos) {
             val closeButton = getCloseButton(buttonsCircleSize, buttonsIconSize, buttonsBackColor, Color.FIREBRICK) { close() }
             closeButton.setPosition(buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomLeft)
             innerTable.addActor(closeButton)
@@ -705,13 +704,20 @@ private class RandomNationPickerPopup(
 
         val okButton = "OtherIcons/Checkmark".toImageButton(Color.LIME)
         okButton.onClick { returnSelected() }
-        okButton.setPosition(innerTable.width - buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomRight)
-        innerTable.addActor(okButton)
 
         val switchButton = "OtherIcons/NationSwap".toImageButton(Color.YELLOW)
         switchButton.onClick { switchAllNations() }
-        switchButton.setPosition(innerTable.width / 2, buttonsOffsetFromEdge + 35, Align.center)
-        innerTable.addActor(switchButton)
+        if (UiNavigation.isIos) {
+            addCloseButton()
+            val touchSize = maxOf(buttonsCircleSize, UiNavigation.minimumTouchSize())
+            bottomTable.add(switchButton).size(touchSize)
+            bottomTable.add(okButton).size(touchSize)
+        } else {
+            okButton.setPosition(innerTable.width - buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomRight)
+            innerTable.addActor(okButton)
+            switchButton.setPosition(innerTable.width / 2, buttonsOffsetFromEdge + 35, Align.center)
+            innerTable.addActor(switchButton)
+        }
 
         selectedNationsListTable.touchable = Touchable.enabled
     }

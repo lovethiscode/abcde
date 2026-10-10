@@ -1,6 +1,7 @@
 package com.unciv.ui.components.extensions
 
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.models.UncivSound
 import com.unciv.models.metadata.GameSettings
@@ -109,14 +110,14 @@ interface MusicControls {
         }
     }
 
-    fun Table.addSimplePlayerControls(music: MusicController) {
+    fun Table.addSimplePlayerControls(music: MusicController): Cell<Table> {
         fun String.toImageButton(overColor: Color) = toImageButton(30f, 30f, Color.CLEAR, overColor)
-        add(Table().apply {
+        return add(Table().apply {
             defaults().space(25f)
             add("OtherIcons/Pause".toImageButton(Color.GOLD).onClick { music.pause(0.5f) })
             add("OtherIcons/ForwardArrow".toImageButton(Color.LIME).onClick { music.resume(0.5f) })
             add("OtherIcons/Loading".toImageButton(Color.VIOLET).onClick { music.chooseTrack(flags = MusicTrackChooserFlags.none) })
-        }).colspan(2).center().row()
+        }).colspan(2).center()
     }
 
     /** Adds music volume/pause sliders, currently playing label and player controls to a [Table] */
@@ -124,6 +125,6 @@ interface MusicControls {
         addMusicVolumeSlider(settings, music)
         addMusicPauseSlider(settings, music)
         addMusicCurrentlyPlaying(music)
-        addSimplePlayerControls(music)
+        addSimplePlayerControls(music).row()
     }
 }

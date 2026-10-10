@@ -21,6 +21,7 @@ import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.GUI
 import com.unciv.logic.event.EventBus
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.addSeparator
 import com.unciv.ui.components.extensions.center
 import com.unciv.ui.components.extensions.darken
@@ -98,8 +99,6 @@ open class Popup(
                         * topTable
                     * bottomTable
     */
-    private val dismissControls = Table(BaseScreen.skin)
-    private val popupFrame = Table(BaseScreen.skin)
     protected val innerTable = Table(BaseScreen.skin)
 
     /** This contains most of the Popup content.
@@ -144,28 +143,18 @@ open class Popup(
             tintColor = BaseScreen.skinStrings.skinConfig.baseColor.darken(0.5f)
         )
         innerTable.touchable = Touchable.enabled
-        val frame = if (UiNavigation.isIos) popupFrame else this
-        if (UiNavigation.isIos) {
-            popupFrame.background = innerTable.background
-            popupFrame.touchable = Touchable.enabled
-            innerTable.background = null
-            super.add(popupFrame)
-        }
-
-        fun addContent(actor: WidgetGroup): Cell<WidgetGroup> =
-            if (UiNavigation.isIos) frame.add(actor).top() else super.add(actor)
         fun wrapInScrollPane(table: Table) = AutoScrollPane(table, BaseScreen.skin)
             .apply { setOverscroll(false, false) }
         when (scrollable) {
             Scrollability.None -> {
                 topTable = innerTable
                 bottomTable = innerTable
-                topTableCell = addContent(innerTable)
+                topTableCell = super.add(innerTable)
             }
             Scrollability.All, Scrollability.DevConsole -> {
                 topTable = innerTable
                 bottomTable = innerTable
-                topTableCell = addContent(wrapInScrollPane(innerTable))
+                topTableCell = super.add(wrapInScrollPane(innerTable))
             }
             Scrollability.WithoutButtons -> {
                 topTable = Table(BaseScreen.skin)
@@ -176,10 +165,9 @@ open class Popup(
                 innerTable.defaults().fillX()
                 innerTable.row()
                 innerTable.add(bottomTable)
-                addContent(innerTable)
+                super.add(innerTable)
             }
         }
-        if (UiNavigation.isIos) popupFrame.add(dismissControls).top()
 
         bottomTable.pad(20f)
         bottomTable.defaults().pad(5f)
@@ -199,9 +187,8 @@ open class Popup(
     }
 
     private fun recalculateInnerTableMaxWidth() {
-        val closeWidth = dismissControls.prefWidth
-        val minWidth = innerTable.minWidth.coerceAtMost((stageToShowOn.width - closeWidth).coerceAtLeast(0f))
-        topTableCell.maxWidth(maxOf((maxPopupWidth - closeWidth).coerceAtLeast(0f), minWidth))
+        val minWidth = innerTable.minWidth.coerceAtMost(stageToShowOn.width)
+        topTableCell.maxWidth(maxOf(maxPopupWidth, minWidth))
         innerTable.invalidate()
     }
 
@@ -229,7 +216,7 @@ open class Popup(
     protected open fun onVisibleAreaChanged(visibleArea: Rectangle) {
         if (com.badlogic.gdx.Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
             val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight
-            topTableCell.maxSize((maxPopupWidth - dismissControls.prefWidth).coerceAtLeast(0f), (visibleArea.height * maxSizePercentage - buttonsHeight).coerceAtLeast(0f))
+            topTableCell.maxSize(maxPopupWidth, (visibleArea.height * maxSizePercentage - buttonsHeight).coerceAtLeast(0f))
             innerTable.invalidateHierarchy()
         }
         fitOrCenterContentIntoVisibleArea(visibleArea)
@@ -265,8 +252,8 @@ open class Popup(
 
     private fun fitContentIntoVisibleArea(visibleArea: Rectangle) {
         // The content, when centered, has this margin around, padded by 5f
-        val xMargin = (stageToShowOn.width - maxOf(innerTable.prefWidth, popupFrame.prefWidth)) / 2f - 5f
-        val yMargin = (stageToShowOn.height - maxOf(innerTable.prefHeight, popupFrame.prefHeight)) / 2f - 5f
+        val xMargin = (stageToShowOn.width - innerTable.prefWidth) / 2f - 5f
+        val yMargin = (stageToShowOn.height - innerTable.prefHeight) / 2f - 5f
         val visibleRight = stageToShowOn.width - visibleArea.right
         val visibleTop = stageToShowOn.height - visibleArea.top
         // Now push innerTable "out of the way" only if overlapping,
@@ -335,7 +322,6 @@ open class Popup(
     override fun clear() {
         topTable.clear()
         bottomTable.clear()
-        dismissControls.clear()
         clickBehindToClose = false
         onCloseCallback = null
     }
@@ -398,16 +384,20 @@ open class Popup(
     ): Cell<TextButton> {
         clickBehindToClose = true
         onCloseCallback = action
-        val cell = if (UiNavigation.isIos && text == Constants.close) {
-            dismissControls.clear()
-            val button = UiNavigation.dismissButton()
-            button.onActivation { close(); action?.invoke() }
-            button.keyShortcuts.add(additionalKey)
-            dismissControls.add(button).size(button.width, button.height).pad(8f)
-        } else addButton(text, additionalKey, style) {
+        val closeStyle = if (UiNavigation.isIos && text == Constants.close)
+            TextButtonStyle(style ?: BaseScreen.skin.get(TextButtonStyle::class.java)).apply {
+                fontColor = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger).cpy()
+                overFontColor = fontColor
+                downFontColor = fontColor
+                checkedFontColor = fontColor
+                checkedOverFontColor = fontColor
+                checkedDownFontColor = fontColor
+            } else style
+        val cell = addButton(text, additionalKey, closeStyle) {
             close()
             action?.invoke()
         }
+        if (UiNavigation.isIos && text == Constants.close) cell.actor.name = "ui-popup-close"
         cell.actor.keyShortcuts.add(KeyCharAndCode.BACK)
         return cell
     }
