@@ -238,7 +238,8 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
 
             selectedCivIcon = ImageGetter.getNationPortrait(worldScreen.selectedCiv.nation, 25f)
             selectedCivIconCell.setActor(selectedCivIcon)
-            selectedCivLabel.setText(newCiv.tr(hideIcons = true))
+            val displayName = if (com.unciv.logic.campaign.CivilWarCampaign.isActive(worldScreen.gameInfo)) worldScreen.selectedCiv.civName else newCiv
+            selectedCivLabel.setText(displayName.tr(hideIcons = true))
             invalidate()
             pack()
         }

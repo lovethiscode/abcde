@@ -37,6 +37,16 @@ class CivilWarCampaignTest {
     private fun city(g: GameInfo, id: String) = g.getCities().first { it.id == id }
     private fun store() = CampaignStore(UncivFiles(Gdx.files, temporary.root.path))
 
+    @Test fun `research picker paths contain only the selected military improvement`() {
+        val g = game()
+        for (c in g.civilizations) {
+            for (name in CivilWarCampaign.technologies) {
+                assertEquals(listOf(name), c.tech.getRequiredTechsToDestination(g.ruleset.technologies.getValue(name)).map { it.name })
+            }
+            assertTrue(c.tech.getRequiredTechsToDestination(g.ruleset.technologies.getValue("Dynamite")).isEmpty())
+        }
+    }
+
     @Test fun `unfinished earlier branch replaces slot but delayed writes cannot undo it`() {
         val g = game(); val store = store()
         store.start(g, null)
@@ -264,7 +274,7 @@ class CivilWarCampaignTest {
         city(g, "cw-richmond").puppetCity(p)
         store.save(g)
         val progress = store.progress()
-        assertEquals(3, progress.bestStars["civil-war-east:3"])
+        assertEquals(3, progress.bestStars["civil-war-east:4"])
         assertTrue(progress.medals.isEmpty())
         assertEquals(0, CampaignCatalog.definitions().sumOf { store.stars(it, progress) })
         val newer = CampaignProgress().apply { bestStars["civil-war-east:12"] = 2; cleared.add("civil-war-east") }

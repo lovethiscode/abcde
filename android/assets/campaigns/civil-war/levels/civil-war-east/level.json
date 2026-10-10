@@ -2,8 +2,8 @@
   "id": "civil-war-east",
   "title": "美国南北战争·东部战场",
   "number": 1,
-  "configVersion": 3,
-  "scoringVersion": 3,
+  "configVersion": 4,
+  "scoringVersion": 4,
   "description": "1861 年 7 月 16 日，联邦军准备从华盛顿向南推进。你固定指挥联邦，保卫华盛顿并夺取里士满。地图与部队是基于历史地理的游戏化压缩，不强制重演历史战果。",
   "objectives": [
     "占领里士满，并保住华盛顿",

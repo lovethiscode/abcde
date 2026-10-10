@@ -199,6 +199,7 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
 
     fun displayTutorial(tutorial: TutorialTrigger, test: (() -> Boolean)? = null) {
         if (!game.settings.showTutorials) return
+        if (game.gameInfo?.let(com.unciv.logic.campaign.CivilWarCampaign::isActive) == true) return
         if (game.settings.tutorialsShown.contains(tutorial.name)) return
         if (this is WorldScreen && this.autoPlay.isAutoPlaying()) return
         if (test != null && !test()) return

@@ -466,6 +466,10 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                     setBounds(x, y, scale * .9f, scale * .85f)
                     touchable = Touchable.disabled
                 })
+            }
+            for (tile in scene.tileMap.tileList.filter { it.isCityCenter() || it.position == CivilWarCampaign.harpersFerry }) {
+                val x = width / 2 + tile.getColumn() * scale
+                val y = 90f + tile.getRow() * scale
                 val label = if (tile.isCityCenter()) tile.getCity()!!.name.tr()
                     else if (tile.position == CivilWarCampaign.harpersFerry) "哈珀斯费里" else null
                 if (label != null) group.addActor(label.toLabel(Theme.text, 12).apply {

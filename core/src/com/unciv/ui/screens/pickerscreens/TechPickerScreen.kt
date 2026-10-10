@@ -407,7 +407,11 @@ class TechPickerScreen(
         val previousSelectedTech = selectedTech
         selectedTech = tech
         detailsTitle.setText(tech?.name?.tr() ?: "")
-        descriptionLabel.setText(tech?.getDescription(civInfo))
+        descriptionLabel.setText(tech?.getDescription(civInfo)?.let {
+            if (militaryImprovements && tech.name == "Military Transport") it +
+                "\n\n道路与铁路维修耗时减少 50%，向上取整且至少 1 回合。已有铁路及其连接收益开局可用；研究本身不增加产能奖励。"
+            else it
+        })
 
         if (!switchFromWorldScreen)
             return

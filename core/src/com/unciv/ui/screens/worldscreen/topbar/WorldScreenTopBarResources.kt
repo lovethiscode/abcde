@@ -81,10 +81,13 @@ internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTa
     fun update(civInfo: Civilization) {
         resetScale()
 
-        val yearText = YearTextUtil.toYearText(
+        val civilWar = com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)
+        val yearText = if (civilWar) "1861年" else YearTextUtil.toYearText(
             civInfo.gameInfo.getYear(), civInfo.isLongCountDisplay()
         )
-        val displayedTurn = civInfo.gameInfo.campaign?.let { it.completedRounds + 1 } ?: civInfo.gameInfo.turns
+        val displayedTurn = civInfo.gameInfo.campaign?.let {
+            if (civilWar) (it.completedRounds + 1).coerceAtMost(it.definition.hardTurnLimit) else it.completedRounds + 1
+        } ?: civInfo.gameInfo.turns
         turnsLabel.setText(Fonts.turn + "\u2004" + displayedTurn.tr() + "\u2004|\u2004" + yearText) // U+2004: Three-Per-Em Space
 
         resourcesWrapper.clearChildren()

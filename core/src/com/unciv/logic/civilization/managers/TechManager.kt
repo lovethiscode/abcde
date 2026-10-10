@@ -201,6 +201,7 @@ class TechManager : IsPartOfGameInfoSerialization {
 
         while (!checkPrerequisites.isEmpty()) {
             val techToCheck = checkPrerequisites.removeFirst()
+            if (com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo) && isResearched(techToCheck.name)) continue
             if (isUnresearchable(techToCheck)) return listOf()
             // future tech can have been researched even when we're researching it,
             // so...if we skip it we'll end up with 0 techs in the "required techs", which will mean that we don't have anything to research. Yeah.
