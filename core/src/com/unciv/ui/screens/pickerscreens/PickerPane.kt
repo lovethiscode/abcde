@@ -83,7 +83,7 @@ class PickerPane(
             horizontalDescription = showSideDescription
             splitPane.setVertical(!showSideDescription)
             bottomTable.clear()
-            rightSideGroup.fill(if (showSideDescription) 1f else 0f)
+            rightSideGroup.expand(showSideDescription).fill(if (showSideDescription) 1f else 0f)
             rightSideButton.label.wrap = showSideDescription
             if (showSideDescription) {
                 bottomTable.pad(12f)
