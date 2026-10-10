@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.campaign
 
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
+import com.badlogic.gdx.utils.Align
 import com.unciv.logic.campaign.CampaignCatalog
 import com.unciv.logic.campaign.CampaignRules
 import com.unciv.logic.campaign.CampaignStore
@@ -27,9 +28,9 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         addGoodSizedLabel("行动回合 ${state.completedRounds + 1} · 已完成 ${state.completedRounds} 回合").row()
         if (terminal) {
             screen.campaignResultShown = true
-            addGoodSizedLabel(if (result.failed) "本次挑战失败：${result.failureReason}" else "通关 · ${state.resultStars} / 3 星").row()
+            addBodyText(if (result.failed) "本次挑战失败：${result.failureReason}" else "通关 · ${state.resultStars} / 3 星").row()
             val best = CampaignStore(screen.game.files).progress().bestStars["${d.id}:${d.scoringVersion}"] ?: 0
-            addGoodSizedLabel("本版本最高成绩：${maxOf(best, state.resultStars)} / 3 星").row()
+            addBodyText("本版本最高成绩：${maxOf(best, state.resultStars)} / 3 星").row()
         }
         val goals = d.objectives.ifEmpty {
             listOf("本次生产完成：" + d.requiredProduction.joinToString("、") { it.tr() },
@@ -37,20 +38,20 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         }
         val met = listOf(result.main, result.worker, result.population)
         for ((i, goal) in goals.withIndex()) {
-            addGoodSizedLabel("${if (met[i] && !result.failed) "✓" else "○"} $goal").row()
-            result.details.getOrNull(i)?.let { addGoodSizedLabel(it).row() }
-            if (i in result.impossible) addGoodSizedLabel("本次挑战星已无法获得；仍可争取其他目标，或重新挑战。").row()
+            addBodyText("${if (met[i] && !result.failed) "✓" else "○"} $goal").row()
+            result.details.getOrNull(i)?.let { addBodyText(it).row() }
+            if (i in result.impossible) addBodyText("本次挑战星已无法获得；仍可争取其他目标，或重新挑战。").row()
         }
         if (!terminal) {
-            for (restriction in d.restrictions) addGoodSizedLabel(restriction).row()
+            for (restriction in d.restrictions) addBodyText(restriction).row()
             if (result.main && !d.automatic) {
-                addGoodSizedLabel("主目标已达成。点击下方“结算通关”保存成绩并解锁下一关，也可继续争取挑战星。").row()
-            } else addGoodSizedLabel(if (d.automatic) "按本关规则自动结算。" else "完成主目标后可主动结算。").row()
+                addBodyText("主目标已达成。点击下方“结算通关”保存成绩并解锁下一关，也可继续争取挑战星。").row()
+            } else addBodyText(if (d.automatic) "按本关规则自动结算。" else "完成主目标后可主动结算。").row()
             for (area in d.areas) location("定位：${area.title}", area.tiles.first())
             for ((i, tile) in d.targetTiles.withIndex()) location("定位：改良地块 ${i+1}", tile)
             screen.gameInfo.getCities().firstOrNull { it.id == d.targetCity }?.let { location("定位：目标城市", it.location) }
             if (!state.hintsDismissed) {
-                for (hint in d.hints) addGoodSizedLabel("提示 · $hint").row()
+                for (hint in d.hints) addBodyText("提示 · $hint").row()
             }
             contentButton(if (state.hintsDismissed) "展开教学提示" else "收起教学提示") {
                 state.hintsDismissed = !state.hintsDismissed
@@ -72,6 +73,10 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         addButton("Save and return to campaigns") { leave(d.id) }.actor.name = "ui-campaign-return"
         addCloseButton(if (terminal) "查看地图（只读）" else "继续挑战")
         open()
+    }
+
+    private fun addBodyText(text: String) = addGoodSizedLabel(text).apply {
+        actor.setAlignment(Align.left)
     }
 
     private fun location(title: String, position: HexCoord) {
