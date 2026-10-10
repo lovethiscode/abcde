@@ -25,6 +25,7 @@ sealed class PerpetualConstruction(override var name: String, val description: S
 
         override fun isBuildable(cityConstructions: CityConstructions): Boolean {
             val city = cityConstructions.city
+            if (!com.unciv.logic.campaign.CivilWarCampaign.constructionAllowed(city, name)) return false
             if (stat == Stat.Faith && !city.civ.gameInfo.isReligionEnabled())
                 return false
 

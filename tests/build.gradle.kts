@@ -89,3 +89,19 @@ tasks.register<JavaExec>("writeCampaignScenario") {
     classpath = sourceSets["test"].runtimeClasspath
     workingDir = file("../android/assets")
 }
+
+// Explicitly regenerate only the historical campaign's immutable starting state.
+tasks.register<JavaExec>("writeCivilWarScenario") {
+    group = "development"
+    mainClass.set("com.unciv.dev.CivilWarScenarioWriter")
+    classpath = sourceSets["test"].runtimeClasspath
+    workingDir = file("../android/assets")
+}
+
+tasks.register<JavaExec>("civilWarRoutes") {
+    group = "verification"
+    mainClass.set("com.unciv.dev.CivilWarRoutes")
+    classpath = sourceSets["test"].runtimeClasspath
+    workingDir = file("../android/assets")
+    args = (project.findProperty("civilWar.args") as String).split(" ")
+}

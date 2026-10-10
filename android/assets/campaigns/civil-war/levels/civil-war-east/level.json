@@ -1,0 +1,41 @@
+{
+  "id": "civil-war-east",
+  "title": "美国南北战争·东部战场",
+  "number": 1,
+  "configVersion": 3,
+  "scoringVersion": 3,
+  "description": "1861 年 7 月 16 日，联邦军准备从华盛顿向南推进。你固定指挥联邦，保卫华盛顿并夺取里士满。地图与部队是基于历史地理的游戏化压缩，不强制重演历史战果。",
+  "objectives": [
+    "占领里士满，并保住华盛顿",
+    "在第 30 回合或之前通关",
+    "累计部队损失不超过 6 支"
+  ],
+  "hints": [
+    "正面道路经马纳萨斯和弗雷德里克斯堡；西侧可经哈珀斯费里方向迂回。",
+    "步兵保护火炮，骑兵侦察侧翼；后方保持预备队。",
+    "四座招募中心可补充战斗单位，七城均可招募工人；单位不能直接购买。",
+    "工人可修复已有设施和修路；完成军事运输后可新建铁路。",
+    "部队损失包括战斗阵亡、主动解散和欠费解散；将军、工人不计。"
+  ],
+  "restrictions": [
+    "华盛顿失守立即失败；第 50 个完整回合结束仍未获胜则失败。",
+    "禁止建城、议和、城市交易、焚城、单位购买及将军修筑城塞。",
+    "政策固定为空，宗教关闭；保留正常战斗晋升和新将军。"
+  ],
+  "targetCity": "cw-richmond",
+  "enemy": "Confederacy",
+  "efficiencyTurn": 30,
+  "hardTurnLimit": 50,
+  "lossLimit": 6,
+  "forbidFounding": true,
+  "lockedWar": true,
+  "automatic": true,
+  "meleeUnits": [
+    "Rifleman",
+    "Cavalry"
+  ],
+  "rangedUnits": [],
+  "siegeUnits": [
+    "Cannon"
+  ]
+}

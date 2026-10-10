@@ -453,6 +453,11 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
             // Automation done here
             TurnManager(player).automateTurn()
 
+            if (com.unciv.logic.campaign.CivilWarCampaign.hasEnded(this)) {
+                player = civilizations.first { it.civID == campaign!!.playerId }
+                break
+            }
+
             val worldScreen = UncivGame.Current.worldScreen
             // Do we need to break if player won?
             if (simulateUntilWin && (player.victoryManager.hasWon() || simulateMaxTurns in 1..turns
@@ -741,7 +746,8 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
             }
         }
         
-        ruleset = RulesetCache.getComplexRuleset(gameParameters)
+        ruleset = if (com.unciv.logic.campaign.CivilWarCampaign.isActive(this))
+            com.unciv.logic.campaign.CivilWarCampaign.ruleset(this) else RulesetCache.getComplexRuleset(gameParameters)
         
         // any mod the saved game lists that is currently not installed causes null pointer
         // exceptions in this routine unless it contained no new objects or was very simple.

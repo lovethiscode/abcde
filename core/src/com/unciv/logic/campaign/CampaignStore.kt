@@ -41,9 +41,11 @@ class CampaignStore(private val files: UncivFiles) {
                 reconcile(previous)
                 try { CampaignCatalog.requireCompatible(previous) }
                 catch (_: com.unciv.logic.UncivShowableException) {
-                    val archive = root.child("Archive").also { it.mkdirs() }
-                        .child("${state.definition.id}-${previous.campaign!!.attemptId.replace(Regex("[^a-zA-Z0-9-]"), "_")}.json")
-                    SaveFileWriter.write(archive) { FileConversions.writeJson(it, previous, zip = true) }
+                    if (state.definition.id != CivilWarCampaign.id) {
+                        val archive = root.child("Archive").also { it.mkdirs() }
+                            .child("${state.definition.id}-${previous.campaign!!.attemptId.replace(Regex("[^a-zA-Z0-9-]"), "_")}.json")
+                        SaveFileWriter.write(archive) { FileConversions.writeJson(it, previous, zip = true) }
+                    }
                 }
             }
             write(game)
@@ -75,7 +77,7 @@ class CampaignStore(private val files: UncivFiles) {
             val old = previous?.campaign
             // A delayed autosave may arrive after a restart or submission; never roll either back.
             if (old != null && (old.attemptId != state.attemptId || old.resultStars > 0 || old.failed ||
-                    previous.turns > game.turns || old.saveSequence >= state.saveSequence)) {
+                    old.saveSequence >= state.saveSequence)) {
                 reconcile(previous)
                 return@withLock
             }
@@ -106,6 +108,10 @@ class CampaignStore(private val files: UncivFiles) {
                 game.campaign = prior
                 reconcile(game)
                 return@withLock prior.resultStars
+            }
+            if (prior?.failed == true) {
+                game.campaign = prior
+                error("This attempt has already ended. Start a new challenge.")
             }
             val result = CampaignRules.evaluate(game)
             check(result.stars > 0) { "Complete the main objective before submitting." }
@@ -169,7 +175,7 @@ class CampaignStore(private val files: UncivFiles) {
     }
 
     fun isUnlocked(definition: CampaignDefinition, progress: CampaignProgress): Boolean =
-        definition.number == 1 || definition.id in progress.cleared || definition.id in progress.unlocked ||
+        definition.id == CivilWarCampaign.id || definition.number == 1 || definition.id in progress.cleared || definition.id in progress.unlocked ||
             CampaignCatalog.levelId(definition.number - 1) in progress.cleared
 
     fun stars(definition: CampaignDefinition, progress: CampaignProgress) =

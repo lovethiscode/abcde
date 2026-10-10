@@ -1,0 +1,45 @@
+[
+  {
+    "name": "Union",
+    "leaderName": "Union",
+    "outerColor": [
+      35,
+      90,
+      170
+    ],
+    "innerColor": [
+      240,
+      230,
+      210
+    ],
+    "cities": [
+      "Washington",
+      "Baltimore",
+      "Alexandria"
+    ],
+    "uniqueName": "Eastern Theater",
+    "uniques": []
+  },
+  {
+    "name": "Confederacy",
+    "leaderName": "Confederacy",
+    "outerColor": [
+      120,
+      120,
+      125
+    ],
+    "innerColor": [
+      240,
+      230,
+      210
+    ],
+    "cities": [
+      "Richmond",
+      "Petersburg",
+      "Fredericksburg",
+      "Manassas"
+    ],
+    "uniqueName": "Eastern Theater",
+    "uniques": []
+  }
+]

@@ -1,0 +1,30 @@
+id	faction	type	scenario-id	column,row	hex	promotion
+1	Union	Rifleman	union_main_infantry_01	-1,6	HexCoord(x=7, y=6)	Shock I
+2	Union	Rifleman	union_main_infantry_02	0,6	HexCoord(x=6, y=6)	-
+3	Union	Rifleman	union_main_infantry_03	1,6	HexCoord(x=6, y=7)	-
+4	Union	Rifleman	union_main_infantry_04	2,5	HexCoord(x=4, y=6)	-
+5	Union	Rifleman	union_capital_infantry_01	4,9	HexCoord(x=7, y=11)	-
+6	Union	Rifleman	union_capital_infantry_02	6,10	HexCoord(x=7, y=13)	-
+7	Union	Rifleman	union_west_infantry_01	-8,9	HexCoord(x=13, y=5)	Drill I
+8	Union	Cavalry	union_west_cavalry_01	-7,8	HexCoord(x=12, y=5)	-
+9	Union	Cavalry	union_reserve_cavalry_01	3,8	HexCoord(x=7, y=10)	-
+10	Union	Cannon	union_main_cannon_01	-1,7	HexCoord(x=8, y=7)	-
+11	Union	Cannon	union_main_cannon_02	1,7	HexCoord(x=7, y=8)	-
+12	Union	Cannon	union_capital_cannon_01	4,10	HexCoord(x=8, y=12)	-
+13	Union	Great General	联邦指挥部	0,6	HexCoord(x=6, y=6)	-
+14	Union	Worker	union_worker_01	-8,9	HexCoord(x=13, y=5)	-
+15	Union	Worker	union_worker_02	3,6	HexCoord(x=5, y=8)	-
+16	Confederacy	Rifleman	confederate_front_infantry_01	-4,2	HexCoord(x=4, y=0)	Drill I
+17	Confederacy	Rifleman	confederate_front_infantry_02	-2,2	HexCoord(x=3, y=1)	-
+18	Confederacy	Rifleman	confederate_front_infantry_03	-3,3	HexCoord(x=5, y=2)	-
+19	Confederacy	Rifleman	confederate_front_infantry_04	0,1	HexCoord(x=1, y=1)	-
+20	Confederacy	Rifleman	confederate_capital_infantry_01	2,-10	HexCoord(x=-11, y=-9)	-
+21	Confederacy	Rifleman	confederate_capital_infantry_02	1,-8	HexCoord(x=-8, y=-7)	-
+22	Confederacy	Rifleman	confederate_reserve_infantry_01	-7,-1	HexCoord(x=3, y=-4)	Shock I
+23	Confederacy	Cavalry	confederate_west_cavalry_01	-7,1	HexCoord(x=5, y=-2)	-
+24	Confederacy	Cavalry	confederate_reserve_cavalry_01	1,-5	HexCoord(x=-5, y=-4)	-
+25	Confederacy	Cannon	confederate_front_cannon_01	-2,1	HexCoord(x=2, y=0)	-
+26	Confederacy	Cannon	confederate_capital_cannon_01	3,-11	HexCoord(x=-12, y=-9)	-
+27	Confederacy	Great General	邦联指挥部	-2,2	HexCoord(x=3, y=1)	-
+28	Confederacy	Worker	confederate_worker_01	2,-10	HexCoord(x=-11, y=-9)	-
+29	Confederacy	Worker	confederate_worker_02	-1,-2	HexCoord(x=-1, y=-2)	-

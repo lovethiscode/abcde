@@ -170,6 +170,7 @@ class TechManager : IsPartOfGameInfoSerialization {
 
     @Readonly
     fun isUnresearchable(tech: Technology): Boolean {
+        if (com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, tech.name)) return true
         if (tech.getMatchingUniques(UniqueType.OnlyAvailable, GameContext.IgnoreConditionals).any { !it.conditionalsApply(civInfo.state) })
             return true
         if (tech.hasUnique(UniqueType.Unavailable, civInfo.state)) return true
@@ -272,6 +273,7 @@ class TechManager : IsPartOfGameInfoSerialization {
      *  Adds the points to the [current research][currentTechnology], or, if there is none, to [overflow][overflowScience].
      */
     fun addScience(scienceGet: Int) {
+        techsToResearch.removeAll { com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, it) }
         val currentTechnology = currentTechnologyName()
         if (currentTechnology == null) {
             overflowScience += scienceGet
@@ -303,12 +305,14 @@ class TechManager : IsPartOfGameInfoSerialization {
     }
 
     fun getFreeTechnology(techName: String) {
+        if (com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, techName)) return
         AutomationPreview.choice(civInfo, "free_research", techName)
         freeTechs--
         addTechnology(techName)
     }
 
     fun addTechnology(techName: String, showNotification: Boolean = true) {
+        if (com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, techName)) return
         val isNewTech = techsResearched.add(techName)
 
         // this is to avoid concurrent modification problems

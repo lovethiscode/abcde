@@ -1,0 +1,132 @@
+[
+  {
+    "name": "Walls",
+    "cityStrength": 5,
+    "cityHealth": 50,
+    "hurryCostModifier": 25,
+    "uniques": [
+      "Destroyed when the city is captured"
+    ],
+    "cost": 75
+  },
+  {
+    "name": "Courthouse",
+    "maintenance": 4,
+    "hurryCostModifier": 50,
+    "uniques": [
+      "Removes extra unhappiness from annexed cities",
+      "Can only be built <in [Annexed] cities>"
+    ],
+    "cost": 100
+  },
+  {
+    "name": "Market",
+    "gold": 2,
+    "specialistSlots": {
+      "Merchant": 1
+    },
+    "hurryCostModifier": 25,
+    "percentStatBonus": {
+      "gold": 25
+    },
+    "cost": 100
+  },
+  {
+    "name": "Washington Depot",
+    "cost": 120,
+    "food": 0,
+    "production": 21,
+    "gold": 4,
+    "science": 12,
+    "happiness": 10,
+    "culture": 1,
+    "maintenance": 2,
+    "uniques": [
+      "Never destroyed when the city is captured"
+    ]
+  },
+  {
+    "name": "Baltimore Depot",
+    "cost": 120,
+    "food": 0,
+    "production": 31,
+    "gold": 8,
+    "science": 14,
+    "happiness": 12,
+    "culture": 1,
+    "maintenance": 2,
+    "uniques": [
+      "Never destroyed when the city is captured"
+    ]
+  },
+  {
+    "name": "Alexandria Depot",
+    "cost": 120,
+    "food": 0,
+    "production": 10,
+    "gold": 1,
+    "science": 9,
+    "happiness": 7,
+    "culture": 1,
+    "maintenance": 2,
+    "uniques": [
+      "Never destroyed when the city is captured"
+    ]
+  },
+  {
+    "name": "Richmond Depot",
+    "cost": 120,
+    "food": 0,
+    "production": 17,
+    "gold": 4,
+    "science": 12,
+    "happiness": 10,
+    "culture": 1,
+    "maintenance": 7,
+    "uniques": [
+      "Never destroyed when the city is captured"
+    ]
+  },
+  {
+    "name": "Petersburg Depot",
+    "cost": 120,
+    "food": 0,
+    "production": 15,
+    "gold": 2,
+    "science": 10,
+    "happiness": 8,
+    "culture": 1,
+    "maintenance": 7,
+    "uniques": [
+      "Never destroyed when the city is captured"
+    ]
+  },
+  {
+    "name": "Fredericksburg Depot",
+    "cost": 120,
+    "food": 0,
+    "production": 7,
+    "gold": 0,
+    "science": 7,
+    "happiness": 6,
+    "culture": 1,
+    "maintenance": 7,
+    "uniques": [
+      "Never destroyed when the city is captured"
+    ]
+  },
+  {
+    "name": "Manassas Depot",
+    "cost": 120,
+    "food": 0,
+    "production": 7,
+    "gold": 0,
+    "science": 6,
+    "happiness": 5,
+    "culture": 1,
+    "maintenance": 7,
+    "uniques": [
+      "Never destroyed when the city is captured"
+    ]
+  }
+]

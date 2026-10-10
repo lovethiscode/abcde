@@ -233,7 +233,9 @@ object UnitActions {
                     val disbandText = if (unit.currentTile.getOwner() == unit.civ)
                         "Disband this unit for [${unit.baseUnit.getDisbandGold(unit.civ)}] gold?".tr()
                     else "Do you really want to disband this unit?".tr()
-                    ConfirmPopup(worldScreen, disbandText, "Disband unit") {
+                    val campaignWarning = if (com.unciv.logic.campaign.CivilWarCampaign.isActive(unit.civ.gameInfo) &&
+                        unit.name in com.unciv.logic.campaign.CivilWarCampaign.militaryUnits) "\n本次解散计入部队损失，影响部队损失星。" else ""
+                    ConfirmPopup(worldScreen, disbandText + campaignWarning, "Disband unit") {
                         unit.disband()
                         unit.civ.updateStatsForNextTurn() // less upkeep!
                         GUI.setUpdateWorldOnNextRender()

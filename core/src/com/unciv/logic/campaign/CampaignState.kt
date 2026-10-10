@@ -74,6 +74,7 @@ class CampaignState : IsPartOfGameInfoSerialization {
     var producedUnits = hashSetOf<Int>()
     var killedUnits = hashSetOf<Int>()
     var lostMilitary = hashSetOf<Int>()
+    var lossReasons = hashMapOf<String, String>()
     var killRoles = hashSetOf<String>()
     var enemyEliminated = false
     var hintsDismissed = false

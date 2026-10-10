@@ -30,6 +30,7 @@ object CampaignRules {
     }
 
     @Readonly fun purchaseBlocked(city: City, name: String, stat: Stat): Boolean {
+        if (CivilWarCampaign.purchaseBlocked(city, name, stat)) return true
         val state = city.civ.gameInfo.campaign ?: return false
         return state.playerId == city.civ.civID && state.definition.number == 2 &&
             stat == Stat.Gold && name in state.definition.requiredProduction
@@ -37,6 +38,7 @@ object CampaignRules {
 
     @Readonly fun foundingBlocked(civ: Civilization): Boolean {
         val s = civ.gameInfo.campaign ?: return false
+        if (CivilWarCampaign.isActive(civ.gameInfo)) return true
         if (civ.civID != s.playerId) return false
         return s.definition.forbidFounding || s.definition.maxCities > 0 && civ.cities.size >= s.definition.maxCities
     }
@@ -79,15 +81,22 @@ object CampaignRules {
     }
 
     /** Protected losses are irreversible; produced-unit provenance remains a historical fact. */
-    fun unitLost(unit: MapUnit) {
+    fun unitLost(unit: MapUnit, reason: CampaignLossReason = CampaignLossReason.Removed) {
         val s = active(unit.civ.gameInfo) ?: return
         if (s.playerId != unit.civ.civID) return
         if (unit.id in s.protectedUnits) s.protectedUnitLost = true
+        if (CivilWarCampaign.isActive(unit.civ.gameInfo) && unit.name in CivilWarCampaign.militaryUnits && reason.counts) {
+            s.lostMilitary.add(unit.id)
+            s.lossReasons.putIfAbsent(unit.id.toString(), reason.name)
+        }
     }
 
     fun combatDefeat(killer: ICombatant, victim: MapUnit) {
         val s = active(victim.civ.gameInfo) ?: return
-        if (victim.civ.civID == s.playerId && victim.isMilitary()) s.lostMilitary.add(victim.id)
+        if (victim.civ.civID == s.playerId && victim.isMilitary()) {
+            s.lostMilitary.add(victim.id)
+            if (CivilWarCampaign.isActive(victim.civ.gameInfo)) s.lossReasons[victim.id.toString()] = CampaignLossReason.Combat.name
+        }
         if (killer.getCivInfo().civID != s.playerId || victim.civ.civName != s.definition.enemy || !victim.isMilitary()) return
         s.killedUnits.add(victim.id)
         if (killer is MapUnitCombatant) {
@@ -111,6 +120,7 @@ object CampaignRules {
     fun evaluate(game: GameInfo): Evaluation {
         val s = requireNotNull(game.campaign)
         if (s.resultStars > 0) return Evaluation(true, s.resultWorker, s.resultPopulation, false, s.resultDetails)
+        if (CivilWarCampaign.isActive(game)) return CivilWarCampaign.evaluate(game)
         val p = game.civilizations.firstOrNull { it.civID == s.playerId }
             ?: return Evaluation(false, false, false, true, failureReason = "玩家文明不存在")
         val d = s.definition
@@ -338,8 +348,9 @@ object CampaignRules {
         if (s.actionDepth > 0 || s.settling) return
         s.settling = true
         try {
-            if (game.civilizations.any { c -> c.popupAlerts.any { it.type == AlertType.CityConquered } }) return
-            if (s.definition.number >= 15) game.checkForVictory()
+            if (game.civilizations.any { c -> c.popupAlerts.any { it.type == AlertType.CityConquered } } &&
+                !(CivilWarCampaign.isActive(game) && evaluate(game).failed)) return
+            if (s.definition.id != CivilWarCampaign.id && s.definition.number >= 15) game.checkForVictory()
             val r = evaluate(game)
             if (r.failed) {
                 s.failed = true

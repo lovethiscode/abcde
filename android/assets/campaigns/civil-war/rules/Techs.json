@@ -1,0 +1,49 @@
+[
+  {
+    "columnNumber": 11,
+    "era": "Industrial era",
+    "techCost": 650,
+    "buildingCost": 120,
+    "wonderCost": 600,
+    "techs": [
+      {
+        "name": "Military Reorganization",
+        "row": 1,
+        "prerequisites": [
+          "Rifling"
+        ],
+        "uniques": [
+          "[+10]% Strength <for [Rifleman] units>"
+        ]
+      },
+      {
+        "name": "Artillery Improvement",
+        "row": 13,
+        "prerequisites": [
+          "Rifling"
+        ],
+        "uniques": [
+          "[+10]% Strength <for [Cannon] units> <vs [Military] units> <when attacking>"
+        ]
+      },
+      {
+        "name": "Field Medicine",
+        "row": 7,
+        "prerequisites": [
+          "Rifling"
+        ],
+        "uniques": [
+          "[5] HP when healing <for [Military] units> <in [your] tiles>"
+        ]
+      },
+      {
+        "name": "Military Transport",
+        "row": 10,
+        "prerequisites": [
+          "Rifling"
+        ],
+        "uniques": []
+      }
+    ]
+  }
+]

@@ -726,7 +726,10 @@ object Battle {
 
         city.hasJustBeenConquered = true
         city.getCenterTile().apply {
-            if (militaryUnit != null) militaryUnit!!.destroy()
+            if (militaryUnit != null) {
+                com.unciv.logic.campaign.CampaignRules.unitLost(militaryUnit!!, com.unciv.logic.campaign.CampaignLossReason.Combat)
+                militaryUnit!!.destroy()
+            }
             if (civilianUnit != null) BattleUnitCapture.captureCivilianUnit(attacker, MapUnitCombatant(civilianUnit!!), checkDefeat = false)
             for (airUnit in airUnits.toList()) airUnit.destroy()
         }

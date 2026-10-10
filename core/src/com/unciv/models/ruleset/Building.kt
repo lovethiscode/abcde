@@ -279,6 +279,10 @@ class Building : RulesetStatsObject(), INonPerpetualConstruction {
 
     override fun getRejectionReasons(cityConstructions: CityConstructions): Sequence<RejectionReason> = sequence {
         val city = cityConstructions.city
+        if (!com.unciv.logic.campaign.CivilWarCampaign.constructionAllowed(city, name)) {
+            yield(RejectionReasonType.ShouldNotBeDisplayed.toInstance())
+            return@sequence
+        }
         val cityCenter = city.getCenterTile()
         val civ = city.civ
         val stateForConditionals = city.state

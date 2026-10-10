@@ -47,6 +47,10 @@ class TechPickerScreen(
 
     private val freeTechPick: Boolean = civInfo.tech.freeTechs != 0
     private val ruleset = civInfo.gameInfo.ruleset
+    private val militaryImprovements = com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)
+    private val displayedTechs = ruleset.technologies.values.filter {
+        !militaryImprovements || it.name in com.unciv.logic.campaign.CivilWarCampaign.technologies
+    }
     private var techNameToButton = HashMap<String, TechButton>()
     private var selectedTech: Technology? = null
     private val detailsTitle = "".toLabel(fontSize = 24)
@@ -111,7 +115,7 @@ class TechPickerScreen(
         // per default show current/recent technology,
         // and possibly select it to show description,
         // which is very helpful when just discovered and clicking the notification
-        val tech = centerOnTech ?: civInfo.tech.currentTechnology()
+        val tech = (centerOnTech ?: civInfo.tech.currentTechnology())?.takeIf { it.name in techNameToButton }
         if (tech != null) {
             // select only if there it doesn't mess up tempTechsToResearch
             if (civInfo.tech.isResearched(tech.name) || civInfo.tech.techsToResearch.size <= 1)
@@ -154,21 +158,22 @@ class TechPickerScreen(
         // Computed once for all techs instead of per-TechButton - see #15641
         val techIconsIndex = TechnologyDescriptions.buildTechIconsIndex(ruleset, civInfo)
 
-        val allTechs = ruleset.technologies.values
+        val allTechs = displayedTechs
         if (allTechs.isEmpty()) return
-        val columns = allTechs.maxOf { it.column!!.columnNumber } + 1
-        val rows = allTechs.maxOf { it.row } + 1
+        val columns = if (militaryImprovements) 1 else allTechs.maxOf { it.column!!.columnNumber } + 1
+        val rows = if (militaryImprovements) allTechs.size else allTechs.maxOf { it.row } + 1
         val techMatrix = Array<Array<Technology?>>(columns) { arrayOfNulls(rows) } // Divided into columns, then rows
 
-        for (technology in allTechs) {
-            techMatrix[technology.column!!.columnNumber][technology.row - 1] = technology
+        for ((index, technology) in allTechs.withIndex()) {
+            if (militaryImprovements) techMatrix[0][index] = technology
+            else techMatrix[technology.column!!.columnNumber][technology.row - 1] = technology
         }
 
         val erasNamesToColumns = LinkedHashMap<String, ArrayList<Int>>()
         for (tech in allTechs) {
             val era = tech.era()
             if (!erasNamesToColumns.containsKey(era)) erasNamesToColumns[era] = ArrayList()
-            val columnNumber = tech.column!!.columnNumber
+            val columnNumber = if (militaryImprovements) 0 else tech.column!!.columnNumber
             if (!erasNamesToColumns[era]!!.contains(columnNumber)) erasNamesToColumns[era]!!.add(columnNumber)
         }
         for ((era, eraColumns) in erasNamesToColumns) {
@@ -185,7 +190,7 @@ class TechPickerScreen(
             table1.background = skinStrings.getUiBackground("General/Border", tintColor = Color.WHITE)
             table2.background = skinStrings.getUiBackground("General/Border", tintColor = color)
 
-            val label = era.toLabel().apply {
+            val label = (if (militaryImprovements) "军事改良" else era).toLabel().apply {
                 setAlignment(Align.center)
                 if (ruleset.eras[era]!!.eraNumber < civTech.era.eraNumber)
                     this.color = ExpeditionBlueTheme.color(colorFromRGB(120, 46, 16), ExpeditionBlueTheme.primaryInk) }
@@ -273,7 +278,7 @@ class TechPickerScreen(
             lines.addActor(line)
         }
 
-        for (tech in ruleset.technologies.values) {
+        for (tech in displayedTechs) {
             if (!techNameToButton.containsKey(tech.name)) {
                 ToastPopup("Tech ${tech.name} appears to be missing - perhaps two techs have the same row & column", this)
                 continue
@@ -281,6 +286,7 @@ class TechPickerScreen(
             val techButton = techNameToButton[tech.name]!!
             for (prerequisite in tech.prerequisites) {
                 if (!techNameToButton.containsKey(prerequisite)) {
+                    if (militaryImprovements && civTech.isResearched(prerequisite)) continue
                     ToastPopup("Tech $prerequisite. prerequisite of ${tech.name}, appears to be missing - perhaps two techs have the same row & column", this)
                     continue
                 }

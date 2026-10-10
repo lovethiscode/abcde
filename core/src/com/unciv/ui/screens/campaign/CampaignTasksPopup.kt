@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
+import com.unciv.logic.campaign.CivilWarCampaign
 import com.unciv.logic.campaign.CampaignCatalog
 import com.unciv.logic.campaign.CampaignRules
 import com.unciv.logic.campaign.CampaignStore
@@ -44,9 +45,9 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
             add(d.number.toString().padStart(2, '0').toLabel(Theme.gold, 28)).padRight(16f)
             add(Table().apply {
                 defaults().left()
-                add("文明的诞生 / ${CampaignCatalog.chapters[(d.number - 1) / 4]}".toLabel(Theme.muted, 14)).row()
+                add((if (d.id == CivilWarCampaign.id) "历史战役 / 联邦" else "文明的诞生 / ${CampaignCatalog.chapters[(d.number - 1) / 4]}").toLabel(Theme.muted, 14)).row()
                 add(d.title.toLabel(Theme.text, 25)).padTop(3f).row()
-                add("行动回合 ${state.completedRounds + 1} · 已完成 ${state.completedRounds} 回合".toLabel(Theme.muted, 15)).padTop(4f)
+                add("行动回合 ${if (d.hardTurnLimit > 0) (state.completedRounds + 1).coerceAtMost(d.hardTurnLimit) else state.completedRounds + 1} · 已完成 ${state.completedRounds} 回合".toLabel(Theme.muted, 15)).padTop(4f)
             }).expandX().left()
         }
         addTitleWithCloseButton(heading)
@@ -94,6 +95,10 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
             screen.gameInfo.getCities().firstOrNull { it.id == d.targetCity }?.let {
                 val title = when (d.number) { 12 -> "目标要塞"; 13 -> "占领城市"; else -> "目标首都" }
                 locations.add(title to it.location)
+            }
+            if (d.id == CivilWarCampaign.id) screen.gameInfo.getCities().firstOrNull { it.id == state.capitalId }?.let {
+                locations.add("华盛顿" to it.location)
+                locations.add("哈珀斯费里 · 受损交通" to CivilWarCampaign.harpersFerry)
             }
             if (locations.isNotEmpty()) {
                 side.add(bodyText("地图定位", sideWidth, Theme.gold, 16)).row()

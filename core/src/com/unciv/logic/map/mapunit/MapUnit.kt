@@ -723,6 +723,7 @@ class MapUnit : IsPartOfGameInfoSerialization {
     @Readonly
     fun canBuildImprovement(improvement: TileImprovement, tile: Tile = currentTile): Boolean {
         if (civ.isBarbarian) return false
+        if (!com.unciv.logic.campaign.CivilWarCampaign.improvementAllowed(civ, improvement.name, tile)) return false
 
         // Workers (and similar) should never be able to (instantly) construct things, only build them
         // HOWEVER, they should be able to repair such things if they are pillaged
@@ -980,7 +981,7 @@ class MapUnit : IsPartOfGameInfoSerialization {
     }
 
     fun gift(recipient: Civilization) {
-        com.unciv.logic.campaign.CampaignRules.unitLost(this)
+        com.unciv.logic.campaign.CampaignRules.unitLost(this, com.unciv.logic.campaign.CampaignLossReason.Captured)
         stopEscorting()
         civ.units.removeUnit(this)
         civ.cache.updateViewableTiles()
@@ -1138,10 +1139,11 @@ class MapUnit : IsPartOfGameInfoSerialization {
         AchievementTracker.encampmentCleared(this, tile)
     }
 
-    fun disband() {
+    fun disband(reason: com.unciv.logic.campaign.CampaignLossReason = com.unciv.logic.campaign.CampaignLossReason.Disband) {
         AutomationPreview.choice(civ, "disband", "Disband unit", this)
         // Safeguard against running on already destroyed instances
         if (isDestroyed) return
+        com.unciv.logic.campaign.CampaignRules.unitLost(this, reason)
 
         // evacuation of transported units before disbanding, if possible. toListed because we're modifying the unit list.
         for (unit in currentTile.getUnits()
@@ -1183,7 +1185,7 @@ class MapUnit : IsPartOfGameInfoSerialization {
      *  Cannot be used to reassign from one civ to another - doesn't remove from old owner.
      */
     fun assignOwner(civInfo: Civilization, updateCivInfo: Boolean = true) {
-        if (::civ.isInitialized && owner != civInfo.civID) com.unciv.logic.campaign.CampaignRules.unitLost(this)
+        if (::civ.isInitialized && owner != civInfo.civID) com.unciv.logic.campaign.CampaignRules.unitLost(this, com.unciv.logic.campaign.CampaignLossReason.Captured)
         owner = civInfo.civID
         this.civ = civInfo
         civInfo.units.addUnit(this, updateCivInfo)

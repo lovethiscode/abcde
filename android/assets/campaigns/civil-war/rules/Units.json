@@ -1,0 +1,76 @@
+[
+  {
+    "name": "Worker",
+    "unitType": "Civilian",
+    "movement": 2,
+    "requiredTech": "Agriculture",
+    "uniques": [
+      "Can build [Land] improvements on tiles",
+      "Automation is a primary action",
+      "Cannot be purchased"
+    ],
+    "cost": 70
+  },
+  {
+    "name": "Cannon",
+    "unitType": "Siege",
+    "movement": 2,
+    "strength": 20,
+    "rangedStrength": 26,
+    "cost": 185,
+    "requiredTech": "Chemistry",
+    "uniques": [
+      "[+150]% Strength <vs cities> <when attacking>",
+      "No defensive terrain bonus",
+      "Must set up to ranged attack",
+      "[-1] Sight",
+      "Never appears as a Barbarian unit",
+      "Cannot be purchased"
+    ],
+    "attackSound": "cannon"
+  },
+  {
+    "name": "Rifleman",
+    "unitType": "Gunpowder",
+    "movement": 2,
+    "strength": 34,
+    "cost": 225,
+    "requiredTech": "Rifling",
+    "attackSound": "shot",
+    "uniques": [
+      "Cannot be purchased"
+    ]
+  },
+  {
+    "name": "Cavalry",
+    "unitType": "Mounted",
+    "movement": 4,
+    "strength": 34,
+    "cost": 225,
+    "requiredTech": "Military Science",
+    "requiredResource": "Horses",
+    "uniques": [
+      "Can move after attacking",
+      "No defensive terrain bonus",
+      "[-33]% Strength <vs cities> <when attacking>",
+      "Never appears as a Barbarian unit",
+      "Cannot be purchased"
+    ],
+    "attackSound": "cavalry"
+  },
+  {
+    "name": "Great General",
+    "unitType": "Civilian",
+    "uniques": [
+      "[+15]% Strength bonus for [{Military} {Land}] units within [2] tiles",
+      "Can be earned through combat <for [Land] units>",
+      "Is part of Great Person group [General]",
+      "[This Unit] gets a name from the [General] group",
+      "Great Person - [War]",
+      "Unbuildable",
+      "Uncapturable",
+      "Cannot be purchased"
+    ],
+    "movement": 2
+  }
+]

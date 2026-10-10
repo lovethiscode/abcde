@@ -88,6 +88,7 @@ object NextTurnAutomation {
         }
         AutomationPreview.checkpoint(civInfo)
         automateUnits(civInfo)  // this is the most expensive part
+        if (com.unciv.logic.campaign.CivilWarCampaign.hasEnded(civInfo.gameInfo)) return@timeThis
 
         if (tradeAndChangeState && civInfo.isMajorCiv()) {
             if (civView.isReligionEnabled()) {
@@ -443,9 +444,13 @@ object NextTurnAutomation {
 
         if (civInfo.cities.isNotEmpty()) automateSettlerEscorting(civInfo)
 
-        for (city in citiesRequiringManualPlacement) automateCityConquer(civInfo, city)
+        for (city in citiesRequiringManualPlacement) {
+            if (com.unciv.logic.campaign.CivilWarCampaign.hasEnded(civInfo.gameInfo)) return
+            automateCityConquer(civInfo, city)
+        }
 
         for (unit in unitsInPriorityOrder()) {
+            if (com.unciv.logic.campaign.CivilWarCampaign.hasEnded(civInfo.gameInfo)) return
             // spaceship parts and settlers have already moved
             if (unit.hasUnique(UniqueType.SpaceshipPart) || unit.hasUnique(UniqueType.FoundCity)) continue
             if (!isStillOurUnit(unit, civInfo)) continue
@@ -491,6 +496,7 @@ object NextTurnAutomation {
         
         
         fun attackIfPossible(unit: MapUnit, tile: Tile){
+            if (com.unciv.logic.campaign.CivilWarCampaign.hasEnded(civInfo.gameInfo)) return
             val attackableTile = TargetHelper.getAttackableEnemies(unit,
                 unit.movement.getDistanceToTiles(), listOf(tile)).firstOrNull()
             if (attackableTile != null)
@@ -514,8 +520,10 @@ object NextTurnAutomation {
         // If there are no units, this means attacking the city
         val meleeUnits = ourUnitsInRange(5).filter { it.baseUnit.isMelee() }
         for (unit in meleeUnits.sortedByDescending { it.baseUnit.getForceEvaluation() }) {
+            if (com.unciv.logic.campaign.CivilWarCampaign.hasEnded(civInfo.gameInfo)) return
             // We're so close, full speed ahead!
             if (city.health < city.getMaxHealth() / 5) attackIfPossible(unit, city.getCenterTile())
+            if (com.unciv.logic.campaign.CivilWarCampaign.hasEnded(civInfo.gameInfo)) return
             
             val tilesToTarget = city.getCenterTile().getTilesInDistance(4).toList()
             

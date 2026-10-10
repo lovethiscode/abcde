@@ -312,7 +312,7 @@ class TurnManager(val civInfo: Civilization) {
                     .sortedWith(priorities)
                     .firstOrNull()
                     ?: break
-                unitToDisband.disband()
+                unitToDisband.disband(com.unciv.logic.campaign.CampaignLossReason.Debt)
                 val unitName = unitToDisband.shortDisplayName()
                 civInfo.addNotification("Cannot provide unit upkeep for $unitName - unit has been disbanded!", NotificationCategory.Units, unitName, NotificationIcon.Death)
                 // No need to recalculate unit upkeep, disband did that in UnitManager.removeUnit
@@ -356,6 +356,7 @@ class TurnManager(val civInfo: Civilization) {
     }
 
     fun updateWinningCiv() {
+        if (com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)) return
         if (civInfo.gameInfo.victoryData != null) return // Game already won
 
         val victoryType = civInfo.victoryManager.getVictoryTypeAchieved()

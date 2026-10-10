@@ -503,6 +503,8 @@ class CityConstructions : IsPartOfGameInfoSerialization {
 
     /** Returns false if we tried to construct a unit but it has nowhere to go */
     fun completeConstruction(construction: INonPerpetualConstruction): Boolean = AchievementTracker.action(city.civ.gameInfo) {
+        if (!com.unciv.logic.campaign.CivilWarCampaign.constructionAllowed(city, construction.name)) return@action false
+        if (com.unciv.logic.campaign.CivilWarCampaign.isActive(city.civ.gameInfo) && !construction.isBuildable(this)) return@action false
         var unit: MapUnit? = null
         if (construction is Building) construction.construct(this)
         else if (construction is BaseUnit) {
@@ -907,6 +909,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
 
     @Readonly
     fun canAddToQueue(construction: IConstruction) =
+        com.unciv.logic.campaign.CivilWarCampaign.constructionAllowed(city, construction.name) &&
         !isQueueFull() &&
         construction.isBuildable(this) &&
         !(construction is Building && isBeingConstructedOrEnqueued(construction.name))

@@ -514,7 +514,10 @@ object UnitActionsFromUniques {
         val pillagedImprovement = tile.getImprovementToRepair()!!
         val turnsToBuild = pillagedImprovement.getTurnsToBuild(unit.civ, unit)
         // cap repair to number of turns to build original improvement
-        return repairTurns.coerceAtMost(turnsToBuild)
+        val normalTurns = repairTurns.coerceAtMost(turnsToBuild)
+        return if (com.unciv.logic.campaign.CivilWarCampaign.isActive(unit.civ.gameInfo) &&
+            unit.civ.tech.isResearched("Military Transport") && pillagedImprovement.name in setOf("Road", "Railroad"))
+            ((normalTurns + 1) / 2).coerceAtLeast(1) else normalTurns
     }
 
     internal fun getRepairActions(unit: MapUnit, tile: Tile) =

@@ -234,6 +234,11 @@ class BaseUnit : RulesetObject(), INonPerpetualConstruction {
         additionalResources: Counter<String> = Counter.ZERO
     ): Sequence<RejectionReason> = sequence {
 
+        if (com.unciv.logic.campaign.CivilWarCampaign.isActive(civ.gameInfo) && (name !in com.unciv.logic.campaign.CivilWarCampaign.militaryUnits + "Worker" ||
+                city != null && !com.unciv.logic.campaign.CivilWarCampaign.constructionAllowed(city, name))) {
+            yield(RejectionReasonType.ShouldNotBeDisplayed.toInstance())
+            return@sequence
+        }
         val stateForConditionals = city?.state ?: civ.state
 
         if (city != null && isWaterUnit && !city.isNaval())

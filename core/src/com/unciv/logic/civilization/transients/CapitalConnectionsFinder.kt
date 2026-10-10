@@ -40,7 +40,8 @@ class CapitalConnectionsFinder(private val civInfo: Civilization) {
         it != null && (it.techRequired==null || civInfo.tech.isResearched(it.techRequired!!)) }
 
     private val railroadIsResearched = ruleset.tileImprovements[RoadStatus.Railroad.name].let {
-        it != null && (it.techRequired==null || civInfo.tech.isResearched(it.techRequired!!)) }
+        it != null && (com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo) ||
+            it.techRequired==null || civInfo.tech.isResearched(it.techRequired!!)) }
 
     fun find(): Map<City, EnumSet<CapitalConnectionMedium>> = timeThis("CapitalConnectionsFinder.find") {
         // We map which cities we've reached, to the mediums they've been reached by -

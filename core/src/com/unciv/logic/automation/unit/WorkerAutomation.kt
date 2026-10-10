@@ -77,6 +77,17 @@ class WorkerAutomation(
      */
     fun automateWorkerAction(unit: MapUnit, dangerousTiles: HashSet<Tile>): Unit = timeThis("automateWorkerAction") {
         val currentTile = unit.getTile()
+        if (com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)) {
+            val repair = currentTile.getTilesInDistance(3).filter {
+                it.isPillaged() && it.isVisible(civInfo) && it !in dangerousTiles && !it.isEnemyTerritory(civInfo) &&
+                    (it == currentTile || it.civilianUnit == null && unit.movement.canMoveTo(it))
+            }.sortedBy { it.aerialDistanceTo(currentTile) }.firstOrNull { unit.movement.canReach(it) }
+            if (repair != null) {
+                if (repair != currentTile) unit.movement.headTowards(repair)
+                if (unit.currentTile == repair) UnitActionsFromUniques.getRepairAction(unit)?.action?.invoke()
+                return@timeThis
+            }
+        }
         val currentTileIsCreatesOneImprovementMarker = currentTile.isMarkedForCreatesOneImprovement()
         // Must be called before any getPriority checks to guarantee the local road cache is processed
         val citiesToConnect = roadBetweenCitiesAutomation.getNearbyCitiesToConnect(unit)

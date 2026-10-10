@@ -24,6 +24,7 @@ class UnitUpgradeManager(val unit: MapUnit) {
         ignoreRequirements: Boolean = false,
         ignoreResources: Boolean = false
     ): Boolean {
+        if (com.unciv.logic.campaign.CivilWarCampaign.isActive(unit.civ.gameInfo)) return false
         if (unit.name == unitToUpgradeTo.name) return false
 
         val rejectionReasons = unitToUpgradeTo.getRejectionReasons(unit.civ, additionalResources = unit.getResourceRequirementsPerTurn())
@@ -91,6 +92,7 @@ class UnitUpgradeManager(val unit: MapUnit) {
         // When mashing the upgrade button, you can 'queue' 2 upgrade actions
         //  If both are performed, what you get is the unit is doubled
         //  This prevents this, since we lack another way to do so -_-'  
+        if (com.unciv.logic.campaign.CivilWarCampaign.isActive(unit.civ.gameInfo)) return
         if (unit.isDestroyed) return  
             
         val wasEscorting = unit.isEscorting()

@@ -75,7 +75,7 @@ class TradeLogic(val ourCivilization: Civilization, val otherCivilization: Civil
         offers.add(TradeOffer(Constants.flatGold, TradeOfferType.Gold, civInfo.gold, speed = civInfo.gameInfo.speed))
         offers.add(TradeOffer(Constants.goldPerTurn, TradeOfferType.Gold_Per_Turn, civInfo.stats.statsForNextTurn.gold.toInt(), civInfo.gameInfo.speed))
 
-        if (!civInfo.isOneCityChallenger() && !otherCiv.isOneCityChallenger())
+        if (!com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo) && !civInfo.isOneCityChallenger() && !otherCiv.isOneCityChallenger())
             for (city in civInfo.cities.filterNot { it.isCapital() || it.isInResistance() })
                 offers.add(TradeOffer(city.id, TradeOfferType.City, speed = civInfo.gameInfo.speed))
 
@@ -117,6 +117,8 @@ class TradeLogic(val ourCivilization: Civilization, val otherCivilization: Civil
     fun acceptTrade(applyGifts: Boolean = true): Unit = AchievementTracker.action(ourCivilization.gameInfo) {
         if (com.unciv.logic.campaign.CampaignRules.peaceBlocked(ourCivilization, otherCivilization) &&
             (currentTrade.ourOffers + currentTrade.theirOffers).any { it.name == Constants.peaceTreaty }) return@action
+        if (com.unciv.logic.campaign.CivilWarCampaign.isActive(ourCivilization.gameInfo) &&
+            (currentTrade.ourOffers + currentTrade.theirOffers).any { it.type == TradeOfferType.City }) return@action
         val ourDiploManager = ourCivilization.getDiplomacyManager(otherCivilization)!!
         val theirDiploManager = otherCivilization.getDiplomacyManager(ourCivilization)!!
 

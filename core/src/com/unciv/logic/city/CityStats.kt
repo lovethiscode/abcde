@@ -144,7 +144,7 @@ class CityStats(val city: City) {
         val techEnablingRailroad = railroadImprovement.techRequired
         // If we conquered enemy cities connected by railroad, but we don't yet have that tech,
         // we shouldn't get bonuses, it's as if the tracks are laid out but we can't operate them.
-        if ( (techEnablingRailroad == null || city.civ.tech.isResearched(techEnablingRailroad))
+        if ( (com.unciv.logic.campaign.CivilWarCampaign.isActive(city.civ.gameInfo) || techEnablingRailroad == null || city.civ.tech.isResearched(techEnablingRailroad))
                 && (city.isCapital() || isConnectedToCapital(RoadStatus.Railroad)))
             return Stats(production = 25f)
         return null
