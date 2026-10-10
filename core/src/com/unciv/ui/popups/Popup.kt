@@ -403,9 +403,7 @@ open class Popup(
             val button = UiNavigation.dismissButton()
             button.onActivation { close(); action?.invoke() }
             button.keyShortcuts.add(additionalKey)
-            dismissControls.add(button).size(button.width, button.height).pad(8f).also {
-                recalculateInnerTableMaxWidth()
-            }
+            dismissControls.add(button).size(button.width, button.height).pad(8f)
         } else addButton(text, additionalKey, style) {
             close()
             action?.invoke()
