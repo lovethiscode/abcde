@@ -5,6 +5,7 @@ import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
+import com.badlogic.gdx.utils.Align
 import com.unciv.logic.GameInfo
 import com.unciv.logic.campaign.CampaignCatalog
 import com.unciv.logic.campaign.CampaignDefinition
@@ -82,24 +83,64 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             }).height(58f).fillX().row()
         }
         val totalWidth = (stage.width - 60f).coerceAtMost(900f)
+        val chapters = definitions.chunked(4)
+        val completed = chapters.map { levels -> levels.all { it.id in progress.cleared } }
+        val unlocked = chapters.map { levels -> levels.any { store.isUnlocked(it, progress) } }
+        val chapterNames = listOf("建造", "发展", "战争", "胜利")
         val journey = Group().apply { setSize(totalWidth, 84f); touchable = Touchable.disabled }
-        for (i in 0..10) journey.addActor(ImageGetter.getImage("OtherIcons/HexagonOutline", Theme.border).apply {
-            setBounds(i * totalWidth / 11, 9f + (i % 2) * 12f, 60f, 60f)
-        })
-        line(journey, totalWidth * .12f, 40f, totalWidth * .87f, 40f, Theme.gold, 2f)
-        for (i in 0..3) journey.addActor(ImageGetter.getImage("OtherIcons/Capital",
-            if (definitions.subList(i * 4, i * 4 + 4).all { it.id in progress.cleared }) Theme.gold else Theme.muted).apply {
-            setBounds(totalWidth * (.12f + i * .25f) - 17f, 23f, 34f, 34f)
-        })
+        val step = totalWidth / 4
+        for (i in 0..2) {
+            val start = step * (i + .5f) + 22f
+            val end = step * (i + 1.5f) - 22f
+            if (unlocked[i + 1]) line(journey, start, 64f, end, 64f, Theme.gold, 2f)
+            else {
+                var x = start
+                while (x < end) {
+                    line(journey, x, 64f, minOf(x + 6f, end), 64f, Theme.border, 2f)
+                    x += 12f
+                }
+            }
+        }
+        for (i in 0..3) {
+            val center = step * (i + .5f)
+            val color = if (unlocked[i] || completed[i]) Theme.gold else Theme.muted
+            journey.addActor(ImageGetter.getImage(
+                if (completed[i]) "OtherIcons/Hexagon" else "OtherIcons/HexagonOutline",
+                if (unlocked[i] || completed[i]) Theme.gold else Theme.border).apply {
+                setBounds(center - 20f, 44f, 40f, 40f)
+            })
+            if (completed[i] || !unlocked[i]) {
+                journey.addActor(ImageGetter.getImage(
+                    if (completed[i]) "OtherIcons/Checkmark" else "OtherIcons/LockSmall",
+                    if (completed[i]) Theme.primaryInk else Theme.muted).apply {
+                    setBounds(center - 10f, 54f, 20f, 20f)
+                })
+            } else journey.addActor("${i + 1}".toLabel(Theme.gold, 22).apply {
+                setAlignment(Align.center)
+                setBounds(center - 20f, 44f, 40f, 40f)
+            })
+            journey.addActor("${i + 1} ${chapterNames[i]}".toLabel(color, 18).apply {
+                setAlignment(Align.center)
+                setBounds(i * step, 21f, step, 22f)
+            })
+            journey.addActor((when {
+                completed[i] -> "已完成"
+                unlocked[i] -> "进行中"
+                else -> "未解锁"
+            }).toLabel(if (unlocked[i] || completed[i]) Theme.gold else Theme.muted, 14).apply {
+                setAlignment(Align.center)
+                setBounds(i * step, 0f, step, 19f)
+            })
+        }
         content.add(journey).size(totalWidth, 84f).row()
         val cards = Table().apply { defaults().pad(6f) }
         val columns = if (stage.width > 900f) 2 else 1
         for ((index, title) in CampaignCatalog.chapters.withIndex()) {
-            val levels = definitions.subList(index * 4, index * 4 + 4)
-            val complete = levels.all { it.id in progress.cleared }
+            val levels = chapters[index]
+            val complete = completed[index]
             val mastery = levels.all { store.stars(it, progress) == 3 }
-            val enabled = levels.any { store.isUnlocked(it, progress) }
-            val status = when { mastery -> "精通勋章"; complete -> "章节完成"; enabled -> "探索中"; else -> "待解锁" }
+            val enabled = unlocked[index]
+            val status = when { mastery -> "精通勋章"; complete -> "章节完成"; enabled -> "进行中"; else -> "未解锁" }
             val card = Table().apply {
                 background = ImageGetter.getWhiteDotDrawable().tint(if (enabled) Theme.panel else Theme.unexplored)
                 pad(14f); left(); defaults().pad(5f)

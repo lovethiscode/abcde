@@ -170,7 +170,7 @@ internal class CampaignHomeMenu(
             pad(30f)
             top().left()
             add("New frontiers, new choices".toLabel(gold, 20)).left().row()
-            add("Original campaigns".toLabel(Color.WHITE, 48).apply { wrap = true })
+            add("Campaign challenges".toLabel(Color.WHITE, 48).apply { wrap = true })
                 .width(width - 60f).left().padTop(18f).row()
             add("Designed situations. Your own strategy.".toLabel(Color.WHITE, 22).apply { wrap = true })
                 .width(width * .68f).left().padTop(14f).row()
