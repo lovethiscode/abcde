@@ -6,7 +6,7 @@ let root = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
     .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 let output = root.appendingPathComponent("android/assets/ExtraImages")
 let blue = NSColor(srgbRed: 23/255, green: 52/255, blue: 63/255, alpha: 1)
-let gold = NSColor(srgbRed: 226/255, green: 200/255, blue: 147/255, alpha: 1)
+let appIcon = NSImage(contentsOf: root.appendingPathComponent("ios/app-store-assets/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"))!
 let text = NSColor(srgbRed: 243/255, green: 243/255, blue: 234/255, alpha: 1)
 let muted = NSColor(srgbRed: 189/255, green: 208/255, blue: 212/255, alpha: 1)
 
@@ -37,29 +37,12 @@ func hexagon(_ rect: CGRect) -> CGPath {
 }
 
 try render("LaunchMark", width: 252, height: 214) { context in
-    context.setStrokeColor(gold.cgColor)
-    context.setLineWidth(2)
-    context.addPath(hexagon(CGRect(x: 79, y: 1, width: 94, height: 103)))
-    context.strokePath()
-    context.setLineJoin(.round)
-    context.setLineCap(.round)
+    let iconRect = CGRect(x: 74, y: 1, width: 104, height: 104)
     context.saveGState()
-    context.translateBy(x: 101, y: 33)
-    context.scaleBy(x: 50/24, y: 50/24)
-    context.setLineWidth(1.15)
-    context.move(to: CGPoint(x: 8, y: 3))
-    for point in [CGPoint(x:12,y:11), CGPoint(x:17,y:6), CGPoint(x:22,y:21), CGPoint(x:2,y:21)] {
-        context.addLine(to: point)
-    }
-    context.closePath()
-    context.strokePath()
+    NSBezierPath(roundedRect: iconRect, xRadius: 22, yRadius: 22).addClip()
+    appIcon.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1,
+        respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high])
     context.restoreGState()
-    context.setLineWidth(1.4)
-    context.move(to: CGPoint(x: 124, y: 46))
-    context.addLine(to: CGPoint(x: 124, y: 20))
-    context.addLine(to: CGPoint(x: 141, y: 28))
-    context.addLine(to: CGPoint(x: 124, y: 36))
-    context.strokePath()
     let paragraph = NSMutableParagraphStyle()
     paragraph.alignment = .center
     NSAttributedString(string: "Unciv4iOS", attributes: [.font: NSFont(name: "Georgia", size: 42)!,
