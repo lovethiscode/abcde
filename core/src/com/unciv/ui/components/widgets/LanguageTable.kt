@@ -2,12 +2,13 @@ package com.unciv.ui.components.widgets
 
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Touchable
+import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.models.metadata.LocaleCode
 import com.unciv.ui.components.extensions.darken
-import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.fonts.DiacriticSupport
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.KeyShortcutDispatcher
 import com.unciv.ui.components.input.KeyboardBinding
@@ -37,8 +38,8 @@ internal class LanguageTable(val language: String, val percentComplete: Int) : T
         else
             add(Actor()).minWidth(40f)
 
-        val spaceSplitLang = language.replace("_"," ")
-        add("$spaceSplitLang ($percentComplete%)".toLabel())
+        val nativeName = LocaleCode.find(language)?.nativeName ?: language.replace("_"," ")
+        add(Label(nativeNameDiacritics.remapDiacritics("$nativeName ($percentComplete%)"), BaseScreen.skin))
         update("")
         touchable =
             Touchable.enabled // so click listener is activated when any part is clicked, not only children
@@ -53,6 +54,9 @@ internal class LanguageTable(val language: String, val percentComplete: Int) : T
     }
 
     companion object {
+        // Join combining marks in language names even when the current UI language doesn't use them.
+        private val nativeNameDiacritics = DiacriticSupport(true, CharRange.EMPTY, "", "", "")
+
         /** Extension to add the Language boxes to a Table, used both in OptionsPopup and in LanguagePickerScreen */
         fun Table.addLanguageTables(expectedWidth: Float): ArrayList<LanguageTable> {
             val languageTables = ArrayList<LanguageTable>()
