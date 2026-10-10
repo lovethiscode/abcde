@@ -33,6 +33,7 @@ object ExpeditionBlueTheme {
     val text = Color.valueOf("F3F3EA")
     val muted = Color.valueOf("BDD0D4")
     val border = Color.valueOf("466370")
+    val controlBorder = Color.valueOf("8CAAB4")
     val unexplored = Color.valueOf("243E46")
     val success = Color.valueOf("AAC9B3")
     val danger = Color.valueOf("F0B3AA")
@@ -117,7 +118,7 @@ object ExpeditionBlueTheme {
             val loader = super.getJsonLoader(skinFile)
             val original = loader.getSerializer(Color::class.java)
             val colors = mapOf("color" to raised, "highlight" to hero, "pressed" to panel,
-                "disabled" to panel, "gray" to muted, "dark-gray" to text, "white" to text,
+                "disabled" to background, "gray" to muted, "dark-gray" to text, "white" to text,
                 "selection" to raised, "positive" to gold, "negative" to dangerSurface,
                 "negative-highlight" to dangerSurface, "negative-selected" to dangerSurface,
                 "promotion-default" to panel, "promotion-selected" to hero, "promotion-path" to raised,
@@ -134,11 +135,25 @@ object ExpeditionBlueTheme {
     }
 
     fun finishSkin(skin: Skin) {
-        skin.get(ButtonStyle::class.java).checked = skin.newDrawable("RoundedEdgeRectangle", raised)
-        for (style in skin.getAll(TextButtonStyle::class.java).values()) {
+        val outline = skin.newDrawable("RoundedEdgeRectangle", controlBorder)
+        val disabled = outlinedControl(skin.getDrawable("button-disabled"), outline)
+        fun finishButtons(style: ButtonStyle, edge: Drawable) {
+            style.up = outlinedControl(style.up, edge)
+            style.down = outlinedControl(style.down, edge)
+            style.over = outlinedControl(style.over, edge)
+            style.checked = outlinedControl(skin.getDrawable("button-c"), edge)
+            style.disabled = disabled
+        }
+        finishButtons(skin.get(ButtonStyle::class.java), outline)
+        for (entry in skin.getAll(TextButtonStyle::class.java)) {
+            val style = entry.value
+            val edge = when (entry.key) {
+                "positive" -> skin.newDrawable("RoundedEdgeRectangle", gold)
+                "negative" -> skin.newDrawable("RoundedEdgeRectangle", danger)
+                else -> outline
+            }
+            finishButtons(style, edge)
             style.disabledFontColor = muted
-            style.disabled = skin.getDrawable("button-disabled")
-            style.checked = skin.getDrawable("button-c")
             style.checkedFontColor = gold
         }
         skin.get("positive", TextButtonStyle::class.java).apply {
@@ -172,13 +187,22 @@ object ExpeditionBlueTheme {
             background = selectBackground(skin, raised)
             backgroundOver = selectBackground(skin, hero)
             backgroundOpen = selectBackground(skin, panel)
-            backgroundDisabled = selectBackground(skin, panel)
+            backgroundDisabled = selectBackground(skin, ExpeditionBlueTheme.background)
             disabledFontColor = muted
         }
     }
 
+    /** Preserve control padding and touch geometry while keeping its edge visible on panels. */
+    fun outlinedControl(surface: Drawable, outline: Drawable): Drawable = object : BaseDrawable(surface) {
+        override fun draw(batch: Batch, x: Float, y: Float, width: Float, height: Float) {
+            outline.draw(batch, x, y, width, height)
+            surface.draw(batch, x + 2f, y + 2f, width - 4f, height - 4f)
+        }
+    }
+
     private fun selectBackground(skin: Skin, color: Color): Drawable {
-        val surface = skin.newDrawable("RoundedEdgeRectangle", color)
+        val surface = outlinedControl(skin.newDrawable("RoundedEdgeRectangle", color),
+            skin.newDrawable("RoundedEdgeRectangle", controlBorder))
         val arrow = ImageGetter.getDrawable("OtherIcons/ArrowRight").tint(text) as TransformDrawable
         return object : BaseDrawable(surface) {
             init { rightWidth += 26f }

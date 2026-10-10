@@ -33,15 +33,19 @@ internal object ModManagementStyle {
     fun label(value: String, size: Int = 22, color: Color = text): Label =
         value.toLabel(color, fontSize = size).apply { wrap = true }
 
+    fun control(color: Color) = if (ExpeditionBlueTheme.enabled)
+        ExpeditionBlueTheme.outlinedControl(rounded(color),
+            rounded(if (color == accent) accent else ExpeditionBlueTheme.controlBorder)) else rounded(color)
+
     fun button(value: String, primary: Boolean = false): TextButton =
         value.toTextButton().also { styleButton(it, primary) }
 
     fun styleButton(button: TextButton, primary: Boolean = false) {
         button.style = TextButton.TextButtonStyle(button.style).apply {
-            up = rounded(if (primary) accent else raised)
-            down = rounded(selected)
-            over = rounded(selected)
-            disabled = rounded(raised)
+            up = control(if (primary) accent else raised)
+            down = control(selected)
+            over = control(selected)
+            disabled = control(ExpeditionBlueTheme.color(raised, ExpeditionBlueTheme.background))
             fontColor = if (primary) background else text
             downFontColor = text
             overFontColor = text

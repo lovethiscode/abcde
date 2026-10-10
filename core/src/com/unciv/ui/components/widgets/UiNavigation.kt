@@ -26,7 +26,9 @@ object UiNavigation {
 
     private fun style() = if (ExpeditionBlueTheme.enabled)
         TextButton.TextButtonStyle(BaseScreen.skin.get(TextButton.TextButtonStyle::class.java)).apply {
-            over = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.border)
+            over = ExpeditionBlueTheme.outlinedControl(
+                BaseScreen.skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.border),
+                BaseScreen.skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.controlBorder))
             down = over
             checked = up
             checkedFontColor = ExpeditionBlueTheme.text

@@ -270,8 +270,8 @@ class ModManagementScreen private constructor(
         body.clear()
         listHolder.clear()
         listHolder.add(if (showingInstalled) scrollInstalledMods else scrollOnlineMods).grow().minWidth(0f).minHeight(0f)
-        discoverButton.style.up = ModManagementStyle.rounded(if (showingInstalled) ModManagementStyle.surface else ModManagementStyle.raised)
-        installedButton.style.up = ModManagementStyle.rounded(if (showingInstalled) ModManagementStyle.raised else ModManagementStyle.surface)
+        discoverButton.style.up = ModManagementStyle.control(if (showingInstalled) ModManagementStyle.surface else ModManagementStyle.raised)
+        installedButton.style.up = ModManagementStyle.control(if (showingInstalled) ModManagementStyle.raised else ModManagementStyle.surface)
         if (ExpeditionBlueTheme.enabled) {
             discoverButton.isChecked = !showingInstalled
             installedButton.isChecked = showingInstalled

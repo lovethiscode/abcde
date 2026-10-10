@@ -6,6 +6,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
+import com.unciv.models.skins.ExpeditionBlueTheme
 
 class SmallButtonStyle : TextButton.TextButtonStyle(BaseScreen.skin[TextButton.TextButtonStyle::class.java]) {
     /** Modify NinePatch geometry so the roundedEdgeRectangleMidShape button is 38f high instead of 48f,
@@ -26,18 +27,30 @@ class SmallButtonStyle : TextButton.TextButtonStyle(BaseScreen.skin[TextButton.T
         val overColor = BaseScreen.skin.getColor("highlight")
         val disabledColor = BaseScreen.skin.getColor("disabled")
         // UiElementDocsWriter inspects source, which is why this isn't prettified better
-        val shape = BaseScreen.run {
+        var shape = BaseScreen.run {
             // Let's use _one_ skinnable background lookup but with different tints
             val skinned = skinStrings.getUiBackground("AnimatedMenu/Button", skinStrings.roundedEdgeRectangleMidShape)
             // Reduce height only if not skinned
             val default = ImageGetter.getNinePatch(skinStrings.roundedEdgeRectangleMidShape)
             if (skinned === default) default.reduce() else skinned
         }
+        if (ExpeditionBlueTheme.enabled) {
+            shape = NinePatchDrawable(shape).also {
+                it.patch = NinePatch(shape.patch).apply { setColor(Color.WHITE) }
+            }
+        }
         // Now get the tinted variants
         up = shape.tint(upColor)
         down = shape.tint(downColor)
         over = shape.tint(overColor)
         disabled = shape.tint(disabledColor)
-        disabledFontColor = Color.GRAY
+        disabledFontColor = ExpeditionBlueTheme.labelColor(Color.GRAY)
+        if (ExpeditionBlueTheme.enabled) {
+            val outline = shape.tint(ExpeditionBlueTheme.controlBorder)
+            up = ExpeditionBlueTheme.outlinedControl(up, outline)
+            down = ExpeditionBlueTheme.outlinedControl(down, outline)
+            over = ExpeditionBlueTheme.outlinedControl(over, outline)
+            disabled = ExpeditionBlueTheme.outlinedControl(disabled, outline)
+        }
     }
 }
