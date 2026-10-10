@@ -374,6 +374,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 gameSetup.gameParameters.difficulty, gameSetup.gameParameters.startingEra)
             val mapValues = listOf(gameSetup.mapParameters.type, gameSetup.mapParameters.mapSize.name)
             val playersHeading = Table().apply {
+                left()
                 add("Players".toLabel(fontSize = 24)).left().row()
                 val counts = if (humans.any { it.manual }) "[$joined]/[${humans.size}] seats filled · [$ready]/[${humans.size}] ready"
                     else "[$joined]/[${humans.size}] joined · [$ready]/[${humans.size}] ready"
