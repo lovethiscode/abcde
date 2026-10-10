@@ -111,8 +111,15 @@ class CampaignAllLevelsTest {
         tiles[0].setImprovement("Farm"); tiles[1].setImprovement("Mine")
         cap.workedTiles = HashSet(tiles.map { it.position })
         assertTrue(CampaignRules.evaluate(g).main); assertTrue(CampaignRules.evaluate(g).worker)
+        assertTrue(CampaignRules.evaluate(g).details[0].contains("小麦农场：已完成"))
+        assertTrue(CampaignRules.evaluate(g).details[0].contains("宝石矿山：已完成"))
+        tiles[1].setImprovement("Farm")
+        assertFalse(CampaignRules.evaluate(g).main)
+        assertTrue(CampaignRules.evaluate(g).details[0].contains("宝石矿山：未建成"))
+        tiles[1].setImprovement("Mine")
         tiles[1].improvementIsPillaged = true
         assertFalse(CampaignRules.evaluate(g).main)
+        assertTrue(CampaignRules.evaluate(g).details[0].contains("宝石矿山：已被劫掠，需修复"))
         tiles[1].improvementIsPillaged = false
         cap.workedTiles.clear()
         assertFalse(CampaignRules.evaluate(g).worker)

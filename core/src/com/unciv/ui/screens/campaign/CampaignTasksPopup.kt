@@ -22,6 +22,10 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
     init {
         val state = requireNotNull(screen.gameInfo.campaign)
         val d = state.definition
+        // Refresh explanatory copy for compatible saves without replacing their scoring snapshot.
+        val copy = CampaignCatalog.definition(d.id).takeIf {
+            it.configVersion == d.configVersion && it.scoringVersion == d.scoringVersion
+        } ?: d
         val result = CampaignRules.evaluate(screen.gameInfo)
         val terminal = state.resultStars > 0 || result.failed
         addGoodSizedLabel(d.title).row()
@@ -32,7 +36,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
             val best = CampaignStore(screen.game.files).progress().bestStars["${d.id}:${d.scoringVersion}"] ?: 0
             addBodyText("本版本最高成绩：${maxOf(best, state.resultStars)} / 3 星").row()
         }
-        val goals = d.objectives.ifEmpty {
+        val goals = copy.objectives.ifEmpty {
             listOf("本次生产完成：" + d.requiredProduction.joinToString("、") { it.tr() },
                 "本次生产并保留：" + d.worker.tr(), "初始首都人口至少 ${d.population}")
         }
@@ -48,10 +52,13 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
                 addBodyText("主目标已达成。点击下方“结算通关”保存成绩并解锁下一关，也可继续争取挑战星。").row()
             } else addBodyText(if (d.automatic) "按本关规则自动结算。" else "完成主目标后可主动结算。").row()
             for (area in d.areas) location("定位：${area.title}", area.tiles.first())
-            for ((i, tile) in d.targetTiles.withIndex()) location("定位：改良地块 ${i+1}", tile)
+            for ((i, tile) in d.targetTiles.withIndex()) {
+                val name = screen.gameInfo.tileMap[tile].resource?.let { "${it.tr()}地块" } ?: "改良地块 ${i+1}"
+                location("定位：$name", tile)
+            }
             screen.gameInfo.getCities().firstOrNull { it.id == d.targetCity }?.let { location("定位：目标城市", it.location) }
             if (!state.hintsDismissed) {
-                for (hint in d.hints) addBodyText("提示 · $hint").row()
+                for (hint in copy.hints) addBodyText("提示 · $hint").row()
             }
             contentButton(if (state.hintsDismissed) "展开教学提示" else "收起教学提示") {
                 state.hintsDismissed = !state.hintsDismissed

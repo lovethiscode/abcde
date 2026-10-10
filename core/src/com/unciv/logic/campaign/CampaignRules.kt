@@ -159,7 +159,21 @@ object CampaignRules {
                 main = improved
                 bonusA = improved && capKept && improvements.all { it.position in capital!!.workedTiles }
                 bonusB = capKept && capital!!.getWorkableTiles().any { it.getOwner() == p && it.position !in d.targetTiles && it.resource == null && it.getUnpillagedImprovement() in listOf("Farm", "Mine") }
-                detail = listOf("目标资源改良：${improvements.count { it.getOwner() == p && !it.improvementIsPillaged && it.improvement != null }} / 2", "首都同时安排市民工作两处目标地块", "额外普通地块改良：${if (bonusB) 1 else 0} / 1")
+                val resourceProgress = improvements.mapIndexed { i, tile ->
+                    val expected = if (i == 0) "Farm" else "Mine"
+                    val status = when {
+                        tile.getOwner() != p -> "地块不属于你"
+                        tile.improvement != expected -> "未建成"
+                        tile.improvementIsPillaged -> "已被劫掠，需修复"
+                        else -> "已完成"
+                    }
+                    "${if (i == 0) "小麦农场" else "宝石矿山"}：$status"
+                }
+                detail = listOf(
+                    resourceProgress.joinToString("\n") + "\n结算时，两处地块须属于你，且农场、矿山未被劫掠。",
+                    "首都已安排市民：${if (capKept) improvements.count { it.position in capital!!.workedTiles } else 0} / 2 处",
+                    "额外农场或矿山：${if (bonusB) 1 else 0} / 1\n地块须在首都工作范围内、属于你且没有资源，设施未被劫掠。"
+                )
             }
             4 -> {
                 main = capKept && pop >= d.populationMain && has(capital, "Monument")
