@@ -20,8 +20,9 @@ func render(_ name: String, width: Int, height: Int, draw: (CGContext) -> Void) 
     NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: true)
     draw(context)
     NSGraphicsContext.restoreGraphicsState()
-    let png = NSBitmapImageRep(cgImage: context.makeImage()!)
-        .representation(using: .png, properties: [:])!
+    let bitmap = NSBitmapImageRep(cgImage: context.makeImage()!)
+    bitmap.setProperty(.colorSyncProfileData, withValue: NSColorSpace.sRGB.iccProfileData!)
+    let png = bitmap.representation(using: .png, properties: [:])!
     try png.write(to: output.appendingPathComponent(name + "@3x.png"))
 }
 
