@@ -188,6 +188,8 @@ class WorldScreen(
 
 
     init {
+        if (!gameInfo.allowsPlayerAutoPlay()) autoPlay.stopAutoPlay()
+
         // notifications are right-aligned, they take up only as much space as necessary.
         notificationsScroll.width = stage.width / 2
 
@@ -879,6 +881,7 @@ class WorldScreen(
     }
 
     fun nextTurn(fromAutoPlay: Boolean = false) {
+        if (fromAutoPlay && !gameInfo.allowsPlayerAutoPlay()) return
         if (com.unciv.logic.endless.EndlessRules.blocked(gameInfo)) {
             com.unciv.ui.screens.endless.EndlessPopup(this)
             return
@@ -1069,11 +1072,12 @@ class WorldScreen(
     }
 
     private fun updateAutoPlayStatusButton() {
+        val showAutoPlay = gameInfo.allowsPlayerAutoPlay() && game.settings.autoPlay.showAutoPlayButton
         if (statusButtons.autoPlayStatusButton == null) {
-            if (game.settings.autoPlay.showAutoPlayButton)
+            if (showAutoPlay)
                 statusButtons.autoPlayStatusButton = AutoPlayStatusButton(this, nextTurnButton)
         } else {
-            if (!game.settings.autoPlay.showAutoPlayButton) {
+            if (!showAutoPlay) {
                 statusButtons.autoPlayStatusButton = null
                 autoPlay.stopAutoPlay()
             }

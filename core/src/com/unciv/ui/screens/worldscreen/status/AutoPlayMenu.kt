@@ -30,6 +30,7 @@ class AutoPlayMenu(
 
     override fun createContentTable(): Table {
         val table = super.createContentTable()!!
+        if (!worldScreen.gameInfo.allowsPlayerAutoPlay()) return table
         // Using the same keyboard binding for bypassing this menu and the default option
         if (!worldScreen.gameInfo.gameParameters.isOnlineMultiplayer)
             table.add(getButton("Start AutoPlay", KeyboardBinding.AutoPlay, ::multiturnAutoPlay)).row()
@@ -42,6 +43,7 @@ class AutoPlayMenu(
     }
 
     private fun autoPlayEndTurn() {
+        if (!worldScreen.gameInfo.allowsPlayerAutoPlay()) return
         val endTurnFunction = {
             nextTurnButton.update()
             TurnManager(worldScreen.selectedGameView.civView.getCiv()).automateTurn()
@@ -58,11 +60,12 @@ class AutoPlayMenu(
     }
 
     private fun multiturnAutoPlay() {
-        worldScreen.autoPlay.startMultiturnAutoPlay()
+        worldScreen.autoPlay.startMultiturnAutoPlay(worldScreen.gameInfo)
         nextTurnButton.update()
     }
 
     private fun autoPlayMilitary() {
+        if (!worldScreen.gameInfo.allowsPlayerAutoPlay()) return
         val civInfo = worldScreen.selectedGameView.civView.getCiv()
         val autoPlayMilitaryFunction = {
             val isAtWar = civInfo.isAtWar()
@@ -82,6 +85,7 @@ class AutoPlayMenu(
     }
 
     private fun autoPlayCivilian() {
+        if (!worldScreen.gameInfo.allowsPlayerAutoPlay()) return
         val civInfo = worldScreen.selectedGameView.civView.getCiv()
         val autoPlayCivilainFunction = {
             val isAtWar = civInfo.isAtWar()
@@ -100,6 +104,7 @@ class AutoPlayMenu(
     }
 
     private fun autoPlayEconomy() {
+        if (!worldScreen.gameInfo.allowsPlayerAutoPlay()) return
         val civInfo = worldScreen.selectedGameView.civView.getCiv()
         NextTurnAutomation.automateCities(civInfo)
         worldScreen.shouldUpdate = true

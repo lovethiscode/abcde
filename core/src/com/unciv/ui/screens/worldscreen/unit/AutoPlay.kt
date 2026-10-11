@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen.unit
 
+import com.unciv.logic.GameInfo
 import com.unciv.logic.automation.Timers
 import com.unciv.models.metadata.GameSettings
 import com.unciv.ui.screens.worldscreen.WorldScreen
@@ -23,7 +24,11 @@ class AutoPlay(private var autoPlaySettings: GameSettings.GameSettingsAutoPlay) 
     var autoPlayJob: Job? = null
     private val turnEndAuthorized = AtomicBoolean(false)
 
-    fun startMultiturnAutoPlay() {
+    fun startMultiturnAutoPlay(gameInfo: GameInfo) {
+        if (!gameInfo.allowsPlayerAutoPlay()) {
+            stopAutoPlay()
+            return
+        }
         Timers.singleton.startTiming()
         autoPlayTurnInProgress = false
         turnsToAutoPlay = autoPlaySettings.autoPlayMaxTurns
@@ -61,6 +66,10 @@ class AutoPlay(private var autoPlaySettings: GameSettings.GameSettingsAutoPlay) 
         setPlayerTurnAfterEnd: Boolean = true,
         job: suspend () -> Unit,
     ) {
+        if (!worldScreen.gameInfo.allowsPlayerAutoPlay()) {
+            stopAutoPlay()
+            return
+        }
         if (autoPlayTurnInProgress) throw IllegalStateException("Trying to start an AutoPlay job while a job is currently running")
         // Temporarily allow full AI autoplay to exercise the normal achievement rules.
         if (!setPlayerTurnAfterEnd) {

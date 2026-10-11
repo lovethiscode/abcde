@@ -374,6 +374,9 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
     fun isSimulation(): Boolean = turns < DebugUtils.SIMULATE_UNTIL_TURN
             || turns < simulateMaxTurns && simulateUntilWin
 
+    @Readonly
+    fun allowsPlayerAutoPlay(): Boolean = campaign == null && endless == null
+
     // Records the ranking stats of all major civs
     private fun recordRankingStats() {
         for (civ in civilizations) {

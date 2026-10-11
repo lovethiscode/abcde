@@ -30,6 +30,11 @@ internal class AutomationTab(
         addCheckbox("Cities auto-bombard at end of turn", settings::citiesAutoBombardAtEndOfTurn)
         addCheckbox("Auto-assign specialists in new cities", settings::autoAssignSpecialistsInNewCities)
 
+        if (GUI.getWorldScreenIfActive()?.gameInfo?.allowsPlayerAutoPlay() == false) {
+            super.lateInitialize()
+            return
+        }
+
         addHeader("AutoPlay")
 
         addCheckbox("Show AutoPlay button", settings.autoPlay::showAutoPlayButton, updateWorld = true) {

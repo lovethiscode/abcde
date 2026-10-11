@@ -23,15 +23,16 @@ class AutoPlayStatusButton(
     init {
         add(Stack(autoPlayImage)).pad(5f)
         onActivation(binding = KeyboardBinding.AutoPlayMenu) {
+            if (!worldScreen.gameInfo.allowsPlayerAutoPlay()) return@onActivation
             if (worldScreen.autoPlay.isAutoPlaying())
                 worldScreen.autoPlay.stopAutoPlay()
             else if (worldScreen.isPlayersTurn)
                 AutoPlayMenu(stage,this, nextTurnButton, worldScreen)
         }
         val directAutoPlay = {
-            if (!worldScreen.gameInfo.gameParameters.isOnlineMultiplayer
+            if (worldScreen.gameInfo.allowsPlayerAutoPlay() && !worldScreen.gameInfo.gameParameters.isOnlineMultiplayer
                 && worldScreen.selectedGameView.civView.getCiv() == worldScreen.gameInfo.currentPlayerCiv) {
-                worldScreen.autoPlay.startMultiturnAutoPlay()
+                worldScreen.autoPlay.startMultiturnAutoPlay(worldScreen.gameInfo)
                 nextTurnButton.update()
             }
         }
