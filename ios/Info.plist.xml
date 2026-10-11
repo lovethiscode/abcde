@@ -51,6 +51,8 @@
     <true/>
     <key>NSLocalNetworkUsageDescription</key>
     <string>Receive a Mod ZIP from a computer on your local Wi-Fi so you can test it.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Save the defense share image you choose to your photo library.</string>
     <key>MinimumOSVersion</key>
     <string>15.0</string>
     <key>UIDeviceFamily</key>

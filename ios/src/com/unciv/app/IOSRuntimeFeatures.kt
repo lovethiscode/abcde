@@ -11,6 +11,7 @@ interface IOSRuntimeFeatures {
     val secureMultiplayerPasswords: Boolean
     val oggAudioAvailable: Boolean
     val achievementsAvailable: Boolean
+    val endlessSharingAvailable: Boolean get() = false
     fun createCloudSaveSync(files: UncivFiles): CloudSaveSync
     fun createCampaignProgressSync(files: UncivFiles): com.unciv.logic.campaign.CampaignProgressSync =
         com.unciv.logic.campaign.CampaignProgressSync.None
@@ -22,6 +23,7 @@ interface IOSRuntimeFeatures {
     fun showVoluntarySupport()
     fun showAchievements()
     fun showAchievementGuide()
+    fun showEndlessShare(data: com.unciv.logic.endless.EndlessShareData) {}
     fun dispose()
 }
 

@@ -98,6 +98,9 @@ interface PlatformSpecific {
     fun showAchievements() {}
     fun showAchievementGuide() {}
 
+    val endlessSharingAvailable: Boolean get() = false
+    fun showEndlessShare(data: com.unciv.logic.endless.EndlessShareData) {}
+
     /** Opens the native share sheet on platforms with multiplayer invitation links. */
     fun shareMultiplayerGame(gameName: String, gameId: String, invitationLink: String) {}
 

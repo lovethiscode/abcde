@@ -103,6 +103,15 @@ class EndlessStore(private val files: UncivFiles) {
         }
     }
 
+    /** Share the durable snapshot, including a final result that already superseded the live game. */
+    fun shareSnapshot(game: GameInfo): EndlessShareData = SaveFileLocks.withLock(slot) {
+        requireNotNull(EndlessShareData.fromState(requireNotNull(game.endless)))
+        save(game)
+        val state = requireNotNull(saved()?.endless)
+        check(state.attemptId == game.endless!!.attemptId)
+        requireNotNull(EndlessShareData.fromState(state))
+    }
+
     fun saveSnapshot(game: GameInfo) = SaveFileLocks.withLock(slot) {
         val s = requireNotNull(game.endless)
         val previous = saved()

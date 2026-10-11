@@ -9,6 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.logic.GameInfo
 import com.unciv.logic.endless.EndlessCatalog
 import com.unciv.logic.endless.EndlessRules
+import com.unciv.logic.endless.EndlessShareData
 import com.unciv.logic.endless.EndlessState
 import com.unciv.logic.endless.EndlessStore
 import com.unciv.models.skins.ExpeditionBlueTheme as Theme
@@ -84,6 +85,9 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                     action("Continue defense", "ui-endless-continue", inner, true) { enter(null, state.attemptId) }
                 }
                 action("New defense", "ui-endless-new", inner, state?.ended != false) { confirmStart(state) }
+                if (game.endlessSharingAvailable) state?.let(EndlessShareData::fromState)?.let { data ->
+                    action("Share defense", "ui-endless-share-current", inner, false) { game.showEndlessShare(data) }
+                }
                 text("Saved on this device", inner, Theme.muted, 14)
             }
             val hero = Table().apply {
@@ -105,8 +109,15 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                     val best = records.best[key]
                     text(if (best == null) "No record yet. Hold the bastion to set your best." else
                         "Best: [${best.rounds}] completed rounds · [${best.waves}] waves · [${best.kills}] kills", width - 36f)
-                    for (record in records.recent.filter { it.key == key }) text(
-                        "[${record.rounds}] rounds · [${record.waves}] waves · [${record.kills}] kills · [${if (record.status == "Quit") "Quit".tr() else "Defeated".tr()}]", width - 36f, Theme.muted, 15)
+                    if (game.endlessSharingAvailable) best?.let(EndlessShareData::fromRecord)?.let { data ->
+                        action("Share defense", "ui-endless-share-best:${best.attemptId}", width - 36f, false) { game.showEndlessShare(data) }
+                    }
+                    for (record in records.recent.filter { it.key == key }) {
+                        text("[${record.rounds}] rounds · [${record.waves}] waves · [${record.kills}] kills · [${if (record.status == "Quit") "Quit".tr() else "Defeated".tr()}]", width - 36f, Theme.muted, 15)
+                        if (game.endlessSharingAvailable) EndlessShareData.fromRecord(record)?.let { data ->
+                            action("Share defense", "ui-endless-share-record:${record.attemptId}", width - 36f, false) { game.showEndlessShare(data) }
+                        }
+                    }
                 }
             }).width(width).padTop(16f).row()
             content.add(panel(width).apply {

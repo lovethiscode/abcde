@@ -46,9 +46,11 @@ class IOSGame @JvmOverloads constructor(
 
     override val voluntarySupportAvailable get() = runtimeFeatures.voluntarySupportAvailable
     override val achievementsAvailable get() = runtimeFeatures.achievementsAvailable
+    override val endlessSharingAvailable get() = runtimeFeatures.endlessSharingAvailable
     override val multiplayerLobbyServerUrl get() = runtimeFeatures.multiplayerLobbyServerUrl
     override fun showAchievements() = runtimeFeatures.showAchievements()
     override fun showAchievementGuide() = runtimeFeatures.showAchievementGuide()
+    override fun showEndlessShare(data: com.unciv.logic.endless.EndlessShareData) = runtimeFeatures.showEndlessShare(data)
 
     override val sourceCodeUrl = "${com.unciv.Constants.uncivRepoURL}tree/${IOSSourceRevision.COMMIT}/"
 

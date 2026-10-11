@@ -3,6 +3,7 @@ package com.unciv.ui.screens.endless
 import com.unciv.logic.challenges.ChallengeTelemetry
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.logic.endless.EndlessRules
+import com.unciv.logic.endless.EndlessShareData
 import com.unciv.logic.endless.EndlessStore
 import com.unciv.logic.endless.EndlessWavePlanner
 import com.unciv.models.skins.ExpeditionBlueTheme as Theme
@@ -102,6 +103,8 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
                 }.open()
             }.minHeight(UiNavigation.minimumTouchSize())
         }
+        if (screen.game.endlessSharingAvailable && EndlessShareData.fromState(mode) != null)
+            addButton("Share defense") { share() }.apply { actor.name = "ui-endless-share" }.minHeight(UiNavigation.minimumTouchSize())
         if (!mode.saveBlocked) addButton("Return to defense hall") { leave() }.minHeight(UiNavigation.minimumTouchSize())
         addCloseButton(if (mode.offer != null) "Claim later" else "View map").minHeight(UiNavigation.minimumTouchSize())
         val buttons = bottomTable.children.toList()
@@ -128,6 +131,19 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
             } catch (ex: Exception) {
                 com.unciv.utils.Log.error("Endless reward save failed", ex)
                 close(); screen.shouldUpdate = true; EndlessPopup(screen)
+            } finally { loading.close() }
+        }
+    }
+
+    private fun share() {
+        val loading = LoadingPopup(screen)
+        Concurrency.runOnGLThread {
+            try {
+                screen.game.files.autosaves.autoSaveJob?.join()
+                screen.game.showEndlessShare(store.shareSnapshot(screen.gameInfo))
+            } catch (ex: Exception) {
+                close(); screen.shouldUpdate = true; EndlessPopup(screen)
+                ToastPopup("Could not prepare the defense share. Please try again.", screen)
             } finally { loading.close() }
         }
     }
