@@ -10,6 +10,7 @@ import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.models.translations.tr
 import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.input.KeyboardBinding
@@ -54,7 +55,9 @@ internal class CampaignHomeMenu(
         val width = (screen.stage.width - 56f).coerceAtMost(1600f)
         val coverWidth = if (portrait) width else width * .55f
         val actionsWidth = if (portrait) width else width - coverWidth - 22f
-        val toolCount = if (game.achievementsAvailable) 6 else 5
+        val toolNames = listOfNotNull("Civilopedia", "Mods", if (game.achievementsAvailable) "Achievements" else null,
+            "Map editor", "About")
+        val toolCount = toolNames.size
         val columns = if (portrait) 3 else toolCount
         val toolbarHeight = ((toolCount + columns - 1) / columns) * touchSize + 12f * pointScale
         val sectionGap = 16f * pointScale
@@ -72,6 +75,17 @@ internal class CampaignHomeMenu(
             setText(version)
             name = "ui-home-version"
         }).right().top().padTop(2f)
+        val options = Table().apply {
+            name = "ui-home-options"
+            background = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape,
+                surface.cpy().apply { a = .45f })
+            add(ImageGetter.getImage("OtherIcons/Options", iconColor)).size(24f * pointScale)
+            touchable = Touchable.enabled
+            onActivation(binding = KeyboardBinding.MainMenuOptions) { stopBackground(); screen.openOptionsPopup() }
+            onLongPress { screen.openOptionsPopup(withDebug = true) }
+            addTooltip("Options")
+        }
+        header.add(options).size(touchSize).padLeft(16f * pointScale).right().top()
         header.pack()
         add(header).width(width).padBottom(sectionGap).row()
         val bodyHeight = if (portrait) (screen.stage.height * .48f).coerceAtMost(400f) else
@@ -114,18 +128,23 @@ internal class CampaignHomeMenu(
         add(body).width(width).padBottom(sectionGap).row()
 
         val tools = Table().apply { padTop(6f * pointScale).padBottom(6f * pointScale) }
-        val toolWidth = width / columns - 6f
         val iconSize = 24f * pointScale
         val iconGap = 8f * pointScale
+        val toolLabels = toolNames.associateWith { it.toLabel(ink, (17f * pointScale).roundToInt()) }
+        val spareWidth = (width - toolLabels.values.sumOf { it.prefWidth.toDouble() }.toFloat()) / toolCount
         var added = 0
         fun tool(text: String, icon: String, binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Table {
+            val label = toolLabels.getValue(text)
+            val toolWidth = if (portrait) width / columns - 6f else label.prefWidth + spareWidth - 6f
             val button = Table().apply {
                 background = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape,
                     surface.cpy().apply { a = .45f })
                 pad(0f, 8f, 0f, 8f)
                 add(ImageGetter.getImage(icon, iconColor)).size(iconSize).padRight(iconGap)
-                add(text.toLabel(ink, (17f * pointScale).roundToInt()).apply { wrap = true })
-                    .width(toolWidth - 16f - iconSize - iconGap)
+                val labelWidth = toolWidth - 16f - iconSize - iconGap
+                add(label.apply {
+                    if (prefWidth > labelWidth) setFontScale(fontScaleX * labelWidth / prefWidth)
+                }).width(labelWidth)
                 touchable = Touchable.enabled
                 onActivation(binding = binding) { stopBackground(); action() }
             }
@@ -140,8 +159,6 @@ internal class CampaignHomeMenu(
         }.apply { if (!game.platformCapabilities.onlineModManagement) { touchable = Touchable.disabled; color.a = .6f } }
         if (game.achievementsAvailable) tool("Achievements", "OtherIcons/AchievementTrophy") { game.showAchievements() }
         tool("Map editor", "OtherIcons/MapEditor", KeyboardBinding.MapEditor) { game.pushScreen { MapEditorScreen() } }
-        tool("Options", "OtherIcons/Options", KeyboardBinding.MainMenuOptions) { screen.openOptionsPopup() }
-            .onLongPress { screen.openOptionsPopup(withDebug = true) }
         tool("About", "OtherIcons/MenuIcon", action = ::showAbout)
         add(tools).width(width).row()
         pack()
