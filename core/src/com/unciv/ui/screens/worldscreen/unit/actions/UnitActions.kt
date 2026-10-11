@@ -234,7 +234,7 @@ object UnitActions {
                         "Disband this unit for [${unit.baseUnit.getDisbandGold(unit.civ)}] gold?".tr()
                     else "Do you really want to disband this unit?".tr()
                     val campaignWarning = if (com.unciv.logic.campaign.CivilWarCampaign.isActive(unit.civ.gameInfo) &&
-                        unit.name in com.unciv.logic.campaign.CivilWarCampaign.militaryUnits) "\n本次解散计入部队损失，影响部队损失星。" else ""
+                        unit.name in com.unciv.logic.campaign.CivilWarCampaign.militaryUnits) "\n" + "本次解散计入部队损失，影响部队损失星。".tr() else ""
                     ConfirmPopup(worldScreen, disbandText + campaignWarning, "Disband unit") {
                         unit.disband()
                         unit.civ.updateStatsForNextTurn() // less upkeep!

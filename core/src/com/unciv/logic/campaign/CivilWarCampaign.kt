@@ -102,7 +102,7 @@ object CivilWarCampaign {
             s.capitalLost || capital?.civ != player -> "华盛顿已失守"
             target == null -> "里士满已不存在"
             game.victoryData?.let { it.winningCiv != s.playerId } == true -> "对手已获胜"
-            s.completedRounds >= d.hardTurnLimit -> "第 ${d.hardTurnLimit} 个完整回合已结束"
+            s.completedRounds >= d.hardTurnLimit -> "第 [${d.hardTurnLimit}] 个完整回合已结束"
             else -> ""
         }
         val round = (s.completedRounds + 1).coerceAtMost(d.hardTurnLimit)
@@ -110,10 +110,10 @@ object CivilWarCampaign {
         val efficient = round <= d.efficiencyTurn
         val preserved = s.lostMilitary.size <= d.lossLimit
         val details = listOf(
-            "里士满：${if (main) "已占领" else "尚未占领"}；华盛顿：${if (capital?.civ == player && !s.capitalLost) "仍由联邦控制" else "已失守"}",
-            "战役第 $round 回合 / ${d.hardTurnLimit}；效率要求不晚于第 ${d.efficiencyTurn} 回合",
-            "部队损失 ${s.lostMilitary.size} / ${d.lossLimit}\n" + CampaignLossReason.entries.filter { it.counts }.joinToString(" · ") {
-                "${it.label} ${s.lossReasons.values.count { reason -> reason == it.name }}"
+            "里士满：[${if (main) "已占领" else "尚未占领"}]；华盛顿：[${if (capital?.civ == player && !s.capitalLost) "仍由联邦控制" else "已失守"}]",
+            "战役第 [$round] 回合 / [${d.hardTurnLimit}]；效率要求不晚于第 [${d.efficiencyTurn}] 回合",
+            "部队损失 [${s.lostMilitary.size}] / [${d.lossLimit}]".let { "{$it}\n" } + CampaignLossReason.entries.filter { it.counts }.joinToString(" · ") {
+                "{${it.label}} ${s.lossReasons.values.count { reason -> reason == it.name }}"
             })
         return CampaignRules.Evaluation(main, efficient, preserved, failure.isNotEmpty(), details, failure,
             buildSet { if (!efficient) add(1); if (!preserved) add(2) })

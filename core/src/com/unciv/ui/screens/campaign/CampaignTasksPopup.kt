@@ -8,6 +8,7 @@ import com.unciv.logic.campaign.CivilWarCampaign
 import com.unciv.logic.campaign.CampaignCatalog
 import com.unciv.logic.campaign.CampaignRules
 import com.unciv.logic.campaign.CampaignStore
+import com.unciv.logic.campaign.trCampaign
 import com.unciv.logic.map.HexCoord
 import com.unciv.models.skins.ExpeditionBlueTheme as Theme
 import com.unciv.models.translations.tr
@@ -45,9 +46,9 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
             add(d.number.toString().padStart(2, '0').toLabel(Theme.gold, 28)).padRight(16f)
             add(Table().apply {
                 defaults().left()
-                add((if (d.id == CivilWarCampaign.id) "历史战役 / 联邦" else "文明的诞生 / ${CampaignCatalog.chapters[(d.number - 1) / 4]}").toLabel(Theme.muted, 14)).row()
+                add((if (d.id == CivilWarCampaign.id) "历史战役 / 联邦" else "文明的诞生 / [${CampaignCatalog.chapters[(d.number - 1) / 4]}]").toLabel(Theme.muted, 14)).row()
                 add(d.title.toLabel(Theme.text, 25)).padTop(3f).row()
-                add("行动回合 ${if (d.hardTurnLimit > 0) (state.completedRounds + 1).coerceAtMost(d.hardTurnLimit) else state.completedRounds + 1} · 已完成 ${state.completedRounds} 回合".toLabel(Theme.muted, 15)).padTop(4f)
+                add("行动回合 [${if (d.hardTurnLimit > 0) (state.completedRounds + 1).coerceAtMost(d.hardTurnLimit) else state.completedRounds + 1}] · 已完成 [${state.completedRounds}] 回合".toLabel(Theme.muted, 15)).padTop(4f)
             }).expandX().left()
         }
         addTitleWithCloseButton(heading)
@@ -59,7 +60,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
                 if (result.failed) Theme.danger else Theme.gold, 23)).padBottom(6f).row()
             val best = CampaignStore(screen.game.files).progress().bestStars["${d.id}:${d.scoringVersion}"] ?: 0
             goals.add(bodyText(if (result.failed) result.failureReason else
-                "本次获得 ${state.resultStars} 星 · 本版本最高 ${maxOf(best, state.resultStars)} 星", goalsWidth, Theme.muted, 16))
+                "本次获得 [${state.resultStars}] 星 · 本版本最高 [${maxOf(best, state.resultStars)}] 星", goalsWidth, Theme.muted, 16))
                 .padBottom(12f).row()
         }
         val met = listOf(result.main, result.worker, result.population)
@@ -89,7 +90,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         if (!terminal) {
             val locations = d.areas.map { it.title to it.tiles.first() }.toMutableList()
             for ((i, tile) in d.targetTiles.withIndex()) {
-                val name = screen.gameInfo.tileMap[tile].resource?.let { "${it.tr()}地块" } ?: "目标地块 ${i + 1}"
+                val name = screen.gameInfo.tileMap[tile].resource?.let { "[${it.tr()}]地块" } ?: "目标地块 [${i + 1}]"
                 locations.add(name to tile)
             }
             screen.gameInfo.getCities().firstOrNull { it.id == d.targetCity }?.let {
@@ -102,7 +103,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
             }
             if (locations.isNotEmpty()) {
                 side.add(bodyText("地图定位", sideWidth, Theme.gold, 16)).row()
-                for ((title, position) in locations) side.add(boardButton("定位 · $title") { locate(position) })
+                for ((title, position) in locations) side.add(boardButton("定位 · [$title]") { locate(position) })
                     .width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).row()
             }
         }
@@ -112,7 +113,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         }).width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).row()
         if (!state.hintsDismissed) {
             for ((i, hint) in copy.hints.withIndex())
-                side.add(bodyText("${i + 1}. $hint", sideWidth, Theme.text, 16)).row()
+                side.add(bodyText("${i + 1}. ${hint.tr()}", sideWidth, Theme.text, 16)).row()
             side.add(bodyText("本关设置", sideWidth, Theme.gold, 16)).padTop(6f).row()
             for (restriction in copy.restrictions) side.add(bodyText(restriction, sideWidth, Theme.muted, 14)).row()
         }
@@ -135,7 +136,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
                 result.failed -> "可返回战役，重新挑战"
                 terminal -> "成绩已保存到本机 · 云同步状态见战役总览"
                 d.automatic -> "按本关目标自动结算"
-                result.main -> "当前可获得 ${result.stars} 星 · 结算时检查目标"
+                result.main -> "当前可获得 [${result.stars}] 星 · 结算时检查目标"
                 else -> "完成通关目标后可结算"
             }
             add(bodyText(caption, statusWidth, Theme.muted, 14)).padTop(5f)
@@ -173,7 +174,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
     }
 
     private fun bodyText(text: String, width: Float, color: Color = Theme.text, size: Int = 18) =
-        Table().apply { add(text.toLabel(color, size).apply { wrap = true }).width(width).left() }
+        Table().apply { add(text.trCampaign().toLabel(color, size).apply { wrap = true }).width(width).left() }
 
     private fun boardButton(title: String, action: () -> Unit): TextButton = title.toTextButton().apply {
         label.setFontSize(17)

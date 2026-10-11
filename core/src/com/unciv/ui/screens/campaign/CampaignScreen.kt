@@ -103,7 +103,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 defaults().pad(4f)
                 add("更多战役".toLabel(Theme.gold, 17)).padRight(10f)
                 for ((index, title) in (listOf("新手", "历史战役") + CampaignCatalog.futureThemes).withIndex()) {
-                    add((title + if (index >= 2) " · 筹备中" else "").toTextButton().apply {
+                    add((if (index >= 2) "[$title] · 筹备中" else title).toTextButton().apply {
                         name = "ui-campaign-theme:$index"
                         isChecked = index == if (historical) 1 else 0
                         style = TextButton.TextButtonStyle(style).apply {
@@ -131,7 +131,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             if (historical) historicalCatalog()
             else {
                 val content = Table().apply { pad(22f); defaults().pad(8f) }
-                val progressText = "新手战役  ·  当前版本  ·  四章十六关  ·  ${definitions.sumOf { store.stars(it, progress) }} / 48 星"
+                val progressText = "新手战役  ·  当前版本  ·  四章十六关  ·  [${definitions.sumOf { store.stars(it, progress) }}] / 48 星"
                 content.add(progressText.toLabel(Theme.text).apply { wrap = true }).growX().minWidth(0f).left().row()
                 content.add(syncPanel).growX().row()
                 if (chapter < 0) {
@@ -154,7 +154,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         val screenWidth = stage.width
         val stars = historicalDefinitions.sumOf { store.stars(it, progress) }
         val summary = Table().apply {
-            add("${historicalDefinitions.size} 个战役 · 当前版本 $stars / ${historicalDefinitions.size * 3} 星"
+            add("[${historicalDefinitions.size}] 个战役 · 当前版本 [$stars] / [${historicalDefinitions.size * 3}] 星"
                 .toLabel(Theme.text, 18).apply { wrap = true })
                 .width(if (screenWidth < 700f) screenWidth - 44f else (screenWidth - 68f) * .42f).left()
             if (screenWidth < 700f) row()
@@ -213,7 +213,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         val saved = store.saved(d.id)?.campaign
         val status = when {
             saved?.failed == true -> "本次挑战失败"
-            saved?.resultStars == 0 -> "进行中 · 第 ${saved.completedRounds + 1} 回合"
+            saved?.resultStars == 0 -> "进行中 · 第 [${saved.completedRounds + 1}] 回合"
             d.id in progress.cleared -> if (store.stars(d, progress) == 0) "已通关 · 新版待挑战" else "已通关"
             else -> "未挑战"
         }
@@ -261,7 +261,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         val recent = progress.lastPlayed.takeIf { it.isNotEmpty() && it != CivilWarCampaign.id }?.let(store::saved)
         if (recent?.campaign?.let { it.resultStars == 0 && !it.failed } == true) {
             val d = recent.campaign!!.definition
-            content.add("继续最近挑战：${d.title} · 第 ${recent.campaign!!.completedRounds + 1} 回合".toTextButton().apply {
+            content.add("继续最近挑战：[${d.title}] · 第 [${recent.campaign!!.completedRounds + 1}] 回合".toTextButton().apply {
                 name = "ui-campaign-recent"
                 onActivation { enter(d.id, false) }
             }).height(58f).fillX().row()
@@ -303,7 +303,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 setAlignment(Align.center)
                 setBounds(center - 20f, 44f, 40f, 40f)
             })
-            journey.addActor("${i + 1} ${chapterNames[i]}".toLabel(color, 18).apply {
+            journey.addActor("${i + 1} ${chapterNames[i].tr()}".toLabel(color, 18).apply {
                 setAlignment(Align.center)
                 setBounds(i * step, 21f, step, 22f)
             })
@@ -328,8 +328,8 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             val card = Table().apply {
                 background = ImageGetter.getWhiteDotDrawable().tint(if (enabled) Theme.panel else Theme.unexplored)
                 pad(14f); left(); defaults().pad(5f)
-                add("0${index + 1}  $title".toLabel(Theme.gold, 24)).left().row()
-                add("$status   ·   ${levels.sumOf { store.stars(it, progress) }} / 12 星".toLabel(Theme.muted)).left().row()
+                add("0${index + 1}  ${title.tr()}".toLabel(Theme.gold, 24)).left().row()
+                add("[$status]   ·   [${levels.sumOf { store.stars(it, progress) }}] / 12 星".toLabel(Theme.muted)).left().row()
                 add("查看章节地图".toTextButton().apply {
                     name = "ui-campaign-chapter:$index"
                     onActivation {
@@ -344,14 +344,14 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         }
         content.add(cards).row()
         val historical = progress.medals.count { key -> (0..3).none { key == store.medalKey(it, definitions.subList(it * 4, it * 4 + 4)) } }
-        if (historical > 0) content.add("历史精通勋章：$historical（旧评分版本）".toLabel(Theme.muted)).row()
+        if (historical > 0) content.add("历史精通勋章：[$historical]（旧评分版本）".toLabel(Theme.muted)).row()
 
     }
 
     private fun chapter(content: Table) {
         val levels = definitions.subList(chapter * 4, chapter * 4 + 4)
         val d = levels.firstOrNull { it.id == selected } ?: levels.first().also { selected = it.id }
-        content.add("${chapter + 1}  ${CampaignCatalog.chapters[chapter]}".toLabel(Theme.gold, 26)).left().row()
+        content.add("${chapter + 1}  ${CampaignCatalog.chapters[chapter].tr()}".toLabel(Theme.gold, 26)).left().row()
         val navigation = Table().apply { defaults().pad(4f).height(46f) }
         for ((label, destination) in listOf("上一章" to chapter - 1, "战役总览" to -1, "下一章" to chapter + 1)) {
             if ((label == "上一章" && chapter == 0) || destination > 3) continue
@@ -428,7 +428,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             val saved = store.saved(d.id)?.campaign
             val status = when {
                 !unlocked && saved == null -> "锁定"
-                saved?.let { it.resultStars == 0 && !it.failed } == true -> "续玩·${saved.completedRounds + 1}回合"
+                saved?.let { it.resultStars == 0 && !it.failed } == true -> "续玩·[${saved.completedRounds + 1}]回合"
                 d.id in progress.cleared -> if (store.stars(d, progress) == 0) "已通关·新版待挑战" else "已通关"
                 else -> "可挑战"
             }
@@ -437,7 +437,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 name = "ui-campaign-level:${d.id}"
                 clearChildren()
                 add(Table().apply {
-                    add("${d.number}  ${d.title}".toLabel(if (unlocked) Theme.text else Theme.muted, 18)).row()
+                    add("${d.number}  ${d.title.tr()}".toLabel(if (unlocked) Theme.text else Theme.muted, 18)).row()
                     add(Table().apply {
                         add(campaignStars(stars, 16f)).padRight(5f)
                         add(status.toLabel(Theme.muted, 14))
@@ -474,14 +474,14 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         fun text(value: String, color: Color = Theme.text, size: Int = 18) {
             add(value.toLabel(color, size).apply { wrap = true }).width(width - 44f).row()
         }
-        text(if (historical) d.title else "${d.number}. ${d.title}", Theme.gold, 25)
+        text(if (historical) d.title else "${d.number}. ${d.title.tr()}", Theme.gold, 25)
         text(d.description)
-        text("最高成绩：${store.stars(d, progress)} / 3 星", Theme.gold)
+        text("最高成绩：[${store.stars(d, progress)}] / 3 星", Theme.gold)
         if (d.id in progress.cleared && store.stars(d, progress) == 0) text("已通关 · 新版待挑战", Theme.gold)
         val saved = store.saved(d.id)
         val unfinished = saved?.campaign?.let { it.resultStars == 0 && !it.failed } == true
         if (unfinished) {
-            text("本地续玩 · 行动回合 ${saved!!.campaign!!.completedRounds + 1}")
+            text("本地续玩 · 行动回合 [${saved!!.campaign!!.completedRounds + 1}]")
             add(primaryButton("Continue campaign").apply {
                 name = "ui-campaign-continue"
                 onActivation { enter(d.id, false) }
@@ -499,30 +499,31 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 }
             }).height(54f).fillX().row()
         } else text("上一关至少获得一星后解锁。", Theme.muted)
-        for ((i, goal) in d.objectives.withIndex()) text("${if (i == 0) "通关" else "挑战 ${if (i == 1) "A" else "B"}"} · $goal")
+        for ((i, goal) in d.objectives.withIndex()) text(
+            "${(if (i == 0) "通关" else "挑战 [${if (i == 1) "A" else "B"}]").tr()} · ${goal.tr()}")
         text(if (d.automatic) "达成条件后自动结算" else "主目标达成后主动结算；可继续争取挑战星", Theme.muted)
         val scene = CampaignCatalog.template(d.id)
         val player = scene.civilizations.single { it.isHuman() }
         text("初始配置", Theme.gold, 21)
-        text("金币 ${player.gold} · 幸福度 ${player.getHappiness()} · 净收入 ${player.stats.statsForNextTurn.gold.toInt()}")
-        for (city in player.cities) text("${city.name.tr()}：人口 ${city.population.population}；${city.cityConstructions.getBuiltBuildings().joinToString("、") { it.name.tr() }}")
+        text("金币 [${player.gold}] · 幸福度 [${player.getHappiness()}] · 净收入 [${player.stats.statsForNextTurn.gold.toInt()}]")
+        for (city in player.cities) text("[${city.name.tr()}]：人口 [${city.population.population}]；[${city.cityConstructions.getBuiltBuildings().joinToString("、") { it.name.tr() }}]")
         if (player.cities.isEmpty()) text("尚未建城，从移民开始。")
-        text("单位：" + player.units.getCivUnits().groupingBy { it.name }.eachCount().entries.joinToString("、") { "${it.key.tr()} ×${it.value}" })
+        text("单位：".tr() + player.units.getCivUnits().groupingBy { it.name }.eachCount().entries.joinToString(", ") { "${it.key.tr()} ×${it.value}" })
         text(if (d.id == CivilWarCampaign.id) "已具备本时期基础科技；可研究：军制整编、炮兵改良、野战医疗、军事运输。"
-            else "科技：" + player.tech.techsResearched.joinToString("、") { it.tr() })
+            else "科技：".tr() + player.tech.techsResearched.joinToString(", ") { it.tr() })
         add(initialPreview(scene, width - 44f)).size(width - 44f, 180f).row()
         text("地图预览仅显示开局已探索地形；金色标记为任务区域。", Theme.muted, 15)
-        text("失败条件：玩家文明被消灭。" + if (d.id == CivilWarCampaign.id) "华盛顿失守或第 ${d.hardTurnLimit} 个完整回合结束。" else when (d.number) {
+        text("失败条件：玩家文明被消灭。".tr() + (if (d.id == CivilWarCampaign.id) "华盛顿失守或第 [${d.hardTurnLimit}] 个完整回合结束。" else when (d.number) {
             11 -> "初始首都一旦失守，本次立即失败。"
             12 -> "第 25 轮结束仍未保留目标城，或目标城永久摧毁。"
             13, 14 -> "目标城市永久摧毁后无法继续完成本关。"
             15, 16 -> "对手获得征服胜利。"
             else -> "普通教学关没有硬性时间限制。"
-        }, Theme.muted, 16)
+        }).tr(), Theme.muted, 16)
         for (restriction in d.restrictions) text(restriction, Theme.muted, 16)
-        for (hint in d.hints) text("提示 · $hint", Theme.muted, 16)
+        for (hint in d.hints) text("提示 · [$hint]", Theme.muted, 16)
         val history = progress.bestStars.filterKeys { it.startsWith("${d.id}:") && it != "${d.id}:${d.scoringVersion}" }
-        for ((key, value) in history) text("历史评分版本 ${key.substringAfter(':')}：$value / 3 星", Theme.muted, 15)
+        for ((key, value) in history) text("历史评分版本 [${key.substringAfter(':')}]：[$value] / 3 星", Theme.muted, 15)
 
     }
 

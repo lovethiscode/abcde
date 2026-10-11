@@ -82,7 +82,7 @@ internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTa
         resetScale()
 
         val civilWar = com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)
-        val yearText = if (civilWar) "1861年" else YearTextUtil.toYearText(
+        val yearText = if (civilWar) "[1861] AD".tr() else YearTextUtil.toYearText(
             civInfo.gameInfo.getYear(), civInfo.isLongCountDisplay()
         )
         val displayedTurn = civInfo.gameInfo.campaign?.let {

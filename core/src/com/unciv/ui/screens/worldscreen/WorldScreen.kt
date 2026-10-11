@@ -486,9 +486,9 @@ class WorldScreen(
             val progress = "${listOf(result.main, result.worker, result.population).count { it }} / 3"
             campaignButton.setText(when {
                 state.resultStars > 0 || state.failed -> "查看战役结果"
-                result.main && !state.definition.automatic -> "战役可结算 · $progress"
-                else -> "战役任务 · $progress"
-            })
+                result.main && !state.definition.automatic -> "战役可结算 · [$progress]"
+                else -> "战役任务 · [$progress]"
+            }.tr())
             campaignButton.pack()
             campaignButton.setPosition((stage.width - campaignButton.width) / 2, stage.height - topBar.height - campaignButton.height - 6f)
         }
