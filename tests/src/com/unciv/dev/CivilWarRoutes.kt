@@ -152,7 +152,7 @@ object CivilWarRoutes {
                 if (taken + 12 >= u.health) return@mapNotNull null
                 if (target.tileToAttack.isCityCenter() && u.baseUnit.isMelee() && defender.getHealth() > dealt + 10) return@mapNotNull null
                 val value = if (target.tileToAttack.isCityCenter()) {
-                    if (u.baseUnit.isMelee() && defender.getHealth() <= dealt) 500 else dealt - 10
+                    if (u.baseUnit.isMelee() && defender.getHealth() <= dealt) 500 else dealt - 10 + (if (variant.contains("siege") && u.name == "Cannon") 100 else 0)
                 } else dealt + (if (dealt >= defender.getHealth()) 90 else 25) - taken * 2
                 target to value
             }.maxByOrNull { it.second }?.first ?: return false
@@ -190,7 +190,7 @@ object CivilWarRoutes {
                         record("disband-extra-general\t${it.id}"); it.disband()
                     }
                 }
-                val firstTech = when { variant.endsWith("medicine") -> "Field Medicine"; variant.startsWith("transport") -> "Military Transport"; else -> "Artillery Improvement" }
+                val firstTech = when { variant.endsWith("medicine") || variant.contains("battery") -> "Field Medicine"; variant.startsWith("transport") -> "Military Transport"; else -> "Artillery Improvement" }
                 if (player.tech.techsToResearch.isEmpty()) {
                     (listOf(firstTech) + CivilWarCampaign.technologies).firstOrNull { player.tech.canBeResearched(it) }?.let {
                         player.tech.techsToResearch.add(it); record("research\t$it")
@@ -203,7 +203,7 @@ object CivilWarRoutes {
                     val name = if (route == "stress" && round >= 41 || recovering) "Gold"
                     else if (variant.endsWith("west") && city.id == "cw-alexandria" && !city.cityConstructions.isBuilt("Walls")) "Walls"
                     else if (city.id in CivilWarCampaign.recruitmentCities && player.units.getCivUnits().count { it.isMilitary() } < (if (route == "stress") 80 else 20) && player.gold > 60) {
-                        if (player.units.getCivUnits().count { it.name == "Cannon" } < 4) "Cannon" else "Rifleman"
+                        if (player.units.getCivUnits().count { it.name == "Cannon" } < (if (variant.contains("battery")) 6 else 4)) "Cannon" else "Rifleman"
                     } else if (route == "stress" && round < 41) "Worker" else "Gold"
                     val construction = g.ruleset.units[name] ?: g.ruleset.buildings[name] ?: com.unciv.models.ruleset.PerpetualConstruction.Gold
                     if (recovering && city.cityConstructions.currentConstructionName() != "Gold") {
@@ -238,7 +238,7 @@ object CivilWarRoutes {
                         .take(extra).toList().forEach { record("disband\t${it.id}"); it.disband() }
                 }
                 val allowCapital = route != "stress" && (route != "one" || round >= 31)
-                val destinationId = (if (variant.endsWith("west")) listOf("cw-petersburg", "cw-richmond") else listOf("cw-manassas", "cw-fredericksburg", "cw-richmond"))
+                val destinationId = (if (variant.contains("flank")) listOf("cw-manassas", "cw-richmond") else if (variant.endsWith("west")) listOf("cw-petersburg", "cw-richmond") else listOf("cw-manassas", "cw-fredericksburg", "cw-richmond"))
                     .firstOrNull { id -> player.cities.none { it.id == id } } ?: "cw-richmond"
                 val capital = player.cities.first { it.id == "cw-washington" }.getCenterTile()
                 val destination = if (variant == "reclaim" && !alexandriaLost) capital
@@ -280,7 +280,8 @@ object CivilWarRoutes {
                         continue
                     }
                     val enemies = visibleEnemies()
-                    val westernDefense = variant.endsWith("west") && u.id in setOf(3, 4, 5, 6, 9, 12)
+                    val westernPhase = variant.endsWith("west") && (!variant.contains("flank") || player.cities.any { it.id == "cw-manassas" })
+                    val westernDefense = westernPhase && u.id in (if (variant.contains("flank")) setOf(5, 6, 12) else setOf(3, 4, 5, 6, 9, 12))
                     val reserve = u.id == 5 || variant.contains("reserve") && u.id == 6 && round <= 5
                     val goal = if (westernDefense) capital
                         else if (reserve) capital else if (!allowCapital && destinationId == "cw-richmond" && (route == "stress" || variant.contains("rest") || variant.contains("withdraw")))
@@ -319,8 +320,8 @@ object CivilWarRoutes {
                     if (attack(u, allowCapital) || stopped() || u.isDestroyed) continue
                     if (variant.startsWith("delay") && round <= (if (variant.contains("five")) 5 else if (variant.contains("four")) 4 else 3) && !reserve) { record("delay\t${u.id}"); continue }
                     var target = goal
-                    if (variant.endsWith("west") && !reserve && !westernDefense) {
-                        val coordinates = listOf(-10 to 11, -11 to 3, -10 to -4, -4 to -9)
+                    if (westernPhase && !reserve && !westernDefense) {
+                        val coordinates = if (variant.contains("flank")) listOf(-10 to 1, -10 to -4, -4 to -9) else listOf(-10 to 11, -11 to 3, -10 to -4, -4 to -9)
                         var step = waypoints[u.id] ?: 0
                         if (step < coordinates.size) {
                             val waypoint = g.tileMap[HexMath.getTileCoordsFromColumnRow(coordinates[step].first, coordinates[step].second)]
