@@ -54,8 +54,7 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
             text("Stages cleared [${mode.clearedPrefix / 5}] · highest wave [${mode.waveNumber}]", true)
             if (mode.status == "Faulted") text(mode.fault, true)
             else text(if (mode.status == "Quit") "Quitting does not set a best record." else "Saved on this device", true)
-            addButton("Retry this seed") { start(mode.seed) }
-            addButton("New defense") { start(kotlin.random.Random.nextLong()) }
+            addButton("New defense") { start() }
         } else if (mode.offer != null) {
             val offer = mode.offer!!
             text("Stage [${offer.stage}] cleared · choose one reward")
@@ -102,9 +101,6 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
                 }.open()
             }.minHeight(UiNavigation.minimumTouchSize())
         }
-        text("Seed [${mode.seed}] · rules [${mode.balanceVersion}]", true)
-        addButton("Copy seed") { com.badlogic.gdx.Gdx.app.clipboard.contents = mode.seed.toString() }
-            .minHeight(UiNavigation.minimumTouchSize())
         if (!mode.saveBlocked) addButton("Return to defense hall") { leave() }.minHeight(UiNavigation.minimumTouchSize())
         addCloseButton(if (mode.offer != null) "Claim later" else "View map").minHeight(UiNavigation.minimumTouchSize())
         val buttons = bottomTable.children.toList()
@@ -135,13 +131,13 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
         }
     }
 
-    private fun start(seed: Long) {
+    private fun start() {
         if (mode.saveBlocked || !mode.ended) return
         val loading = LoadingPopup(screen)
         Concurrency.runOnGLThread {
             try {
                 screen.game.files.autosaves.autoSaveJob?.join()
-                val attempt = com.unciv.logic.endless.EndlessCatalog.newAttempt(seed)
+                val attempt = com.unciv.logic.endless.EndlessCatalog.newAttempt(kotlin.random.Random.nextLong())
                 store.start(attempt, mode.attemptId)
                 close(); screen.game.loadGame(attempt)
             } catch (ex: Exception) { ToastPopup(ex.message ?: "Could not start defense", screen) }

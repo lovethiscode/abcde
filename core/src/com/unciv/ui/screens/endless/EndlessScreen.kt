@@ -76,15 +76,13 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                 } else {
                     text(endlessStatus(state), inner)
                     text("Completed [${state.completedRounds}] rounds · cleared [${state.clearedWaves}] waves", inner)
-                    text("Seed [${state.seed}]", inner, Theme.muted, 14)
                     if (!compatible) text("This endless save needs a compatibility update. Your save and records have been kept.", inner, Theme.danger, 16)
                     if (state.ended) text(if (state.status == "Defeated") "The bastion has fallen." else if (state.status == "Quit") "Defense ended voluntarily." else "Defense paused by a rules error.", inner, Theme.muted)
                 }
                 if (state?.ended == false && compatible) {
                     action("Continue defense", "ui-endless-continue", inner, true) { enter(null, state.attemptId) }
                 }
-                action("New defense", "ui-endless-new", inner, state?.ended != false) { confirmStart(null, state) }
-                if (state != null && compatible) action("Retry this seed", "ui-endless-retry", inner) { confirmStart(state.seed, state) }
+                action("New defense", "ui-endless-new", inner, state?.ended != false) { confirmStart(state) }
                 text("Saved on this device", inner, Theme.muted, 14)
             }
             val hero = Table().apply {
@@ -127,10 +125,10 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
         }
     }
 
-    private fun confirmStart(seed: Long?, state: EndlessState?) {
-        if (state == null) { enter(seed ?: kotlin.random.Random.nextLong(), null); return }
+    private fun confirmStart(state: EndlessState?) {
+        if (state == null) { enter(kotlin.random.Random.nextLong(), null); return }
         ConfirmPopup(this, "Replace the current defense?", "Start new defense") {
-            enter(seed ?: kotlin.random.Random.nextLong(), state.attemptId)
+            enter(kotlin.random.Random.nextLong(), state.attemptId)
         }.open()
     }
 
