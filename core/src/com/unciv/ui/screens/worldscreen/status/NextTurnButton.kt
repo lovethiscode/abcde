@@ -66,6 +66,7 @@ class NextTurnButton(
     }
 
     internal fun updateButton(nextTurnAction: NextTurnAction) {
+        isChecked = false
         label.setText(nextTurnAction.getText(worldScreen).tr())
         val primary = ExpeditionBlueTheme.enabled && nextTurnAction == NextTurnAction.NextTurn
         val foreground = if (primary) ExpeditionBlueTheme.primaryInk else ExpeditionBlueTheme.labelColor(nextTurnAction.color)
