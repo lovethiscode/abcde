@@ -6,7 +6,6 @@ import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Stack
 import com.badlogic.gdx.scenes.scene2d.ui.Table
-import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.models.translations.tr
@@ -124,9 +123,7 @@ internal class CampaignHomeMenu(
                 background = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape,
                     surface.cpy().apply { a = .45f })
                 pad(0f, 8f, 0f, 8f)
-                val glyph = if (icon == "OtherIcons/Question" && ExpeditionBlueTheme.enabled)
-                    "?".toLabel(iconColor, (24f * pointScale).roundToInt(), Align.center) else ImageGetter.getImage(icon, iconColor)
-                add(glyph).size(iconSize).padRight(iconGap)
+                add(ImageGetter.getImage(icon, iconColor)).size(iconSize).padRight(iconGap)
                 add(text.toLabel(ink, (17f * pointScale).roundToInt()).apply { wrap = true })
                     .width(toolWidth - 16f - iconSize - iconGap)
                 touchable = Touchable.enabled
@@ -137,12 +134,12 @@ internal class CampaignHomeMenu(
             if (++added % columns == 0) tools.row()
             return button
         }
-        tool("Map editor", "OtherIcons/MapEditor", KeyboardBinding.MapEditor) { game.pushScreen { MapEditorScreen() } }
+        tool("Civilopedia", "OtherIcons/Book", KeyboardBinding.Civilopedia) { screen.openCivilopedia() }
         tool("Mods", "OtherIcons/Mods", KeyboardBinding.ModManager) {
             if (game.platformCapabilities.onlineModManagement) game.pushScreen { ModManagementScreen() }
         }.apply { if (!game.platformCapabilities.onlineModManagement) { touchable = Touchable.disabled; color.a = .6f } }
-        tool("Civilopedia", "OtherIcons/Question", KeyboardBinding.Civilopedia) { screen.openCivilopedia() }
         if (game.achievementsAvailable) tool("Achievements", "OtherIcons/AchievementTrophy") { game.showAchievements() }
+        tool("Map editor", "OtherIcons/MapEditor", KeyboardBinding.MapEditor) { game.pushScreen { MapEditorScreen() } }
         tool("Options", "OtherIcons/Options", KeyboardBinding.MainMenuOptions) { screen.openOptionsPopup() }
             .onLongPress { screen.openOptionsPopup(withDebug = true) }
         tool("About", "OtherIcons/MenuIcon", action = ::showAbout)
