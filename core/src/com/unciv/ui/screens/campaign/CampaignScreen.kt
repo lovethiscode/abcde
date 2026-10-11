@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.campaign
 
+import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -30,6 +31,7 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.basescreen.RecreateOnResize
 import com.unciv.ui.screens.newgamescreen.NewGameScreen
 import com.unciv.utils.Concurrency
+import com.unciv.utils.Display
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -37,15 +39,18 @@ import kotlin.math.sqrt
 
 /** The journey map and detail panel both read the real catalog, slots, and versioned results. */
 class CampaignScreen(private var chapter: Int = -1, private var selected: String = "",
-                     private var historical: Boolean = selected == CivilWarCampaign.id) : BaseScreen(), RecreateOnResize {
+                     private var historical: Boolean = CampaignCatalog.historicalDefinitions().any { it.id == selected }) : BaseScreen(), RecreateOnResize {
     private val store = CampaignStore(game.files)
     private val definitions = CampaignCatalog.definitions()
+    private val historicalDefinitions = CampaignCatalog.historicalDefinitions()
     private val root = Table()
     private var progress = CampaignProgress()
     private val sync = game.files.campaignProgressSync
     private val syncPanel = Table()
     private var mapScrollPane: AutoScrollPane? = null
     private var detailScrollPane: AutoScrollPane? = null
+    private var historicalScrollPane: AutoScrollPane? = null
+    private var historicalScrollY = 0f
     private var renderedChapter = -1
     private var disposed = false
     private val syncListener: (CampaignSyncStatus) -> Unit = { status ->
@@ -70,8 +75,10 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     private fun rebuild() {
         val mapScrollY = if (renderedChapter == chapter) mapScrollPane?.scrollY ?: 0f else 0f
         val detailScrollY = if (renderedChapter == chapter) detailScrollPane?.scrollY ?: 0f else 0f
+        historicalScrollPane?.let { historicalScrollY = it.scrollY }
         mapScrollPane = null
         detailScrollPane = null
+        historicalScrollPane = null
         root.clearChildren()
         val header = Table().apply {
             background = skinStrings.getUiBackground(
@@ -79,73 +86,142 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             add(UiNavigation.backButton().apply {
                 label.setFontSize(22)
                 onActivation {
-                    if (historical && selected.isNotEmpty()) { selected = ""; rebuild() }
-                    else if (chapter >= 0) { chapter = -1; rebuild() } else game.popScreen()
+                    if (historical) {
+                        if (selected.isNotEmpty()) selected = ""
+                        else { historical = false; chapter = -1 }
+                        rebuild()
+                    } else if (chapter >= 0) { chapter = -1; rebuild() } else game.popScreen()
                 }
             }).minHeight(maxOf(46f, UiNavigation.minimumTouchSize())).padLeft(8f)
-            add((if (historical) "历史战役" else "文明的诞生").toLabel(Theme.gold, 28)).growX().minWidth(0f).left().pad(10f)
+            add((if (historical && selected.isNotEmpty()) "战役详情" else if (historical) "历史战役" else "文明的诞生")
+                .toLabel(Theme.gold, 28)).growX().minWidth(0f).left().pad(10f)
         }
         root.add(header).growX().minHeight(maxOf(64f, UiNavigation.minimumTouchSize()))
             .pad(8f, 10f, 4f, 10f).row()
-        val themes = Table().apply {
-            defaults().pad(4f)
-            add("更多战役".toLabel(Theme.gold, 17)).padRight(10f)
-            for ((index, title) in (listOf("新手", "历史战役") + CampaignCatalog.futureThemes).withIndex()) {
-                add((title + if (index >= 2) " · 筹备中" else "").toTextButton().apply {
-                    name = "ui-campaign-theme:$index"
-                    isChecked = index == if (historical) 1 else 0
-                    style = TextButton.TextButtonStyle(style).apply {
-                        checked = Theme.outlinedControl(BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.raised),
-                            BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.gold))
-                    }
-                    onActivation {
-                        if (index >= 2) {
-                            isChecked = false
-                            ToastPopup("筹备中，敬请期待", this@CampaignScreen)
-                        } else {
-                            historical = index == 1; selected = ""; chapter = -1; rebuild()
+        if (!historical && chapter < 0) {
+            val themes = Table().apply {
+                defaults().pad(4f)
+                add("更多战役".toLabel(Theme.gold, 17)).padRight(10f)
+                for ((index, title) in (listOf("新手", "历史战役") + CampaignCatalog.futureThemes).withIndex()) {
+                    add((title + if (index >= 2) " · 筹备中" else "").toTextButton().apply {
+                        name = "ui-campaign-theme:$index"
+                        isChecked = index == if (historical) 1 else 0
+                        style = TextButton.TextButtonStyle(style).apply {
+                            checked = Theme.outlinedControl(BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.raised),
+                                BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.gold))
                         }
-                    }
-                }).minWidth(100f).minHeight(UiNavigation.minimumTouchSize())
+                        onActivation {
+                            if (index >= 2) {
+                                isChecked = false
+                                ToastPopup("筹备中，敬请期待", this@CampaignScreen)
+                            } else {
+                                historical = index == 1; selected = ""; chapter = -1; rebuild()
+                            }
+                        }
+                    }).minWidth(100f).minHeight(UiNavigation.minimumTouchSize())
+                }
             }
+            root.add(AutoScrollPane(themes).apply { setScrollingDisabled(false, true) }).growX()
+                .height(maxOf(58f, UiNavigation.minimumTouchSize() + 8f)).pad(0f, 10f, 4f, 10f).row()
         }
-        root.add(AutoScrollPane(themes).apply { setScrollingDisabled(false, true) }).growX()
-            .height(maxOf(58f, UiNavigation.minimumTouchSize() + 8f)).pad(0f, 10f, 4f, 10f).row()
         try {
-            (definitions + CampaignCatalog.historicalDefinitions()).forEach { store.saved(it.id)?.let(store::reconcile) }
+            (definitions + historicalDefinitions).forEach { store.saved(it.id)?.let(store::reconcile) }
             progress = store.progress()
-            val content = Table().apply { pad(22f); defaults().pad(8f) }
-            val progressText = if (historical) "历史战役 · 当前版本 · ${CampaignCatalog.historicalDefinitions().sumOf { store.stars(it, progress) }} / 3 星"
-                else "新手战役  ·  当前版本  ·  四章十六关  ·  ${definitions.sumOf { store.stars(it, progress) }} / 48 星"
-            content.add(progressText.toLabel(Theme.text).apply { wrap = true }).growX().minWidth(0f).left().row()
             updateSyncPanel(sync.status)
-            content.add(syncPanel).growX().row()
-            if (historical) {
-                val d = CampaignCatalog.definition(CivilWarCampaign.id)
-                if (selected == d.id) content.add(details(d, (stage.width - 80f).coerceAtMost(900f))).growX().row()
-                else content.add(Table().apply {
-                    defaults().pad(10f).left()
-                    add(d.title.toLabel(Theme.gold, 24)).row()
-                    add("固定联邦视角 · 最高 3 星 · 建议先掌握移动、战斗、攻城与生产".toLabel(Theme.muted).apply { wrap = true })
-                        .width((this@CampaignScreen.stage.width - 100f).coerceAtMost(820f)).row()
-                    add("查看战役".toTextButton().apply {
-                        name = "ui-campaign-historical:civil-war-east"
-                        onActivation { selected = d.id; rebuild() }
-                    }).minHeight(UiNavigation.minimumTouchSize()).row()
-                }).growX().row()
-                root.add(AutoScrollPane(content).apply { setScrollingDisabled(true, false) }).grow()
-            } else if (chapter < 0) {
-                overview(content)
-                root.add(AutoScrollPane(content)).grow()
-            } else chapter(content)
+            if (historical) historicalCatalog()
+            else {
+                val content = Table().apply { pad(22f); defaults().pad(8f) }
+                val progressText = "新手战役  ·  当前版本  ·  四章十六关  ·  ${definitions.sumOf { store.stars(it, progress) }} / 48 星"
+                content.add(progressText.toLabel(Theme.text).apply { wrap = true }).growX().minWidth(0f).left().row()
+                content.add(syncPanel).growX().row()
+                if (chapter < 0) {
+                    overview(content)
+                    root.add(AutoScrollPane(content)).grow()
+                } else chapter(content)
+            }
             renderedChapter = chapter
             root.validate()
             mapScrollPane?.apply { scrollY = mapScrollY; updateVisualScroll() }
             detailScrollPane?.apply { scrollY = detailScrollY; updateVisualScroll() }
+            historicalScrollPane?.apply { scrollY = historicalScrollY; updateVisualScroll() }
         } catch (ex: Exception) {
             com.unciv.utils.Log.error("Cannot open campaign catalog", ex)
             root.add("战役暂时无法读取，已有存档与成绩仍保留。".toLabel()).grow()
         }
+    }
+
+    private fun historicalCatalog() {
+        val stars = historicalDefinitions.sumOf { store.stars(it, progress) }
+        val summary = Table().apply {
+            add("${historicalDefinitions.size} 个战役 · 当前版本 $stars / ${historicalDefinitions.size * 3} 星"
+                .toLabel(Theme.text, 18).apply { wrap = true })
+                .width(if (stage.width < 700f) stage.width - 44f else (stage.width - 68f) * .42f).left()
+            if (stage.width < 700f) row()
+            add(syncPanel).growX().minWidth(0f).padLeft(if (stage.width < 700f) 0f else 24f)
+        }
+        root.add(summary).growX().pad(4f, 22f, 12f, 22f).row()
+        if (selected.isNotEmpty()) {
+            val content = Table().apply {
+                top(); pad(0f, 22f, 16f, 22f)
+                add(details(historicalDefinitions.first { it.id == selected }, (stage.width - 80f).coerceAtMost(900f)))
+                    .growX().top()
+            }
+            root.add(AutoScrollPane(content).apply { setScrollingDisabled(true, false) }).grow().minHeight(0f)
+            return
+        }
+        val safeArea = Display.getSafeArea(Gdx.graphics.width, Gdx.graphics.height)
+        val columns = when {
+            isPortrait() -> 1
+            UiNavigation.isIos -> if (minOf(safeArea.width, safeArea.height) >= 600) 3 else 2
+            stage.width >= 1000f -> 3
+            else -> 2
+        }
+        val cardWidth = (stage.width - 44f - (columns - 1) * 12f) / columns
+        val cards = Table().apply { top(); left() }
+        for ((index, definition) in historicalDefinitions.withIndex()) {
+            cards.add(historicalCard(definition)).width(cardWidth).minHeight(190f).fillY()
+                .padRight(if (index % columns == columns - 1) 0f else 12f).padBottom(12f)
+            if (index % columns == columns - 1) cards.row()
+        }
+        val pane = AutoScrollPane(cards).apply {
+            name = "ui-campaign-historical-list"
+            setScrollingDisabled(true, false)
+            setOverscroll(false, false)
+        }
+        historicalScrollPane = pane
+        root.add(pane).grow().minHeight(0f).pad(0f, 22f, 16f, 22f)
+    }
+
+    private fun historicalCard(d: CampaignDefinition) = "".toTextButton().apply {
+        name = "ui-campaign-historical:${d.id}"
+        clearChildren()
+        style = TextButton.TextButtonStyle(style).apply {
+            up = Theme.outlinedControl(skin.newDrawable("RoundedEdgeRectangle", Theme.panel),
+                skin.newDrawable("RoundedEdgeRectangle", Theme.border))
+            down = Theme.outlinedControl(skin.newDrawable("RoundedEdgeRectangle", Theme.raised),
+                skin.newDrawable("RoundedEdgeRectangle", Theme.gold))
+            over = down
+            checked = up
+        }
+        pad(18f); top(); left()
+        add(d.title.substringBefore('·').trim().toLabel(Theme.gold, 24).apply { wrap = true })
+            .growX().minWidth(0f).left().row()
+        val battlefield = d.title.substringAfter('·', "").trim()
+        if (battlefield.isNotEmpty()) add(battlefield.toLabel(Theme.text, 18).apply { wrap = true })
+            .growX().minWidth(0f).left().padTop(6f).row()
+        val saved = store.saved(d.id)?.campaign
+        val status = when {
+            saved?.failed == true -> "本次挑战失败"
+            saved?.resultStars == 0 -> "进行中 · 第 ${saved.completedRounds + 1} 回合"
+            d.id in progress.cleared -> if (store.stars(d, progress) == 0) "已通关 · 新版待挑战" else "已通关"
+            else -> "未挑战"
+        }
+        add(status.toLabel(Theme.muted, 16).apply { wrap = true }).growX().minWidth(0f).left().padTop(8f).row()
+        add(Table().apply {
+            add(campaignStars(store.stars(d, progress), 20f)).left()
+            add("›".toLabel(Theme.gold, 28)).expandX().right()
+        }).growX().expandY().bottom().padTop(12f)
+        onActivation { selected = d.id; rebuild() }
     }
 
     private fun updateSyncPanel(status: CampaignSyncStatus) {
@@ -161,12 +237,13 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             CampaignSyncState.WaitingForNetwork -> "成绩已保存在本机 · 等待重试 iCloud 同步"
             CampaignSyncState.Failed -> "iCloud 同步失败，本机成绩仍保留；可点击重试"
         }
-        syncPanel.add(message.toLabel(Theme.muted, 15).apply { setWrap(true) })
+        syncPanel.add(message.toLabel(Theme.muted, if (historical) 14 else 15).apply { setWrap(true) })
             .growX().minWidth(0f).left()
         if (status.state == CampaignSyncState.LocalOnly) return
-        if (stage.width < 700f) syncPanel.row()
+        if (!historical && stage.width < 700f) syncPanel.row()
         val changed = status.state == CampaignSyncState.AccountChanged
         syncPanel.add((if (changed) "合并到当前 iCloud" else "同步成绩").toTextButton().apply {
+            if (historical) label.setFontSize(16)
             isDisabled = status.state == CampaignSyncState.Syncing
             onActivation {
                 val account = status.accountToConfirm
@@ -396,7 +473,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         fun text(value: String, color: Color = Theme.text, size: Int = 18) {
             add(value.toLabel(color, size).apply { wrap = true }).width(width - 44f).row()
         }
-        text(if (d.id == CivilWarCampaign.id) d.title else "${d.number}. ${d.title}", Theme.gold, 25)
+        text(if (historical) d.title else "${d.number}. ${d.title}", Theme.gold, 25)
         text(d.description)
         text("最高成绩：${store.stars(d, progress)} / 3 星", Theme.gold)
         if (d.id in progress.cleared && store.stars(d, progress) == 0) text("已通关 · 新版待挑战", Theme.gold)
