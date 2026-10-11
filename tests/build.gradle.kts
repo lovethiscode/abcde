@@ -25,6 +25,7 @@ dependencies {
 tasks {
     test {
         workingDir = file("../android/assets")
+        inputs.dir("../android/assets/jsons/translations").withPathSensitivity(PathSensitivity.RELATIVE)
         testLogging.lifecycle {
             events(
                     TestLogEvent.FAILED,

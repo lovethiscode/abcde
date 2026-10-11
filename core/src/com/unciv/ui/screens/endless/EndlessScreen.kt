@@ -113,7 +113,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                         action("Share defense", "ui-endless-share-best:${best.attemptId}", width - 36f, false) { game.showEndlessShare(data) }
                     }
                     for (record in records.recent.filter { it.key == key }) {
-                        text("[${record.rounds}] rounds · [${record.waves}] waves · [${record.kills}] kills · [${if (record.status == "Quit") "Quit".tr() else "Defeated".tr()}]", width - 36f, Theme.muted, 15)
+                        text("[${record.rounds}] rounds · [${record.waves}] waves · [${record.kills}] kills · [${if (record.status == "Quit") "Ended voluntarily".tr() else "Defeated".tr()}]", width - 36f, Theme.muted, 15)
                         if (game.endlessSharingAvailable) EndlessShareData.fromRecord(record)?.let { data ->
                             action("Share defense", "ui-endless-share-record:${record.attemptId}", width - 36f, false) { game.showEndlessShare(data) }
                         }
