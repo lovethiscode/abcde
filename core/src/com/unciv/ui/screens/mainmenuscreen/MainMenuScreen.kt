@@ -62,6 +62,7 @@ import com.unciv.ui.screens.worldscreen.BackgroundActor
 import com.unciv.ui.screens.worldscreen.WorldScreen
 import com.unciv.ui.screens.worldscreen.mainmenu.WorldScreenMenuPopup
 import com.unciv.utils.Concurrency
+import com.unciv.utils.Log
 import com.unciv.utils.ONLINE_MULTIPLAYER_UNAVAILABLE
 import com.unciv.utils.launchOnGLThread
 import kotlinx.coroutines.Job
@@ -405,7 +406,8 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
                 val (message) = LoadGameScreen.getLoadExceptionMessage(notAPlayer)
                 launchOnGLThread { ToastPopup(message, this@MainMenuScreen) }
                 return@run
-            } catch (_: Exception) {
+            } catch (ex: Exception) {
+                Log.error("Error while creating quick-start game", ex)
                 launchOnGLThread { ToastPopup(errorText, this@MainMenuScreen) }
                 return@run
             }
@@ -422,7 +424,8 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
                 launchOnGLThread {
                     ToastPopup(message, this@MainMenuScreen)
                 }
-            } catch (_: Exception) {
+            } catch (ex: Exception) {
+                Log.error("Error while loading quick-start game", ex)
                 launchOnGLThread {
                     ToastPopup(errorText, this@MainMenuScreen)
                 }
