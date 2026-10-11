@@ -49,7 +49,8 @@ class TechPickerScreen(
     private val ruleset = civInfo.gameInfo.ruleset
     private val militaryImprovements = com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)
     private val displayedTechs = ruleset.technologies.values.filter {
-        !militaryImprovements || it.name in com.unciv.logic.campaign.CivilWarCampaign.technologies
+        (!militaryImprovements || it.name in com.unciv.logic.campaign.CivilWarCampaign.technologies) &&
+            !com.unciv.logic.endless.EndlessRules.researchBlocked(civInfo, it.name)
     }
     private var techNameToButton = HashMap<String, TechButton>()
     private var selectedTech: Technology? = null

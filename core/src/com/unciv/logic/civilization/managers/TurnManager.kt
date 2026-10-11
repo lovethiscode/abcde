@@ -28,6 +28,11 @@ class TurnManager(val civInfo: Civilization) {
 
     fun startTurn(progressBar: NextTurnProgress? = null):Unit = timeThis("TurnManager.startTurn") {
         if (civInfo.isSpectator()) return
+        if (com.unciv.logic.endless.EndlessRules.isInvader(civInfo)) {
+            civInfo.cache.updateViewableTiles()
+            civInfo.units.getCivUnits().forEach { UnitTurnManager(it).startTurn() }
+            return
+        }
         AchievementTracker.startTurn(civInfo)
 
         for (city in civInfo.cities) city.hasSoldBuildingThisTurn = false
@@ -51,7 +56,7 @@ class TurnManager(val civInfo: Civilization) {
 
         // Generate great people at the start of the turn,
         // so they won't be generated out in the open and vulnerable to enemy attacks before you can control them
-        if (civInfo.cities.isNotEmpty()) { //if no city available, addGreatPerson will throw exception
+        if (civInfo.gameInfo.endless == null && civInfo.cities.isNotEmpty()) { //if no city available, addGreatPerson will throw exception
             var greatPerson = civInfo.greatPeople.getNewGreatPerson()
             while (greatPerson != null) {
                 if (civInfo.gameInfo.ruleset.units.containsKey(greatPerson))
@@ -79,7 +84,7 @@ class TurnManager(val civInfo: Civilization) {
 
         for (unit in civInfo.units.getCivUnits()) UnitTurnManager(unit).startTurn()
 
-        if (civInfo.playerType == PlayerType.Human && UncivGame.Current.settings.automatedUnitsMoveOnTurnStart) {
+        if (civInfo.gameInfo.endless == null && civInfo.playerType == PlayerType.Human && UncivGame.Current.settings.automatedUnitsMoveOnTurnStart) {
             civInfo.hasMovedAutomatedUnits = true
             for (unit in civInfo.units.getCivUnits())
                 unit.doAction()
@@ -256,6 +261,11 @@ class TurnManager(val civInfo: Civilization) {
 
 
     fun endTurn(progressBar: NextTurnProgress? = null):Unit = timeThis("TurnManager.endTurn") {
+        if (com.unciv.logic.endless.EndlessRules.isInvader(civInfo)) {
+            civInfo.units.getCivUnits().toList().forEach { UnitTurnManager(it).endTurn() }
+            AchievementTracker.settle(civInfo.gameInfo)
+            return
+        }
         if (!com.unciv.logic.PlayerDecisionControl.controls(civInfo) && UncivGame.Current.settings.citiesAutoBombardAtEndOfTurn)
             NextTurnAutomation.automateCityBombardment(civInfo) // Bombard with all cities that haven't, maybe you missed one
 
@@ -287,7 +297,7 @@ class TurnManager(val civInfo: Civilization) {
                 civInfo.stats.statsForNextTurn
             }
 
-        civInfo.policies.endTurn(nextTurnStats.culture.toInt())
+        if (civInfo.gameInfo.endless == null) civInfo.policies.endTurn(nextTurnStats.culture.toInt())
         civInfo.totalCultureForContests += nextTurnStats.culture.toInt()
 
         if (civInfo.isCityState) {
@@ -330,7 +340,7 @@ class TurnManager(val civInfo: Civilization) {
 
         civInfo.espionageManager.endTurn()
 
-        if (civInfo.isMajorCiv()) // City-states don't get great people!
+        if (civInfo.gameInfo.endless == null && civInfo.isMajorCiv()) // City-states don't get great people!
             civInfo.greatPeople.addGreatPersonPoints()
 
         // To handle tile's owner issue (#8246), we need to run cities being razed first.
@@ -356,6 +366,7 @@ class TurnManager(val civInfo: Civilization) {
     }
 
     fun updateWinningCiv() {
+        if (civInfo.gameInfo.endless != null) return
         if (com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)) return
         if (civInfo.gameInfo.victoryData != null) return // Game already won
 
@@ -376,6 +387,10 @@ class TurnManager(val civInfo: Civilization) {
     }
 
     fun automateTurn() {
+        if (com.unciv.logic.endless.EndlessRules.isInvader(civInfo)) {
+            com.unciv.logic.endless.EndlessInvaderAI.play(civInfo)
+            return
+        }
         // Defeated civs do nothing
         if (civInfo.isDefeated())
             return

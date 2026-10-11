@@ -123,12 +123,14 @@ class UnitPromotions : IsPartOfGameInfoSerialization {
     
     @Readonly
     fun canBePromoted(): Boolean {
+        if (com.unciv.logic.endless.EndlessRules.isInvader(unit.civ)) return false
         if (getAvailablePromotions().none()) return false
         if (XP >= xpForNextPromotion()) return true
         return getAvailablePromotions().any { it.hasUnique(UniqueType.FreePromotion) }
     }
 
     fun addPromotion(promotionName: String, isFree: Boolean = false) {
+        if (!isFree && com.unciv.logic.endless.EndlessRules.isInvader(unit.civ)) return
         if (promotions.contains(promotionName)) return
         val ruleset = unit.civ.gameInfo.ruleset
         val promotion = ruleset.unitPromotions[promotionName] ?: return

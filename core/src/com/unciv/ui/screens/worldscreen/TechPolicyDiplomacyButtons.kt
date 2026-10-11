@@ -176,7 +176,7 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
     }
 
     private fun updateDiplomacyButton(): Boolean {
-        return if (viewingCiv.isDefeated() || viewingCiv.isSpectator()
+        return if (worldScreen.gameInfo.endless != null || viewingCiv.isDefeated() || viewingCiv.isSpectator()
                 || !viewingCiv.hasMetAnyMajorCiv()
         ) {
             diplomacyButtonHolder.touchable = Touchable.disabled

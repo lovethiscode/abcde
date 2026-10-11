@@ -2,6 +2,7 @@ package com.unciv.ui.screens.worldscreen
 
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.extensions.toTextButton
+import com.unciv.ui.components.extensions.setFontSize
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
@@ -141,7 +142,7 @@ class WorldScreen(
 
     /** `true` when it's the player's turn unless he is a spectator */
     val canChangeState
-        get() = isPlayersTurn && !viewingCiv.isSpectator() &&
+        get() = isPlayersTurn && !viewingCiv.isSpectator() && !com.unciv.logic.endless.EndlessRules.blocked(gameInfo) &&
             gameInfo.campaign?.let { it.resultStars > 0 || it.failed } != true
 
     val mapHolder = WorldMapHolder(this, gameInfo.tileMap)
@@ -163,6 +164,13 @@ class WorldScreen(
     internal val nextTurnButton = NextTurnButton(this)
     internal val statusButtons = StatusButtons(nextTurnButton)
     internal val smallUnitButton = SmallUnitButton(this, statusButtons)
+    private var endlessPrompt = ""
+    private val endlessButton = "Endless survival".toTextButton().apply {
+        name = "ui-endless-status"
+        label.setFontSize(15)
+        label.wrap = true
+        onActivation { com.unciv.ui.screens.endless.EndlessPopup(this@WorldScreen) }
+    }
     internal var campaignResultShown = false
     private val campaignButton = "Campaign objectives".toTextButton().apply {
         name = "ui-campaign-objectives"
@@ -196,6 +204,7 @@ class WorldScreen(
         stage.scrollFocus = mapHolder
         stage.addActor(notificationsScroll)  // very low in z-order, so we're free to let it extend _below_ tile info and minimap if we want
         stage.addActor(campaignButton)
+        stage.addActor(endlessButton)
         stage.addActor(tutorialTaskTable)    // behind topBar!
         stage.addActor(topBar)
         stage.addActor(statusButtons)
@@ -290,6 +299,7 @@ class WorldScreen(
     }
 
     fun openNewGameScreen() {
+        if (gameInfo.endless != null) { com.unciv.ui.screens.endless.EndlessPopup(this); return }
         val newGameSetupInfo = GameSetupInfo(gameInfo)
         newGameSetupInfo.mapParameters.reseed()
         val newGameScreen = NewGameScreen(newGameSetupInfo)
@@ -299,7 +309,7 @@ class WorldScreen(
     fun openSaveGameScreen() {
         // See #10353 - we don't support locally saving an online multiplayer game
         if (gameInfo.gameParameters.isOnlineMultiplayer) return
-        if (gameInfo.campaign != null) {
+        if (gameInfo.campaign != null || gameInfo.endless != null) {
             QuickSave.save(gameInfo, this)
             return
         }
@@ -316,7 +326,10 @@ class WorldScreen(
         globalShortcuts.add(KeyboardBinding.EmpireOverviewUnits) { openEmpireOverview(EmpireOverviewCategories.Units) }
         globalShortcuts.add(KeyboardBinding.EmpireOverviewPolitics) { openEmpireOverview(EmpireOverviewCategories.Politics) }
         globalShortcuts.add(KeyboardBinding.EmpireOverviewNotifications) { openEmpireOverview(EmpireOverviewCategories.Notifications) }
-        globalShortcuts.add(KeyboardBinding.VictoryScreen) { game.pushScreen{ VictoryScreen(this) } }
+        globalShortcuts.add(KeyboardBinding.VictoryScreen) {
+            if (gameInfo.endless != null) com.unciv.ui.screens.endless.EndlessPopup(this)
+            else game.pushScreen{ VictoryScreen(this) }
+        }
         globalShortcuts.add(KeyboardBinding.EmpireOverviewStats) { openEmpireOverview(EmpireOverviewCategories.Stats) }
         globalShortcuts.add(KeyboardBinding.EmpireOverviewResources) { openEmpireOverview(EmpireOverviewCategories.Resources) }
         globalShortcuts.add(KeyboardBinding.QuickSave) { QuickSave.save(gameInfo, this) }
@@ -330,7 +343,10 @@ class WorldScreen(
             openOptionsPopup { nextTurnButton.update() }
         }
         globalShortcuts.add(KeyboardBinding.SaveGame) { openSaveGameScreen() }    //   Save
-        globalShortcuts.add(KeyboardBinding.LoadGame) { game.pushScreen{ LoadGameScreen() } }    //   Load
+        globalShortcuts.add(KeyboardBinding.LoadGame) {
+            if (gameInfo.endless != null) com.unciv.ui.screens.endless.EndlessPopup(this)
+            else game.pushScreen{ LoadGameScreen() }
+        }    //   Load
         globalShortcuts.add(KeyboardBinding.QuitGame) { game.popScreen() }    //   WorldScreen is the last screen, so this quits
         globalShortcuts.add(KeyboardBinding.NewGame) { openNewGameScreen() }
         globalShortcuts.add(KeyboardBinding.MusicPlayer) {
@@ -360,7 +376,7 @@ class WorldScreen(
         topBar.isVisible = uiEnabled
         statusButtons.isVisible = uiEnabled
         techPolicyAndDiplomacy.isVisible = uiEnabled
-        tutorialTaskTable.isVisible = uiEnabled && gameInfo.campaign == null
+        tutorialTaskTable.isVisible = uiEnabled && gameInfo.campaign == null && gameInfo.endless == null
         campaignButton.isVisible = uiEnabled && gameInfo.campaign != null
         bottomTileInfoTable.isVisible = uiEnabled
         unitActionsTable.isVisible = uiEnabled
@@ -493,6 +509,21 @@ class WorldScreen(
             campaignButton.setPosition((stage.width - campaignButton.width) / 2, stage.height - topBar.height - campaignButton.height - 6f)
         }
 
+        endlessButton.isVisible = uiEnabled && gameInfo.endless != null
+        if (endlessButton.isVisible) {
+            com.unciv.logic.endless.EndlessRules.actionSettled(gameInfo)
+            endlessButton.setText(com.unciv.ui.screens.endless.endlessStatus(gameInfo.endless!!).tr())
+            val s = gameInfo.endless!!
+            val prompt = "${s.status}:${s.offer?.stage ?: 0}:${s.saveBlocked}"
+            if ((s.ended || s.offer != null || s.saveBlocked) && prompt != endlessPrompt && isPlayersTurn && !hasOpenPopups()) {
+                autoPlay.stopAutoPlay()
+                if (!s.saveBlocked) try { com.unciv.logic.endless.EndlessStore(game.files).save(gameInfo) }
+                catch (ex: Exception) { com.unciv.utils.Log.error("Endless settlement save failed", ex) }
+                endlessPrompt = "${s.status}:${s.offer?.stage ?: 0}:${s.saveBlocked}"
+                com.unciv.ui.screens.endless.EndlessPopup(this)
+            }
+        }
+
         if (techPolicyAndDiplomacy.update())
             displayTutorial(TutorialTrigger.OtherCivEncountered)
 
@@ -529,11 +560,11 @@ class WorldScreen(
                 }
                 viewingCiv.shouldShowDiplomaticVotingResults() ->
                     UncivGame.Current.pushScreen{ DiplomaticVoteResultScreen(gameInfo.diplomaticVictoryVotesCast, viewingCiv) }
-                gameInfo.campaign == null && !gameInfo.oneMoreTurnMode && (viewingCiv.isDefeated() || gameInfo.checkForVictory()) ->
+                gameInfo.campaign == null && gameInfo.endless == null && !gameInfo.oneMoreTurnMode && (viewingCiv.isDefeated() || gameInfo.checkForVictory()) ->
                     game.pushScreen{ VictoryScreen(this) }
                 hasPendingFreeGreatPerson() && !deferFreeGreatPersonPicker ->
                     openGreatPersonPicker()
-                gameInfo.campaign?.let { it.resultStars > 0 || it.failed } != true && viewingCiv.popupAlerts.any() -> AlertPopup(this, viewingCiv.popupAlerts.first())
+                !com.unciv.logic.endless.EndlessRules.blocked(gameInfo) && gameInfo.campaign?.let { it.resultStars > 0 || it.failed } != true && viewingCiv.popupAlerts.any() -> AlertPopup(this, viewingCiv.popupAlerts.first())
                 viewingCiv.tradeRequests.isNotEmpty() -> {
                     // In the meantime this became invalid, perhaps because we accepted previous trades
                     for (tradeRequest in viewingCiv.tradeRequests.toList())
@@ -549,8 +580,23 @@ class WorldScreen(
 
         updateGameplayButtons()
 
+        if (endlessButton.isVisible) {
+            val targetWidth = (stage.width * .5f).coerceAtMost(560f)
+            val gap = statusButtons.x - techPolicyAndDiplomacy.x - techPolicyAndDiplomacy.width - 20f
+            val stacked = gap < targetWidth
+            endlessButton.width = if (stacked) stage.width - 20f else targetWidth
+            if (stacked) {
+                val state = gameInfo.endless!!
+                endlessButton.setText("R ${state.round} · C ${state.completedRounds}\n" +
+                    com.unciv.ui.screens.endless.endlessStatus(state).tr())
+            }
+            endlessButton.height = maxOf(42f, endlessButton.prefHeight)
+            val top = if (stacked) minOf(techPolicyAndDiplomacy.y, statusButtons.y) else topBar.y
+            endlessButton.setPosition((stage.width - endlessButton.width) / 2, top - endlessButton.height - 6f)
+        }
+
         // Late: the task card is fitted into the room left by the widgets around it, so they must have their final size
-        if (uiEnabled && gameInfo.campaign == null) tutorialTaskTable.update()
+        if (uiEnabled && gameInfo.campaign == null && gameInfo.endless == null) tutorialTaskTable.update()
         else tutorialTaskTable.isVisible = false
 
         val coveredNotificationsTop = stage.height - statusButtons.y
@@ -833,6 +879,10 @@ class WorldScreen(
     }
 
     fun nextTurn(fromAutoPlay: Boolean = false) {
+        if (com.unciv.logic.endless.EndlessRules.blocked(gameInfo)) {
+            com.unciv.ui.screens.endless.EndlessPopup(this)
+            return
+        }
         if (gameInfo.campaign?.let { it.resultStars > 0 || it.failed } == true) {
             com.unciv.ui.screens.campaign.CampaignTasksPopup(this)
             return
@@ -941,6 +991,12 @@ class WorldScreen(
 
                     progressBar.increment()
 
+                    if (gameInfoClone.endless != null) {
+                        val saveStarted = System.currentTimeMillis()
+                        try { com.unciv.logic.endless.EndlessStore(game.files).save(gameInfoClone) }
+                        catch (ex: Exception) { com.unciv.utils.Log.error("Endless boundary save failed", ex) }
+                        debug("Endless boundary R=%s saved in %sms", gameInfoClone.endless!!.round, System.currentTimeMillis() - saveStarted)
+                    }
                     startNewScreenJob(gameInfoClone, autoPlay)
                     true
                 }
@@ -1166,7 +1222,7 @@ private fun startNewScreenJob(gameInfo: GameInfo, autoPlay: AutoPlay, autosaveDi
             return@run
         }
 
-        val shouldAutoSave = !autosaveDisabled
+        val shouldAutoSave = gameInfo.endless == null && !autosaveDisabled
                 && gameInfo.turns % UncivGame.Current.settings.turnsBetweenAutosaves == 0
         if (shouldAutoSave) {
             newWorldScreen.autoSave()

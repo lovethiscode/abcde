@@ -90,6 +90,10 @@ internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTa
         } ?: civInfo.gameInfo.turns
         turnsLabel.setText(Fonts.turn + "\u2004" + displayedTurn.tr() + "\u2004|\u2004" + yearText) // U+2004: Three-Per-Em Space
 
+        civInfo.gameInfo.endless?.let {
+            turnsLabel.setText("R ${it.round}  |  C ${it.completedRounds}")
+        }
+
         resourcesWrapper.clearChildren()
         val civResources = civInfo.getCivResourcesByName()
         val civResourceSupply = civInfo.getCivResourceSupply()

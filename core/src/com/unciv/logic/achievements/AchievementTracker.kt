@@ -18,10 +18,12 @@ object AchievementTracker {
     fun beginAction(game: GameInfo) {
         game.achievements?.let { it.actionDepth++ }
         game.campaign?.let { it.actionDepth++ }
+        game.endless?.let { it.actionDepth++ }
     }
     fun endAction(game: GameInfo, successful: Boolean = true) {
         game.achievements?.let { it.actionDepth-- }
         game.campaign?.let { it.actionDepth-- }
+        game.endless?.let { it.actionDepth-- }
         if (successful) settle(game)
     }
 
@@ -36,6 +38,10 @@ object AchievementTracker {
     }
 
     fun settle(game: GameInfo, atTurnEnd: Boolean = false, winner: Civilization? = null, victoryRoute: String? = null) {
+        if (game.endless != null) {
+            com.unciv.logic.endless.EndlessRules.actionSettled(game)
+            return
+        }
         if (game.campaign != null) {
             com.unciv.logic.campaign.CampaignRules.actionSettled(game)
             return

@@ -835,6 +835,7 @@ class Civilization : IsPartOfGameInfoSerialization {
      */
     @Readonly
     fun isDefeated() = when {
+        com.unciv.logic.endless.EndlessRules.isInvader(this) -> false
         isBarbarian || isSpectator() -> false     // Barbarians and voyeurs can't lose
         hasEverOwnedOriginalCapital -> cities.isEmpty()
         else -> units.getCivUnitsSize() == 0

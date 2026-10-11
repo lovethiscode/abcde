@@ -78,7 +78,7 @@ internal class CampaignHomeMenu(
             (screen.stage.height - padTop - padBottom - header.prefHeight - sectionGap * 2f - toolbarHeight)
                 .coerceAtLeast(220f)
         val secondaryHeight = maxOf(bodyHeight * .20f, touchSize)
-        val actionHeight = (bodyHeight - secondaryHeight - 32f) / 2f
+        val actionHeight = (bodyHeight - secondaryHeight - 42f) / 3f
 
         val actions = Table()
         val hasSave = game.files.autosaves.autosaveExists()
@@ -93,6 +93,11 @@ internal class CampaignHomeMenu(
         actions.add(menuButton("Free play", "Quickstart or customize a singleplayer game",
             "OtherIcons/Nations", actionsWidth, action = ::showFreePlay)).width(actionsWidth)
             .height(actionHeight).padBottom(16f).row()
+
+        actions.add(menuButton("Endless survival", "One city · endless waves · survival records",
+            "OtherIcons/Shield", actionsWidth) {
+            game.pushScreen { com.unciv.ui.screens.endless.EndlessScreen() }
+        }.apply { name = "ui-endless-open" }).width(actionsWidth).height(actionHeight).padBottom(10f).row()
 
         val secondary = Table()
         secondary.add(menuButton("Load game", "", "OtherIcons/Load", (actionsWidth - 16f) / 2,

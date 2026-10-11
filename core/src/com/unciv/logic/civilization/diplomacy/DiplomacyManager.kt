@@ -525,10 +525,11 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
 
 
     @Readonly
-    fun canDeclareWar() = !com.unciv.logic.campaign.CampaignRules.warBlocked(civInfo) && !civInfo.isDefeated() && !otherCiv.isDefeated()
+    fun canDeclareWar() = civInfo.gameInfo.endless == null && !com.unciv.logic.campaign.CampaignRules.warBlocked(civInfo) && !civInfo.isDefeated() && !otherCiv.isDefeated()
             && turnsToPeaceTreaty() == 0 && diplomaticStatus != DiplomaticStatus.War
 
     fun declareWar(declareWarReason: DeclareWarReason = DeclareWarReason(WarType.DirectWar)) {
+        if (civInfo.gameInfo.endless != null) return
         if (com.unciv.logic.campaign.CampaignRules.warBlocked(civInfo) && declareWarReason.warType == WarType.DirectWar) return
         if (declareWarReason.warType == WarType.DirectWar)
             com.unciv.logic.automation.AutomationPreview.choice(civInfo, "declare_war", otherCiv.civID)
@@ -633,7 +634,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
 
 
     fun makePeace() {
-        if (com.unciv.logic.campaign.CampaignRules.peaceBlocked(civInfo, otherCiv)) return
+        if (civInfo.gameInfo.endless != null || com.unciv.logic.campaign.CampaignRules.peaceBlocked(civInfo, otherCiv)) return
         makePeaceOneSide()
         otherCivDiplomacy().makePeaceOneSide()
 

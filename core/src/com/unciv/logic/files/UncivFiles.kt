@@ -194,7 +194,7 @@ class UncivFiles(
     }
 
     fun saveGame(game: GameInfo, gameName: String, saveCompletionCallback: (Exception?) -> Unit = ::rethrowIfNotNull): FileHandle {
-        val file = game.campaign?.let { com.unciv.logic.campaign.CampaignStore(this).slot(it.definition.id) } ?: getSave(gameName)
+        val file = if (game.endless != null) com.unciv.logic.endless.EndlessStore(this).slot else game.campaign?.let { com.unciv.logic.campaign.CampaignStore(this).slot(it.definition.id) } ?: getSave(gameName)
         saveGame(game, file, saveCompletionCallback)
         return file
     }
@@ -204,6 +204,11 @@ class UncivFiles(
      */
     fun saveGame(game: GameInfo, file: FileHandle, saveCompletionCallback: (Exception?) -> Unit = ::rethrowIfNotNull) {
         try {
+            if (game.endless != null) {
+                com.unciv.logic.endless.EndlessStore(this).save(game)
+                saveCompletionCallback(null)
+                return
+            }
             if (game.campaign != null) {
                 com.unciv.logic.campaign.CampaignStore(this).save(game)
                 saveCompletionCallback(null)
@@ -263,8 +268,8 @@ class UncivFiles(
         onSaved: () -> Unit,
         onError: (Exception) -> Unit
     ) {
-        if (game.campaign != null) {
-            saveGame(game, "Campaign") { error ->
+        if (game.campaign != null || game.endless != null) {
+            saveGame(game, "Scenario") { error ->
                 Concurrency.runOnGLThread { if (error == null) onSaved() else onError(error) }
             }
             return
@@ -317,6 +322,7 @@ class UncivFiles(
             parsed
         }
         com.unciv.logic.campaign.CampaignCatalog.requireCompatible(gameInfo)
+        if (gameInfo.endless != null) com.unciv.logic.endless.EndlessCatalog.requireCompatible(gameInfo)
         gameInfo.setTransients()
         return gameInfo
     }
@@ -585,6 +591,28 @@ class Autosaves(val files: UncivFiles) {
      * Auto-saves a snapshot of the [gameInfo] in a new thread.
      */
     fun requestAutoSave(gameInfo: GameInfo, nextTurn: Boolean = false): Job {
+        if (gameInfo.endless != null) {
+            val state = gameInfo.endless!!
+            if (state.inTurn || state.actionDepth != 0 || state.saveBlocked)
+                return Concurrency.run("EndlessStableSaveOnly") { }
+            val store = com.unciv.logic.endless.EndlessStore(files)
+            val snapshot = try { store.snapshot(gameInfo) } catch (ex: Exception) {
+                state.saveBlocked = true
+                Log.error("Endless snapshot failed", ex)
+                return Concurrency.run("EndlessSnapshotFailed") { }
+            }
+            val previous = autoSaveJob
+            val job = Concurrency.run("EndlessSave") {
+                previous?.join()
+                try { store.saveSnapshot(snapshot) } catch (ex: Exception) {
+                    state.saveBlocked = true
+                    UncivGame.Current.worldScreen?.shouldUpdate = true
+                    Log.error("Endless save failed", ex)
+                }
+            }
+            autoSaveJob = job
+            return job
+        }
         // The save takes a long time (up to a few seconds on large games!) and we can do it while the player continues his game.
         // On the other hand if we alter the game data while it's being serialized we could get a concurrent modification exception.
         // So what we do is we clone all the game data and serialize the clone.
@@ -599,6 +627,7 @@ class Autosaves(val files: UncivFiles) {
      */
     @Synchronized
     fun requestAutoSaveUnCloned(gameInfo: GameInfo, nextTurn: Boolean = false): Job {
+        if (gameInfo.endless != null) return requestAutoSave(gameInfo, nextTurn)
         val previous = autoSaveJob
         val campaignSnapshot = if (gameInfo.campaign != null) com.unciv.logic.campaign.CampaignStore(files).snapshot(gameInfo) else null
         val job = Concurrency.run("autoSaveUnCloned") {
@@ -611,8 +640,8 @@ class Autosaves(val files: UncivFiles) {
     }
 
     fun autoSave(gameInfo: GameInfo, nextTurn: Boolean = false): Boolean {
-        if (gameInfo.campaign != null) {
-            files.saveGame(gameInfo, "Campaign")
+        if (gameInfo.campaign != null || gameInfo.endless != null) {
+            files.saveGame(gameInfo, "Scenario")
             return true
         }
         // get GameSettings to check the maxAutosavesStored in the autoSave function

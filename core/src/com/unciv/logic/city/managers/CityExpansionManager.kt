@@ -62,6 +62,7 @@ class CityExpansionManager : IsPartOfGameInfoSerialization {
 
     @Readonly
     fun canBuyTile(tile: Tile): Boolean {
+        if (!com.unciv.logic.endless.EndlessRules.ownershipAllowed(city, tile)) return false
         return when {
             city.isPuppet || city.isBeingRazed -> false
             tile.getOwner() != null -> false
@@ -72,6 +73,7 @@ class CityExpansionManager : IsPartOfGameInfoSerialization {
     }
 
     fun buyTile(tile: Tile) {
+        if (!com.unciv.logic.endless.EndlessRules.ownershipAllowed(city, tile)) return
         AutomationPreview.choice(city.civ, "buy_tile", "${getGoldCostOfTile(tile)} gold", city = city, tile = tile)
         val goldCost = getGoldCostOfTile(tile)
 
@@ -108,7 +110,7 @@ class CityExpansionManager : IsPartOfGameInfoSerialization {
 
     @Readonly
     fun getChoosableTiles() = city.getCenterTile().getTilesInDistance(city.getExpandRange())
-        .filter { it.getOwner() == null }
+        .filter { it.getOwner() == null && com.unciv.logic.endless.EndlessRules.ownershipAllowed(city, it) }
 
     @Readonly
     fun chooseNewTileToOwn(): Tile? {
@@ -181,6 +183,7 @@ class CityExpansionManager : IsPartOfGameInfoSerialization {
      * @param tile The tile to take over
      */
     fun takeOwnership(tile: Tile) {
+        if (!com.unciv.logic.endless.EndlessRules.ownershipAllowed(city, tile)) return
         check(!tile.isCityCenter()) { "Trying to found a city in a tile that already has one" }
         if (tile.getCity() != null)
             tile.getCity()!!.expansion.relinquishOwnership(tile)

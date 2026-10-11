@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Bastion Guard",
+    "leaderName": "Bastion Guard",
+    "outerColor": [
+      35,
+      90,
+      170
+    ],
+    "innerColor": [
+      238,
+      233,
+      219
+    ],
+    "cities": [
+      "Border Bastion"
+    ],
+    "uniques": []
+  },
+  {
+    "name": "Invaders",
+    "leaderName": "Invaders",
+    "outerColor": [
+      140,
+      46,
+      40
+    ],
+    "innerColor": [
+      240,
+      220,
+      190
+    ],
+    "cities": [
+      "Invaders"
+    ],
+    "uniques": []
+  }
+]

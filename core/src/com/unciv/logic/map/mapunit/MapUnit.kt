@@ -723,6 +723,7 @@ class MapUnit : IsPartOfGameInfoSerialization {
     @Readonly
     fun canBuildImprovement(improvement: TileImprovement, tile: Tile = currentTile): Boolean {
         if (civ.isBarbarian) return false
+        if (!com.unciv.logic.endless.EndlessRules.improvementAllowed(civ, improvement.name)) return false
         if (!com.unciv.logic.campaign.CivilWarCampaign.improvementAllowed(civ, improvement.name, tile)) return false
 
         // Workers (and similar) should never be able to (instantly) construct things, only build them
@@ -960,7 +961,10 @@ class MapUnit : IsPartOfGameInfoSerialization {
     }
 
     fun destroy(destroyTransportedUnit: Boolean = true, preserveCampaignIdentity: Boolean = false) {
-        if (!preserveCampaignIdentity) com.unciv.logic.campaign.CampaignRules.unitLost(this)
+        if (!preserveCampaignIdentity) {
+            com.unciv.logic.campaign.CampaignRules.unitLost(this)
+            com.unciv.logic.endless.EndlessRules.unitLost(this)
+        }
         stopEscorting()
         currentMovement = 0f
         civ.units.removeUnit(this)
@@ -981,6 +985,7 @@ class MapUnit : IsPartOfGameInfoSerialization {
     }
 
     fun gift(recipient: Civilization) {
+        if (civ.gameInfo.endless != null) return
         com.unciv.logic.campaign.CampaignRules.unitLost(this, com.unciv.logic.campaign.CampaignLossReason.Captured)
         stopEscorting()
         civ.units.removeUnit(this)

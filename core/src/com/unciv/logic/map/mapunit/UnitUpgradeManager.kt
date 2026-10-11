@@ -24,6 +24,7 @@ class UnitUpgradeManager(val unit: MapUnit) {
         ignoreRequirements: Boolean = false,
         ignoreResources: Boolean = false
     ): Boolean {
+        if (com.unciv.logic.endless.EndlessRules.isInvader(unit.civ)) return false
         if (com.unciv.logic.campaign.CivilWarCampaign.isActive(unit.civ.gameInfo)) return false
         if (unit.name == unitToUpgradeTo.name) return false
 
@@ -89,6 +90,9 @@ class UnitUpgradeManager(val unit: MapUnit) {
      *  but then the lambda in UnitActionsUpgrade will complain and need to be forced back to Unit type.
      */
     fun performUpgrade(upgradedUnit: BaseUnit, isFree: Boolean, goldCostOfUpgrade: Int? = null) {
+        if (unit.civ.gameInfo.endless != null && (com.unciv.logic.endless.EndlessRules.isInvader(unit.civ) ||
+                upgradedUnit.name !in com.unciv.logic.endless.EndlessRules.units || isFree || !canUpgrade(upgradedUnit) ||
+                unit.civ.gold < getCostOfUpgrade(upgradedUnit))) return
         // When mashing the upgrade button, you can 'queue' 2 upgrade actions
         //  If both are performed, what you get is the unit is doubled
         //  This prevents this, since we lack another way to do so -_-'  

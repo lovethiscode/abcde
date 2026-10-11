@@ -19,6 +19,7 @@ import kotlin.random.Random
 object BattleUnitCapture {
 
     fun tryCaptureMilitaryUnit(attacker: ICombatant, defender: ICombatant, attackedTile: Tile): Boolean {
+        if (attacker.getCivInfo().gameInfo.endless != null) return false
         // https://forums.civfanatics.com/threads/prize-ships-for-land-units.650196/
         // https://civilization.fandom.com/wiki/Module:Data/Civ5/GK/Defines\
         // There are 3 ways of capturing a unit, we separate them for cleaner code but we also need to ensure a unit isn't captured twice
@@ -108,6 +109,10 @@ object BattleUnitCapture {
             "Can't capture our own unit!"
         }
 
+        if (com.unciv.logic.endless.EndlessRules.isInvader(attacker.getCivInfo())) {
+            defender.unit.destroy()
+            return
+        }
         // need to save this because if the unit is captured its owner will be overwritten
         val defenderCiv = defender.getCivInfo()
 

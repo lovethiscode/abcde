@@ -49,6 +49,10 @@ enum class NextTurnAction(protected val text: String, val color: Color) {
         override fun isChoice(worldScreen: WorldScreen) =
             !worldScreen.isPlayersTurn
     },
+    EndlessDecision("Defense status", Color.GOLD) {
+        override fun isChoice(worldScreen: WorldScreen) = com.unciv.logic.endless.EndlessRules.blocked(worldScreen.gameInfo)
+        override fun action(worldScreen: WorldScreen) { com.unciv.ui.screens.endless.EndlessPopup(worldScreen) }
+    },
     PickGreatPerson("Choose a free great person", Color.GOLD) {
         override val icon = "OtherIcons/Personality"
         override fun isChoice(worldScreen: WorldScreen) =

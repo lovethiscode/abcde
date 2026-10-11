@@ -47,9 +47,12 @@ object BattleDamage {
             val unitUniqueModifiers = getUnitUniqueModifiers(combatant, enemy, conditionalState, tileToAttackFrom)
             modifiers.add(unitUniqueModifiers)
 
+            val pressure = if (com.unciv.logic.endless.EndlessRules.isInvader(civInfo))
+                com.unciv.logic.endless.EndlessWavePlanner.pressure(civInfo.gameInfo.endless!!.round) else 0
+            if (pressure != 0) modifiers["Continuous siege"] = pressure
             val civResources = civInfo.getCivResourcesByName()
             for (resource in combatant.unit.getResourceRequirementsPerTurn().keys)
-                if (civResources[resource]!! < 0 && !civInfo.isBarbarian)
+                if (civResources[resource]!! < 0 && !civInfo.isBarbarian && !com.unciv.logic.endless.EndlessRules.isInvader(civInfo))
                     modifiers["Missing resource"] = BattleConstants.MISSING_RESOURCES_MALUS
 
             val (greatGeneralName, greatGeneralBonus) = GreatGeneralImplementation.getGreatGeneralBonus(combatant, enemy, combatAction)

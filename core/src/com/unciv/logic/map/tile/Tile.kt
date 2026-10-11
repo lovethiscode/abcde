@@ -1087,6 +1087,7 @@ class Tile : IsPartOfGameInfoSerialization {
     }
 
     fun startWorkingOnImprovement(improvement: TileImprovement, civInfo: Civilization, unit: MapUnit) {
+        if (!com.unciv.logic.endless.EndlessRules.improvementAllowed(civInfo, improvement.name)) return
         if (!com.unciv.logic.campaign.CivilWarCampaign.improvementAllowed(civInfo, improvement.name, this)) return
         if (isMarkedForCreatesOneImprovement()) return
         AutomationPreview.choice(civInfo, "improvement", improvement.name, unit, tile = this)

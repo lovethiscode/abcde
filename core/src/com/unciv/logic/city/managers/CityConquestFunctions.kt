@@ -316,6 +316,8 @@ class CityConquestFunctions(val city: City) {
     fun moveToCiv(newCiv: Civilization) {
         val oldCiv = city.civ
         com.unciv.logic.campaign.CampaignRules.cityTransferred(city, oldCiv, newCiv)
+        if (oldCiv.gameInfo.endless?.playerId == oldCiv.civID && newCiv != oldCiv)
+            com.unciv.logic.endless.EndlessRules.loseCore(oldCiv.gameInfo, city.id)
 
         // Remove/relocate palace for old Civ - need to do this BEFORE we move the cities between
         //  civs so the capitalCityIndicator recognizes the unique buildings of the conquered civ

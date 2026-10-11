@@ -224,7 +224,7 @@ class PolicyManager : IsPartOfGameInfoSerialization {
      */
     @Readonly
     fun isAdoptable(policy: Policy, checkEra: Boolean = true): Boolean {
-        if (com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)) return false
+        if ((civInfo.gameInfo.endless != null || com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo))) return false
         if (isAdopted(policy.name)) return false
         if (policy.policyBranchType == PolicyBranchType.BranchComplete) return false
         if (!getAdoptedPolicies().containsAll(policy.requires!!)) return false
@@ -237,7 +237,7 @@ class PolicyManager : IsPartOfGameInfoSerialization {
 
     @Readonly
     fun canAdoptPolicy(): Boolean {
-        if (com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)) return false
+        if ((civInfo.gameInfo.endless != null || com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo))) return false
         if (civInfo.isSpectator()) return false
         if (freePolicies == 0 && storedCulture < getCultureNeededForNextPolicy()) return false
         if (allPoliciesAdopted(true)) return false
@@ -246,7 +246,7 @@ class PolicyManager : IsPartOfGameInfoSerialization {
 
 
     fun adopt(policy: Policy, branchCompletion: Boolean = false): Unit = AchievementTracker.action(civInfo.gameInfo) {
-        if (com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)) return@action
+        if ((civInfo.gameInfo.endless != null || com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo))) return@action
 
         if (!branchCompletion) {
             AutomationPreview.choice(civInfo, "policy", policy.name)

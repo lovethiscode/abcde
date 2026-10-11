@@ -98,6 +98,21 @@ tasks.register<JavaExec>("writeCivilWarScenario") {
     workingDir = file("../android/assets")
 }
 
+tasks.register<JavaExec>("writeEndlessScenario") {
+    group = "development"
+    mainClass.set("com.unciv.dev.EndlessScenarioWriter")
+    classpath = sourceSets["test"].runtimeClasspath
+    workingDir = file("../android/assets")
+}
+
+tasks.register<JavaExec>("endlessRoutes") {
+    group = "verification"
+    mainClass.set("com.unciv.dev.EndlessRoutes")
+    classpath = sourceSets["test"].runtimeClasspath
+    workingDir = file("../android/assets")
+    args = (project.findProperty("endless.args") as? String ?: "").split(" ").filter { it.isNotEmpty() }
+}
+
 tasks.register<JavaExec>("civilWarRoutes") {
     group = "verification"
     mainClass.set("com.unciv.dev.CivilWarRoutes")

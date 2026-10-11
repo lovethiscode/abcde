@@ -45,7 +45,7 @@ class NextTurnButton(
         nextTurnAction = getNextTurnAction(worldScreen)
         updateButton(nextTurnAction)
         val autoPlay = worldScreen.autoPlay
-        if (autoPlay.shouldContinueAutoPlaying() && worldScreen.isPlayersTurn
+        if (!com.unciv.logic.endless.EndlessRules.blocked(worldScreen.gameInfo) && autoPlay.shouldContinueAutoPlaying() && worldScreen.isPlayersTurn
             && !worldScreen.waitingForAutosave && !worldScreen.isNextTurnUpdateRunning()) {
             autoPlay.runAutoPlayJobInNewThread("MultiturnAutoPlay", worldScreen, false) {
                 TurnManager(worldScreen.selectedGameView.civView.getCiv()).automateTurn()

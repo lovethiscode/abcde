@@ -503,7 +503,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
 
     /** Returns false if we tried to construct a unit but it has nowhere to go */
     fun completeConstruction(construction: INonPerpetualConstruction): Boolean = AchievementTracker.action(city.civ.gameInfo) {
-        if (!com.unciv.logic.campaign.CivilWarCampaign.constructionAllowed(city, construction.name)) return@action false
+        if ((!com.unciv.logic.campaign.CivilWarCampaign.constructionAllowed(city, construction.name) || !com.unciv.logic.endless.EndlessRules.constructionAllowed(city, construction.name))) return@action false
         if (com.unciv.logic.campaign.CivilWarCampaign.isActive(city.civ.gameInfo) && !construction.isBuildable(this)) return@action false
         var unit: MapUnit? = null
         if (construction is Building) construction.construct(this)
@@ -763,6 +763,9 @@ class CityConstructions : IsPartOfGameInfoSerialization {
         stat: Stat = Stat.Gold,
         tile: Tile? = null
     ): Boolean {
+        if (city.civ.gameInfo.endless != null && (stat != Stat.Gold ||
+                !com.unciv.logic.endless.EndlessRules.constructionAllowed(city, construction.name) ||
+                !isConstructionPurchaseAllowed(construction, stat, construction.getStatBuyCost(city, stat) ?: return false))) return false
         if (com.unciv.logic.campaign.CampaignRules.purchaseBlocked(city, construction.name, stat)) return false
         AutomationPreview.choice(city.civ, "purchase:${stat.name}", construction.name, city = city, tile = tile)
         // Support UniqueType.CreatesOneImprovement: it is active when getImprovementToCreate returns an improvement

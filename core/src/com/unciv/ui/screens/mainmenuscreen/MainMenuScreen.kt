@@ -189,6 +189,10 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
         }
         column1.add(newGameButton).row()
 
+        column1.add(getMenuButton("Endless survival", "OtherIcons/Strength") {
+            game.pushScreen { com.unciv.ui.screens.endless.EndlessScreen() }
+        }).row()
+
         val loadGameTable = getMenuButton("Load game", "OtherIcons/Load", KeyboardBinding.MainMenuLoad) {
             game.pushScreen{ LoadGameScreen() }
         }
@@ -367,7 +371,7 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
     }
 
     private fun resumeGame() {
-        if (GUI.isWorldLoaded()) {
+        if (GUI.isWorldLoaded() && game.gameInfo?.endless == null) {
             val currentTileSet = GUI.getMap().currentTileSetStrings
             val currentGameSetting = GUI.getSettings()
             if (currentTileSet.tileSetName != currentGameSetting.tileSet ||

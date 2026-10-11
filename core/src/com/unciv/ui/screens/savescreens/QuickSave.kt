@@ -38,12 +38,16 @@ object QuickSave {
     }
 
     fun load(screen: WorldScreen) {
+        if (screen.gameInfo.endless?.saveBlocked == true) {
+            com.unciv.ui.screens.endless.EndlessPopup(screen)
+            return
+        }
         screen.autoPlay.stopAutoPlay()
         val files = UncivGame.Current.files
         val toast = ToastPopup("Quickloading...", screen)
         Concurrency.run("QuickLoadGame") {
             try {
-                val loadedGame = screen.gameInfo.campaign?.let {
+                val loadedGame = if (screen.gameInfo.endless != null) com.unciv.logic.endless.EndlessStore(files).resume() else screen.gameInfo.campaign?.let {
                     com.unciv.logic.campaign.CampaignStore(files).resume(it.definition.id)
                 } ?: files.loadGameByName("QuickSave")
                 launchOnGLThread {

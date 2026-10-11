@@ -1,0 +1,293 @@
+[
+  {
+    "columnNumber": 2,
+    "era": "Ancient era",
+    "techCost": 55,
+    "buildingCost": 75,
+    "wonderCost": 185,
+    "techs": [
+      {
+        "name": "Masonry",
+        "row": 9,
+        "prerequisites": [
+          "Mining"
+        ],
+        "quote": "'How happy are those whose walls already rise!' - Virgil",
+        "cost": 45
+      }
+    ]
+  },
+  {
+    "columnNumber": 2,
+    "era": "Ancient era",
+    "techCost": 55,
+    "buildingCost": 75,
+    "wonderCost": 185,
+    "techs": [
+      {
+        "name": "Writing",
+        "row": 3,
+        "prerequisites": [
+          "Pottery"
+        ],
+        "uniques": [
+          "Enables establishment of embassies <Civilopedia link [Tutorials/Embassies]>"
+        ],
+        "quote": "'He who destroys a good book kills reason itself.' - John Milton",
+        "cost": 60
+      }
+    ]
+  },
+  {
+    "columnNumber": 2,
+    "era": "Ancient era",
+    "techCost": 55,
+    "buildingCost": 75,
+    "wonderCost": 185,
+    "techs": [
+      {
+        "name": "The Wheel",
+        "row": 7,
+        "prerequisites": [
+          "Animal Husbandry"
+        ],
+        "uniques": [
+          "[+100]% weight to this choice for AI decisions"
+        ],
+        "quote": "'Wisdom and virtue are like the two wheels of a cart.' - Japanese proverb",
+        "cost": 50
+      }
+    ]
+  },
+  {
+    "columnNumber": 4,
+    "era": "Classical era",
+    "techCost": 175,
+    "buildingCost": 100,
+    "wonderCost": 250,
+    "techs": [
+      {
+        "name": "Iron Working",
+        "row": 10,
+        "prerequisites": [
+          "Bronze Working"
+        ],
+        "uniques": [
+          "[-50]% weight to this choice for AI decisions"
+        ],
+        "quote": "'Do not wait to strike til the iron is hot, but make it hot by striking.' - William Butler Yeats",
+        "cost": 100
+      }
+    ]
+  },
+  {
+    "columnNumber": 3,
+    "era": "Classical era",
+    "techCost": 105,
+    "buildingCost": 100,
+    "wonderCost": 250,
+    "techs": [
+      {
+        "name": "Construction",
+        "row": 9,
+        "prerequisites": [
+          "Masonry"
+        ],
+        "uniques": [
+          "[+100]% weight to this choice for AI decisions"
+        ],
+        "quote": "'Three things are to be looked to in a building: that it stands on the right spot; that it be securely founded; that it be successfully executed.' - Johann Wolfgang von Goethe",
+        "cost": 100
+      }
+    ]
+  },
+  {
+    "columnNumber": 3,
+    "era": "Classical era",
+    "techCost": 105,
+    "buildingCost": 100,
+    "wonderCost": 250,
+    "techs": [
+      {
+        "name": "Horseback Riding",
+        "row": 5,
+        "prerequisites": [
+          "The Wheel"
+        ],
+        "uniques": [
+          "[+50]% weight to this choice for AI decisions"
+        ],
+        "quote": "'A Horse! A Horse! My kingdom for a horse!' - Shakespeare (Richard III)",
+        "cost": 100
+      }
+    ]
+  },
+  {
+    "columnNumber": 3,
+    "era": "Classical era",
+    "techCost": 105,
+    "buildingCost": 100,
+    "wonderCost": 250,
+    "techs": [
+      {
+        "name": "Mathematics",
+        "row": 7,
+        "prerequisites": [
+          "Archery",
+          "The Wheel"
+        ],
+        "quote": "'Mathematics is the gate and key to the sciences.' - Roger Bacon",
+        "cost": 100
+      }
+    ]
+  },
+  {
+    "columnNumber": 4,
+    "era": "Classical era",
+    "techCost": 175,
+    "buildingCost": 100,
+    "wonderCost": 250,
+    "techs": [
+      {
+        "name": "Currency",
+        "row": 7,
+        "prerequisites": [
+          "Mathematics"
+        ],
+        "uniques": [
+          "[+100]% weight to this choice for AI decisions"
+        ],
+        "quote": "'Better is bread with a happy heart than wealth with vexation.' - Amenemope",
+        "cost": 160
+      }
+    ]
+  },
+  {
+    "columnNumber": 4,
+    "era": "Classical era",
+    "techCost": 175,
+    "buildingCost": 100,
+    "wonderCost": 250,
+    "techs": [
+      {
+        "name": "Engineering",
+        "row": 8,
+        "prerequisites": [
+          "Construction",
+          "The Wheel"
+        ],
+        "uniques": [
+          "Roads connect tiles across rivers",
+          "[+100]% weight to this choice for AI decisions"
+        ],
+        "quote": "'Instrumental or mechanical science is the noblest and, above all others, the most useful.' - Leonardo da Vinci",
+        "cost": 180
+      }
+    ]
+  },
+  {
+    "columnNumber": 5,
+    "era": "Medieval era",
+    "techCost": 275,
+    "buildingCost": 120,
+    "wonderCost": 300,
+    "techs": [
+      {
+        "name": "Metal Casting",
+        "row": 9,
+        "prerequisites": [
+          "Iron Working"
+        ],
+        "uniques": [
+          "[+100]% weight to this choice for AI decisions"
+        ],
+        "quote": "'When pieces of bronze or gold or iron break, the metal-smith welds them together again in the fire, and the bond is established.' - Sri Guru Granth Sahib",
+        "cost": 200
+      }
+    ]
+  },
+  {
+    "columnNumber": 6,
+    "era": "Medieval era",
+    "techCost": 485,
+    "buildingCost": 160,
+    "wonderCost": 400,
+    "techs": [
+      {
+        "name": "Steel",
+        "row": 10,
+        "prerequisites": [
+          "Metal Casting"
+        ],
+        "uniques": [
+          "[-50]% weight to this choice for AI decisions"
+        ],
+        "quote": "'John Henry said to his Captain, / 'A man ain't nothin' but a man, / And before I'll let your steam drill beat me down, / I'll die with the hammer in my hand.'' - Anonymous: The Ballad of John Henry, the Steel-Drivin' Man",
+        "cost": 320
+      }
+    ]
+  },
+  {
+    "columnNumber": 6,
+    "era": "Medieval era",
+    "techCost": 485,
+    "buildingCost": 160,
+    "wonderCost": 400,
+    "techs": [
+      {
+        "name": "Machinery",
+        "row": 8,
+        "prerequisites": [
+          "Construction",
+          "Engineering"
+        ],
+        "uniques": [
+          "Improves movement speed on roads"
+        ],
+        "quote": "'The press is the best instrument for enlightening the mind of man, and improving him as a rational, moral and social being.' - Thomas Jefferson",
+        "cost": 320
+      }
+    ]
+  },
+  {
+    "columnNumber": 6,
+    "era": "Medieval era",
+    "techCost": 485,
+    "buildingCost": 160,
+    "wonderCost": 400,
+    "techs": [
+      {
+        "name": "Chivalry",
+        "row": 6,
+        "prerequisites": [
+          "Horseback Riding",
+          "Currency"
+        ],
+        "uniques": [
+          "Enables Defensive Pacts <Civilopedia link [Tutorials/Defensive Pacts]>"
+        ],
+        "quote": "'Whoso pulleth out this sword of this stone and anvil, is rightwise king born of all England.' - Malory",
+        "cost": 320
+      }
+    ]
+  },
+  {
+    "columnNumber": 6,
+    "era": "Medieval era",
+    "techCost": 485,
+    "buildingCost": 160,
+    "wonderCost": 400,
+    "techs": [
+      {
+        "name": "Physics",
+        "row": 9,
+        "prerequisites": [
+          "Mathematics",
+          "Engineering"
+        ],
+        "quote": "'Measure what is measurable, and make measurable what is not so.' - Galileo Galilei",
+        "cost": 320
+      }
+    ]
+  }
+]

@@ -43,6 +43,7 @@ object TechnologyDescriptions {
 
         lineList.addAll(
             getAffectedImprovements(name, ruleset)
+            .filter { com.unciv.logic.endless.EndlessRules.improvementAllowed(viewingCiv, it.improvement.name) }
             .filter { it.improvement.uniqueTo == null || viewingCiv.matchesFilter(it.improvement.uniqueTo!!) }
             .map { it.getText() }
         )
@@ -79,6 +80,7 @@ object TechnologyDescriptions {
             lineList += "Reveals [$resource] on the map"
 
         val tileImprovements = ruleset.tileImprovements.values.asSequence()
+            .filter { com.unciv.logic.endless.EndlessRules.improvementAllowed(viewingCiv, it.name) }
             .filter { it.techRequired == name }
             .filter { it.uniqueTo == null || viewingCiv.matchesFilter(it.uniqueTo!!) }
             .toList()
@@ -143,7 +145,7 @@ object TechnologyDescriptions {
             else ruleset.tileImprovements.values.asSequence()
                 .filter { it.techRequired == techName }
                 .filter { it.uniqueTo == null || viewingCiv.matchesFilter(it.uniqueTo!!) }
-        for (improvement in requiredTechImprovements) {
+        for (improvement in requiredTechImprovements.filter { com.unciv.logic.endless.EndlessRules.improvementAllowed(viewingCiv, it.name) }) {
             yield(ImageGetter.getImprovementPortrait(improvement.name, techIconSize))
         }
 
@@ -151,7 +153,7 @@ object TechnologyDescriptions {
             else ruleset.tileImprovements.values.asSequence()
                 .filter { it.uniqueObjects.any { u -> u.allParams.contains(techName) } }
                 .filter { it.uniqueTo == null || viewingCiv.matchesFilter(it.uniqueTo!!) }
-        for (improvement in uniqueParamImprovements) {
+        for (improvement in uniqueParamImprovements.filter { com.unciv.logic.endless.EndlessRules.improvementAllowed(viewingCiv, it.name) }) {
             yield(ImageGetter.getUniquePortrait(improvement.name, techIconSize))
         }
 
@@ -186,6 +188,7 @@ object TechnologyDescriptions {
                 enabledBuildingsByTech.getOrPut(tech) { mutableListOf() }.add(building)
 
         val filteredUnits = ruleset.units.values.asSequence()
+            .filter { viewingCiv.gameInfo.endless == null || it.name in com.unciv.logic.endless.EndlessRules.units }
             .filter {
                 (it.uniqueTo != null && viewingCiv.matchesFilter(it.uniqueTo!!) ||
                         it.uniqueTo == null && viewingCiv.getEquivalentUnit(it) == it)
@@ -197,6 +200,7 @@ object TechnologyDescriptions {
                 enabledUnitsByTech.getOrPut(tech) { mutableListOf() }.add(unit)
 
         val filteredImprovements = ruleset.tileImprovements.values.asSequence()
+            .filter { com.unciv.logic.endless.EndlessRules.improvementAllowed(viewingCiv, it.name) }
             .filter { it.uniqueTo == null || viewingCiv.matchesFilter(it.uniqueTo!!) }
             .toList()
 
@@ -405,6 +409,7 @@ object TechnologyDescriptions {
         predicate: (Building) -> Boolean
     ): Sequence<Building> {
         return ruleset.buildings.values.asSequence()
+            .filter { civInfo?.gameInfo?.endless == null || it.name in com.unciv.logic.endless.EndlessRules.buildings }
             .filter {
                 predicate(it)   // expected to be the most selective, thus tested first
                 && (it.uniqueTo != null && civInfo?.matchesFilter(it.uniqueTo!!) == true
@@ -421,6 +426,7 @@ object TechnologyDescriptions {
     @Readonly
     private fun getEnabledUnits(techName: String, ruleset: Ruleset, civInfo: Civilization?): Sequence<BaseUnit> {
         return ruleset.units.values.asSequence()
+            .filter { civInfo?.gameInfo?.endless == null || it.name in com.unciv.logic.endless.EndlessRules.units }
             .filter {
                 it.requiredTechs().contains(techName)
                 && (it.uniqueTo != null && civInfo?.matchesFilter(it.uniqueTo!!) == true ||

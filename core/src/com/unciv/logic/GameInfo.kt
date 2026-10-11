@@ -120,6 +120,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
 
     /** Absent in legacy saves. Loading or cloning must never create achievement eligibility. */
     var achievements: AchievementGameState? = null
+    var endless: com.unciv.logic.endless.EndlessState? = null
     var campaign: com.unciv.logic.campaign.CampaignState? = null
 
     /** Maps a civ to the civ they voted for - `null` on the value side means they abstained */
@@ -221,6 +222,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
         toReturn.victoryData = victoryData?.copy()
         toReturn.achievements = achievements?.clone()
         toReturn.campaign = campaign?.clone()
+        toReturn.endless = endless?.clone()
         toReturn.historyStartTurn = historyStartTurn
         toReturn.lastUnitId = lastUnitId
         toReturn.unitNamesTaken.addAll(unitNamesTaken)
@@ -343,7 +345,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
         return true
     }
 
-    @Readonly fun isEspionageEnabled(): Boolean = gameParameters.espionageEnabled
+    @Readonly fun isEspionageEnabled(): Boolean = endless == null && gameParameters.espionageEnabled
 
     @Readonly
     private fun getEquivalentTurn(): Int {
@@ -388,6 +390,8 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
      *  @param shouldGainTime on a multiplayer game, if true, makes the player whose turn is ended recover time to play before risking getting forced to resign, 'false' by default 
      */
     fun nextTurn(progressBar: NextTurnProgress? = null, shouldGainTime: Boolean = false): Unit = timeThis("GameInfo.nextTurn") {
+        if (com.unciv.logic.endless.EndlessRules.blocked(this)) return@timeThis
+        endless?.inTurn = true
         if (campaign?.let { it.resultStars > 0 || it.failed } == true) return@timeThis
         var player = currentPlayerCiv
         var playerIndex = civilizations.indexOf(player)
@@ -418,6 +422,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
         //  this happens when resigning a multiplayer game)
         if (player.isHuman()) {
             TurnManager(player).endTurn(progressBar)
+            if (endless?.ended == true) { endless!!.inTurn = false; return@timeThis }
             setNextPlayer()
         }
 
@@ -453,6 +458,10 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
             // Automation done here
             TurnManager(player).automateTurn()
 
+            if (endless?.ended == true) {
+                player = civilizations.first { it.civID == endless!!.playerId }
+                break
+            }
             if (com.unciv.logic.campaign.CivilWarCampaign.hasEnded(this)) {
                 player = civilizations.first { it.civID == campaign!!.playerId }
                 break
@@ -488,10 +497,13 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
         currentPlayerCiv = player
 
         com.unciv.logic.campaign.CampaignRules.roundCompleted(this)
+        endless?.let { if (!it.ended) it.completedRounds++ }
 
         // Automatic campaign results settle before granting another human action round.
-        if (campaign?.let { it.resultStars > 0 || it.failed } != true)
+        if (campaign?.let { it.resultStars > 0 || it.failed } != true && endless?.ended != true)
             TurnManager(player).startTurn(progressBar)
+        endless?.inTurn = false
+        com.unciv.logic.endless.EndlessRules.prepareRound(this)
 
         // No popups for spectators
         if (currentPlayerCiv.isSpectator())
@@ -746,7 +758,8 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
             }
         }
         
-        ruleset = if (com.unciv.logic.campaign.CivilWarCampaign.isActive(this))
+        ruleset = if (endless != null) com.unciv.logic.endless.EndlessRules.ruleset(this)
+        else if (com.unciv.logic.campaign.CivilWarCampaign.isActive(this))
             com.unciv.logic.campaign.CivilWarCampaign.ruleset(this) else RulesetCache.getComplexRuleset(gameParameters)
         
         // any mod the saved game lists that is currently not installed causes null pointer
@@ -877,7 +890,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
                 // No uniques have changed since the cache was created, so we can still use it
                 city.cityStats.update()
             }
-            if (campaign != null && civInfo.cities.isEmpty()) civInfo.updateStatsForNextTurn()
+            if ((campaign != null || endless != null) && civInfo.cities.isEmpty()) civInfo.updateStatsForNextTurn()
         }
     }
 

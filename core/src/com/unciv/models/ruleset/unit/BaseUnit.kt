@@ -239,6 +239,10 @@ class BaseUnit : RulesetObject(), INonPerpetualConstruction {
             yield(RejectionReasonType.ShouldNotBeDisplayed.toInstance())
             return@sequence
         }
+        if (civ.gameInfo.endless != null && name !in com.unciv.logic.endless.EndlessRules.units) {
+            yield(RejectionReasonType.ShouldNotBeDisplayed.toInstance())
+            return@sequence
+        }
         val stateForConditionals = city?.state ?: civ.state
 
         if (city != null && isWaterUnit && !city.isNaval())

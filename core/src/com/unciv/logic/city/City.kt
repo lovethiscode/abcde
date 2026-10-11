@@ -485,6 +485,7 @@ class City : IsPartOfGameInfoSerialization, INamed {
         // Original capitals and holy cities cannot be destroyed,
         // unless, of course, they are captured by a one-city-challenger.
         if (!canBeDestroyed() && !overrideSafeties) return
+        com.unciv.logic.endless.EndlessRules.loseCore(civ.gameInfo, id)
 
         // Destroy planes stationed in city
         for (airUnit in getCenterTile().airUnits.toList()) airUnit.destroy()

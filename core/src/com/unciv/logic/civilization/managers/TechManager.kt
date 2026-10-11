@@ -170,7 +170,7 @@ class TechManager : IsPartOfGameInfoSerialization {
 
     @Readonly
     fun isUnresearchable(tech: Technology): Boolean {
-        if (com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, tech.name)) return true
+        if ((com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, tech.name) || com.unciv.logic.endless.EndlessRules.researchBlocked(civInfo, tech.name))) return true
         if (tech.getMatchingUniques(UniqueType.OnlyAvailable, GameContext.IgnoreConditionals).any { !it.conditionalsApply(civInfo.state) })
             return true
         if (tech.hasUnique(UniqueType.Unavailable, civInfo.state)) return true
@@ -201,7 +201,7 @@ class TechManager : IsPartOfGameInfoSerialization {
 
         while (!checkPrerequisites.isEmpty()) {
             val techToCheck = checkPrerequisites.removeFirst()
-            if (com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo) && isResearched(techToCheck.name)) continue
+            if ((civInfo.gameInfo.endless != null || com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)) && isResearched(techToCheck.name)) continue
             if (isUnresearchable(techToCheck)) return listOf()
             // future tech can have been researched even when we're researching it,
             // so...if we skip it we'll end up with 0 techs in the "required techs", which will mean that we don't have anything to research. Yeah.
@@ -274,7 +274,7 @@ class TechManager : IsPartOfGameInfoSerialization {
      *  Adds the points to the [current research][currentTechnology], or, if there is none, to [overflow][overflowScience].
      */
     fun addScience(scienceGet: Int) {
-        techsToResearch.removeAll { com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, it) }
+        techsToResearch.removeAll { (com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, it) || com.unciv.logic.endless.EndlessRules.researchBlocked(civInfo, it)) }
         val currentTechnology = currentTechnologyName()
         if (currentTechnology == null) {
             overflowScience += scienceGet
@@ -306,14 +306,14 @@ class TechManager : IsPartOfGameInfoSerialization {
     }
 
     fun getFreeTechnology(techName: String) {
-        if (com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, techName)) return
+        if ((com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, techName) || com.unciv.logic.endless.EndlessRules.researchBlocked(civInfo, techName))) return
         AutomationPreview.choice(civInfo, "free_research", techName)
         freeTechs--
         addTechnology(techName)
     }
 
     fun addTechnology(techName: String, showNotification: Boolean = true) {
-        if (com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, techName)) return
+        if ((com.unciv.logic.campaign.CivilWarCampaign.researchBlocked(civInfo, techName) || com.unciv.logic.endless.EndlessRules.researchBlocked(civInfo, techName))) return
         val isNewTech = techsResearched.add(techName)
 
         // this is to avoid concurrent modification problems

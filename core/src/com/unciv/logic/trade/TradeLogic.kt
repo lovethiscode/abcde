@@ -115,6 +115,7 @@ class TradeLogic(val ourCivilization: Civilization, val otherCivilization: Civil
     }
 
     fun acceptTrade(applyGifts: Boolean = true): Unit = AchievementTracker.action(ourCivilization.gameInfo) {
+        if (ourCivilization.gameInfo.endless != null) return@action
         if (com.unciv.logic.campaign.CampaignRules.peaceBlocked(ourCivilization, otherCivilization) &&
             (currentTrade.ourOffers + currentTrade.theirOffers).any { it.name == Constants.peaceTreaty }) return@action
         if (com.unciv.logic.campaign.CivilWarCampaign.isActive(ourCivilization.gameInfo) &&
