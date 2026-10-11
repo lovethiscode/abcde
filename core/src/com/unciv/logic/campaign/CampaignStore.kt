@@ -1,5 +1,6 @@
 package com.unciv.logic.campaign
 
+import com.unciv.logic.challenges.ChallengeTelemetry
 import com.badlogic.gdx.files.FileHandle
 import com.unciv.logic.GameInfo
 import com.unciv.logic.files.FileConversions
@@ -49,6 +50,8 @@ class CampaignStore(private val files: UncivFiles) {
                 }
             }
             write(game)
+            if (old?.campaign?.let { it.resultStars == 0 && !it.failed } == true)
+                ChallengeTelemetry.report("replaced", old)
             remember(state.definition.id)
         }
     }
@@ -89,6 +92,7 @@ class CampaignStore(private val files: UncivFiles) {
     private fun write(game: GameInfo) {
         val target = slot(game.campaign!!.definition.id)
         SaveFileWriter.write(target) { FileConversions.writeJson(it, game, zip = true) }
+        ChallengeTelemetry.report("saved", game)
     }
 
     fun progress(): CampaignProgress = SaveFileLocks.withLock(progressFile) {

@@ -3,6 +3,7 @@ package com.unciv.logic.campaign
 import com.badlogic.gdx.Gdx
 import com.unciv.UncivGame
 import com.unciv.logic.GameInfo
+import com.unciv.logic.challenges.ChallengeTelemetry
 import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.files.FileConversions
 import com.unciv.logic.files.cloud.CloudSaveSync
@@ -27,6 +28,25 @@ class CampaignTest {
         TestGame() // Initializes the real base ruleset and settings, not the campaign scene.
         files = UncivFiles(Gdx.files, temporary.root.path)
         store = CampaignStore(files)
+    }
+
+    @Test fun `telemetry follows durable publication and cannot break a save`() {
+        val game = CampaignCatalog.newAttempt()
+        val reports = arrayListOf<ChallengeTelemetry.Snapshot>()
+        ChallengeTelemetry.observer = { _, snapshot, _ ->
+            assertEquals(snapshot.attempt, store.saved(snapshot.level)!!.campaign!!.attemptId)
+            reports.add(snapshot)
+            throw IllegalStateException("Unavailable observer")
+        }
+        try {
+            store.start(game, null)
+            assertEquals(1, reports.size)
+            val slot = store.slot(CampaignCatalog.construction)
+            val obstruction = slot.sibling(".${slot.name()}.unciv-tmp")
+            obstruction.mkdirs(); obstruction.child("occupied").writeString("test obstruction", false)
+            assertThrows(Exception::class.java) { store.save(game) }
+            assertEquals(1, reports.size)
+        } finally { ChallengeTelemetry.observer = null }
     }
 
     @Test fun `Chinese objective uses the actual construction name`() {

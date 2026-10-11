@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.endless
 
+import com.unciv.logic.challenges.ChallengeTelemetry
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -139,7 +140,10 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                 game.files.autosaves.autoSaveJob?.join()
                 val attempt = if (seed == null) store.resume() else EndlessCatalog.newAttempt(seed).also { store.start(it, replacing) }
                 game.loadGame(attempt)
+                ChallengeTelemetry.report(if (seed == null) "resume" else "start", attempt)
             } catch (ex: Exception) {
+                if (ex !is kotlinx.coroutines.CancellationException)
+                    ChallengeTelemetry.error("endless", if (seed == null) "resume_failed" else "start_failed")
                 com.unciv.utils.Log.error("Cannot enter endless defense", ex)
                 ToastPopup(ex.message ?: "Could not start defense", this@EndlessScreen)
             } finally { loading.close() }

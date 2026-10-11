@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.campaign
 
+import com.unciv.logic.challenges.ChallengeTelemetry
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -604,7 +605,10 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 check(store.isUnlocked(CampaignCatalog.definition(id), store.progress()) || store.saved(id) != null)
                 val attempt = if (start) CampaignCatalog.newAttempt(id).also { store.start(it, replacing) } else store.resume(id)
                 game.loadGame(attempt)
+                ChallengeTelemetry.report(if (start) "start" else "resume", attempt)
             } catch (ex: Exception) {
+                if (ex !is kotlinx.coroutines.CancellationException)
+                    ChallengeTelemetry.error("campaign", if (start) "start_failed" else "resume_failed", id)
                 com.unciv.utils.Log.error("Cannot enter campaign", ex)
                 ToastPopup(ex.message ?: "Could not load campaign", this@CampaignScreen)
             } finally { loading.close() }

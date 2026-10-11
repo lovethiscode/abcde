@@ -2,6 +2,7 @@ package com.unciv.logic.endless
 
 import com.badlogic.gdx.Gdx
 import com.unciv.UncivGame
+import com.unciv.logic.challenges.ChallengeTelemetry
 import com.unciv.logic.files.UncivFiles
 import com.unciv.testing.BaseTestRunner
 import com.unciv.testing.TestGame
@@ -18,6 +19,27 @@ class EndlessPersistenceTest {
     @Before fun setup() { TestGame() }
     private fun game() = EndlessCatalog.newAttempt(1101).also { UncivGame.Current.gameInfo = it }
     private fun store() = EndlessStore(UncivFiles(Gdx.files, temporary.root.path))
+
+    @Test fun `reward telemetry is emitted only after a persisted successful claim`() {
+        val game = game(); val store = store()
+        game.endless!!.clearedPrefix = 5; EndlessRules.settleBenefits(game); store.start(game, null)
+        val claims = arrayListOf<Pair<Int, String>>()
+        ChallengeTelemetry.observer = { action, snapshot, detail ->
+            if (action == "reward") {
+                assertEquals(snapshot.rewardStage, store.saved()!!.endless!!.claimedStages)
+                claims.add(snapshot.rewardStage to detail)
+            }
+        }
+        try {
+            val obstruction = store.slot.sibling(".current.json.unciv-tmp")
+            obstruction.mkdirs(); obstruction.child("occupied").writeString("test obstruction", false)
+            assertTrue(runCatching { store.claim(game, "Gold") }.isFailure)
+            assertTrue(claims.isEmpty())
+            obstruction.deleteDirectory(); store.save(game)
+            store.claim(game, "Gold")
+            assertEquals(listOf(1 to "Gold"), claims)
+        } finally { ChallengeTelemetry.observer = null }
+    }
 
     @Test fun `failed reward publication keeps prior bytes and gives no live benefit`() {
         val game = game(); val store = store()

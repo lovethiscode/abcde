@@ -167,6 +167,14 @@ internal class CampaignHomeMenu(
             add(copy).expandX().left()
             touchable = Touchable.enabled
         }
+        button.name = when (text) {
+            "Free play" -> "usage-free-play"
+            "Quickstart" -> "usage-quickstart"
+            "Singleplayer" -> "usage-new-game"
+            "Load game" -> "usage-load-game"
+            "Multiplayer" -> "usage-multiplayer"
+            else -> button.name
+        }
         button.onActivation(binding = binding) { stopBackground(); action() }
         return button
     }
@@ -249,7 +257,7 @@ internal class CampaignHomeMenu(
     private fun showAbout() {
         Popup(screen).apply {
             add(AboutTab.asTable()).row()
-            addButton("Discord") { Gdx.net.openURI("https://discord.gg/GGGAn4SGT") }
+            addButton("Discord") { Gdx.net.openURI("https://discord.gg/GGGAn4SGT") }.actor.name = "usage-community"
             addButton("Github") { Gdx.net.openURI(Constants.uncivRepoURL) }
             addCloseButton()
             open()

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.endless
 
+import com.unciv.logic.challenges.ChallengeTelemetry
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.logic.endless.EndlessRules
 import com.unciv.logic.endless.EndlessStore
@@ -140,6 +141,7 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
                 val attempt = com.unciv.logic.endless.EndlessCatalog.newAttempt(kotlin.random.Random.nextLong())
                 store.start(attempt, mode.attemptId)
                 close(); screen.game.loadGame(attempt)
+                ChallengeTelemetry.report("start", attempt)
             } catch (ex: Exception) { ToastPopup(ex.message ?: "Could not start defense", screen) }
             finally { loading.close() }
         }

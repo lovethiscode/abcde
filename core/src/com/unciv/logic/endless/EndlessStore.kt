@@ -1,5 +1,6 @@
 package com.unciv.logic.endless
 
+import com.unciv.logic.challenges.ChallengeTelemetry
 import com.unciv.logic.GameInfo
 import com.unciv.logic.files.FileConversions
 import com.unciv.logic.files.SaveFileLocks
@@ -75,7 +76,7 @@ class EndlessStore(private val files: UncivFiles) {
                     offer = null
                     saveSequence = reserve(saveSequence)
                 }
-                write(old)
+                write(old, "replaced")
                 reconcile(old)
             }
         }
@@ -126,6 +127,7 @@ class EndlessStore(private val files: UncivFiles) {
         candidate.endless!!.saveSequence = reserve(maxOf(s.saveSequence, old.saveSequence))
         try { write(candidate) }
         catch (ex: Exception) { s.saveBlocked = true; throw ex }
+        ChallengeTelemetry.report("reward", candidate, choice)
         candidate
     }
 
@@ -136,7 +138,10 @@ class EndlessStore(private val files: UncivFiles) {
         save(game)
     }
 
-    private fun write(game: GameInfo) = SaveFileWriter.write(slot) { FileConversions.writeJson(it, game, true) }
+    private fun write(game: GameInfo, action: String = "saved") {
+        SaveFileWriter.write(slot) { FileConversions.writeJson(it, game, true) }
+        ChallengeTelemetry.report(action, game)
+    }
 
     fun records(): EndlessRecords = SaveFileLocks.withLock(recordsFile) {
         SaveFileWriter.recover(recordsFile)
