@@ -151,19 +151,20 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     }
 
     private fun historicalCatalog() {
+        val screenWidth = stage.width
         val stars = historicalDefinitions.sumOf { store.stars(it, progress) }
         val summary = Table().apply {
             add("${historicalDefinitions.size} 个战役 · 当前版本 $stars / ${historicalDefinitions.size * 3} 星"
                 .toLabel(Theme.text, 18).apply { wrap = true })
-                .width(if (stage.width < 700f) stage.width - 44f else (stage.width - 68f) * .42f).left()
-            if (stage.width < 700f) row()
-            add(syncPanel).growX().minWidth(0f).padLeft(if (stage.width < 700f) 0f else 24f)
+                .width(if (screenWidth < 700f) screenWidth - 44f else (screenWidth - 68f) * .42f).left()
+            if (screenWidth < 700f) row()
+            add(syncPanel).growX().minWidth(0f).padLeft(if (screenWidth < 700f) 0f else 24f)
         }
         root.add(summary).growX().pad(4f, 22f, 12f, 22f).row()
         if (selected.isNotEmpty()) {
             val content = Table().apply {
                 top(); pad(0f, 22f, 16f, 22f)
-                add(details(historicalDefinitions.first { it.id == selected }, (stage.width - 80f).coerceAtMost(900f)))
+                add(details(historicalDefinitions.first { it.id == selected }, (screenWidth - 80f).coerceAtMost(900f)))
                     .growX().top()
             }
             root.add(AutoScrollPane(content).apply { setScrollingDisabled(true, false) }).grow().minHeight(0f)
@@ -173,10 +174,10 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         val columns = when {
             isPortrait() -> 1
             UiNavigation.isIos -> if (minOf(safeArea.width, safeArea.height) >= 600) 3 else 2
-            stage.width >= 1000f -> 3
+            screenWidth >= 1000f -> 3
             else -> 2
         }
-        val cardWidth = (stage.width - 44f - (columns - 1) * 12f) / columns
+        val cardWidth = (screenWidth - 44f - (columns - 1) * 12f) / columns
         val cards = Table().apply { top(); left() }
         for ((index, definition) in historicalDefinitions.withIndex()) {
             cards.add(historicalCard(definition)).width(cardWidth).minHeight(190f).fillY()
