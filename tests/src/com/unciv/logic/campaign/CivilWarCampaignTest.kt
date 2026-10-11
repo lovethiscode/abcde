@@ -72,9 +72,10 @@ class CivilWarCampaignTest {
         assertEquals(CivilWarCampaign.cities.keys, first.getCities().map { it.id }.toSet())
         val p = first.getCurrentPlayerCivilization(); val enemy = first.civilizations.single { it != p }
         assertEquals(15, p.units.getCivUnits().count())
-        assertEquals(14, enemy.units.getCivUnits().count())
+        assertEquals(16, enemy.units.getCivUnits().count())
         assertEquals(mapOf("Rifleman" to 7, "Cavalry" to 2, "Cannon" to 3, "Great General" to 1, "Worker" to 2), p.units.getCivUnits().groupingBy { it.name }.eachCount())
-        assertEquals(29, first.civilizations.flatMap { it.units.getCivUnits().toList() }.map { it.id }.toSet().size)
+        assertEquals(mapOf("Rifleman" to 9, "Cavalry" to 2, "Cannon" to 2, "Great General" to 1, "Worker" to 2), enemy.units.getCivUnits().groupingBy { it.name }.eachCount())
+        assertEquals(31, first.civilizations.flatMap { it.units.getCivUnits().toList() }.map { it.id }.toSet().size)
         assertEquals(600, p.gold); assertEquals(450, enemy.gold)
         assertTrue(p.isAtWarWith(enemy)); assertFalse(first.isReligionEnabled())
         assertTrue(first.gameParameters.noCityRazing)
@@ -274,7 +275,7 @@ class CivilWarCampaignTest {
         city(g, "cw-richmond").puppetCity(p)
         store.save(g)
         val progress = store.progress()
-        assertEquals(3, progress.bestStars["civil-war-east:4"])
+        assertEquals(3, store.stars(g.campaign!!.definition, progress))
         assertTrue(progress.medals.isEmpty())
         assertEquals(0, CampaignCatalog.definitions().sumOf { store.stars(it, progress) })
         val newer = CampaignProgress().apply { bestStars["civil-war-east:12"] = 2; cleared.add("civil-war-east") }

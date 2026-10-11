@@ -8,6 +8,7 @@ import com.unciv.logic.battle.MapUnitCombatant
 import com.unciv.logic.battle.TargetHelper
 import com.unciv.logic.city.City
 import com.unciv.logic.map.mapunit.MapUnit
+import com.unciv.logic.map.tile.Tile
 import com.unciv.models.ruleset.unique.GameContext
 import com.unciv.models.ruleset.unique.UniqueType
 import yairm210.purity.annotations.Readonly
@@ -15,10 +16,12 @@ import yairm210.purity.annotations.Readonly
 object BattleHelper {
 
     /** Returns true if the unit cannot further move this turn - NOT if an attack was successful! */
-    fun tryAttackNearbyEnemy(unit: MapUnit, stayOnTile: Boolean = false): Boolean {
+    fun tryAttackNearbyEnemy(unit: MapUnit, stayOnTile: Boolean = false, defenseCenter: Tile? = null): Boolean {
         if (unit.hasUnique(UniqueType.CannotAttack)) return false
         val distanceToTiles = unit.movement.getDistanceToTiles()
         val attackableEnemies = TargetHelper.getAttackableEnemies(unit, distanceToTiles, stayOnTile=stayOnTile)
+            .filter { defenseCenter == null || it.tileToAttackFrom.aerialDistanceTo(defenseCenter) <= 2 &&
+                it.tileToAttack.aerialDistanceTo(defenseCenter) <= 3 }
             // Only take enemies we can fight without dying or are made to die
             .filter {
                 val defender = Battle.getMapCombatantOfTile(it.tileToAttack)

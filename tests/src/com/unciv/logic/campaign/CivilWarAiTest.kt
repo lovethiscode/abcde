@@ -46,6 +46,39 @@ class CivilWarAiTest {
         if (evidence != null) FileConversions.writeJson(Gdx.files.absolute(File(evidence, "$name.json").path), g, true)
     }
 
+    @Test fun `capital retains infantry and artillery while the front advances`() {
+        val capital = city("cw-richmond").getCenterTile()
+        val guards = listOf(unit(20), unit(21), unit(26))
+        save("rear-defense-before")
+        repeat(3) {
+            g.nextTurn()
+            save("rear-defense-after-${it + 1}")
+            assertTrue(guards.all { guard -> !guard.isDestroyed && guard.currentTile.aerialDistanceTo(capital) <= 2 })
+        }
+        assertTrue("The field army must still engage", g.campaign!!.lostMilitary.isNotEmpty() ||
+            g.getCurrentPlayerCivilization().units.getCivUnits().any { it.health < 100 })
+    }
+
+    @Test fun `rear defense never controls human units or ordinary games`() {
+        assertFalse(CivilWarCampaign.holdDefensivePosition(unit(5)))
+        val guard = unit(20)
+        g.campaign = null
+        assertFalse(CivilWarCampaign.holdDefensivePosition(guard))
+    }
+
+    @Test fun `a damaged front-line city does not empty the capital defense`() {
+        val capital = city("cw-richmond").getCenterTile()
+        val guards = listOf(unit(20), unit(21), unit(26))
+        place(unit(1), 0, -3)
+        city("cw-fredericksburg").health = 120
+        save("front-siege-before")
+        repeat(2) {
+            g.nextTurn()
+            save("front-siege-after-${it + 1}")
+            assertTrue(guards.all { guard -> !guard.isDestroyed && guard.currentTile.aerialDistanceTo(capital) <= 2 })
+        }
+    }
+
     @Test fun `visible capital threat mobilizes an available reserve within two enemy turns`() {
         val capital = city("cw-richmond").getCenterTile()
         place(unit(1), 0, -7); place(unit(10), 0, -6)
@@ -79,14 +112,15 @@ class CivilWarAiTest {
 
     @Test fun `depleted army starts legal recruiting in two turns and completes within production deadline`() {
         val enemy = g.civilizations.first { it.isAI() }
-        listOf(16, 17, 23).forEach { unit(it).destroy() }
+        val initialUnitIds = enemy.units.getCivUnits().map { it.id }.toSet()
+        listOf(16, 17, 23, 30, 31).forEach { unit(it).destroy() }
         for (c in enemy.cities) c.cityConstructions.editQueue { clear(); add("Gold") }
         save("recruit-before")
         repeat(2) { g.nextTurn(); save("recruit-start-${it + 1}") }
         assertTrue(enemy.cities.any { it.id in CivilWarCampaign.recruitmentCities && it.cityConstructions.currentConstructionName() in CivilWarCampaign.militaryUnits })
         repeat(5) { g.nextTurn() }
         save("recruit-completed")
-        assertTrue(enemy.units.getCivUnits().any { it.id > 29 && it.name in CivilWarCampaign.militaryUnits })
+        assertTrue(enemy.units.getCivUnits().any { it.id !in initialUnitIds && it.name in CivilWarCampaign.militaryUnits })
     }
 
     @Test fun `an available attack on Washington defenders is executed within two enemy turns`() {

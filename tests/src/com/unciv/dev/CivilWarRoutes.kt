@@ -190,7 +190,7 @@ object CivilWarRoutes {
                         record("disband-extra-general\t${it.id}"); it.disband()
                     }
                 }
-                val firstTech = when { variant == "medicine" -> "Field Medicine"; variant.startsWith("transport") -> "Military Transport"; else -> "Artillery Improvement" }
+                val firstTech = when { variant.endsWith("medicine") -> "Field Medicine"; variant.startsWith("transport") -> "Military Transport"; else -> "Artillery Improvement" }
                 if (player.tech.techsToResearch.isEmpty()) {
                     (listOf(firstTech) + CivilWarCampaign.technologies).firstOrNull { player.tech.canBeResearched(it) }?.let {
                         player.tech.techsToResearch.add(it); record("research\t$it")
@@ -317,7 +317,7 @@ object CivilWarRoutes {
                         continue
                     }
                     if (attack(u, allowCapital) || stopped() || u.isDestroyed) continue
-                    if (variant == "delay" && round <= 3 && !reserve) { record("delay\t${u.id}"); continue }
+                    if (variant.startsWith("delay") && round <= (if (variant.contains("five")) 5 else if (variant.contains("four")) 4 else 3) && !reserve) { record("delay\t${u.id}"); continue }
                     var target = goal
                     if (variant.endsWith("west") && !reserve && !westernDefense) {
                         val coordinates = listOf(-10 to 11, -11 to 3, -10 to -4, -4 to -9)

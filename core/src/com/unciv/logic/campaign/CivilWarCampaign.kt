@@ -2,8 +2,10 @@ package com.unciv.logic.campaign
 
 import com.badlogic.gdx.Gdx
 import com.unciv.logic.GameInfo
+import com.unciv.logic.automation.unit.BattleHelper
 import com.unciv.logic.city.City
 import com.unciv.logic.civilization.Civilization
+import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.models.ruleset.Ruleset
 import com.unciv.models.ruleset.RulesetCache
 import com.unciv.models.stats.Stat
@@ -53,6 +55,33 @@ object CivilWarCampaign {
     }
 
     @Readonly fun researchBlocked(civ: Civilization, name: String) = isActive(civ.gameInfo) && name !in technologies
+
+    /** Defend in depth without sending the capital's reserve to every damaged front-line city. */
+    fun holdDefensivePosition(unit: MapUnit): Boolean {
+        val civ = unit.civ
+        if (!isActive(civ.gameInfo) || !civ.isAI() || civ.civName != civ.gameInfo.campaign!!.definition.enemy ||
+            unit.name !in setOf("Rifleman", "Cannon")) return false
+        val available = civ.units.getCivUnits().filter { it.name in setOf("Rifleman", "Cannon") }.toMutableList()
+        for (id in listOf("cw-richmond", "cw-fredericksburg")) {
+            val center = civ.cities.firstOrNull { it.id == id }?.getCenterTile() ?: continue
+            val defenders = listOf("Rifleman", "Cannon").flatMap { name ->
+                available.filter { it.name == name && it.currentTile.aerialDistanceTo(center) <= 5 }
+                    .sortedWith(compareBy({ it.currentTile.aerialDistanceTo(center) }, { it.id }))
+                    .take(if (id == "cw-richmond" && name == "Rifleman") 2 else 1)
+            }
+            available.removeAll(defenders)
+            if (unit !in defenders) continue
+            if (BattleHelper.tryAttackNearbyEnemy(unit, defenseCenter = center)) return true
+            if (unit.currentTile.aerialDistanceTo(center) > 2) {
+                center.getTilesInDistance(2).filter { unit.movement.canMoveTo(it) }
+                    .sortedBy { it.aerialDistanceTo(unit.currentTile) }
+                    .firstOrNull { unit.movement.canReach(it) }?.let { unit.movement.headTowards(it) }
+            }
+            if (unit.hasMovement()) unit.fortifyIfCan()
+            return true
+        }
+        return false
+    }
 
     @Readonly fun improvementAllowed(civ: Civilization, name: String, tile: com.unciv.logic.map.tile.Tile): Boolean {
         if (!isActive(civ.gameInfo)) return true

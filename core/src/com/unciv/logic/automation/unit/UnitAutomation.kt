@@ -92,6 +92,8 @@ object UnitAutomation {
         // If there are no enemies nearby and we can heal here, wait until we are at full health
         if (unit.health < 100 && canUnitHealInTurnsOnCurrentTile(unit,2, 3)) return
 
+        if (com.unciv.logic.campaign.CivilWarCampaign.holdDefensivePosition(unit)) return
+
         if (tryHeadTowardsOurSiegedCity(unit)) return
 
         // if a embarked melee unit can land and attack next turn, do not attack from water.

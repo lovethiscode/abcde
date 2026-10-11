@@ -57,7 +57,7 @@ object CivilWarScenarioWriter {
             city.name = CivilWarCampaign.cities.getValue(id)
             city.cityConstructions.addBuilding(city.name + " Depot")
             city.cityConstructions.addBuilding("Market")
-            if (id in setOf("cw-washington", "cw-richmond")) city.cityConstructions.addBuilding("Walls")
+            if (id in setOf("cw-washington", "cw-richmond", "cw-fredericksburg")) city.cityConstructions.addBuilding("Walls")
             for (nearby in t.getTilesInDistance(2).filter { !it.isCityCenter() }) {
                 city.expansion.takeOwnership(nearby)
                 f.setTileTerrain(nearby.position, Constants.plains)
@@ -154,6 +154,8 @@ object CivilWarScenarioWriter {
         unit(confederacy, "Great General", -2, 2, "邦联指挥部")
         unit(confederacy, "Worker", 2, -10, "confederate_worker_01")
         unit(confederacy, "Worker", -1, -2, "confederate_worker_02")
+        unit(confederacy, "Rifleman", -1, -2, "confederate_reserve_infantry_02")
+        unit(confederacy, "Rifleman", 1, -3, "confederate_reserve_infantry_03")
         union.diplomacyFunctions.makeCivilizationsMeet(confederacy)
         union.getDiplomacyManager(confederacy)!!.diplomaticStatus = DiplomaticStatus.War
         confederacy.getDiplomacyManager(union)!!.diplomaticStatus = DiplomaticStatus.War

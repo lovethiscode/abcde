@@ -28,3 +28,5 @@ id	faction	type	scenario-id	column,row	hex	promotion
 27	Confederacy	Great General	邦联指挥部	-2,2	HexCoord(x=3, y=1)	-
 28	Confederacy	Worker	confederate_worker_01	2,-10	HexCoord(x=-11, y=-9)	-
 29	Confederacy	Worker	confederate_worker_02	-1,-2	HexCoord(x=-1, y=-2)	-
+30	Confederacy	Rifleman	confederate_reserve_infantry_02	-1,-2	HexCoord(x=-1, y=-2)	-
+31	Confederacy	Rifleman	confederate_reserve_infantry_03	1,-3	HexCoord(x=-3, y=-2)	-
