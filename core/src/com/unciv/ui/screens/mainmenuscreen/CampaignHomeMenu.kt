@@ -70,6 +70,7 @@ internal class CampaignHomeMenu(
         val version = game.displayBuildNumber?.let { "v${UncivGame.VERSION.text} ($it)" }
             ?: "v${UncivGame.VERSION.text}"
         header.add(version.toLabel(muted, (13f * pointScale).roundToInt()).apply {
+            setText(version)
             name = "ui-home-version"
         }).right().top().padTop(2f)
         header.pack()

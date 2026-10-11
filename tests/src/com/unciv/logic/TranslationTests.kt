@@ -517,6 +517,22 @@ class TranslationTests {
     }
 
     @Test
+    fun versionBuildNumberIsNotLocalizedAsQuantity() {
+        setupUncivGame()
+        UncivGame.Current.translations["[] (Build [])"] =
+            TranslationEntry("[version] (Build [number])").apply {
+                this[LocaleCode.SimplifiedChinese.languageName()] = "[version] (构建号 [number])"
+            }
+
+        UncivGame.Current.settings.language = LocaleCode.English.name
+        Assert.assertEquals("4.22.8 (Build 1376)", Version("4.22.8", 1376).toNiceString())
+        Assert.assertEquals("4.22.8 (Build 1376.2)", Version("4.22.8", 1376).toNiceString("1376.2"))
+        UncivGame.Current.settings.language = LocaleCode.SimplifiedChinese.languageName()
+        Assert.assertEquals("4.22.8 (构建号 1376)", Version("4.22.8", 1376).toNiceString())
+        Assert.assertEquals("4.22.8 (构建号 1376.2)", Version("4.22.8", 1376).toNiceString("1376.2"))
+    }
+
+    @Test
     fun testNumberTr() {
         setupUncivGame()
 

@@ -3,7 +3,6 @@ package com.unciv.ui.popups.options
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.Constants
 import com.unciv.UncivGame
-import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.screens.civilopediascreen.FormattedLine
@@ -26,7 +25,7 @@ internal object AboutTab {
         // The changelog has no patches, and anchors per release tag omit the dots
         val versionAnchor = Regex("""\.|-patch\d+$""").replace(UncivGame.VERSION.text, "")
         val version = UncivGame.Current.displayBuildNumber
-            ?.let { "[${UncivGame.VERSION.text}] (Build [$it])".tr() }
+            ?.let { UncivGame.VERSION.toNiceString(it) }
             ?: UncivGame.VERSION.toNiceString()
         val lines = sequence {
             yield(FormattedLine(extraImage = "banner", imageSize = 240f, centered = true))

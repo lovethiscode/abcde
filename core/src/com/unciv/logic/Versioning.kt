@@ -1,8 +1,9 @@
 package com.unciv.logic
 
 import com.unciv.UncivGame
-import com.unciv.models.translations.tr
+import com.unciv.models.translations.TranslationActiveModsCache
 import yairm210.purity.annotations.Pure
+import yairm210.purity.annotations.Readonly
 
 /**
  *  Wrapper for a release version.
@@ -20,7 +21,13 @@ data class Version(
     @Suppress("unused") // used by json serialization
     internal constructor() : this("", -1)
 
-    @Pure fun toNiceString() = "[$text] (Build [$number])".tr()
+    @Readonly fun toNiceString(buildNumber: String = number.toString()): String {
+        val game = UncivGame.Current
+        return game.translations.getText("[] (Build [])", game.settings.language,
+            TranslationActiveModsCache.activeMods, "[version] (Build [number])")
+            .replace("[version]", text)
+            .replace("[number]", buildNumber)
+    }
     @Pure fun toSerializeString() = "$text (Build $number)"
 }
 

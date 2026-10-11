@@ -10,7 +10,6 @@ import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.files.UncivFiles
 import com.unciv.models.ruleset.RulesetCache
-import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.addBorder
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toLabel
@@ -99,7 +98,7 @@ class CrashScreen(val exception: Throwable) : BaseScreen() {
         /** We only need the indent after any new lines in each substitution itself. So this prepends to all lines, and then removes from the start. */
         fun String.prependIndentToOnlyNewLines(indent: String) = this.prependIndent(indent).removePrefix(indent)
         val version = UncivGame.Current.displayBuildNumber
-            ?.let { "[${UncivGame.VERSION.text}] (Build [$it])".tr() }
+            ?.let { UncivGame.VERSION.toNiceString(it) }
             ?: UncivGame.VERSION.toNiceString()
         /// The $lastScreenType substitution is the only one completely under the control of this class— Everything else can, in theory, have new lines in it due to containing strings or custom .toString behaviour with new lines (which… I think Table.toString or something actually does). So normalize indentation for basically everything.
         return """
