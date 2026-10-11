@@ -127,6 +127,7 @@ val expectedIosMinimumVersion = "15.0"
 val verifyIosConfiguration by tasks.registering {
     group = "verification"
     description = "Checks the pinned iPhone+iPad full-screen orientation identity and deployment settings."
+    inputs.file(selectedRoboVmProperties)
     inputs.files(
         "robovm.properties",
         "robovm.xml",
@@ -137,6 +138,12 @@ val verifyIosConfiguration by tasks.registering {
     )
 
     doLast {
+        val selectedProperties = Properties().apply {
+            selectedRoboVmProperties.inputStream().use(::load)
+        }
+        check(selectedProperties.getProperty("app.build")?.matches(Regex("[1-9][0-9]*")) == true) {
+            "Selected app.build must be a positive integer"
+        }
         val properties = Properties().apply {
             file("robovm.properties").inputStream().use(::load)
         }

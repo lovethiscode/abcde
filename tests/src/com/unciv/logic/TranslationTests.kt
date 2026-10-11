@@ -526,10 +526,10 @@ class TranslationTests {
 
         UncivGame.Current.settings.language = LocaleCode.English.name
         Assert.assertEquals("4.22.8 (Build 1376)", Version("4.22.8", 1376).toNiceString())
-        Assert.assertEquals("4.22.8 (Build 1376.2)", Version("4.22.8", 1376).toNiceString("1376.2"))
+        Assert.assertEquals("4.22.8 (Build 1377)", Version("4.22.8", 1376).toNiceString("1377"))
         UncivGame.Current.settings.language = LocaleCode.SimplifiedChinese.languageName()
         Assert.assertEquals("4.22.8 (构建号 1376)", Version("4.22.8", 1376).toNiceString())
-        Assert.assertEquals("4.22.8 (构建号 1376.2)", Version("4.22.8", 1376).toNiceString("1376.2"))
+        Assert.assertEquals("4.22.8 (构建号 1377)", Version("4.22.8", 1376).toNiceString("1377"))
     }
 
     @Test
