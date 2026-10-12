@@ -12,6 +12,7 @@ import com.unciv.logic.GameInfo
 import com.unciv.logic.campaign.CivilWarCampaign
 import com.unciv.logic.campaign.CampaignCatalog
 import com.unciv.logic.campaign.CampaignDefinition
+import com.unciv.logic.campaign.CampaignShareData
 import com.unciv.logic.campaign.CampaignProgress
 import com.unciv.logic.campaign.CampaignStore
 import com.unciv.logic.campaign.CampaignSyncState
@@ -46,6 +47,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     private val historicalDefinitions = CampaignCatalog.historicalDefinitions()
     private val root = Table()
     private var progress = CampaignProgress()
+    private var progressReadable = true
     private val sync = game.files.campaignProgressSync
     private val syncPanel = Table()
     private var mapScrollPane: AutoScrollPane? = null
@@ -126,8 +128,13 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 .height(maxOf(58f, UiNavigation.minimumTouchSize() + 8f)).pad(0f, 10f, 4f, 10f).row()
         }
         try {
-            (definitions + historicalDefinitions).forEach { store.saved(it.id)?.let(store::reconcile) }
-            progress = store.progress()
+            (definitions + historicalDefinitions).forEach { definition ->
+                runCatching { store.saved(definition.id)?.let(store::reconcile) }
+                    .onFailure { com.unciv.utils.Log.error("Cannot recover campaign progress", it) }
+            }
+            val persisted = runCatching { store.progress() }.getOrNull()
+            progressReadable = persisted != null
+            progress = persisted ?: CampaignProgress()
             updateSyncPanel(sync.status)
             if (historical) historicalCatalog()
             else {
@@ -168,7 +175,10 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 add(details(historicalDefinitions.first { it.id == selected }, (screenWidth - 80f).coerceAtMost(900f)))
                     .growX().top()
             }
-            root.add(AutoScrollPane(content).apply { setScrollingDisabled(true, false) }).grow().minHeight(0f)
+            root.add(AutoScrollPane(content).apply {
+                setScrollingDisabled(true, false)
+                detailScrollPane = this
+            }).grow().minHeight(0f)
             return
         }
         val safeArea = Display.getSafeArea(Gdx.graphics.width, Gdx.graphics.height)
@@ -228,7 +238,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
 
     private fun updateSyncPanel(status: CampaignSyncStatus) {
         syncPanel.clearChildren()
-        val message = when (status.state) {
+        val message = if (!progressReadable) "Campaign progress unavailable" else when (status.state) {
             CampaignSyncState.LocalOnly -> "战役成绩已保存在本机"
             CampaignSyncState.Pending -> "成绩已保存在本机 · 等待 iCloud 同步"
             CampaignSyncState.Syncing -> "正在同步战役成绩…"
@@ -258,7 +268,18 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         }).minHeight(UiNavigation.minimumTouchSize()).padLeft(10f)
     }
 
+    private fun shareButton(title: String, id: String, snapshot: () -> CampaignShareData?) = title.toTextButton().apply {
+        name = id
+        label.wrap = true
+        label.setFontSize(17)
+        onActivation { showCampaignShare(this@CampaignScreen, snapshot) }
+    }
+
     private fun overview(content: Table) {
+        if (game.campaignSharingAvailable && progressReadable && CampaignShareData.journey(progress) != null)
+            content.add(shareButton("Share: [${"My civilization journey".tr()}]", "ui-campaign-share-journey") {
+                CampaignShareData.journey(store.progress())
+            }).minHeight(UiNavigation.minimumTouchSize()).fillX().row()
         val recent = progress.lastPlayed.takeIf { it.isNotEmpty() && it != CivilWarCampaign.id }?.let(store::saved)
         if (recent?.campaign?.let { it.resultStars == 0 && !it.failed } == true) {
             val d = recent.campaign!!.definition
@@ -338,7 +359,11 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                         selected = levels.firstOrNull { store.isUnlocked(it, progress) && store.stars(it, progress) < 3 }?.id ?: levels.first().id
                         rebuild()
                     }
-                }).height(50f).fillX()
+                }).height(50f).fillX().row()
+                if (game.campaignSharingAvailable && progressReadable && complete)
+                    add(shareButton("Share: [${"章节完成".tr()}]", "ui-campaign-share-chapter:$index") {
+                        CampaignShareData.chapter(store.progress(), index)
+                    }).minHeight(UiNavigation.minimumTouchSize()).fillX()
             }
             cards.add(card).width(totalWidth / columns - 12f).fillX()
             if (index % columns == columns - 1) cards.row()
@@ -379,6 +404,10 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         }
         content.add(map).size(width, 410f).row()
         if (levels.all { it.id in progress.cleared }) {
+            if (game.campaignSharingAvailable && progressReadable)
+                content.add(shareButton("Share: [${"章节完成".tr()}]", "ui-campaign-share-chapter:$chapter") {
+                    CampaignShareData.chapter(store.progress(), chapter)
+                }).minHeight(UiNavigation.minimumTouchSize()).fillX().row()
             content.add("章节完成 · 在自由对局中练习".toTextButton().apply {
                 onActivation { game.pushScreen { NewGameScreen() } }
             }).height(52f).fillX().row()
@@ -479,7 +508,19 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         text(d.description)
         text("最高成绩：[${store.stars(d, progress)}] / 3 星", Theme.gold)
         if (d.id in progress.cleared && store.stars(d, progress) == 0) text("已通关 · 新版待挑战", Theme.gold)
+        if (game.campaignSharingAvailable && progressReadable && store.stars(d, progress) > 0)
+            add(shareButton("Share: [${"Best result".tr()}]", "ui-campaign-share-best:${d.id}") {
+                CampaignShareData.best(store.progress(), d.id, d.scoringVersion)
+            }).minHeight(UiNavigation.minimumTouchSize()).fillX().row()
         val saved = store.saved(d.id)
+        val terminal = saved?.campaign
+        if (terminal != null && game.campaignSharingAvailable &&
+            CampaignShareData.result(terminal, d.id, terminal.attemptId, recent = true) != null) {
+            text("Latest attempt: [${terminal.resultStars}] / 3 stars", Theme.muted)
+            add(shareButton("Share: [${"Latest attempt".tr()}]", "ui-campaign-share-recent:${d.id}") {
+                store.shareResult(d.id, terminal.attemptId, recent = true)
+            }).minHeight(UiNavigation.minimumTouchSize()).fillX().row()
+        }
         val unfinished = saved?.campaign?.let { it.resultStars == 0 && !it.failed } == true
         if (unfinished) {
             text("本地续玩 · 行动回合 [${saved!!.campaign!!.completedRounds + 1}]")
@@ -524,7 +565,14 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         for (restriction in d.restrictions) text(restriction, Theme.muted, 16)
         for (hint in d.hints) text("提示 · [$hint]", Theme.muted, 16)
         val history = progress.bestStars.filterKeys { it.startsWith("${d.id}:") && it != "${d.id}:${d.scoringVersion}" }
-        for ((key, value) in history) text("历史评分版本 [${key.substringAfter(':')}]：[$value] / 3 星", Theme.muted, 15)
+        for ((key, value) in history) {
+            text("历史评分版本 [${key.substringAfter(':')}]：[$value] / 3 星", Theme.muted, 15)
+            val version = key.substringAfter(':').toIntOrNull()
+            if (game.campaignSharingAvailable && progressReadable && value > 0 && version != null && version > 0)
+                add(shareButton("Share: [${"Best result".tr()}]", "ui-campaign-share-best:$key") {
+                    CampaignShareData.best(store.progress(), d.id, version)
+                }).minHeight(UiNavigation.minimumTouchSize()).fillX().row()
+        }
 
     }
 

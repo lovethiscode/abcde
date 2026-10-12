@@ -81,6 +81,8 @@ class CampaignState : IsPartOfGameInfoSerialization {
     var briefingSeen = false
     /** Zero means still playing or failed. A positive result is frozen before progress is written. */
     var resultStars = 0
+    /** Frozen action round; absent in old saves whose automatic settlement boundary may be unknown. */
+    var resultActionRound: Int? = null
     // Retain the original serialized names for construction-prototype save compatibility.
     var resultWorker = false
     var resultPopulation = false

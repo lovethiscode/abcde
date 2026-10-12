@@ -98,6 +98,8 @@ interface PlatformSpecific {
     fun showAchievements() {}
     fun showAchievementGuide() {}
 
+    val campaignSharingAvailable: Boolean get() = false
+    fun showCampaignShare(data: com.unciv.logic.campaign.CampaignShareData) {}
     val endlessSharingAvailable: Boolean get() = false
     fun showEndlessShare(data: com.unciv.logic.endless.EndlessShareData) {}
 

@@ -342,7 +342,7 @@ object CampaignRules {
     }
 
     /** Does not advance observations. Safe after actions, loading, or a screen refresh. */
-    fun actionSettled(game: GameInfo) {
+    fun actionSettled(game: GameInfo, atRoundEnd: Boolean = false) {
         val s = active(game) ?: return
         if (s.actionDepth > 0 || s.settling) return
         s.settling = true
@@ -355,11 +355,12 @@ object CampaignRules {
                 s.failed = true
                 s.failureReason = r.failureReason
                 s.resultDetails = ArrayList(r.details)
-            } else if (s.definition.automatic && r.main) freeze(s, r)
+            } else if (s.definition.automatic && r.main) freeze(s, r, if (atRoundEnd) s.completedRounds else s.completedRounds + 1)
         } finally { s.settling = false }
     }
 
-    fun freeze(s: CampaignState, r: Evaluation) {
+    fun freeze(s: CampaignState, r: Evaluation, actionRound: Int? = null) {
+        s.resultActionRound = actionRound
         s.resultStars = r.stars
         s.resultWorker = r.worker
         s.resultPopulation = r.population
@@ -395,6 +396,6 @@ object CampaignRules {
         }
         s.incomeStreak = if (incomeOK) s.incomeStreak + 1 else 0
         s.stableStreak = if (stableOK) s.stableStreak + 1 else 0
-        actionSettled(game)
+        actionSettled(game, atRoundEnd = true)
     }
 }

@@ -23,6 +23,10 @@ class CampaignStore(private val files: UncivFiles) {
         if (!slot(level).exists()) null else requireNotNull(FileConversions.readJson(slot(level), GameInfo::class.java))
     }
 
+    /** Read only: never submit, resume, reconcile, or update permanent progress while sharing. */
+    fun shareResult(level: String, attempt: String, recent: Boolean = false): CampaignShareData? =
+        saved(level)?.campaign?.let { CampaignShareData.result(it, level, attempt, recent) }
+
     fun resume(level: String): GameInfo {
         val game = requireNotNull(saved(level))
         CampaignCatalog.requireCompatible(game)
@@ -120,7 +124,7 @@ class CampaignStore(private val files: UncivFiles) {
             val result = CampaignRules.evaluate(game)
             check(result.stars > 0) { "Complete the main objective before submitting." }
             val snapshot = game.clone()
-            CampaignRules.freeze(snapshot.campaign!!, result)
+            CampaignRules.freeze(snapshot.campaign!!, result, state.completedRounds + 1)
             // The frozen game is the recovery journal. Never expose a score before it is durable.
             write(snapshot)
             game.campaign = snapshot.campaign

@@ -11,6 +11,8 @@ interface IOSRuntimeFeatures {
     val secureMultiplayerPasswords: Boolean
     val oggAudioAvailable: Boolean
     val achievementsAvailable: Boolean
+    val campaignSharingAvailable: Boolean get() = false
+    fun showCampaignShare(data: com.unciv.logic.campaign.CampaignShareData) {}
     val endlessSharingAvailable: Boolean get() = false
     fun createCloudSaveSync(files: UncivFiles): CloudSaveSync
     fun createCampaignProgressSync(files: UncivFiles): com.unciv.logic.campaign.CampaignProgressSync =

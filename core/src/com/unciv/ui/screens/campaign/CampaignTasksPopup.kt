@@ -58,9 +58,10 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
             screen.campaignResultShown = true
             goals.add(bodyText(if (result.failed) "本次挑战失败" else "战役通关", goalsWidth,
                 if (result.failed) Theme.danger else Theme.gold, 23)).padBottom(6f).row()
-            val best = CampaignStore(screen.game.files).progress().bestStars["${d.id}:${d.scoringVersion}"] ?: 0
+            val best = runCatching { CampaignStore(screen.game.files).progress().bestStars["${d.id}:${d.scoringVersion}"] ?: 0 }.getOrNull()
             goals.add(bodyText(if (result.failed) result.failureReason else
-                "本次获得 [${state.resultStars}] 星 · 本版本最高 [${maxOf(best, state.resultStars)}] 星", goalsWidth, Theme.muted, 16))
+                if (best == null) "Latest attempt: [${state.resultStars}] / 3 stars" else
+                "本次获得 [${state.resultStars}] 星 · 本版本最高 [$best] 星", goalsWidth, Theme.muted, 16))
                 .padBottom(12f).row()
         }
         val met = listOf(result.main, result.worker, result.population)
@@ -87,6 +88,12 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         }
 
         val side = Table().apply { top(); defaults().left().growX().spaceBottom(8f) }
+        if (screen.game.campaignSharingAvailable && state.resultStars > 0 && !state.failed &&
+            runCatching { CampaignStore(screen.game.files).shareResult(d.id, state.attemptId) }.getOrNull() != null) {
+            side.add(boardButton("Share: [${"Battle report".tr()}]") {
+                showCampaignShare(screen) { CampaignStore(screen.game.files).shareResult(d.id, state.attemptId) }
+            }.apply { name = "ui-campaign-share-result" }).width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).row()
+        }
         if (!terminal) {
             val locations = d.areas.map { it.title to it.tiles.first() }.toMutableList()
             for ((i, tile) in d.targetTiles.withIndex()) {

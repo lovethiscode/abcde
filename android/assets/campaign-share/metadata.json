@@ -1,0 +1,223 @@
+[
+  {
+    "id": "civil-war-east",
+    "configVersion": 8,
+    "scoringVersion": 8,
+    "theme": "history",
+    "title": "美国南北战争·东部战场",
+    "objectives": [
+      "占领里士满，并保住华盛顿",
+      "在第 30 回合或之前通关",
+      "累计部队损失不超过 6 支"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-01",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "city",
+    "title": "第一座城",
+    "objectives": [
+      "在粮食候选区或产能候选区，任选一处建立首都",
+      "建城前，先探索两处候选区的所有地块",
+      "在第 4 个行动回合结束前建立首都"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-02",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "city",
+    "title": "城市开始运转",
+    "objectives": [
+      "通过城市生产，完成 1 座纪念碑和 1 名斥候",
+      "再生产 1 名工人，并让这名工人留在你的文明",
+      "让开局首都的人口达到 4"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-03",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "city",
+    "title": "开发土地",
+    "objectives": [
+      "派工人在指定的小麦地块建农场，在宝石地块建矿山",
+      "进入首都，安排市民同时在这两块地上工作",
+      "在首都周边，再选一块没有资源的地块建农场或矿山"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-04",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "city",
+    "title": "人口与产出",
+    "objectives": [
+      "让开局首都达到 3 人口，并拥有纪念碑",
+      "让开局首都的人口达到 4",
+      "让开局首都每回合产能达到 8，且粮食不减少"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-05",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "nation",
+    "title": "未知边境",
+    "objectives": [
+      "探索河谷发现点、矿脉发现点和扩张区的所有地块",
+      "找到德国，并与德国建立联系",
+      "再探索支线高地的所有地块"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-06",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "nation",
+    "title": "科技路线",
+    "objectives": [
+      "研究文字科技，并在开局首都建成图书馆",
+      "再研究畜牧业科技",
+      "让开局首都的人口达到 4"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-07",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "nation",
+    "title": "国库告急",
+    "objectives": [
+      "让每回合金币收入不再亏损，连续保持 3 个完整回合",
+      "在开局的两座城市中，各建成一座市场",
+      "存够 100 金币，并让每回合净收入达到 +3"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-08",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "nation",
+    "title": "第二座城",
+    "objectives": [
+      "在新城区域建城并连接首都，让幸福度连续 3 个完整回合不低于 0",
+      "在这座新城建成粮仓",
+      "保持两城连接，让净收入连续 3 个完整回合达到 +3"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-09",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "war",
+    "title": "组建军队",
+    "objectives": [
+      "生产并拥有 2 支近战、2 支远程部队，金币和每回合净收入都不低于 0",
+      "再生产 1 支近战部队，让自产近战部队达到 3 支",
+      "保有 2 支自产近战和 2 支自产远程，让净收入连续 3 个完整回合达到 +3"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-10",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "war",
+    "title": "第一次交锋",
+    "objectives": [
+      "在战斗中击败 3 支德国军事单位，或通过战斗消灭德国",
+      "让你的军事单位在本关战斗中零损失",
+      "分别用近战和远程部队，各击败至少 1 支德国军事单位"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-11",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "war",
+    "title": "河谷保卫战",
+    "objectives": [
+      "守住开局首都，直到第 20 轮所有电脑行动结束",
+      "结束时，让开局的 3 座城市都属于你",
+      "在本关战斗中，最多损失 2 支军事单位"
+    ],
+    "roundKind": "full"
+  },
+  {
+    "id": "foundation-12",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "war",
+    "title": "直取要塞",
+    "objectives": [
+      "最晚在第 25 个行动回合攻下目标要塞，选择傀儡或吞并",
+      "提前到第 15 个行动回合内完成占领",
+      "保住开局的两支攻城部队，一支也不能失去"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-13",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "victory",
+    "title": "战后的城市",
+    "objectives": [
+      "等占领城市停止抵抗后，让金币净收入和幸福度连续 3 个完整回合不低于 0",
+      "用道路把这座占领城市连接到首都",
+      "在这座占领城市建成市场"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-14",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "victory",
+    "title": "决定胜利目标",
+    "objectives": [
+      "通过战斗攻下指定的敌方首都，选择傀儡或吞并",
+      "生产至少 1 支攻城部队，并保有这支部队",
+      "在本关战斗中，最多损失 1 支军事单位"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-15",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "victory",
+    "title": "小国崛起",
+    "objectives": [
+      "控制所有文明的原始首都，取得征服胜利",
+      "在本关战斗中，最多损失 4 支军事单位",
+      "获胜时，最近连续 3 个完整回合的净收入和幸福度都不低于 0"
+    ],
+    "roundKind": "action"
+  },
+  {
+    "id": "foundation-16",
+    "configVersion": 1,
+    "scoringVersion": 1,
+    "theme": "victory",
+    "title": "文明的胜利",
+    "objectives": [
+      "控制所有文明的原始首都，取得征服胜利",
+      "最晚在第 100 个行动回合取得胜利",
+      "获胜时存够 200 金币，且最近连续 3 个完整回合的净收入和幸福度都不低于 0"
+    ],
+    "roundKind": "action"
+  }
+]

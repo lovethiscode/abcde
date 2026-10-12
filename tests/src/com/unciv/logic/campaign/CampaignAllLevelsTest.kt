@@ -111,15 +111,15 @@ class CampaignAllLevelsTest {
         tiles[0].setImprovement("Farm"); tiles[1].setImprovement("Mine")
         cap.workedTiles = HashSet(tiles.map { it.position })
         assertTrue(CampaignRules.evaluate(g).main); assertTrue(CampaignRules.evaluate(g).worker)
-        assertTrue(CampaignRules.evaluate(g).details[0].contains("小麦农场：已完成"))
-        assertTrue(CampaignRules.evaluate(g).details[0].contains("宝石矿山：已完成"))
+        assertTrue(CampaignRules.evaluate(g).details[0].contains("{小麦农场}: {已完成}"))
+        assertTrue(CampaignRules.evaluate(g).details[0].contains("{宝石矿山}: {已完成}"))
         tiles[1].setImprovement("Farm")
         assertFalse(CampaignRules.evaluate(g).main)
-        assertTrue(CampaignRules.evaluate(g).details[0].contains("宝石矿山：未建成"))
+        assertTrue(CampaignRules.evaluate(g).details[0].contains("{宝石矿山}: {未建成}"))
         tiles[1].setImprovement("Mine")
         tiles[1].improvementIsPillaged = true
         assertFalse(CampaignRules.evaluate(g).main)
-        assertTrue(CampaignRules.evaluate(g).details[0].contains("宝石矿山：已被劫掠，需修复"))
+        assertTrue(CampaignRules.evaluate(g).details[0].contains("{宝石矿山}: {已被劫掠，需修复}"))
         tiles[1].improvementIsPillaged = false
         cap.workedTiles.clear()
         assertFalse(CampaignRules.evaluate(g).worker)
@@ -217,6 +217,7 @@ class CampaignAllLevelsTest {
         val g = game(11)
         round(g,19); assertEquals(0,g.campaign!!.resultStars)
         round(g,20); assertTrue(g.campaign!!.resultStars > 0)
+        assertEquals(20, CampaignShareData.result(g.campaign!!, g.campaign!!.definition.id, g.campaign!!.attemptId)!!.rounds)
         val turns = g.turns; g.nextTurn(); assertEquals(turns,g.turns)
         val lost = game(11); val p = lost.getCurrentPlayerCivilization(); val enemy = lost.civilizations.first { !it.isHuman() }
         p.getCapital()!!.moveToCiv(enemy)
@@ -236,6 +237,7 @@ class CampaignAllLevelsTest {
         assertEquals(0,s.resultStars)
         fort.isBeingRazed = false; CampaignRules.actionSettled(g)
         assertEquals(3,s.resultStars)
+        assertEquals(15, s.resultActionRound)
         val failure = game(12); round(failure,25)
         assertTrue(failure.campaign!!.failed)
         val loss = game(12); val unit = loss.getCurrentPlayerCivilization().units.getCivUnits().first { it.id in loss.campaign!!.protectedUnits }
@@ -272,6 +274,24 @@ class CampaignAllLevelsTest {
         }
     }
 
+    @Test fun `victory sharing freezes player action and full round boundaries separately`() {
+        for (n in listOf(15, 16)) for (atRoundEnd in listOf(false, true)) {
+            val g = game(n); val p = g.getCurrentPlayerCivilization(); val s = g.campaign!!
+            s.completedRounds = 7; s.lastSampleTurn = 7; s.actionDepth++
+            if (n == 16) for ((i, c) in g.civilizations.withIndex())
+                c.addCity(listOf(HexCoord(-6,-2), HexCoord(5,-2), HexCoord(3,6))[i])
+            for (c in g.getCities().filter { it.isOriginalCapital && it.civ != p }.toList()) c.puppetCity(p)
+            s.actionDepth--
+            if (atRoundEnd) round(g, 8) else CampaignRules.actionSettled(g)
+            assertNotNull(g.victoryData)
+            assertEquals(8, s.resultActionRound)
+            val store = CampaignStore(UncivFiles(Gdx.files, temporary.newFolder("round-$n-$atRoundEnd").path))
+            store.save(g)
+            assertEquals(8, store.shareResult(s.definition.id, s.attemptId)!!.rounds)
+            assertEquals(if (atRoundEnd) 8 else 7, s.completedRounds)
+        }
+    }
+
     @Test fun `real AI turns load and advance every authored opponent scene`() {
         for (n in listOf(5,10,11,12,13,14,15,16)) {
             val g = game(n)
@@ -292,6 +312,7 @@ class CampaignAllLevelsTest {
         assertTrue(s.protectedUnitLost)
         capture(g,"enemy-fort"); CampaignRules.actionSettled(g)
         assertEquals(1,s.resultStars)
+        assertEquals(25, s.resultActionRound)
         val destroyed = game(12)
         destroyed.getCities().first { it.id == "enemy-fort" }.destroyCity(overrideSafeties=true)
         CampaignRules.actionSettled(destroyed)

@@ -46,6 +46,8 @@ class IOSGame @JvmOverloads constructor(
 
     override val voluntarySupportAvailable get() = runtimeFeatures.voluntarySupportAvailable
     override val achievementsAvailable get() = runtimeFeatures.achievementsAvailable
+    override val campaignSharingAvailable get() = runtimeFeatures.campaignSharingAvailable
+    override fun showCampaignShare(data: com.unciv.logic.campaign.CampaignShareData) = runtimeFeatures.showCampaignShare(data)
     override val endlessSharingAvailable get() = runtimeFeatures.endlessSharingAvailable
     override val multiplayerLobbyServerUrl get() = runtimeFeatures.multiplayerLobbyServerUrl
     override fun showAchievements() = runtimeFeatures.showAchievements()
