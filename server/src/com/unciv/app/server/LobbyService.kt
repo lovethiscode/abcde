@@ -119,20 +119,28 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         }
         fail("Room is busy. Please retry.")
     }
-    private fun expire(room: LobbyRoom) {
+    private fun lastSeen(seat: LobbySeat, presence: Map<Pair<String,String>,Long>) =
+        maxOf(seat.lastSeen, presence[seat.playerId to seat.occupancy] ?: 0L)
+    private fun recordPresence(room: LobbyRoom, presence: Map<Pair<String,String>,Long>) {
+        if (room.state !in listOf("WAITING","STARTING")) return
+        room.seats.filter { !it.manual && it.playerId.isNotEmpty() }.forEach { it.lastSeen = lastSeen(it,presence) }
+    }
+    private fun expire(room: LobbyRoom, presence: Map<Pair<String,String>,Long> = emptyMap()) {
         if (room.state == "WAITING") {
             val host = room.seats.first { it.playerId == room.hostId }
-            if (clock() - host.lastSeen >= 30 * 60_000) { room.state = "CLOSED"; room.reason = "Host timed out"; return }
-            room.seats.filter { it.human && !it.manual && it.playerId.isNotEmpty() && it.playerId != room.hostId && clock() - it.lastSeen >= 5 * 60_000 }
+            if (clock() - lastSeen(host,presence) >= 30 * 60_000) { room.state = "CLOSED"; room.reason = "Host timed out"; return }
+            room.seats.filter { it.human && !it.manual && it.playerId.isNotEmpty() && it.playerId != room.hostId && clock() - lastSeen(it,presence) >= 5 * 60_000 }
                 .forEach { clear(it) }
         } else if (room.state == "STARTING") {
             val host = room.seats.first { it.playerId == room.hostId }
-            if (clock() - host.lastSeen >= 30 * 60_000) {
+            if (clock() - lastSeen(host,presence) >= 30 * 60_000) {
                 if (room.saveHash.isEmpty()) { room.state = "CLOSED"; room.reason = "Start timed out before upload was registered" }
             }
         }
     }
-    fun maintain(id: String): LobbyRoom = mutate(id) { expire(it) }
+    fun maintain(id: String, presence: Map<Pair<String,String>,Long> = emptyMap()): LobbyRoom = mutate(id) {
+        recordPresence(it,presence); expire(it)
+    }
     fun dueRooms(limit: Int = 100): List<String> = listOf("WAITING","STARTING").flatMap { state ->
         rooms.find(and(eq("state", state),lte("nextMaintenanceAt", clock()))).limit(limit).map { it.getString("_id") }.toList()
     }
@@ -157,9 +165,12 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
             r.maintenanceDelayMillis = (r.maintenanceDelayMillis * 2).coerceAtMost(10 * 60_000L)
         }
     }
-    fun disconnected(id: String, player: String, occupancy: String): LobbyRoom = mutate(id) { r ->
-        if (r.state == "WAITING") r.seats.firstOrNull { !it.manual && it.playerId == player && it.occupancy == occupancy && player != r.hostId }
-            ?.let { if (it.ready) { it.ready = false; it.revision++ } }
+    fun disconnected(id: String, player: String, occupancy: String, lastSignal: Long? = null): LobbyRoom = mutate(id) { r ->
+        if (r.state in listOf("WAITING","STARTING"))
+            r.seats.firstOrNull { !it.manual && it.playerId == player && it.occupancy == occupancy }?.let {
+                if (lastSignal != null) it.lastSeen = maxOf(it.lastSeen,lastSignal)
+                if (r.state == "WAITING" && player != r.hostId && it.ready) { it.ready = false; it.revision++ }
+            }
     }
     private fun syncSeats(r: LobbyRoom) {
         val setup = JsonReader().parse(r.setup)
@@ -226,9 +237,10 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         next.forEach { checkCiv(r,it,it.civilization) }
         r.configurationVersion++
     }
-    fun command(id: String, verb: String, c: LobbyCommand, verifiedSave: Boolean? = null): LobbyRoom {
+    fun command(id: String, verb: String, c: LobbyCommand, verifiedSave: Boolean? = null,
+                presence: Map<Pair<String,String>,Long> = emptyMap()): LobbyRoom {
         // Persist expiry before rejecting the requested action.
-        mutate(id) { expire(it) }
+        mutate(id) { expire(it,presence) }
         val verified = if (verb == "complete" && verifiedSave == null) {
             val r = completionRoom(id,c)
             r.state == "STARTED" || verifyStart(r)
@@ -236,7 +248,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         return mutate(id) { r ->
             when (verb) {
                 "configuration" -> updateConfiguration(r,c)
-                "resume", "heartbeat" -> if (r.state != "CLOSED") member(r,c).lastSeen = clock()
+                "resume" -> if (r.state != "CLOSED") member(r,c).lastSeen = clock()
                 "recoverJoin" -> {
                     checkRules(c)
                     if (c.gameServerUrl != r.gameServerUrl) fail("The invitation game server differs from this room.",400)
@@ -347,6 +359,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                 }
                 else -> fail("Unknown room operation",400)
             }
+            recordPresence(r,presence)
             if (r.state != "CLOSED") r.seats.firstOrNull { it.playerId == c.playerId && it.occupancy == c.occupancy }?.lastSeen = clock()
         }
     }

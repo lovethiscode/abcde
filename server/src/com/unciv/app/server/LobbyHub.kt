@@ -20,7 +20,7 @@ class LobbyPeer(private val deliver: (LobbyMessage) -> Boolean, private val disc
 
 class LobbyHub(private val service: LobbyService, private val clock: () -> Long = System::currentTimeMillis,
                private val checkTimeoutMillis: Long = 3_000L) : AutoCloseable {
-    private class RoomState {
+    private class RoomState(var lastPresencePersisted: Long) {
         val mutex = Mutex()
         val peers = linkedMapOf<String, LobbyPeer>()
         var references = 0
@@ -40,7 +40,7 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
     override fun close() { maintenanceScope.cancel(); states.values.flatMap { it.peers.values }.forEach { it.stop() } }
 
     private suspend fun <T> inRoom(id: String, action: suspend (RoomState) -> T): T {
-        val state = states.compute(id) { _, old -> (old ?: RoomState()).also { it.references++ } }!!
+        val state = states.compute(id) { _, old -> (old ?: RoomState(clock())).also { it.references++ } }!!
         try { return state.mutex.withLock { action(state) } }
         finally {
             states.computeIfPresent(id) { _, current ->
@@ -50,6 +50,7 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
         }
     }
     private fun identity(player: String, occupancy: String) = "$player:$occupancy"
+    private fun presence(state: RoomState) = state.peers.values.associate { (it.playerId to it.occupancy) to it.lastSignal }
     private fun active(state: RoomState, peer: LobbyPeer) = state.peers[identity(peer.playerId, peer.occupancy)] === peer
     private fun requireActive(state: RoomState, peer: LobbyPeer, request: LobbyMessage) {
         val c = request.command!!
@@ -86,14 +87,13 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
         val seat = room.seats.firstOrNull { it.playerId == c.playerId } ?: throw LobbyFailure(410,"You have left this room or were removed. Open the invitation to rejoin.")
         val key = identity(seat.playerId, seat.occupancy)
         if (state.peers[key] !== peer) {
-            state.peers.remove(key)?.let { old ->
-                old.send(LobbyMessage().apply { type = "terminated"; code = "CONNECTION_REPLACED"; message = "This room connection was replaced. Reopen the room to continue." })
-            }
-            service.disconnected(room.gameId, seat.playerId, seat.occupancy)
+            val old = state.peers.remove(key)
+            old?.send(LobbyMessage().apply { type = "terminated"; code = "CONNECTION_REPLACED"; message = "This room connection was replaced. Reopen the room to continue." })
+            service.disconnected(room.gameId, seat.playerId, seat.occupancy,old?.lastSignal)
         }
         peer.gameId = room.gameId; peer.playerId = seat.playerId; peer.occupancy = seat.occupancy; peer.lastSignal = clock()
         state.peers[key] = peer
-        return service.command(room.gameId,"resume",LobbyCommand().apply { playerId = peer.playerId; occupancy = peer.occupancy })
+        return service.command(room.gameId,"resume",LobbyCommand().apply { playerId = peer.playerId; occupancy = peer.occupancy },presence = presence(state))
     }
     private fun result(peer: LobbyPeer, request: LobbyMessage, room: LobbyRoom) = peer.send(LobbyMessage().apply {
         type = "result"; requestId = request.requestId; gameId = room.gameId; this.room = LobbyProtocol.snapshot(room)
@@ -118,13 +118,18 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
             if (peer.gameId.isNotEmpty() && (peer.gameId != id || peer.playerId != c.playerId))
                 throw LobbyFailure(409,"Leave the current waiting room before joining another.")
             when (request.action) {
+                "heartbeat" -> inRoom(id) { state ->
+                    requireActive(state,peer,request)
+                    peer.lastSignal = clock()
+                    peer.send(LobbyMessage().apply { type = "pong"; requestId = request.requestId })
+                }
                 "start" -> result(peer,request,start(peer,request))
                 "complete" -> {
                     val frozen = inRoom(id) { state -> requireActive(state,peer,request); service.completionRoom(id,c) }
                     val verified = frozen.state == "STARTED" || withContext(Dispatchers.IO) { service.verifyStart(frozen) }
                     inRoom(id) { state ->
                         requireActive(state,peer,request)
-                        val room = service.command(id,"complete",c,verified)
+                        val room = service.command(id,"complete",c,verified,presence(state))
                         result(peer,request,room); publish(state,room)
                     }
                 }
@@ -134,12 +139,11 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
                             if (peer.gameId.isNotEmpty() && !active(state,peer))
                                 throw LobbyFailure(410,"You have left this room or were removed. Open the invitation to rejoin.")
                             if (request.action !in setOf("join", "recoverJoin", "resume")) requireActive(state,peer,request)
-                            service.command(id,request.action,c)
+                            service.command(id,request.action,c,presence = presence(state))
                         }
                     val bound = if (request.action in setOf("create", "join", "recoverJoin", "resume") && room.state != "CLOSED") bind(state,peer,room,c) else room
                     peer.lastSignal = clock()
-                    if (request.action == "heartbeat") peer.send(LobbyMessage().apply { type = "pong"; requestId = request.requestId })
-                    else result(peer,request,bound)
+                    result(peer,request,bound)
                     publish(state,bound)
                 }
             }
@@ -173,11 +177,11 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
         var existing: LobbyRoom? = null
         val prepared = inRoom(request.gameId) { state ->
             requireActive(state,peer,request)
-            val room = service.maintain(request.gameId)
+            val room = service.maintain(request.gameId,presence(state))
             publish(state,room)
             if (room.hostId != peer.playerId) throw LobbyFailure(403,"Only the host can do this")
             if (room.state in listOf("STARTING","STARTED")) {
-                existing = service.command(room.gameId,"start",request.command!!)
+                existing = service.command(room.gameId,"start",request.command!!,presence = presence(state))
                 return@inRoom null
             }
             if (room.state != "WAITING" || room.seats.any { it.human && (it.playerId.isEmpty() || !it.ready) })
@@ -200,7 +204,7 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
                 inRoom(request.gameId) { state ->
                     for ((target,reply) in round.replies) if (!reply.isCompleted && active(state,target)) {
                         state.peers.remove(identity(target.playerId,target.occupancy))
-                        service.disconnected(target.gameId,target.playerId,target.occupancy); target.stop()
+                        service.disconnected(target.gameId,target.playerId,target.occupancy,target.lastSignal); target.stop()
                     }
                     publish(state,service.find(request.gameId)!!)
                 }
@@ -208,10 +212,10 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
             }
             val frozen = inRoom(request.gameId) { state ->
                 requireActive(state,peer,request)
-                val latest = service.maintain(request.gameId)
+                val latest = service.maintain(request.gameId,presence(state))
                 if (!sameStart(round.room,latest) || round.peers.any { !active(state,it) })
                     throw LobbyFailure(409,"Room settings changed. Refresh and retry.")
-                val room = service.command(request.gameId,"start",request.command!!)
+                val room = service.command(request.gameId,"start",request.command!!,presence = presence(state))
                 publish(state,room)
                 room
             }
@@ -225,7 +229,7 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
         inRoom(peer.gameId) { state ->
             if (!active(state,peer)) return@inRoom
             state.peers.remove(identity(peer.playerId,peer.occupancy))
-            publish(state,service.disconnected(peer.gameId,peer.playerId,peer.occupancy))
+            publish(state,service.disconnected(peer.gameId,peer.playerId,peer.occupancy,peer.lastSignal))
         }
     }
     suspend fun maintain() {
@@ -233,11 +237,20 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
             val dead = state.peers.values.filter { clock() - it.lastSignal >= LobbyProtocol.CONNECTION_TIMEOUT_MILLIS }
             for (peer in dead) {
                 state.peers.remove(identity(peer.playerId,peer.occupancy))
-                publish(state,service.disconnected(id,peer.playerId,peer.occupancy)); peer.stop()
+                publish(state,service.disconnected(id,peer.playerId,peer.occupancy,peer.lastSignal)); peer.stop()
+            }
+            if (state.peers.isNotEmpty() && clock() - state.lastPresencePersisted >= 60_000L) {
+                try {
+                    publish(state,service.maintain(id,presence(state)))
+                    state.lastPresencePersisted = clock()
+                } catch (e: Exception) {
+                    state.peers.values.toList().forEach { it.stop() }
+                    throw e
+                }
             }
         }
         for (id in service.dueRooms()) {
-            val room = inRoom(id) { state -> service.maintain(id).also { publish(state,it) } }
+            val room = inRoom(id) { state -> service.maintain(id,presence(state)).also { publish(state,it) } }
             if (room.state == "STARTING" && room.saveHash.isNotEmpty() && verifying.add(id)) {
                 if (!verificationSlots.tryAcquire()) { verifying.remove(id); continue }
                 maintenanceScope.launch {

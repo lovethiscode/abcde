@@ -10,7 +10,9 @@ sourceSets {
         java.srcDir("src/")
         java.srcDir("../core/src/com/unciv/logic/multiplayer/lobby/protocol")
         resources.srcDir("../android/assets")
+        resources.srcDir("resources")
         resources.include("jsons/Civ V - Vanilla/*.json", "jsons/Civ V - Gods & Kings/*.json")
+        resources.include("logback.xml")
     }
 }
 

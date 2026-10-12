@@ -182,6 +182,100 @@ class LobbyHubTest {
         assertEquals(0,hub.activeRoomCount)
         assertNotNull(service.find(room.gameId))
     }
+    @Test fun heartbeatsAreBatchedOncePerRoomWithoutChangingReadyOrBroadcasting() = runBlocking {
+        val room = create(); val h = connect(room,host)
+        val guest = UUID.randomUUID().toString(); val g = connect(room,guest,true); ready(g)
+        val before = service.find(room.gameId)!!
+        val offsets = listOf(h,g).associateWith { it.history.size }
+        repeat(6) { tick ->
+            now += 10_000L
+            for (peer in listOf(h,g)) {
+                val m = message(before,peer.socket.playerId,"heartbeat")
+                hub.handle(peer.socket,m)
+                assertEquals("pong",peer.history.last { it.requestId == m.requestId }.type)
+            }
+            assertEquals(before.version,service.find(room.gameId)!!.version)
+            if (tick == 2) hub.maintain()
+        }
+        hub.maintain()
+        val persisted = service.find(room.gameId)!!
+        assertEquals(before.version + 1,persisted.version)
+        assertTrue(persisted.seats.all { it.lastSeen == now && it.ready })
+        assertTrue(listOf(h,g).all { peer -> peer.history.drop(offsets.getValue(peer)).all { it.type == "pong" } })
+        hub.maintain()
+        assertEquals(persisted.version,service.find(room.gameId)!!.version)
+    }
+    @Test fun disconnectPersistsBufferedTimeAndKeepsTheFullGuestRetentionPeriod() = runBlocking {
+        val room = create(); connect(room,host)
+        val guest = UUID.randomUUID().toString(); val g = connect(room,guest,true); ready(g)
+        val before = service.find(room.gameId)!!
+        now += 50_000L
+        hub.handle(g.socket,message(before,guest,"heartbeat"))
+        assertEquals(before.version,service.find(room.gameId)!!.version)
+        val lastSignal = now
+        hub.detach(g.socket)
+        val detached = service.find(room.gameId)!!
+        assertEquals(lastSignal,detached.seats[1].lastSeen)
+        assertFalse(detached.seats[1].ready)
+        now += 5 * 60_000L - 1
+        assertEquals(guest,service.maintain(room.gameId).seats[1].playerId)
+        now++
+        assertEquals("",service.maintain(room.gameId).seats[1].playerId)
+    }
+    @Test fun connectionTimeoutUsesLastSignalInsteadOfExtendingRetentionToDetectionTime() = runBlocking {
+        val room = create(); connect(room,host)
+        val guest = UUID.randomUUID().toString(); val g = connect(room,guest,true); ready(g)
+        now += 20_000L
+        hub.handle(g.socket,message(service.find(room.gameId)!!,guest,"heartbeat"))
+        val lastSignal = now
+        now += 30_000L
+        hub.maintain()
+        val disconnected = service.find(room.gameId)!!
+        assertTrue(g.stopped)
+        assertFalse(disconnected.seats[1].ready)
+        assertEquals(lastSignal,disconnected.seats[1].lastSeen)
+    }
+    @Test fun failedPresenceCheckpointClosesAffectedConnectionsWithoutPublishingSuccess() = runBlocking {
+        val room = create(); val h = connect(room,host)
+        val guest = UUID.randomUUID().toString(); val g = connect(room,guest,true); ready(g)
+        val before = service.find(room.gameId)!!
+        now += 60_000L
+        for (peer in listOf(h,g)) hub.handle(peer.socket,message(before,peer.socket.playerId,"heartbeat"))
+        MongoClients.create(uri).use { mongo ->
+            mongo.getDatabase(database).runCommand(org.bson.Document("collMod","lobbies")
+                .append("validator",org.bson.Document("missingTestField",org.bson.Document("$" + "exists",true))))
+        }
+        assertTrue(runCatching { hub.maintain() }.isFailure)
+        assertEquals(before.version,service.find(room.gameId)!!.version)
+        assertTrue(h.stopped); assertTrue(g.stopped)
+    }
+    @Test fun commandsUseLivePresenceWhenTheCheckpointIsDelayed() = runBlocking {
+        val room = create(); val h = connect(room,host)
+        val guest = UUID.randomUUID().toString(); val g = connect(room,guest,true)
+        val before = service.find(room.gameId)!!
+        repeat(31) {
+            now += 10_000L
+            for (peer in listOf(h,g)) hub.handle(peer.socket,message(before,peer.socket.playerId,"heartbeat"))
+        }
+        assertEquals(before.version,service.find(room.gameId)!!.version)
+        val selected = issue(g,message(before,guest,"civilization").apply { command!!.seatId = 1; command!!.civilization = "Rome" })
+        assertEquals("",selected.code)
+        assertEquals(guest,selected.room!!.seats[1].playerId)
+        assertTrue(selected.room!!.seats.all { it.lastSeen == now })
+    }
+    @Test fun restartDoesNotRenewBufferedPresenceOrKeepGuestReady() = runBlocking {
+        val room = create(); val h = connect(room,host)
+        val guest = UUID.randomUUID().toString(); val g = connect(room,guest,true); ready(g)
+        val before = service.find(room.gameId)!!
+        now += 50_000L
+        for (peer in listOf(h,g)) hub.handle(peer.socket,message(before,peer.socket.playerId,"heartbeat"))
+        hub.close(); service.close()
+        service = LobbyService(uri,database,saves,{ null }) { now }; hub = LobbyHub(service,{ now },1_000)
+        val restored = service.find(room.gameId)!!
+        assertEquals(before.seats.map { it.lastSeen },restored.seats.map { it.lastSeen })
+        assertFalse(restored.seats[1].ready)
+        assertTrue(restored.seats[0].ready)
+    }
     @Test fun probeWaitReleasesRoomLockAndConfigurationChangePreventsLateFreeze() = runBlocking {
         val room = create(); val h = connect(room,host)
         val guest = UUID.randomUUID().toString(); val g = connect(room,guest,true); ready(g)
