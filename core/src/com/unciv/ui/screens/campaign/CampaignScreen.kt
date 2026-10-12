@@ -75,7 +75,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         sync.requestSync()
     }
 
-    private fun rebuild() {
+    private fun rebuild(recoverResults: Boolean = true) {
         val mapScrollY = if (renderedChapter == chapter) mapScrollPane?.scrollY ?: 0f else 0f
         val detailScrollY = if (renderedChapter == chapter) detailScrollPane?.scrollY ?: 0f else 0f
         historicalScrollPane?.let { historicalScrollY = it.scrollY }
@@ -128,7 +128,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 .height(maxOf(58f, UiNavigation.minimumTouchSize() + 8f)).pad(0f, 10f, 4f, 10f).row()
         }
         try {
-            (definitions + historicalDefinitions).forEach { definition ->
+            if (recoverResults) (definitions + historicalDefinitions).forEach { definition ->
                 runCatching { store.saved(definition.id)?.let(store::reconcile) }
                     .onFailure { com.unciv.utils.Log.error("Cannot recover campaign progress", it) }
             }
@@ -272,7 +272,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         name = id
         label.wrap = true
         label.setFontSize(17)
-        onActivation { showCampaignShare(this@CampaignScreen, snapshot) }
+        onActivation { showCampaignShare(this@CampaignScreen, { rebuild(recoverResults = false) }, snapshot) }
     }
 
     private fun overview(content: Table) {
@@ -533,8 +533,11 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             add(primaryButton(if (saved == null) "Start campaign" else "Restart campaign").apply {
                 name = "ui-campaign-start"
                 onActivation {
-                    if (unfinished) ConfirmPopup(this@CampaignScreen,
-                        "Replace this level's unfinished attempt? Your best result will be kept.", "Restart campaign") {
+                    if (saved != null) ConfirmPopup(this@CampaignScreen,
+                        if (unfinished) "Replace this level's unfinished attempt? Your best result will be kept."
+                        else "Restart campaign".tr() + "?\n" + "Latest attempt: [${saved.campaign!!.resultStars}] / 3 stars".tr() +
+                            "\n" + (if (progressReadable) "最高成绩：[${store.stars(d, progress)}] / 3 星" else "Campaign progress unavailable").tr(),
+                        "Restart campaign") {
                         enter(d.id, true, saved!!.campaign!!.attemptId)
                     }.open()
                     else enter(d.id, true, saved?.campaign?.attemptId)
