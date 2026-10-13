@@ -39,7 +39,6 @@ class OptionsPopup(
     internal val useSidebar = ExpeditionBlueTheme.enabled
     private val navigation = Table()
     private val navigationButtons = ArrayList<IconTextButton>()
-    private val pageTitle = "".toLabel(ExpeditionBlueTheme.text, 26).apply { wrap = true }
     private val pageDescription = "".toLabel(ExpeditionBlueTheme.muted, 15).apply { wrap = true }
     private var frameHeight = 0f
     private lateinit var headerCell: Cell<Table>
@@ -114,7 +113,7 @@ class OptionsPopup(
                 }
                 onClick { close() }
             }).padRight(14f)
-            add("Options".toLabel(ExpeditionBlueTheme.text, 24)).left().growX()
+            add().growX()
         }
         headerCell = add(header).colspan(3).growX()
         headerCell.row()
@@ -141,8 +140,7 @@ class OptionsPopup(
             setOverscroll(false, false)
         }
         heading = Table().apply {
-            add(pageTitle).minWidth(0f).left().pad(10f, 22f, 2f, 12f).growX().row()
-            add(pageDescription).minWidth(0f).left().pad(0f, 22f, 4f, 12f).growX().row()
+            add(pageDescription).minWidth(0f).left().pad(10f, 22f, 4f, 12f).growX().row()
         }
         val content = Table().apply {
             headingCell = add(heading).growX()
@@ -153,12 +151,10 @@ class OptionsPopup(
         add(com.badlogic.gdx.scenes.scene2d.ui.Image(BaseScreen.skin.newDrawable("Rectangle",
             ExpeditionBlueTheme.border.cpy().apply { a = 0.35f }))).width(1f).growY().padTop(10f).padBottom(12f)
         add(content).grow().row()
-        pageTitle.width = tabs.prefWidth - 44f
         pageDescription.width = tabs.prefWidth - 44f
         frameHeight = header.prefHeight + heading.prefHeight
         tabs.resizePageArea(tabs.prefWidth, (stageToShowOn.height - frameHeight).coerceAtLeast(80f))
-        tabs.onSelection { index, caption, _ ->
-            pageTitle.setText(caption.tr())
+        tabs.onSelection { index, _, _ ->
             pageDescription.setText(visiblePages[index].description.tr())
             navigationButtons.forEachIndexed { i, button ->
                 button.isChecked = i == index
@@ -179,7 +175,6 @@ class OptionsPopup(
         val editing = visibleArea.height < stageToShowOn.height * 0.65f
         headingCell.setActor(if (editing) null else heading)
         val contentWidth = stageToShowOn.width - sidebarWidth - 1f
-        pageTitle.width = contentWidth - 44f
         pageDescription.width = contentWidth - 44f
         heading.invalidateHierarchy()
         val headingHeight = if (editing) 0f else heading.prefHeight
