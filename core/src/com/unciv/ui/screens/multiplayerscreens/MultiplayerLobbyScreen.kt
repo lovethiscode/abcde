@@ -415,7 +415,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             val columns = if (!UiNavigation.isIos && cardsWidth >= 640f) 2 else 1
             val cardWidth = (cardsWidth - (columns - 1) * 12f) / columns
             for ((index,s) in r.seats.withIndex()) {
-                grid.add(if (UiNavigation.isIos) compactPlayerRow(r,s,own,cardWidth) else playerCard(r,s,own,cardWidth)).width(cardWidth).growY().padBottom(12f)
+                grid.add(if (UiNavigation.isIos) compactPlayerRow(r,s,own,cardWidth) else playerCard(r,s,own,cardWidth)).width(cardWidth).growY().padBottom(if (UiNavigation.isIos) 8f else 12f)
                     .padRight(if (index % columns == 0 && columns == 2) 12f else 0f)
                 if (index % columns == columns-1) grid.row()
             }
@@ -522,11 +522,15 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         } else {
             val roster = Table().apply {
                 top()
-                add(playersHeading).growX().row()
                 add(Table().apply {
-                    add(inviteButton).width(((if (portrait) width else cardsWidth) - 10f) / 2f).minHeight(44f).padRight(10f)
-                    add(copyInvitationButton).width(((if (portrait) width else cardsWidth) - 10f) / 2f).minHeight(44f)
-                }).left().padBottom(14f).row()
+                    add(playersHeading).growX().left()
+                    if (portrait) row()
+                    val inviteWidth = if (portrait) width else cardsWidth * 0.55f
+                    add(Table().apply {
+                        add(inviteButton).width((inviteWidth - 10f) / 2f).minHeight(44f).padRight(10f)
+                        add(copyInvitationButton).width((inviteWidth - 10f) / 2f).minHeight(44f)
+                    }).width(inviteWidth).right().padBottom(10f)
+                }).growX().row()
                 if (portrait) add(players).growX().top()
                 else {
                     playersScroll.actor = players
@@ -538,14 +542,14 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 val innerWidth = summaryWidth - 36f
                 defaults().width(innerWidth).left()
                 add("Room rules".toLabel(fontSize = 24)).padBottom(12f).row()
-                add(mapSettings!!.createOverviewPreview(innerWidth, 130f)).padBottom(10f).row()
-                add(GameSetupOverview.summaryRow("World", GameSetupOverview.mapDescription(gameSetupInfo)) {
+                add(mapSettings!!.createOverviewPreview(innerWidth, 80f)).padBottom(8f).row()
+                add(GameSetupOverview.summaryRow("World", GameSetupOverview.mapDescription(gameSetupInfo), compact = true) {
                     selectSetupSection(GameSetupSection.World)
                 }).row()
-                add(GameSetupOverview.summaryRow("Game pace", "${gameSetupInfo.gameParameters.difficulty.tr()} · ${gameSetupInfo.gameParameters.speed.tr()}") {
+                add(GameSetupOverview.summaryRow("Game pace", "${gameSetupInfo.gameParameters.difficulty.tr()} · ${gameSetupInfo.gameParameters.speed.tr()}", compact = true) {
                     selectSetupSection(GameSetupSection.Rules)
                 }).row()
-                add(GameSetupOverview.summaryRow("Victory Conditions", GameSetupOverview.victoryDescription(gameSetupInfo)) {
+                add(GameSetupOverview.summaryRow("Victory Conditions", GameSetupOverview.victoryDescription(gameSetupInfo), compact = true) {
                     selectSetupSection(GameSetupSection.Rules)
                 })
             }
@@ -578,7 +582,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             else -> "Player [${s.seatId + 1}]"
         }
         return GameSetupOverview.card().apply {
-            pad(12f)
+            pad(10f)
             add("${s.seatId + 1}".toLabel(Color.LIGHT_GRAY, 16)).width(24f).padRight(8f)
             val nation = ruleset.nations[s.civilization]
             val portrait = if (nation == null) ImageGetter.getRandomNationPortrait(38f)

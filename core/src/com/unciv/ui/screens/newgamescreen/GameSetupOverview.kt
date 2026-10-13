@@ -84,10 +84,10 @@ object GameSetupOverview {
         add(subtitle.toLabel(muted, 18).apply { setWrap(true) }).minWidth(0f).growX().left().padTop(6f)
     }
 
-    fun summaryRow(title: String, value: String, action: (() -> Unit)? = null) = Table().apply {
+    fun summaryRow(title: String, value: String, compact: Boolean = false, action: (() -> Unit)? = null) = Table().apply {
         val labels = Table().apply {
-            add(title.toLabel(muted, 16).apply { setWrap(true) }).minWidth(0f).growX().left().row()
-            add(value.toLabel(fontSize = 20, hideIcons = true).apply { setWrap(true) })
+            add(title.toLabel(muted, if (compact) 14 else 16).apply { setWrap(true) }).minWidth(0f).growX().left().row()
+            add(value.toLabel(fontSize = if (compact) 18 else 20, hideIcons = true).apply { setWrap(true) })
                 .minWidth(0f).growX().left().padTop(4f)
         }
         add(labels).minWidth(0f).growX().left()
@@ -95,17 +95,17 @@ object GameSetupOverview {
             add("›".toLabel(accent, 26)).padLeft(12f)
             onClick { action() }
         }
-        pad(10f, 0f, 10f, 0f)
+        pad(if (compact) 6f else 10f, 0f, if (compact) 6f else 10f, 0f)
     }
 
     fun rulesSummary(setup: GameSetupInfo, width: Float, edit: ((GameSetupSection) -> Unit)? = null) = card().apply {
         val parameters = setup.gameParameters
         defaults().width(width - 36f).growX().left()
-        add(summaryRow("Map Options", mapDescription(setup), edit?.let { { it(GameSetupSection.World) } })).row()
+        add(summaryRow("Map Options", mapDescription(setup), action = edit?.let { { it(GameSetupSection.World) } })).row()
         add(summaryRow("Game pace", "${parameters.difficulty.tr()} · ${parameters.speed.tr()}",
-            edit?.let { { it(GameSetupSection.Rules) } })).row()
-        add(summaryRow("Victory Conditions", victoryDescription(setup), edit?.let { { it(GameSetupSection.Rules) } })).row()
-        add(summaryRow("Base Ruleset", parameters.baseRuleset.tr(), edit?.let { { it(GameSetupSection.Rules) } }))
+            action = edit?.let { { it(GameSetupSection.Rules) } })).row()
+        add(summaryRow("Victory Conditions", victoryDescription(setup), action = edit?.let { { it(GameSetupSection.Rules) } })).row()
+        add(summaryRow("Base Ruleset", parameters.baseRuleset.tr(), action = edit?.let { { it(GameSetupSection.Rules) } }))
     }
 
     fun mapDescription(setup: GameSetupInfo): String {

@@ -225,25 +225,25 @@ class MapParametersTable(
         val previewCard = GameSetupOverview.card().apply {
             add("Example map".toLabel(fontSize = 24)).left().padBottom(14f).row()
             roomPreview = Table()
-            add(roomPreview).width(previewWidth - 36f).height(if (stacked) 210f else 280f).row()
-        }
-        val options = GameSetupOverview.card().apply {
-            val innerWidth = optionsWidth - 36f
-            val fieldWidth = (innerWidth - 14f) / 2f
-            defaults().left().padBottom(18f)
+            add(roomPreview).width(previewWidth - 36f).height(190f).padBottom(12f).row()
             add(Table().apply {
                 for ((index, type) in listOf(MapType.pangaea, MapType.twoContinents, MapType.archipelago).withIndex()) {
                     add(GameSetupOverview.choice(type, mapParameters.type == type).apply {
                         onClick { mapTypeSelectBox.setSelected(type) }
-                    }).width((innerWidth - 16f) / 3f).minHeight(54f).padRight(if (index == 2) 0f else 8f)
+                    }).width((previewWidth - 52f) / 3f).minHeight(UiNavigation.minimumTouchSize()).padRight(if (index == 2) 0f else 8f)
                 }
-            }).colspan(2).row()
+            }).row()
+        }
+        val options = GameSetupOverview.card().apply {
+            val innerWidth = optionsWidth - 36f
+            val fieldWidth = (innerWidth - 14f) / 2f
+            defaults().left().padBottom(8f)
             add(GameSetupOverview.field("Map Generation Type", mapTypeSelectBox, innerWidth)).colspan(2).row()
             add(GameSetupOverview.field("World Size", worldSizeSelectBox, fieldWidth)).padRight(14f)
             add(GameSetupOverview.field("Map Shape", mapShapeSelectBox, fieldWidth)).row()
-            add(customWorldSizeTable).colspan(2).growX().row()
-            add(GameSetupOverview.field("Resource Setting", resourceSelectBox, innerWidth)).colspan(2).row()
-            add(worldWrapCheckbox).colspan(2).minHeight(44f).row()
+            add(customWorldSizeTable).colspan(2).growX().padBottom(0f).row()
+            add(GameSetupOverview.field("Resource Setting", resourceSelectBox, fieldWidth)).padRight(14f)
+            add(worldWrapCheckbox).width(fieldWidth).minHeight(UiNavigation.minimumTouchSize()).padTop(28f).row()
         }
         add(previewCard).width(previewWidth).top().padRight(if (stacked) 0f else 18f)
         if (stacked) row()
@@ -266,7 +266,7 @@ class MapParametersTable(
         val map = lastExampleMap
         if (map == null) preview.add("Loading...".toLabel())
         else preview.add(LoadMapPreview(map, (if (stacked) width else (width - 18f) * 0.46f) - 36f,
-            if (stacked) 210f else 280f))
+            190f))
     }
 
     private fun addMapTypeSelectBox() {

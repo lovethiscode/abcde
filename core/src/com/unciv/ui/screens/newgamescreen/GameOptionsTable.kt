@@ -186,13 +186,12 @@ class GameOptionsTable(
         val rightWidth = if (stacked) width else width - leftWidth - 18f
         val pace = GameSetupOverview.card().apply {
             val innerWidth = leftWidth - 36f
-            defaults().width(innerWidth).left().padBottom(16f)
+            defaults().width(innerWidth).left().padBottom(12f)
             add("Game pace".toLabel(fontSize = 24)).row()
-            add(Table().apply { addBaseRulesetSelectBox() }).row()
             add("Game Speed".toLabel(Color.LIGHT_GRAY, 16)).padBottom(8f).row()
             add(Table().apply {
                 val speeds = ruleset.speeds.keys.toList()
-                val columns = minOf(3, speeds.size)
+                val columns = minOf(4, speeds.size)
                 for ((index, speed) in speeds.withIndex()) {
                     add(GameSetupOverview.choice(speed, gameParameters.speed == speed).apply {
                         onClick {
@@ -212,15 +211,13 @@ class GameOptionsTable(
             }).row()
             add(Table().apply {
                 defaults().growX().padTop(8f)
-                val turnSlider = addMaxTurnsSlider()
-                if (turnSlider != null) add(turnSlider).row()
                 if (gameParameters.randomNumberOfCityStates) addMinMaxCityStatesSliders()
                 else addCityStatesSlider()
             }).row()
         }
         val victories = GameSetupOverview.card().apply {
             val innerWidth = rightWidth - 36f
-            defaults().width(innerWidth).left().padBottom(12f)
+            defaults().width(innerWidth).left().padBottom(6f)
             add("Victory Conditions".toLabel(fontSize = 24)).padBottom(20f).row()
             for (victory in ruleset.selectableVictories()) {
                 add(victory.name.toCheckBox(victory.name in gameParameters.victoryTypes) { enabled ->
@@ -228,8 +225,10 @@ class GameOptionsTable(
                     else gameParameters.victoryTypes.remove(victory.name)
                     if (victory.enablesMaxTurns()) update()
                     onConfigurationChanged?.invoke()
-                }.apply { name = victory.name }).minHeight(44f).row()
+                }.apply { name = victory.name; align(Align.left) }).minHeight(44f).row()
             }
+            val turnSlider = addMaxTurnsSlider()
+            if (turnSlider != null) add(turnSlider).padTop(8f).row()
         }
         add(pace).width(leftWidth).top().padRight(if (stacked) 0f else 18f)
         if (stacked) row()
@@ -237,6 +236,7 @@ class GameOptionsTable(
         add(ExpanderTab("Advanced Settings", startsOutOpened = false, expanderWidth = width,
             persistenceID = "MultiplayerRoom.RulesAdvanced") { table ->
             table.defaults().left().growX().padBottom(14f)
+            table.add(Table().apply { addBaseRulesetSelectBox() }).row()
             addAdvancedSettings(table)
             table.row()
             table.add(Table().apply {
