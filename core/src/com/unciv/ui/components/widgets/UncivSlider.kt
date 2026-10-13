@@ -353,19 +353,28 @@ class UncivSlider (
     }
 
     // Helpers to manage the light-weight "tooltip" showing the value
+    override fun layout() {
+        super.layout()
+        if (tipContainer.hasParent()) positionTip()
+    }
+
+    private fun positionTip() {
+        val pos = slider.localToParentCoordinates(Vector2(slider.width / 2, slider.height))
+        tipContainer.setPosition(pos.x, pos.y, Align.bottom)
+    }
+
     private fun showTip() {
         if (tipContainer.hasParent()) return
         setEditable(true)
         tipContainer.pack()
         if (needsLayout()) pack()
-        val pos = slider.localToParentCoordinates(Vector2(slider.width / 2, slider.height))
         tipContainer.run {
             setOrigin(Align.bottom)
-            setPosition(pos.x, pos.y, Align.bottom)
             isTransform = true
             color.a = 0.2f
             setScale(0.05f)
         }
+        positionTip()
         addActor(tipContainer)
         tipContainer.addAction(
             Actions.parallel(

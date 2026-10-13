@@ -44,7 +44,7 @@ internal abstract class OptionsPopupTab(
         }
         val card = ExpanderTab(title, fontSize = 18, startsOutOpened = opened,
             defaultPad = 8f, headerPad = 12f, expanderWidth = 1f) {
-            it.defaults().pad(4f).growX()
+            it.defaults().pad(4f).expand(0, 0).fill(false, false)
             it.block()
         }
         card.background = ExpeditionBlueTheme.outlinedControl(

@@ -132,7 +132,8 @@ internal interface OptionsPopupHelpers {
         val select = SelectBox<T>(BaseScreen.skin)
         select.setItems(items.toGdxArray())
         select.selected = property.get()
-        add(select).pad(10f).minWidth(rightWidgetMinWidth).right().row()
+        add(select).pad(10f).minWidth(rightWidgetMinWidth)
+            .maxWidth(if (ExpeditionBlueTheme.enabled) rightWidgetMinWidth else Float.MAX_VALUE).right().row()
 
         select.onChange {
             val oldValue = property.get()
@@ -155,7 +156,8 @@ internal interface OptionsPopupHelpers {
     fun Table.addTranslatedSelectBox(text: String, property: KMutableProperty0<String>, items: Iterable<String>, action: ((String) -> Unit)? = null) {
         add(text.toLabel().apply { wrap = true }).minWidth(0f).left().growX()
         val select = TranslatedSelectBox(items as? Collection ?: items.toList(), property.get())
-        add(select).pad(10f).minWidth(rightWidgetMinWidth).right().row()
+        add(select).pad(10f).minWidth(rightWidgetMinWidth)
+            .maxWidth(if (ExpeditionBlueTheme.enabled) rightWidgetMinWidth else Float.MAX_VALUE).right().row()
 
         select.onChange {
             val newValue = select.selected.value
@@ -202,7 +204,8 @@ internal interface OptionsPopupHelpers {
         add(label).minWidth(0f).left().growX()
         val select = SelectBox<T>(BaseScreen.skin)
         select.isDisabled = true
-        add(select).pad(10f).minWidth(rightWidgetMinWidth).right().row()
+        add(select).pad(10f).minWidth(rightWidgetMinWidth)
+            .maxWidth(if (ExpeditionBlueTheme.enabled) rightWidgetMinWidth else Float.MAX_VALUE).right().row()
 
         Concurrency.run("Async SelectBox", CoroutineScope(dispatcher)) {
             val items = Array<T>(false, 20)
@@ -252,7 +255,7 @@ internal interface OptionsPopupHelpers {
             action(it, slider.isDragging)
         }
         val cell = add(slider).minWidth(rightWidgetMinWidth).right().pad(5f).padTop(10f)
-        if (ExpeditionBlueTheme.enabled) cell.colspan(2).growX().pad(8f, 12f, 12f, 12f)
+        if (ExpeditionBlueTheme.enabled) cell.colspan(2).growX().pad(22f, 12f, 12f, 12f)
         cell.row()
         return cell
     }

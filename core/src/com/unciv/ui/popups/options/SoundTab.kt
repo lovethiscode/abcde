@@ -28,7 +28,11 @@ internal class SoundTab(
         }
         section("Music playback") {
             if (music.isMusicAvailable()) {
-                addMusicPauseSlider(settings, music)
+                if (optionsPopup.useSidebar) {
+                    val pauseControls = Table().apply { addMusicPauseSlider(settings, music) }
+                    add(pauseControls.cells[0].actor).colspan(2).left().pad(8f, 12f, 0f, 12f).row()
+                    add(pauseControls.cells[1].actor).colspan(2).growX().pad(22f, 12f, 12f, 12f).row()
+                } else addMusicPauseSlider(settings, music)
                 addMusicCurrentlyPlaying(music)
                 addSimplePlayerControls(music).row()
             }
@@ -49,7 +53,7 @@ internal class SoundTab(
             sound = if (silent) UncivSound.Silent else UncivSound.Slider,
             getTipText = UncivSlider::formatPercent, onChange = onChange)
         val cell = add(slider).pad(5f)
-        if (optionsPopup.useSidebar) cell.colspan(2).growX().pad(8f, 12f, 12f, 12f)
+        if (optionsPopup.useSidebar) cell.colspan(2).growX().pad(22f, 12f, 12f, 12f)
         cell.row()
     }
 
