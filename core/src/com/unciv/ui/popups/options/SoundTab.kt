@@ -29,7 +29,7 @@ internal class SoundTab(
         section("Music playback") {
             if (music.isMusicAvailable()) {
                 if (optionsPopup.useSidebar) {
-                    val pauseControls = Table().apply { addMusicPauseSlider(settings, music) }
+                    val pauseControls = Table(skin).apply { addMusicPauseSlider(settings, music) }
                     add(pauseControls.cells[0].actor).colspan(2).left().pad(8f, 12f, 0f, 12f).row()
                     add(pauseControls.cells[1].actor).colspan(2).growX().pad(22f, 12f, 12f, 12f).row()
                 } else addMusicPauseSlider(settings, music)
