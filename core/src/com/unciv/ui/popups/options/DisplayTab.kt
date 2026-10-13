@@ -3,6 +3,7 @@ package com.unciv.ui.popups.options
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.GUI
 import com.unciv.models.metadata.GameSettings
 import com.unciv.models.metadata.GameSettings.ScreenSize
@@ -26,110 +27,103 @@ internal class DisplayTab(
     optionsPopup: OptionsPopup
 ): OptionsPopupTab(optionsPopup) {
     override fun lateInitialize() {
-        defaults().pad(2.5f)
-
-        addHeader("Screen")
-
-        addScreenSizeSelectBox()
-        addScreenOrientationSelectBox()
-        if (Gdx.app.type == Application.ApplicationType.iOS) {
-            addCheckbox("Extend to fullscreen", settings::iosUseDisplayCutout) {
-                Display.setCutout(it)
-                settings.save()
+        section("Screen") {
+            addScreenSizeSelectBox()
+            addScreenOrientationSelectBox()
+            if (Gdx.app.type == Application.ApplicationType.iOS) {
+                addCheckbox("Extend to fullscreen", settings::iosUseDisplayCutout) {
+                    Display.setCutout(it)
+                    settings.save()
+                }
+                add("Maps, backgrounds, and controls extend to the screen edges.".tr()
+                    .let { WrappableLabel(it, optionsPopup.tabs.prefWidth - 60f, fontSize = 14).apply { wrap = true } })
+                    .colspan(2).growX().row()
             }
-            add("Maps, backgrounds, and controls extend to the screen edges.".tr()
-                .let { WrappableLabel(it, optionsPopup.tabs.prefWidth, fontSize = 14).apply { wrap = true } })
-                .colspan(2).growX().row()
-        }
-        addScreenModeSelectBox()
+            addScreenModeSelectBox()
 
 
-        if (Gdx.app.type == Application.ApplicationType.Desktop) {
-            addCheckbox("Map mouse auto-scroll", settings::mapAutoScroll, updateWorld = true) {
-                if (GUI.isWorldLoaded())
-                    GUI.getMap().isAutoScrollEnabled = it
+            if (Gdx.app.type == Application.ApplicationType.Desktop) {
+                addCheckbox("Map mouse auto-scroll", settings::mapAutoScroll, updateWorld = true) {
+                    if (GUI.isWorldLoaded())
+                        GUI.getMap().isAutoScrollEnabled = it
+                }
+                addScrollSpeedSlider()
             }
-            addScrollSpeedSlider()
         }
-
-        addHeader("Graphics")
-
-        addTileSetSelectBox()
-        addUnitSetSelectBox()
-        addSkinSelectBox()
-
-        addHeader("UI")
-
-        addNotificationScrollSelect()
-        addCheckbox("Show minimap", settings::showMinimap, updateWorld = true)
-        addCheckbox("Show tutorials", settings.showTutorials, updateWorld = true, newRow = false) { settings.showTutorials = it }
-        addResetTutorials()
-        addCheckbox("Show long-press indicators", settings.showLongPressIndicators.toBoolean()) {
-            settings.showLongPressIndicators = GameSettings.LongPressIndicatorSetting.of(it)
+        section("Graphics") {
+            addTileSetSelectBox()
+            addUnitSetSelectBox()
+            addSkinSelectBox()
         }
-        addCheckbox("Show zoom buttons in world screen", settings::showZoomButtons, true)
-        addCheckbox("Never close popups by clicking outside", settings::forbidPopupClickBehindToClose)
-        addCheckbox("Use circles to indicate movable tiles", settings::useCirclesToIndicateMovableTiles, updateWorld = true)
-        addPediaUnitArtSizeSlider()
-
-        addHeader("Visual Hints")
-
-        addCheckbox("Show unit movement arrows", settings::showUnitMovements, updateWorld = true)
-        addCheckbox("Show suggested city locations for units that can found cities", settings::showSettlersSuggestedCityLocations, updateWorld = true)
-        addCheckbox("Show tile yields", settings::showTileYields, updateWorld = true)
-        addCheckbox("Show worked tiles", settings::showWorkedTiles, updateWorld = true)
-        addCheckbox("Show resources and improvements", settings::showResourcesAndImprovements, updateWorld = true)
-        addCheckbox("Show pixel improvements", settings::showPixelImprovements, updateWorld = true)
-
-        addUnitIconAlphaSlider()
-
-        addHeader("Performance")
-
-        addCheckbox("Continuous rendering", settings::continuousRendering) {
-            Gdx.graphics.isContinuousRendering = it
+        section("UI", opened = false) {
+            addNotificationScrollSelect()
+            addCheckbox("Show minimap", settings::showMinimap, updateWorld = true)
+            addCheckbox("Show tutorials", settings.showTutorials, updateWorld = true) { settings.showTutorials = it }
+            addResetTutorials()
+            addCheckbox("Show long-press indicators", settings.showLongPressIndicators.toBoolean()) {
+                settings.showLongPressIndicators = GameSettings.LongPressIndicatorSetting.of(it)
+            }
+            addCheckbox("Show zoom buttons in world screen", settings::showZoomButtons, true)
+            addCheckbox("Never close popups by clicking outside", settings::forbidPopupClickBehindToClose)
+            addCheckbox("Use circles to indicate movable tiles", settings::useCirclesToIndicateMovableTiles, updateWorld = true)
+            addPediaUnitArtSizeSlider()
         }
+        section("Visual Hints", opened = false) {
+            addCheckbox("Show unit movement arrows", settings::showUnitMovements, updateWorld = true)
+            addCheckbox("Show suggested city locations for units that can found cities", settings::showSettlersSuggestedCityLocations, updateWorld = true)
+            addCheckbox("Show tile yields", settings::showTileYields, updateWorld = true)
+            addCheckbox("Show worked tiles", settings::showWorkedTiles, updateWorld = true)
+            addCheckbox("Show resources and improvements", settings::showResourcesAndImprovements, updateWorld = true)
+            addCheckbox("Show pixel improvements", settings::showPixelImprovements, updateWorld = true)
 
-        val continuousRenderingDescription = "When disabled, saves battery life but certain animations will be suspended"
-        val continuousRenderingLabel = WrappableLabel(
-            continuousRenderingDescription,
-            optionsPopup.tabs.prefWidth, Color.ORANGE.brighten(0.7f), 14
-        )
-        continuousRenderingLabel.wrap = true
-        add(continuousRenderingLabel).colspan(2).padTop(10f).row()
+            addUnitIconAlphaSlider()
+        }
+        section("Performance", opened = false) {
+            addCheckbox("Continuous rendering", settings::continuousRendering) {
+                Gdx.graphics.isContinuousRendering = it
+            }
 
-        addCheckbox("Disable newer rendering", settings::disableNewerRendering)
+            val continuousRenderingDescription = "When disabled, saves battery life but certain animations will be suspended"
+            val continuousRenderingLabel = WrappableLabel(
+                continuousRenderingDescription,
+                optionsPopup.tabs.prefWidth - 60f, Color.ORANGE.brighten(0.7f), 14
+            )
+            continuousRenderingLabel.wrap = true
+            add(continuousRenderingLabel).colspan(2).padTop(10f).row()
 
-        val maxTextureUnitsText = 
-            try {
-                val maxTextureUnits = TextureArraySpriteBatch().maxTextureUnits
-                "Max texture units: $maxTextureUnits"
-            } catch (e: Exception) { "Error creating TextureArraySpriteBatch" }
-        
-        val maxTextureUnitsLabel = WrappableLabel(
-            maxTextureUnitsText,
-            optionsPopup.tabs.prefWidth, Color.WHITE, 14
-        )
-        maxTextureUnitsLabel.wrap = true
-        add(maxTextureUnitsLabel).colspan(2).padTop(10f).row()
-        
+            addCheckbox("Disable newer rendering", settings::disableNewerRendering)
 
-        val disableNewerRenderingDescription = "On some devices the older rendering method is faster"
-        val disableNewerRenderingLabel = WrappableLabel(
-            disableNewerRenderingDescription,
-            optionsPopup.tabs.prefWidth, Color.ORANGE.brighten(0.7f), 14
-        )
-        disableNewerRenderingLabel.wrap = true
-        add(disableNewerRenderingLabel).colspan(2).padTop(10f).row()
+            val maxTextureUnitsText =
+                try {
+                    val maxTextureUnits = TextureArraySpriteBatch().maxTextureUnits
+                    "Max texture units: $maxTextureUnits"
+                } catch (e: Exception) { "Error creating TextureArraySpriteBatch" }
 
-        addHeader("Experimental")
+            val maxTextureUnitsLabel = WrappableLabel(
+                maxTextureUnitsText,
+                optionsPopup.tabs.prefWidth - 60f, Color.WHITE, 14
+            )
+            maxTextureUnitsLabel.wrap = true
+            add(maxTextureUnitsLabel).colspan(2).padTop(10f).row()
 
-        addCheckbox("Animate Unit movement button", settings::unitMovementButtonAnimation)
-        addCheckbox("Animate Unit actions menu", settings::unitActionsTableAnimation)
+
+            val disableNewerRenderingDescription = "On some devices the older rendering method is faster"
+            val disableNewerRenderingLabel = WrappableLabel(
+                disableNewerRenderingDescription,
+                optionsPopup.tabs.prefWidth - 60f, Color.ORANGE.brighten(0.7f), 14
+            )
+            disableNewerRenderingLabel.wrap = true
+            add(disableNewerRenderingLabel).colspan(2).padTop(10f).row()
+
+            addCheckbox("Animate Unit movement button", settings::unitMovementButtonAnimation)
+            addCheckbox("Animate Unit actions menu", settings::unitActionsTableAnimation)
+
+        }
 
         super.lateInitialize()
     }
 
-    private fun addScrollSpeedSlider() {
+    private fun Table.addScrollSpeedSlider() {
         addSlider("Map panning speed", settings::mapPanningSpeed, 0.2f, 25f, 0.2f) {
             settings.save()
             if (GUI.isWorldLoaded())
@@ -137,13 +131,13 @@ internal class DisplayTab(
         }
     }
 
-    private fun addUnitIconAlphaSlider() {
+    private fun Table.addUnitIconAlphaSlider() {
         addSlider("Unit icon opacity", settings::unitIconOpacity, 0f, 1f, 0.1f, UncivSlider::formatPercent) {
             GUI.setUpdateWorldOnNextRender()
         }
     }
 
-    private fun addPediaUnitArtSizeSlider() {
+    private fun Table.addPediaUnitArtSizeSlider() {
         addSlider("Size of Unitset art in Civilopedia", settings::pediaUnitArtSize, 0f, 360f) {
             GUI.setUpdateWorldOnNextRender() // TODO: I doubt that helps, the setting has only influence on CivilopediaScreen
         }.actor.apply {
@@ -154,7 +148,7 @@ internal class DisplayTab(
         }
     }
 
-    private fun addScreenModeSelectBox() {
+    private fun Table.addScreenModeSelectBox() {
         val modes = Display.getScreenModes()
         if (modes.isEmpty()) return
         val proxy = object {
@@ -168,13 +162,13 @@ internal class DisplayTab(
         }
     }
 
-    private fun addScreenSizeSelectBox() {
+    private fun Table.addScreenSizeSelectBox() {
         addSelectBox("UI Scale", settings::screenSize, ScreenSize.entries) { _, _ ->
             reloadWorldAndOptions()
         }
     }
 
-    private fun addScreenOrientationSelectBox() {
+    private fun Table.addScreenOrientationSelectBox() {
         if (!Display.hasOrientation()) return
         addSelectBox("Screen orientation", settings::displayOrientation, ScreenOrientation.entries) { orientation, _ ->
             Display.setOrientation(orientation)
@@ -183,7 +177,7 @@ internal class DisplayTab(
         }
     }
 
-    private fun addTileSetSelectBox() {
+    private fun Table.addTileSetSelectBox() {
         val unitSets = ImageGetter.getAvailableUnitsets()
         addSelectBox("Tileset", settings::tileSet, ImageGetter.getAvailableTilesets().asIterable()) { newValue, oldValue ->
             // Switch unitSet together with tileSet as long as one with the same name exists and both are selected
@@ -196,7 +190,7 @@ internal class DisplayTab(
         }
     }
 
-    private fun addUnitSetSelectBox() {
+    private fun Table.addUnitSetSelectBox() {
         val nullValue = "None".tr()
         val choices = sequenceOf(nullValue) + ImageGetter.getAvailableUnitsets()
         addSelectBox("Unitset", settings::unitSet, choices.asIterable()) { value, _ ->
@@ -207,7 +201,7 @@ internal class DisplayTab(
         }
     }
 
-    private fun addSkinSelectBox() {
+    private fun Table.addSkinSelectBox() {
         addSelectBox("UI Skin", settings::skin, ImageGetter.getAvailableSkins().asIterable()) { _, _ ->
             // ImageGetter ruleset should be correct no matter what screen we're on
             SkinCache.assembleSkinConfigs(ImageGetter.ruleset.mods)
@@ -215,7 +209,7 @@ internal class DisplayTab(
         }
     }
 
-    private fun addResetTutorials() {
+    private fun Table.addResetTutorials() {
         val resetTutorialsButton = "Reset tutorials".toTextButton()
         resetTutorialsButton.onClick {
             ConfirmPopup(
@@ -229,10 +223,10 @@ internal class DisplayTab(
                 resetTutorialsButton.clearListeners()
             }.open(true)
         }
-        add(resetTutorialsButton).center().row()
+        add(resetTutorialsButton).colspan(2).left().pad(10f).row()
     }
 
-    private fun addNotificationScrollSelect() {
+    private fun Table.addNotificationScrollSelect() {
         addEnumAsStringSelectBox("Notifications on world screen", settings::notificationScroll, NotificationsScroll.UserSetting.entries) {
             GUI.setUpdateWorldOnNextRender()
         }

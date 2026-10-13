@@ -36,56 +36,59 @@ import kotlinx.coroutines.CancellationException
 internal class MultiplayerTab(
     optionsPopup: OptionsPopup
 ) : OptionsPopupTab(optionsPopup), MultiplayerSelectBoxHelpers {
+    private val refreshSelectors = ArrayList<RefreshSelectOptions>()
     private val mpSettings by settings::multiplayer
     private val mpServer by game.onlineMultiplayer::multiplayerServer
 
     override fun lateInitialize() {
-        addCheckbox(
-            "Enable multiplayer status button in singleplayer games",
-            mpSettings::statusButtonInSinglePlayer, updateWorld = true
-        )
+        section("Status and synchronization") {
+            addCheckbox(
+                "Enable multiplayer status button in singleplayer games",
+                mpSettings::statusButtonInSinglePlayer, updateWorld = true
+            )
 
-        addSeparator()
 
-        val curRefreshSelect = RefreshSelectOptions(
-            mpSettings::currentGameRefreshDelay,
-            createRefreshOptions(ChronoUnit.SECONDS, 3, 5),
-            createRefreshOptions(ChronoUnit.SECONDS, 10, 20, 30, 60)
-        )
-        curRefreshSelect.selectBox = addSelectBox("Update status of currently played game every:", curRefreshSelect::value, curRefreshSelect.getItems())
+            val curRefreshSelect = RefreshSelectOptions(
+                mpSettings::currentGameRefreshDelay,
+                createRefreshOptions(ChronoUnit.SECONDS, 3, 5),
+                createRefreshOptions(ChronoUnit.SECONDS, 10, 20, 30, 60)
+            )
+            curRefreshSelect.selectBox = addSelectBox("Update status of currently played game every:", curRefreshSelect::value, curRefreshSelect.getItems())
 
-        val allRefreshSelect = RefreshSelectOptions(
-            mpSettings::allGameRefreshDelay,
-            createRefreshOptions(ChronoUnit.SECONDS, 15, 30),
-            createRefreshOptions(ChronoUnit.MINUTES, 1, 2, 5, 15)
-        )
-        allRefreshSelect.selectBox = addSelectBox("In-game, update status of all games every:", allRefreshSelect::value, allRefreshSelect.getItems())
+            val allRefreshSelect = RefreshSelectOptions(
+                mpSettings::allGameRefreshDelay,
+                createRefreshOptions(ChronoUnit.SECONDS, 15, 30),
+                createRefreshOptions(ChronoUnit.MINUTES, 1, 2, 5, 15)
+            )
+            allRefreshSelect.selectBox = addSelectBox("In-game, update status of all games every:", allRefreshSelect::value, allRefreshSelect.getItems())
 
-        addSeparator()
-
-        val turnCheckerSelect = addTurnCheckerOptions()
-
-        val labeledSounds = LabeledSounds() // This is a cache but only used until the SelectBoxes are filled
-        fun soundsProvider() = synchronized(labeledSounds) {
-            labeledSounds.getLabeledSounds().asFlow().map { MultiplayerSelectBoxHelpers.UncivSoundLabeled(it) }
-        }
-        val currentSoundProxy = MultiplayerSelectBoxHelpers.UncivSoundProxy(mpSettings::currentGameTurnNotificationSound)
-        val otherSoundProxy = MultiplayerSelectBoxHelpers.UncivSoundProxy(mpSettings::otherGameTurnNotificationSound)
-        addAsyncSelectBox("Sound notification for when it's your turn in your currently open game:", currentSoundProxy::value, ::soundsProvider) {
-            SoundPlayer.play(it.value)
-        }
-        addAsyncSelectBox("Sound notification for when it's your turn in any other game:", otherSoundProxy::value, ::soundsProvider) {
-            SoundPlayer.play(it.value)
+            refreshSelectors.addAll(listOfNotNull(curRefreshSelect, allRefreshSelect, addTurnCheckerOptions()))
         }
 
-        addSeparator()
+        section("Turn notification sounds") {
+            val labeledSounds = LabeledSounds() // This is a cache but only used until the SelectBoxes are filled
+            fun soundsProvider() = synchronized(labeledSounds) {
+                labeledSounds.getLabeledSounds().asFlow().map { MultiplayerSelectBoxHelpers.UncivSoundLabeled(it) }
+            }
+            val currentSoundProxy = MultiplayerSelectBoxHelpers.UncivSoundProxy(mpSettings::currentGameTurnNotificationSound)
+            val otherSoundProxy = MultiplayerSelectBoxHelpers.UncivSoundProxy(mpSettings::otherGameTurnNotificationSound)
+            addAsyncSelectBox("Sound notification for when it's your turn in your currently open game:", currentSoundProxy::value, ::soundsProvider) {
+                SoundPlayer.play(it.value)
+            }
+            addAsyncSelectBox("Sound notification for when it's your turn in any other game:", otherSoundProxy::value, ::soundsProvider) {
+                SoundPlayer.play(it.value)
+            }
 
-        addMultiplayerServerOptions(listOfNotNull(curRefreshSelect, allRefreshSelect, turnCheckerSelect))
+        }
+
+        section("Server", opened = false) {
+                addMultiplayerServerOptions(refreshSelectors)
+        }
 
         super.lateInitialize()
     }
 
-    private fun addMultiplayerServerOptions(toUpdate: Iterable<RefreshSelectOptions>) {
+    private fun Table.addMultiplayerServerOptions(toUpdate: Iterable<RefreshSelectOptions>) {
         val connectionToServerButton = "Check connection".toTextButton()
 
         val textToShowForOnlineMultiplayerAddress = if (Multiplayer.usesCustomServer()) {
@@ -149,7 +152,7 @@ internal class MultiplayerTab(
             validatedServerUrl != null && Multiplayer.usesCustomServer()
 
         serverIpTable.add(multiplayerServerTextField)
-            .minWidth(optionsPopup.stageToShowOn.width / 3).padRight(Constants.defaultFontSize.toFloat()).growX()
+            .minWidth(0f).colspan(2).growX().row()
 
         serverIpTable.add(connectionToServerButton.onClick {
             val targetUrl = validatedServerUrl ?: return@onClick
@@ -185,14 +188,14 @@ internal class MultiplayerTab(
                 } else {
                     popup.reuseWith("Failed!", true)
                 }
-    
+
                 if (connectionSuccess) {
                     mpServer.setFeatureSet(targetServer.getFeatureSet())
                     // because multiplayer server url can get autopatched during isAilve test
                     multiplayerServerTextField.text = settings.multiplayer.getServer()
                 }
             }
-        }).row()
+        }).colspan(2).left().padTop(8f).row()
 
         if (mpServer.getFeatureSet().authVersion > 0) {
             val passwordField = UncivTextField("Password").apply { isPasswordMode = true }
@@ -205,7 +208,7 @@ internal class MultiplayerTab(
             serverIpTable.add(passwordField).colspan(2).growX().padBottom(8f).row()
 
             // initially assume no password
-            val authStatusLabel = "Set a password to secure your userId".toLabel()
+            val authStatusLabel = "Set a password to secure your userId".toLabel().apply { wrap = true }
 
             val validationServerUrl = mpSettings.getServer()
             val password = mpSettings.getPassword(validationServerUrl)
@@ -242,23 +245,23 @@ internal class MultiplayerTab(
             }
 
             val passwordStatusTable = Table().apply {
-                add(authStatusLabel)
+                add(authStatusLabel).minWidth(0f).growX().row()
                 add(passwordButton.onClick {
                     val serverUrl = validatedServerUrl ?: return@onClick
                     val targetServer = game.onlineMultiplayer.serverFor(serverUrl).apply {
                         setFeatureSet(mpServer.getFeatureSet())
                     }
                     setPassword(passwordField.text, serverUrl, targetServer, optionsPopup)
-                }).padLeft(16f)
+                }).left().padTop(10f)
             }
 
             serverIpTable.add(passwordStatusTable).colspan(2).row()
         }
 
-        add(serverIpTable).colspan(2).fillX().row()
+        add(serverIpTable).colspan(2).growX().row()
     }
 
-    private fun addTurnCheckerOptions(): RefreshSelectOptions? {
+    private fun Table.addTurnCheckerOptions(): RefreshSelectOptions? {
         // at the moment the notification service only exists on Android
         if (Gdx.app.type != Application.ApplicationType.Android) return null
 

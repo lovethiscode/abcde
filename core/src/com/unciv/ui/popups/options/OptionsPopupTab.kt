@@ -1,6 +1,8 @@
 package com.unciv.ui.popups.options
 
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.ui.components.widgets.ExpanderTab
 import com.unciv.ui.components.widgets.TabbedPager
 import com.unciv.ui.screens.basescreen.BaseScreen.Companion.skin
 
@@ -31,6 +33,23 @@ internal abstract class OptionsPopupTab(
     init {
         pad(10f)
         defaults().pad(5f)
+        top()
+    }
+
+    protected fun section(title: String, opened: Boolean = true, block: Table.() -> Unit) {
+        if (!optionsPopup.useSidebar) {
+            addHeader(title)
+            block()
+            return
+        }
+        val card = ExpanderTab(title, fontSize = 18, startsOutOpened = opened,
+            defaultPad = 8f, headerPad = 12f, expanderWidth = 1f) {
+            it.defaults().pad(4f).growX()
+            it.block()
+        }
+        card.background = skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.panel)
+        card.header.background = skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.raised)
+        add(card).colspan(2).growX().padBottom(8f).row()
     }
 
     open fun lateInitialize() {

@@ -78,7 +78,8 @@ open class TabbedPager(
     private val headerPadding: Float = 10f,
     separatorColor: Color = Color.CLEAR,
     private val shortcutScreen: BaseScreen? = null,
-    capacity: Int = 4
+    capacity: Int = 4,
+    private val showHeader: Boolean = true
 ) : Table() {
 
     private var dimW: DimensionMeasurement
@@ -325,7 +326,7 @@ open class TabbedPager(
         // Measure header height, most likely its final value
         removePage(addPage("Dummy"))
         headerDecorationLeftCell = add().pad(0f)
-        add(headerScroll).growX().minHeight(headerHeight)
+        add(if (showHeader) headerScroll else null).growX().minHeight(headerHeight)
         headerDecorationRightCell = add().pad(0f)
         row()
         if (separatorColor != Color.CLEAR)
@@ -600,7 +601,7 @@ open class TabbedPager(
             keyShortcuts.add(shortcutKey)
             addTooltip(shortcutKey, if (iconSize > 0f) iconSize else 18f)
             pack()
-            if (height + 2 * headerPadding > headerHeight) {
+            if (showHeader && height + 2 * headerPadding > headerHeight) {
                 headerHeight = height + 2 * headerPadding
                 if (activePage >= 0) this@TabbedPager.invalidateHierarchy()
             }

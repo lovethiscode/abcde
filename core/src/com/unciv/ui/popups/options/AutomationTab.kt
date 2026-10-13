@@ -13,49 +13,47 @@ internal class AutomationTab(
 //     val fullAutoPlayCell: Cell<Table>
 
     override fun lateInitialize() {
-        top() // So the dynamically displayed parts won't make the page jump up and down
-        add().row() // Empty Cell for the "ensure layout won't jump" line below
-
-        addHeader("Automation")
-
-        addCheckbox("Auto-assign city production", settings::autoAssignCityProduction, updateWorld = true) {
-            allCitiesChooseNextConstruction(it)
+        section("Cities and workers") {
+            addCheckbox("Auto-assign city production", settings::autoAssignCityProduction, updateWorld = true) {
+                allCitiesChooseNextConstruction(it)
+            }
+            addCheckbox("Auto-build roads", settings::autoBuildingRoads)
+            addCheckbox("Automated workers replace improvements", settings::automatedWorkersReplaceImprovements)
+            addCheckbox("Stop automated workers from removing vegetation terrain", settings::stopAutomatedWorkersRemoveVegetation)
+            addCheckbox("Auto-assign specialists in new cities", settings::autoAssignSpecialistsInNewCities)
         }
-        addCheckbox("Auto-build roads", settings::autoBuildingRoads)
-        addCheckbox("Automated workers replace improvements", settings::automatedWorkersReplaceImprovements)
-        addCheckbox("Stop automated workers from removing vegetation terrain", settings::stopAutomatedWorkersRemoveVegetation)
-        addCheckbox("Automated units move on turn start", settings::automatedUnitsMoveOnTurnStart, updateWorld = true)
-        addCheckbox("Automated units can upgrade", settings::automatedUnitsCanUpgrade)
-        addCheckbox("Automated units choose promotions", settings::automatedUnitsChoosePromotions)
-        addCheckbox("Cities auto-bombard at end of turn", settings::citiesAutoBombardAtEndOfTurn)
-        addCheckbox("Auto-assign specialists in new cities", settings::autoAssignSpecialistsInNewCities)
+        section("Units and defense") {
+            addCheckbox("Automated units move on turn start", settings::automatedUnitsMoveOnTurnStart, updateWorld = true)
+            addCheckbox("Automated units can upgrade", settings::automatedUnitsCanUpgrade)
+            addCheckbox("Automated units choose promotions", settings::automatedUnitsChoosePromotions)
+            addCheckbox("Cities auto-bombard at end of turn", settings::citiesAutoBombardAtEndOfTurn)
+        }
 
         if (GUI.getWorldScreenIfActive()?.gameInfo?.allowsPlayerAutoPlay() == false) {
             super.lateInitialize()
             return
         }
 
-        addHeader("AutoPlay")
-
-        addCheckbox("Show AutoPlay button", settings.autoPlay::showAutoPlayButton, updateWorld = true) {
-            GUI.getWorldScreenIfActive()?.autoPlay?.stopAutoPlay()
-        }
-
-        addCheckbox("AutoPlay until victory", settings.autoPlay::autoPlayUntilEnd) {
-            autoPlayMaxTurnsSliderCell.setActor(if (it) null else autoPlayMaxTurnsSliderTable)
-            pack()
-        }
-
-        autoPlayMaxTurnsSliderCell = addWrapped {
-            addSlider("Multi-turn AutoPlay amount", settings.autoPlay.autoPlayMaxTurns, 1, 200, 1) { value, _ ->
-                settings.autoPlay.autoPlayMaxTurns = value.toInt()
+        section("AutoPlay", opened = false) {
+            addCheckbox("Show AutoPlay button", settings.autoPlay::showAutoPlayButton, updateWorld = true) {
+                GUI.getWorldScreenIfActive()?.autoPlay?.stopAutoPlay()
             }
-        }
-        autoPlayMaxTurnsSliderTable = autoPlayMaxTurnsSliderCell.actor
-        this.cells[0].minWidth(autoPlayMaxTurnsSliderTable.minWidth) // ensure layout won't jump when slider is hidden/shown
 
-        if (settings.autoPlay.autoPlayUntilEnd)
-            autoPlayMaxTurnsSliderCell.setActor(null)
+            addCheckbox("AutoPlay until victory", settings.autoPlay::autoPlayUntilEnd) {
+                autoPlayMaxTurnsSliderCell.setActor(if (it) null else autoPlayMaxTurnsSliderTable)
+                invalidateHierarchy()
+            }
+
+            autoPlayMaxTurnsSliderCell = addWrapped {
+                addSlider("Multi-turn AutoPlay amount", settings.autoPlay.autoPlayMaxTurns, 1, 200, 1) { value, _ ->
+                    settings.autoPlay.autoPlayMaxTurns = value.toInt()
+                }
+            }
+            autoPlayMaxTurnsSliderTable = autoPlayMaxTurnsSliderCell.actor
+
+            if (settings.autoPlay.autoPlayUntilEnd)
+                autoPlayMaxTurnsSliderCell.setActor(null)
+        }
 
 //         addCheckbox("Full AutoPlay AI", settings.autoPlay::fullAutoPlayAI) {
 //             fullAutoPlayCell.setActor(if (it) fullAutoPlayTable else null)

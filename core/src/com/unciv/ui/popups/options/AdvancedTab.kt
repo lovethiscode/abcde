@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.Pixmap
 import com.badlogic.gdx.graphics.PixmapIO
 import com.badlogic.gdx.scenes.scene2d.actions.Actions
+import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.Constants
 import com.unciv.GUI
@@ -21,7 +22,6 @@ import com.unciv.models.ruleset.RulesetCache
 import com.unciv.models.translations.TranslationFileWriter
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
-import com.unciv.ui.components.extensions.addSeparator
 import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.extensions.isEnabled
@@ -61,45 +61,34 @@ internal class AdvancedTab(
     optionsPopup: OptionsPopup
 ): OptionsPopupTab(optionsPopup) {
     override fun lateInitialize() {
-        addAutosaveField()
-        addSelectBox("Turns between autosaves", settings::turnsBetweenAutosaves, listOf(1,2,5,10,20,50,100,1000))
-
-        addSeparator()
-
-        if (Display.hasCutout())
-            addCutoutCheckbox()
-
-        if (Display.hasSystemUiVisibility())
-            addHideSystemUiCheckbox()
-
-        addFontFamilySelect()
-        addFontSizeMultiplier()
-
-        addSeparator()
-
-        addGestureControls()
-
-        addSeparator()
-
-        addMaxZoomSlider()
-        addCheckbox("Enable Easter Eggs", settings::enableEasterEggs)
-        addCheckbox("Enlarge selected notifications", settings::enlargeSelectedNotification)
-        addCheckbox("Enable experimental A* pathing", settings::useAStarPathfinding)
-
-        addSeparator()
-
-        if (game.platformCapabilities.onlineMultiplayer)
-            addSetUserId()
-
-        addTranslationGeneration()
-        if (game.platformCapabilities.onlineModManagement)
-            addUpdateModCategories()
-        addScreenhotGeneration()
+        section("Autosave") {
+            addAutosaveField()
+            addSelectBox("Turns between autosaves", settings::turnsBetweenAutosaves, listOf(1,2,5,10,20,50,100,1000))
+        }
+        section("Fonts and reading") {
+            if (Display.hasCutout()) addCutoutCheckbox()
+            if (Display.hasSystemUiVisibility()) addHideSystemUiCheckbox()
+            addFontFamilySelect()
+            addFontSizeMultiplier()
+            addCheckbox("Enlarge selected notifications", settings::enlargeSelectedNotification)
+        }
+        section("Gestures and zoom", opened = false) {
+            addGestureControls()
+            addMaxZoomSlider()
+        }
+        section("Experimental and tools", opened = false) {
+            addCheckbox("Enable Easter Eggs", settings::enableEasterEggs)
+            addCheckbox("Enable experimental A* pathing", settings::useAStarPathfinding)
+            if (game.platformCapabilities.onlineMultiplayer) addSetUserId()
+            addTranslationGeneration()
+            if (game.platformCapabilities.onlineModManagement) addUpdateModCategories()
+            addScreenhotGeneration()
+        }
 
         super.lateInitialize()
     }
 
-    private fun addCutoutCheckbox() {
+    private fun Table.addCutoutCheckbox() {
         addCheckbox("Enable using display cutout areas", settings::androidCutout) {
             Display.setCutout(it)
             reopenOptions()
@@ -107,15 +96,15 @@ internal class AdvancedTab(
         }
     }
 
-    private fun addHideSystemUiCheckbox() {
+    private fun Table.addHideSystemUiCheckbox() {
         addCheckbox("Hide system status and navigation bars", settings::androidHideSystemUi) {
             Display.setSystemUiVisibility(hide = it)
             reopenOptions()
         }
     }
 
-    private fun addAutosaveField() {
-        add("Number of autosave files stored".toLabel()).left().fillX()
+    private fun Table.addAutosaveField() {
+        add("Number of autosave files stored".toLabel().apply { wrap = true }).minWidth(0f).left().growX()
 
         val autoSaveTurnsTextField = UncivTextField("", settings.maxAutosavesStored.toString())
         autoSaveTurnsTextField.maxLength = 8
@@ -130,7 +119,7 @@ internal class AdvancedTab(
         autoSaveTurnsTextField.onChange { setAutosaveButtonState(autoSaveTurnsTextFieldButton, autoSaveTurnsTextField.text) }
 
         val cell = addWrapped(newRow = false) {
-            add(autoSaveTurnsTextField)
+            add(autoSaveTurnsTextField).minWidth(70f).width(100f).growX()
             add(autoSaveTurnsTextFieldButton).padLeft(5f)
         }
         cell.minWidth(rightWidgetMinWidth).right().row()
@@ -163,7 +152,7 @@ internal class AdvancedTab(
         popup.open(true)
     }
 
-    private fun addFontFamilySelect() {
+    private fun Table.addFontFamilySelect() {
         /** Build provider for [addAsyncSelectBox]: default, mods, system */
         fun loadFonts() = flow {
             // Add default font
@@ -179,13 +168,13 @@ internal class AdvancedTab(
         addAsyncSelectBox("Font family", settings::fontFamilyData, ::loadFonts) { reloadWorldAndOptions() }
     }
 
-    private fun addFontSizeMultiplier() {
+    private fun Table.addFontSizeMultiplier() {
         addSlider("Font size multiplier", settings::fontSizeMultiplier, 0.7f, 1.5f, 0.05f) {
             reloadWorldAndOptions()
         }
     }
 
-    private fun addGestureControls() {
+    private fun Table.addGestureControls() {
         val testButton = "Test area".toTextButton()
         fun reloadSettings() = ActorAttachments.get(testButton).reloadSettings()
 
@@ -213,14 +202,14 @@ internal class AdvancedTab(
         add(testButton).minWidth(240f).colspan(2).center().row()
     }
 
-    private fun addMaxZoomSlider() {
+    private fun Table.addMaxZoomSlider() {
         addSlider("Max zoom out", settings::maxWorldZoomOut, 2f, 6f, 1f) {
             if (GUI.isWorldLoaded())
                 GUI.getMap().reloadMaxZoom()
         }.padTop(20f)
     }
 
-    private fun addTranslationGeneration() {
+    private fun Table.addTranslationGeneration() {
         if (Gdx.app.type != Application.ApplicationType.Desktop) return
 
         val generateTranslationsButton = "Generate translation files".toTextButton()
@@ -273,7 +262,7 @@ internal class AdvancedTab(
         }
     }
 
-    private fun addUpdateModCategories() {
+    private fun Table.addUpdateModCategories() {
         val updateModCategoriesButton = "Update Mod categories".toTextButton()
         updateModCategoriesButton.onActivation {
             updateModCategoriesButton.setText(Constants.working.tr())
@@ -288,7 +277,7 @@ internal class AdvancedTab(
 
     }
 
-    private fun addScreenhotGeneration() {
+    private fun Table.addScreenhotGeneration() {
         if (!UncivGame.Current.files.getSave("ScreenshotGenerationGame").exists()) return
 
         val generateScreenshotsButton = "Generate screenshots".toTextButton()
@@ -376,7 +365,7 @@ internal class AdvancedTab(
         }
     }
 
-    private fun addSetUserId() {
+    private fun Table.addSetUserId() {
         val idSetLabel = "".toLabel()
         val takeUserIdFromClipboardButton = "Take user ID from clipboard".toTextButton().onClick {
             val clipboardContents = Gdx.app.clipboard.contents?.trim()

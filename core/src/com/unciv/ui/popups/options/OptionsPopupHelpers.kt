@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.Array
 import com.unciv.Constants
 import com.unciv.GUI
 import com.unciv.UncivGame
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.addSeparator
 import com.unciv.ui.components.extensions.setFontColor
 import com.unciv.ui.components.extensions.toCheckBox
@@ -94,7 +95,8 @@ internal interface OptionsPopupHelpers {
             val worldScreen = GUI.getWorldScreenIfActive()
             if (updateWorld && worldScreen != null) worldScreen.shouldUpdate = true
         }
-        if (newRow) add(checkbox).colspan(2).left().row()
+        if (ExpeditionBlueTheme.enabled) OptionsPopupStyle.styleSwitch(checkbox)
+        if (newRow) add(checkbox).colspan(2).growX().minHeight(48f).left().row()
         else add(checkbox).left()
     }
 
@@ -125,7 +127,7 @@ internal interface OptionsPopupHelpers {
      *  @see addEnumAsStringSelectBox
      */
     fun <T> Table.addSelectBox(text: String, property: KMutableProperty0<T>, items: Iterable<T>, action: ((T, T) -> Unit)? = null): SelectBox<T> {
-        add(text.toLabel()).left().fillX()
+        add(text.toLabel().apply { wrap = true }).minWidth(0f).left().growX()
 
         val select = SelectBox<T>(BaseScreen.skin)
         select.setItems(items.toGdxArray())
@@ -151,7 +153,7 @@ internal interface OptionsPopupHelpers {
      *  @see addEnumAsStringSelectBox
      */
     fun Table.addTranslatedSelectBox(text: String, property: KMutableProperty0<String>, items: Iterable<String>, action: ((String) -> Unit)? = null) {
-        add(text.toLabel()).left().fillX()
+        add(text.toLabel().apply { wrap = true }).minWidth(0f).left().growX()
         val select = TranslatedSelectBox(items as? Collection ?: items.toList(), property.get())
         add(select).pad(10f).minWidth(rightWidgetMinWidth).right().row()
 
@@ -197,7 +199,7 @@ internal interface OptionsPopupHelpers {
     ) {
         val label = text.toLabel(Color.GRAY)
         label.wrap = true
-        add(label).left().fillX()
+        add(label).minWidth(0f).left().growX()
         val select = SelectBox<T>(BaseScreen.skin)
         select.isDisabled = true
         add(select).pad(10f).minWidth(rightWidgetMinWidth).right().row()
@@ -237,7 +239,8 @@ internal interface OptionsPopupHelpers {
         getTipText: ((Float) -> String)? = null,
         action: ((Float, Boolean) -> Unit)
     ): Cell<UncivSlider> {
-        add(text.toLabel()).left().fillX().padTop(5f)
+        val labelCell = add(text.toLabel().apply { wrap = true }).minWidth(0f).left().growX().padTop(8f)
+        if (ExpeditionBlueTheme.enabled) labelCell.colspan(2).padLeft(12f).row()
 
         // lateinit, otherwise the callback can't capture it, and by the time the callback fires this will be initialized
         lateinit var slider: UncivSlider
@@ -249,6 +252,7 @@ internal interface OptionsPopupHelpers {
             action(it, slider.isDragging)
         }
         val cell = add(slider).minWidth(rightWidgetMinWidth).right().pad(5f).padTop(10f)
+        if (ExpeditionBlueTheme.enabled) cell.colspan(2).growX().pad(8f, 12f, 12f, 12f)
         cell.row()
         return cell
     }
