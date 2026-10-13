@@ -34,11 +34,13 @@ object MarkupRenderer {
         labelWidth: Float = 0f,
         padding: Float = defaultPadding,
         iconDisplay: FormattedLine.IconDisplay = FormattedLine.IconDisplay.All,
+        minimumLinkHeight: Float = 0f,
+        fitToWidth: Boolean = false,
         linkAction: ((id: String) -> Unit)? = null
     ): Table {
         val skin = BaseScreen.skin
         val table = Table(skin).apply { defaults().pad(padding).align(Align.left) }
-        renderTo(table, lines, labelWidth, iconDisplay, linkAction)
+        renderTo(table, lines, labelWidth, iconDisplay, minimumLinkHeight, fitToWidth, linkAction)
         return table
     }
 
@@ -54,6 +56,8 @@ object MarkupRenderer {
         lines: Iterable<FormattedLine>,
         labelWidth: Float = 0f,
         iconDisplay: FormattedLine.IconDisplay = FormattedLine.IconDisplay.All,
+        minimumLinkHeight: Float = 0f,
+        fitToWidth: Boolean = false,
         linkAction: ((id: String) -> Unit)? = null
     ) {
         for (line in lines) {
@@ -66,7 +70,7 @@ object MarkupRenderer {
                     .pad(separatorTopPadding, 0f, separatorBottomPadding, 0f)
                 continue
             }
-            val actor = line.render(labelWidth, iconDisplay)
+            val actor = line.render(labelWidth, iconDisplay, fitToWidth)
             if (line.linkType == FormattedLine.LinkType.Internal && linkAction != null)
                 actor.onClick {
                     linkAction(line.link)
@@ -79,10 +83,11 @@ object MarkupRenderer {
                     Gdx.app.clipboard.contents = line.link
                 }
             }
-            if (labelWidth == 0f)
-                table.add(actor).align(line.align).row()
-            else
-                table.add(actor).width(labelWidth).align(line.align).row()
+            val cell = table.add(actor).align(line.align)
+            if (labelWidth > 0f) cell.width(labelWidth)
+            if (minimumLinkHeight > 0f && line.linkType != FormattedLine.LinkType.None)
+                cell.minHeight(minimumLinkHeight).fillY()
+            cell.row()
         }
         table.pack()
     }

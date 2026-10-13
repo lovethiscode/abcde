@@ -19,6 +19,7 @@ import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.objectdescriptions.FormattedLineListBuilder.Companion.buildCivilopediaText
 import com.unciv.ui.screens.civilopediascreen.FormattedLine
+import com.unciv.ui.screens.civilopediascreen.CivilopediaStat
 import com.unciv.ui.screens.civilopediascreen.MarkupRenderer
 import yairm210.purity.annotations.Readonly
 
@@ -85,105 +86,138 @@ object BaseUnitDescriptions {
     }
 
     fun BaseUnit.getBaseUnitCivilopediaTextLines(ruleset: Ruleset) = buildCivilopediaText {
-        // Potentially show pixel unit on top (other civilopediaText is handled by the caller)
-        addPixelUnitImage(this@getBaseUnitCivilopediaTextLines)
-
-        // Don't call baseUnit.getType() here - coming from the main menu baseUnit isn't fully initialized
-        val unitTypeLink = ruleset.unitTypes[unitType]?.makeLink() ?: ""
-        add("{Unit type}: {$unitType}", unitTypeLink)
-
-        val stats = ArrayList<String>()
-        if (strength != 0) stats += "$strength${Fonts.strength}"
-        if (rangedStrength != 0) {
-            stats += "$rangedStrength${Fonts.rangedStrength}"
-            stats += "$range${Fonts.range}"
+        fun section(name: String, content: FormattedLineListBuilder.() -> Unit) {
+            val start = build().size
+            content()
+            for (line in build().drop(start)) line.civilopediaSection = name
         }
-        if (movement != 0 && ruleset.unitTypes[unitType]?.isAirUnit() != true)
-            stats += "$movement${Fonts.movement}"
-        if (stats.isNotEmpty())
-            add(stats.joinToString(", "))
 
-        if (cost > 0) {
-            stats.clear()
-            stats += "$cost${Fonts.production}"
-            if (canBePurchasedWithStat(null, Stat.Gold)) {
-                stats += "${getCivilopediaGoldCost()}${Fonts.gold}"
+        section("art") {
+            // Potentially show pixel unit on top (other civilopediaText is handled by the caller)
+            addPixelUnitImage(this@getBaseUnitCivilopediaTextLines)
+        }
+
+        section("conditions") {
+            // Don't call baseUnit.getType() here - coming from the main menu baseUnit isn't fully initialized
+            val unitTypeLink = ruleset.unitTypes[unitType]?.makeLink() ?: ""
+            add("{Unit type}: {$unitType}", unitTypeLink)
+        }
+
+        section("stats") {
+            val values = ArrayList<CivilopediaStat>()
+            val stats = ArrayList<String>()
+            if (strength != 0) {
+                stats += "$strength${Fonts.strength}"
+                values += CivilopediaStat("Strength", strength, Fonts.strength)
             }
-            add(stats.joinToString("/", "{Cost}: "))
-        }
+            if (rangedStrength != 0) {
+                stats += "$rangedStrength${Fonts.rangedStrength}"
+                stats += "$range${Fonts.range}"
+                values += CivilopediaStat("Ranged strength", rangedStrength, Fonts.rangedStrength)
+                values += CivilopediaStat("Range", range, Fonts.range)
+            }
+            if (movement != 0 && ruleset.unitTypes[unitType]?.isAirUnit() != true) {
+                stats += "$movement${Fonts.movement}"
+                values += CivilopediaStat("Movement", movement, Fonts.movement)
+            }
+            if (stats.isNotEmpty())
+                add(FormattedLine(stats.joinToString(", ")).apply { civilopediaStats = values.toList() })
 
-        if (interceptRange > 0)
-            add("Air Intercept Range: [$interceptRange]")
-
-        if (replacementTextForUniques.isNotEmpty()) {
-            space()
-            add(replacementTextForUniques)
-        } else {
-            addUniques(colorConsumesResources = true)
-        }
-
-        if (requiredResource != null) {
-            space()
-            val resource = ruleset.tileResources[requiredResource]
-            add(
-                requiredResource!!.getConsumesAmountString(1, resource!!.isStockpiled),
-                link="Resources/$requiredResource", color="#F42"
-            )
-        }
-
-        if (uniqueTo != null) {
-            space()
-            add("Unique to [$uniqueTo]", link = "Nation/$uniqueTo")
-            if (replaces != null)
-                add("Replaces [$replaces]", link = "Unit/$replaces", indent = 1)
-        }
-
-        if (requiredTech != null || upgradesTo != null || obsoleteTech != null)
-            space()
-        if (requiredTech != null)
-            add("Required tech: [$requiredTech]", link = "Technology/$requiredTech")
-
-        val canUpgradeFrom = ruleset.units
-            .filterValues {
-                (it.upgradesTo == name || it.upgradesTo != null && it.upgradesTo == replaces)
-                        && (it.uniqueTo == null || it.uniqueTo == uniqueTo)
-            }.keys
-        if (canUpgradeFrom.isNotEmpty()) {
-            if (canUpgradeFrom.size == 1)
-                add("Can upgrade from [${canUpgradeFrom.first()}]", link = "Unit/${canUpgradeFrom.first()}")
-            else {
-                space()
-                add("Can upgrade from:")
-                for (unitName in canUpgradeFrom.sorted())
-                    add(unitName, link = "Unit/$unitName", indent = 2)
-                space()
+            if (cost > 0) {
+                stats.clear()
+                values.clear()
+                stats += "$cost${Fonts.production}"
+                values += CivilopediaStat("{Cost}: {Production}", cost, Fonts.production)
+                if (canBePurchasedWithStat(null, Stat.Gold)) {
+                    stats += "${getCivilopediaGoldCost()}${Fonts.gold}"
+                    values += CivilopediaStat("{Cost}: {Gold}", getCivilopediaGoldCost(), Fonts.gold)
+                }
+                add(FormattedLine(stats.joinToString("/", "{Cost}: ")).apply { civilopediaStats = values.toList() })
             }
         }
 
-        if (upgradesTo != null)
-            add("Upgrades to [$upgradesTo]", link = "Unit/$upgradesTo")
-        if (obsoleteTech != null)
-            add("Obsolete with [$obsoleteTech]", link = "Technology/$obsoleteTech")
+        section("abilities") {
+            if (interceptRange > 0)
+                add("Air Intercept Range: [$interceptRange]")
 
-        if (promotions.isNotEmpty()) {
-            space()
-            promotions.withIndex().forEach {
+            if (replacementTextForUniques.isNotEmpty()) {
+                space()
+                add(replacementTextForUniques)
+            } else {
+                addUniques(colorConsumesResources = true)
+            }
+        }
+
+        section("conditions") {
+            if (requiredResource != null) {
+                space()
+                val resource = ruleset.tileResources[requiredResource]
                 add(
-                    when {
-                        promotions.size == 1 -> "{Free promotion:} "
-                        it.index == 0 -> "{Free promotions:} "
-                        else -> ""
-                    } + "{${it.value.tr()}}" +   // tr() not redundant as promotion names now can use []
-                            (if (promotions.size == 1 || it.index == promotions.size - 1) "" else ","),
-                    link = "Promotions/${it.value}",
-                    indent = if (it.index == 0) 0 else 1
+                    requiredResource!!.getConsumesAmountString(1, resource?.isStockpiled == true),
+                    link="Resources/$requiredResource", color="#F42"
                 )
             }
+
+            if (uniqueTo != null) {
+                space()
+                add("Unique to [$uniqueTo]", link = "Nation/$uniqueTo")
+                if (replaces != null)
+                    add("Replaces [$replaces]", link = "Unit/$replaces", indent = 1)
+            }
+
+            if (requiredTech != null || upgradesTo != null || obsoleteTech != null)
+                space()
+            if (requiredTech != null)
+                add("Required tech: [$requiredTech]", link = "Technology/$requiredTech")
         }
 
-        fun filterOtherUnit(unit: BaseUnit) = unit.replaces == name || unit.hasUniquesMentioning(name)
-        val seeAlso = ruleset.units.values.asSequence().filter(::filterOtherUnit)
-        addSeeAlso(seeAlso)
+        section("upgrades") {
+            val canUpgradeFrom = ruleset.units
+                .filterValues {
+                    (it.upgradesTo == name || it.upgradesTo != null && it.upgradesTo == replaces)
+                            && (it.uniqueTo == null || it.uniqueTo == uniqueTo)
+                }.keys
+            if (canUpgradeFrom.isNotEmpty()) {
+                if (canUpgradeFrom.size == 1)
+                    add("Can upgrade from [${canUpgradeFrom.first()}]", link = "Unit/${canUpgradeFrom.first()}")
+                else {
+                    space()
+                    add("Can upgrade from:")
+                    for (unitName in canUpgradeFrom.sorted())
+                        add(unitName, link = "Unit/$unitName", indent = 2)
+                    space()
+                }
+            }
+
+            if (upgradesTo != null)
+                add("Upgrades to [$upgradesTo]", link = "Unit/$upgradesTo")
+            if (obsoleteTech != null)
+                add("Obsolete with [$obsoleteTech]", link = "Technology/$obsoleteTech")
+        }
+
+        section("abilities") {
+            if (promotions.isNotEmpty()) {
+                space()
+                promotions.withIndex().forEach {
+                    add(
+                        when {
+                            promotions.size == 1 -> "{Free promotion:} "
+                            it.index == 0 -> "{Free promotions:} "
+                            else -> ""
+                        } + "{${it.value.tr()}}" +   // tr() not redundant as promotion names now can use []
+                                (if (promotions.size == 1 || it.index == promotions.size - 1) "" else ","),
+                        link = "Promotions/${it.value}",
+                        indent = if (it.index == 0) 0 else 1
+                    )
+                }
+            }
+        }
+
+        section("related") {
+            fun filterOtherUnit(unit: BaseUnit) = unit.replaces == name || unit.hasUniquesMentioning(name)
+            val seeAlso = ruleset.units.values.asSequence().filter(::filterOtherUnit)
+            addSeeAlso(seeAlso)
+        }
     }
 
     /** Show Pixel Unit Art for the unit.
