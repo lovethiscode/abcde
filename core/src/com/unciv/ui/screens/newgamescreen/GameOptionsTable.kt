@@ -227,8 +227,14 @@ class GameOptionsTable(
                     onConfigurationChanged?.invoke()
                 }.apply { name = victory.name; align(Align.left) }).minHeight(44f).row()
             }
-            val turnSlider = addMaxTurnsSlider()
-            if (turnSlider != null) add(turnSlider).padTop(8f).row()
+            add(Table().apply {
+                defaults().growX()
+                val turnSlider = addMaxTurnsSlider()
+                if (turnSlider != null) {
+                    row()
+                    add(turnSlider).padTop(8f).row()
+                }
+            }).row()
         }
         add(pace).width(leftWidth).top().padRight(if (stacked) 0f else 18f)
         if (stacked) row()
