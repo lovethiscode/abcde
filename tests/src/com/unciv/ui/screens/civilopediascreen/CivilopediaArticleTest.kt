@@ -2,6 +2,7 @@ package com.unciv.ui.screens.civilopediascreen
 
 import com.badlogic.gdx.utils.Json
 import com.unciv.UncivGame
+import com.unciv.models.ruleset.Ruleset
 import com.unciv.models.ruleset.unit.BaseUnit
 import com.unciv.testing.GdxTestRunner
 import com.unciv.testing.TestGame
@@ -105,6 +106,14 @@ class CivilopediaArticleTest {
         }
         assertFalse(unit.getCivilopediaTextLines(game.ruleset).flatMap { it.civilopediaStats }
             .any { it.icon == Fonts.production || it.icon == Fonts.gold })
+    }
+
+    @Test
+    fun `single mod search preserves references to resources from the base ruleset`() {
+        val unit = game.ruleset.units.getValue("Swordsman")
+        val lines = unit.getCivilopediaTextLines(Ruleset())
+        assertTrue(lines.any { it.link == "Resources/Iron" && it.color == "#F42" })
+        assertTrue(lines.any { it.link == "Technology/Iron Working" })
     }
 
     @Test
