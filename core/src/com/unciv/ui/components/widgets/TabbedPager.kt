@@ -2,6 +2,7 @@ package com.unciv.ui.components.widgets
 
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.EventListener
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -24,7 +25,6 @@ import com.unciv.ui.components.extensions.darken
 import com.unciv.ui.components.extensions.isEnabled
 import com.unciv.ui.components.extensions.packIfNeeded
 import com.unciv.ui.components.extensions.pad
-import com.unciv.ui.components.extensions.scrollTo
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onActivation
@@ -505,8 +505,13 @@ open class TabbedPager(
      */
     fun pageScrollTo(actor: Actor, animation: Boolean = false) {
         if (activePage < 0) return
-        (contentScroll.actor as? Layout)?.validate()
-        contentScroll.scrollTo(actor)
+        val content = contentScroll.actor
+        (content as? Layout)?.validate()
+        // Settings fields and language tiles may be nested inside section/grid tables.
+        generateSequence(actor.parent) { it.parent }.takeWhile { it !== content }
+            .toList().asReversed().forEach { (it as? Layout)?.validate() }
+        val position = actor.localToAscendantCoordinates(content, Vector2())
+        contentScroll.scrollTo(position.x, position.y, actor.width, actor.height)
         pages[activePage].scrollY = contentScroll.scrollY
         if (!animation) contentScroll.updateVisualScroll()
     }
