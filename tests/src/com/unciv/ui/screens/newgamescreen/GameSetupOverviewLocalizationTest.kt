@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 class GameSetupOverviewLocalizationTest {
     @Test fun overviewCopyAndOpponentCountAreLocalized() {
         val messages = listOf("Quick skirmish", "Standard journey", "Custom setup", "Game pace", "Game rules",
-            "Room", "Room rules", "[count] AI opponents", "A new civilization begins with you.",
+            "Room", "Room rules", "Selected civilization", "[count] AI opponents", "A new civilization begins with you.",
             "Choose a setup, then shape your world.", "Choose the map and terrain for your game.",
             "Choose your civilization and opponents.", "Set the pace and victory conditions.",
             "This changes the map, pace and opponents. Other rules are kept.",

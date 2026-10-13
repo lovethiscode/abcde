@@ -64,6 +64,21 @@ object GameSetupOverview {
         top()
     }
 
+    fun choice(caption: String, selected: Boolean) = caption.toTextButton().apply {
+        label.setWrap(true)
+        style = TextButton.TextButtonStyle(style).apply {
+            up = BaseScreen.skinStrings.getUiBackground("GameSetup/Choice",
+                BaseScreen.skinStrings.roundedEdgeRectangleSmallShape,
+                if (selected) ExpeditionBlueTheme.raised else ExpeditionBlueTheme.panel)
+            fontColor = if (selected) accent else Color.WHITE
+        }
+    }
+
+    fun field(title: String, control: Actor, width: Float) = Table().apply {
+        add(title.toLabel(muted, 16).apply { setWrap(true) }).width(width).left().padBottom(8f).row()
+        add(control).width(width).minHeight(UiNavigation.minimumTouchSize()).fillX()
+    }
+
     fun heading(title: String, subtitle: String) = Table().apply {
         add(title.toLabel(accent, 28).apply { setWrap(true) }).minWidth(0f).growX().left().row()
         add(subtitle.toLabel(muted, 18).apply { setWrap(true) }).minWidth(0f).growX().left().padTop(6f)

@@ -35,6 +35,7 @@ class MapParametersTable(
     private val mapParameters: MapParameters,
     private val mapGeneratedMainType: String,
     private val forMapEditor: Boolean = false,
+    private val roomLayoutWidth: Float? = null,
     private val sizeChangedCallback: (()->Unit)? = null
 ) : Table() {
     // These are accessed from outside the class to read _and_ write values,
@@ -44,6 +45,8 @@ class MapParametersTable(
     lateinit var customMapWidth: UncivTextField.Integer
     lateinit var customMapHeight: UncivTextField.Integer
 
+    private lateinit var mapShapeSelectBox: TranslatedSelectBox
+    private var roomPreview: Table? = null
     private lateinit var worldSizeSelectBox: TranslatedSelectBox
     private var customWorldSizeTable = Table()
     private var hexagonalSizeTable = Table()
@@ -115,7 +118,8 @@ class MapParametersTable(
         addResourceSelectBox()
         addWrappedCheckBoxes()
         addMirrorSelectBox()
-        addAdvancedSettings()
+        if (roomLayoutWidth == null) addAdvancedSettings()
+        else buildRoomLayout(roomLayoutWidth)
         generateExampleMap()
     }
 
@@ -139,7 +143,7 @@ class MapParametersTable(
             }
             add(optionsTable).colspan(2).grow().row()
         } else {
-            val mapShapeSelectBox =
+            mapShapeSelectBox =
                     TranslatedSelectBox(mapShapes, mapParameters.shape)
             mapShapeSelectBox.onChange {
                 mapParameters.shape = mapShapeSelectBox.selected.value
@@ -169,6 +173,7 @@ class MapParametersTable(
                 if (generation != exampleMapGeneration) return@runOnGLThread
                 lastExampleMap = exampleMap
                 updateOverviewPreview()
+                updateRoomPreview()
                 mapTypeExample.clear()
                 val mapPreview = LoadMapPreview(exampleMap, maxMapSize, maxMapSize)
                 if (!forMapEditor) {
@@ -209,6 +214,59 @@ class MapParametersTable(
         val map = lastExampleMap
         if (map == null) preview.add("Loading...".toLabel())
         else preview.add(LoadMapPreview(map, overviewPreviewWidth, overviewPreviewHeight))
+    }
+
+    private fun buildRoomLayout(width: Float) {
+        clearChildren()
+        defaults().pad(0f)
+        val stacked = width < 700f
+        val previewWidth = if (stacked) width else (width - 18f) * 0.46f
+        val optionsWidth = if (stacked) width else width - previewWidth - 18f
+        val previewCard = GameSetupOverview.card().apply {
+            add("Example map".toLabel(fontSize = 24)).left().padBottom(14f).row()
+            roomPreview = Table()
+            add(roomPreview).width(previewWidth - 36f).height(if (stacked) 210f else 280f).row()
+        }
+        val options = GameSetupOverview.card().apply {
+            val innerWidth = optionsWidth - 36f
+            val fieldWidth = (innerWidth - 14f) / 2f
+            defaults().left().padBottom(18f)
+            add(Table().apply {
+                for ((index, type) in listOf(MapType.pangaea, MapType.twoContinents, MapType.archipelago).withIndex()) {
+                    add(GameSetupOverview.choice(type, mapParameters.type == type).apply {
+                        onClick { mapTypeSelectBox.setSelected(type) }
+                    }).width((innerWidth - 16f) / 3f).minHeight(54f).padRight(if (index == 2) 0f else 8f)
+                }
+            }).colspan(2).row()
+            add(GameSetupOverview.field("Map Generation Type", mapTypeSelectBox, innerWidth)).colspan(2).row()
+            add(GameSetupOverview.field("World Size", worldSizeSelectBox, fieldWidth)).padRight(14f)
+            add(GameSetupOverview.field("Map Shape", mapShapeSelectBox, fieldWidth)).row()
+            add(customWorldSizeTable).colspan(2).growX().row()
+            add(GameSetupOverview.field("Resource Setting", resourceSelectBox, innerWidth)).colspan(2).row()
+            add(worldWrapCheckbox).colspan(2).minHeight(44f).row()
+        }
+        add(previewCard).width(previewWidth).top().padRight(if (stacked) 0f else 18f)
+        if (stacked) row()
+        add(options).width(optionsWidth).top().padTop(if (stacked) 18f else 0f).row()
+        add(ExpanderTab("Advanced Settings", startsOutOpened = false, expanderWidth = width,
+            persistenceID = "MultiplayerRoom.WorldAdvanced") { table ->
+            table.defaults().left().growX().padBottom(12f)
+            for (check in listOf(strategicBalanceCheckbox, legendaryStartCheckbox, noRuinsCheckbox, noNaturalWondersCheckbox))
+                table.add(check).minHeight(44f).row()
+            addAdvancedControls(table)
+        }).colspan(if (stacked) 1 else 2).width(width).padTop(18f)
+        updateRoomPreview()
+    }
+
+    private fun updateRoomPreview() {
+        val preview = roomPreview ?: return
+        val width = roomLayoutWidth ?: return
+        val stacked = width < 700f
+        preview.clear()
+        val map = lastExampleMap
+        if (map == null) preview.add("Loading...".toLabel())
+        else preview.add(LoadMapPreview(map, (if (stacked) width else (width - 18f) * 0.46f) - 36f,
+            if (stacked) 210f else 280f))
     }
 
     private fun addMapTypeSelectBox() {
@@ -478,11 +536,13 @@ class MapParametersTable(
         }
 
         table.add("RNG Seed".toLabel()).left()
+        if (roomLayoutWidth != null) table.row()
         table.add(seedTextField).fillX().padBottom(10f).row()
 
         fun addSlider(text: String, getValue:()->Float, min: Float, max: Float, step: Float, onChange: (value: Float)->Unit): UncivSlider {
             val slider = UncivSlider(min, max, step, onChange = {onChange(it); generateExampleMap()}, initial = getValue())
             table.add(text.toLabel()).left()
+            if (roomLayoutWidth != null) table.row()
             table.add(slider).fillX().row()
             advancedSliders[slider] = getValue
             return slider

@@ -48,7 +48,8 @@ class GameOptionsTable(
     private val updatePlayerPickerRandomLabel: () -> Unit,
     private val allowOnlineToggle: Boolean = true,
     private val forInviteRoom: Boolean = false,
-    private val onConfigurationChanged: (() -> Unit)? = null
+    private val onConfigurationChanged: (() -> Unit)? = null,
+    private val roomLayoutWidth: Float? = null
 ) : Table(BaseScreen.skin) {
     private var gameParameters = previousScreen.gameSetupInfo.gameParameters
     private var ruleset = previousScreen.ruleset
@@ -89,6 +90,12 @@ class GameOptionsTable(
             modCheckboxes.setBaseRuleset(gameParameters.baseRuleset)
         }
 
+        if (roomLayoutWidth != null) {
+            buildRoomLayout(roomLayoutWidth)
+            pack()
+            return
+        }
+
         add(Table().apply {
             defaults().pad(5f)
             addBaseRulesetSelectBox()
@@ -124,45 +131,122 @@ class GameOptionsTable(
         add(checkboxTable).center().row()
         add(selectBoxTable).center().row()
 
-        val expander = ExpanderTab(
-            "Advanced Settings",
-            icon = ImageGetter.getImage("OtherIcons/Settings").apply { setSize(20f, 20f) },
-            startsOutOpened = gameParameters.enableRandomNationsPool,
-            persistenceID = "GameOptionsTable.Advanced"
-        ) {
-            it.defaults().pad(5f, 0f)
-            it.addNoCityRazingCheckbox()
-            it.addNoBarbariansCheckbox()
-            it.addRagingBarbariansCheckbox()
-            it.addOneCityChallengeCheckbox()
-            it.addNuclearWeaponsCheckbox()
-            it.addEnableEspionageCheckbox()
-            it.addNoStartBiasCheckbox()
-            if (!forInviteRoom) it.addRandomPlayersCheckbox()
-            it.addRandomCityStatesCheckbox()
-            it.addRandomNationsPoolCheckbox()
-            if (gameParameters.enableRandomNationsPool) {
-                it.addNationsSelectTextButton()
-            }
-            it.addShowCivilizationStatsCheckbox()
-            if (gameParameters.showCivilizationStats == true) {
-                val statsTable = Table().apply {
-                    defaults().growX().left().padLeft(30f).padBottom(10f)
-                    addShowRankingsCheckbox()
-                    addShowChartsCheckbox()
-                    addShowDemographicsCheckbox()
-                    addCensorStatsCheckbox()
-                    addShowAdditionalRankingTypesCheckbox()
-                }
-                it.add(statsTable).left()
-            }
-        }
+        val expander = advancedSettings()
         add(expander).pad(10f).row()
 
         if (!isPortrait && !forInviteRoom)
             add(modCheckboxes).padTop(0f).row()
 
         pack()
+    }
+
+    private fun advancedSettings() = ExpanderTab(
+            "Advanced Settings",
+            icon = ImageGetter.getImage("OtherIcons/Settings").apply { setSize(20f, 20f) },
+            startsOutOpened = gameParameters.enableRandomNationsPool,
+            persistenceID = "GameOptionsTable.Advanced"
+        ) {
+            addAdvancedSettings(it)
+        }
+
+    private fun addAdvancedSettings(it: Table) {
+        it.defaults().pad(5f, 0f)
+        it.addNoCityRazingCheckbox()
+        it.addNoBarbariansCheckbox()
+        it.addRagingBarbariansCheckbox()
+        it.addOneCityChallengeCheckbox()
+        it.addNuclearWeaponsCheckbox()
+        it.addEnableEspionageCheckbox()
+        it.addNoStartBiasCheckbox()
+        if (!forInviteRoom) it.addRandomPlayersCheckbox()
+        it.addRandomCityStatesCheckbox()
+        it.addRandomNationsPoolCheckbox()
+        if (gameParameters.enableRandomNationsPool) {
+            it.addNationsSelectTextButton()
+        }
+        it.addShowCivilizationStatsCheckbox()
+        if (gameParameters.showCivilizationStats == true) {
+            val statsTable = Table().apply {
+                defaults().growX().left().padLeft(30f).padBottom(10f)
+                addShowRankingsCheckbox()
+                addShowChartsCheckbox()
+                addShowDemographicsCheckbox()
+                addCensorStatsCheckbox()
+                addShowAdditionalRankingTypesCheckbox()
+            }
+            it.add(statsTable).left()
+        }
+    }
+
+    private fun buildRoomLayout(width: Float) {
+        background = null
+        defaults().pad(0f)
+        val stacked = width < 700f
+        val leftWidth = if (stacked) width else (width - 18f) * 0.55f
+        val rightWidth = if (stacked) width else width - leftWidth - 18f
+        val pace = GameSetupOverview.card().apply {
+            val innerWidth = leftWidth - 36f
+            defaults().width(innerWidth).left().padBottom(16f)
+            add("Game pace".toLabel(fontSize = 24)).row()
+            add(Table().apply { addBaseRulesetSelectBox() }).row()
+            add("Game Speed".toLabel(Color.LIGHT_GRAY, 16)).padBottom(8f).row()
+            add(Table().apply {
+                val speeds = ruleset.speeds.keys.toList()
+                val columns = minOf(3, speeds.size)
+                for ((index, speed) in speeds.withIndex()) {
+                    add(GameSetupOverview.choice(speed, gameParameters.speed == speed).apply {
+                        onClick {
+                            gameParameters.speed = speed
+                            update()
+                            onConfigurationChanged?.invoke()
+                        }
+                    }).width((innerWidth - (columns - 1) * 8f) / columns).minHeight(44f)
+                        .padRight(if (index % columns == columns - 1) 0f else 8f).padBottom(8f)
+                    if (index % columns == columns - 1) row()
+                }
+            }).row()
+            add(Table().apply {
+                val fieldWidth = (innerWidth - 14f) / 2f
+                add(Table().apply { addDifficultySelectBox() }).width(fieldWidth).padRight(14f).top()
+                add(Table().apply { addEraSelectBox() }).width(fieldWidth).top()
+            }).row()
+            add(Table().apply {
+                defaults().growX().padTop(8f)
+                val turnSlider = addMaxTurnsSlider()
+                if (turnSlider != null) add(turnSlider).row()
+                if (gameParameters.randomNumberOfCityStates) addMinMaxCityStatesSliders()
+                else addCityStatesSlider()
+            }).row()
+        }
+        val victories = GameSetupOverview.card().apply {
+            val innerWidth = rightWidth - 36f
+            defaults().width(innerWidth).left().padBottom(12f)
+            add("Victory Conditions".toLabel(fontSize = 24)).padBottom(20f).row()
+            for (victory in ruleset.selectableVictories()) {
+                add(victory.name.toCheckBox(victory.name in gameParameters.victoryTypes) { enabled ->
+                    if (enabled) gameParameters.victoryTypes.add(victory.name)
+                    else gameParameters.victoryTypes.remove(victory.name)
+                    if (victory.enablesMaxTurns()) update()
+                    onConfigurationChanged?.invoke()
+                }.apply { name = victory.name }).minHeight(44f).row()
+            }
+        }
+        add(pace).width(leftWidth).top().padRight(if (stacked) 0f else 18f)
+        if (stacked) row()
+        add(victories).width(rightWidth).top().padTop(if (stacked) 18f else 0f).row()
+        add(ExpanderTab("Advanced Settings", startsOutOpened = false, expanderWidth = width,
+            persistenceID = "MultiplayerRoom.RulesAdvanced") { table ->
+            table.defaults().left().growX().padBottom(14f)
+            addAdvancedSettings(table)
+            table.row()
+            table.add(Table().apply {
+                defaults().left().padBottom(12f)
+                addAnyoneCanSpectateCheckbox()
+                addDurationSelectBox("Time until skip turn:", GameParameters::minutesUntilSkipTurn, 1, 0, 0)
+                addDurationSelectBox("Total time to play:", GameParameters::minutesUntilForceResign, 3, 0, 0)
+                addDurationSelectBox("Time recovered per turn:", GameParameters::minutesRecoveredPerTurn, 3, 0, 0)
+            }).row()
+        }).colspan(if (stacked) 1 else 2).width(width).padTop(18f)
     }
 
     private fun Table.addCheckbox(
@@ -414,7 +498,9 @@ class GameOptionsTable(
     }
 
     private fun Table.addSelectBox(text: String, values: Collection<String>, initialState: String, onChange: (newValue: String) -> String?): TranslatedSelectBox {
-        add(text.toLabel(hideIcons = true)).left()
+        add(text.toLabel(if (roomLayoutWidth != null) Color.LIGHT_GRAY else Color.WHITE,
+            if (roomLayoutWidth != null) 16 else 18, hideIcons = true)).left()
+        if (roomLayoutWidth != null) row()
         val selectBox = TranslatedSelectBox(values, initialState)
         selectBox.isDisabled = locked
         selectBox.onChange {
@@ -422,7 +508,7 @@ class GameOptionsTable(
             if (changedValue != null) selectBox.setSelected(changedValue)
         }
         onChange(selectBox.selected.value)
-        add(selectBox).fillX().row()
+        add(selectBox).minWidth(0f).growX().minHeight(if (roomLayoutWidth != null) 44f else 0f).row()
         return selectBox
     }
 
@@ -490,9 +576,12 @@ class GameOptionsTable(
         defaultHourValue: Int,
         defaultMinuteValue: Int
     ) {
-        add(title.toLabel(hideIcons = true)).right()
-
-        val selector = DurationSelector(gameParameters, param, defaultDayValue, defaultHourValue, defaultMinuteValue)
+        add(title.toLabel(hideIcons = true)).left()
+        if (roomLayoutWidth != null) getCell(children.peek()).colspan(3).row()
+        val minutes = param.get(gameParameters)
+        val selector = if (roomLayoutWidth == null)
+            DurationSelector(gameParameters, param, defaultDayValue, defaultHourValue, defaultMinuteValue)
+        else DurationSelector(gameParameters, param, minutes / 1440, minutes % 1440 / 60, minutes % 60)
 
         add(selector.dayBox)
         add(selector.hourBox)
