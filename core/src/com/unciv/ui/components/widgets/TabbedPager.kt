@@ -500,11 +500,13 @@ open class TabbedPager(
     }
     /** Change the vertical scroll position af the [active][activePage] page's contents to scroll a given Actor into view
      *
-     *  Assumes [actor] is a direct child of the content page, and **if** the page does **not** implement [Layout],
+     *  Accepts descendants of the content page. **If** the page does **not** implement [Layout],
      *  that [actor] has somehow been given valid [bounds][Actor.setBounds] within the page.
      */
     fun pageScrollTo(actor: Actor, animation: Boolean = false) {
         if (activePage < 0) return
+        // Late-initialized pages can change their preferred size on first activation.
+        contentScroll.validate()
         val content = contentScroll.actor
         (content as? Layout)?.validate()
         // Settings fields and language tiles may be nested inside section/grid tables.
