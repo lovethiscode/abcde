@@ -46,7 +46,7 @@ class EndlessConfigScreen(
             add("Endless settings".toLabel(Theme.gold, 28).apply { wrap = true }).expandX().fillX().left().padLeft(14f)
         }).growX().pad(12f, 18f, 10f, 18f).row()
         val content = Table().apply {
-            background = skin.newDrawable("RoundedEdgeRectangle", Theme.panel)
+            background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.panel)
             pad(18f); top(); defaults().left().spaceBottom(12f)
             fun text(value: String, muted: Boolean = false, size: Int = 18) {
                 add(value.toLabel(if (muted) Theme.muted else Theme.text, size).apply { wrap = true }).width(inner).row()
