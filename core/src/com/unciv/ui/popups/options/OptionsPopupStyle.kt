@@ -26,15 +26,18 @@ internal object OptionsPopupStyle {
     }
 
     private fun switchDrawable(checked: Boolean) = object : BaseDrawable() {
-        private val track = BaseScreen.skin.newDrawable("RoundedEdgeRectangle",
-            if (checked) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.border)
+        private val trackColor = if (checked) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.border
+        private val track = BaseScreen.skin.newDrawable("Rectangle", trackColor)
+        private val trackEnd = BaseScreen.skin.newDrawable("Circle", trackColor)
         private val thumb = BaseScreen.skin.newDrawable("Circle",
             if (checked) ExpeditionBlueTheme.primaryInk else ExpeditionBlueTheme.text)
 
         init { minWidth = 44f; minHeight = 26f }
 
         override fun draw(batch: Batch, x: Float, y: Float, width: Float, height: Float) {
-            track.draw(batch, x, y, width, height)
+            track.draw(batch, x + height / 2f, y, width - height, height)
+            trackEnd.draw(batch, x, y, height, height)
+            trackEnd.draw(batch, x + width - height, y, height, height)
             val size = height - 8f
             thumb.draw(batch, if (checked) x + width - size - 4f else x + 4f, y + 4f, size, size)
         }

@@ -47,7 +47,9 @@ internal abstract class OptionsPopupTab(
             it.defaults().pad(4f).growX()
             it.block()
         }
-        card.background = skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.panel)
+        card.background = ExpeditionBlueTheme.outlinedControl(
+            skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.panel),
+            skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.border))
         card.header.background = skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.raised)
         add(card).colspan(2).growX().padBottom(8f).row()
     }
