@@ -65,6 +65,10 @@ class MapParametersTable(
     // Preview is shrunk to 65% of column width so Width/Height fields and warnings below stay visible without scrolling
     private val maxMapSize = (((previousScreen as? NewGameScreen)?.getColumnWidth() ?: 200f) - 10f) * 0.65f
     private val mapTypeExample = Table()
+    private var lastExampleMap: TileMap? = null
+    private var overviewPreview: Table? = null
+    private var overviewPreviewWidth = 0f
+    private var overviewPreviewHeight = 0f
     private var exampleMapJob: Job? = null
     @Volatile
     private var exampleMapGeneration = 0
@@ -163,6 +167,8 @@ class MapParametersTable(
             if (!isActive) return@run
             Concurrency.runOnGLThread {
                 if (generation != exampleMapGeneration) return@runOnGLThread
+                lastExampleMap = exampleMap
+                updateOverviewPreview()
                 mapTypeExample.clear()
                 val mapPreview = LoadMapPreview(exampleMap, maxMapSize, maxMapSize)
                 if (!forMapEditor) {
@@ -186,6 +192,23 @@ class MapParametersTable(
         exampleMapGeneration++
         exampleMapJob?.cancel()
         exampleMapJob = null
+    }
+
+    internal fun createOverviewPreview(width: Float, height: Float): Table {
+        overviewPreviewWidth = width
+        overviewPreviewHeight = height
+        return Table().also {
+            overviewPreview = it
+            updateOverviewPreview()
+        }
+    }
+
+    private fun updateOverviewPreview() {
+        val preview = overviewPreview ?: return
+        preview.clear()
+        val map = lastExampleMap
+        if (map == null) preview.add("Loading...".toLabel())
+        else preview.add(LoadMapPreview(map, overviewPreviewWidth, overviewPreviewHeight))
     }
 
     private fun addMapTypeSelectBox() {

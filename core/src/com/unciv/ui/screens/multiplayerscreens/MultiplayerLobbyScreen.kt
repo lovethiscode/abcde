@@ -34,6 +34,8 @@ import com.unciv.ui.components.widgets.UncivTextField
 import com.unciv.ui.screens.newgamescreen.NationPickerPopup
 import com.unciv.ui.screens.newgamescreen.IPreviousScreen
 import com.unciv.ui.screens.newgamescreen.GameOptionsTable
+import com.unciv.ui.screens.newgamescreen.GameSetupOverview
+import com.unciv.ui.screens.newgamescreen.GameSetupSection
 import com.unciv.ui.screens.newgamescreen.MapParametersTable
 import com.unciv.logic.map.MapGeneratedMainType
 import com.unciv.logic.map.MapType
@@ -90,7 +92,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     override val ruleset = Ruleset()
     private var configurationSupported = false
     private var configurationTable: Table? = null
+    private var gameSettings: GameOptionsTable? = null
     private var mapSettings: MapParametersTable? = null
+    private var setupSection = GameSetupSection.Overview
     private var configurationPending = false
     private var draftRevision = 0L
     private var draftBaseConfigurationVersion = -1L
@@ -178,9 +182,11 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val header = Table().apply {
             add(back).minHeight(UiNavigation.minimumTouchSize()).padRight(16f)
             add("Multiplayer room".toLabel(fontSize = 28)).left().growX()
-            if (this@MultiplayerLobbyScreen.stage.width < 850f) row()
-            add(inviteButton).height(44f).padRight(8f)
-            add(copyInvitationButton).height(44f)
+            if (!UiNavigation.isIos) {
+                if (this@MultiplayerLobbyScreen.stage.width < 850f) row()
+                add(inviteButton).height(44f).padRight(8f)
+                add(copyInvitationButton).height(44f)
+            }
         }
         inviteButton.setText("Share invitation".tr())
         inviteButton.onClick { shareInvitation() }
@@ -347,6 +353,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             !connected -> "Connection failed. Retrying...".tr()
             busy -> Constants.working.tr()
             configurationPending -> "Syncing room settings...".tr()
+            setup?.gameParameters?.victoryTypes?.isEmpty() == true -> "No victory conditions were selected!".tr()
             joined < humans.size -> "Invite friends to fill the empty seats.".tr()
             ready < humans.size && host -> "Waiting for other players to get ready.".tr()
             ready < humans.size -> "Choose your civilization, then get ready.".tr()
@@ -357,7 +364,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         copyInvitationButton.isEnabled = inviteButton.isEnabled
         val width = stage.width - 32f
         val landscape = r != null && !isNarrowerThan4to3()
-        if (landscape) {
+        if (landscape || UiNavigation.isIos) {
             scroll.actor = null
             body.add(content).grow()
         } else {
@@ -367,8 +374,11 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         if (r != null) {
             val gameSetup = setup ?: json().fromJson(GameSetupInfo::class.java,r.setup).also { setup = it }
             val editable = host && own != null && configurationSupported && r.state == "WAITING"
-            val settingsWidth = if (landscape) (width - 32f) * 2f / 3f + 16f else width
-            val cardsWidth = if (landscape) width - settingsWidth - 16f else width
+            val overviewWidth = GameSetupOverview.contentWidth(width, !landscape)
+            val settingsWidth = if (UiNavigation.isIos) overviewWidth else if (landscape) (width - 32f) * 2f / 3f + 16f else width
+            val cardsWidth = if (UiNavigation.isIos) {
+                if (landscape && setupSection == GameSetupSection.Overview) (overviewWidth - 20f) * 0.58f else overviewWidth
+            } else if (landscape) width - settingsWidth - 16f else width
             fun summary(values: List<String>) = Table().apply {
                 background = skinStrings.getUiBackground("MultiplayerLobbyScreen/GameSummary", skinStrings.roundedEdgeRectangleSmallShape, Color.valueOf("0d2140"))
                 pad(18f)
@@ -387,7 +397,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 add(counts.toLabel(Color.LIGHT_GRAY,18)).left().padTop(4f).padBottom(12f).row()
             }
             val players = Table()
-            if (!landscape) players.add(playersHeading).growX().row()
+            if (!landscape && !UiNavigation.isIos) players.add(playersHeading).growX().row()
             if (own == null && r.state == "WAITING") players.add("Rejoin room".toTextButton().apply {
                 onClick {
                     session.occupancy = ""; session.pendingAction = ""; session.pendingRequestId = ""; session.pendingCommand = ""
@@ -421,7 +431,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 }
             }
             players.add(details).growX()
-            val settings = if (editable) configurationTable ?: buildConfiguration(settingsWidth).also { configurationTable = it }
+            val settings = if (editable || UiNavigation.isIos) configurationTable ?: buildConfiguration(settingsWidth).also { configurationTable = it }
                 else if (landscape) Table().apply {
                     add(scrollColumn("Game Options".toLabel(fontSize = 24), summary(gameValues), gameOptionsScroll)).width(cardsWidth).growY().padRight(16f)
                     add(scrollColumn("Map Options".toLabel(fontSize = 24), summary(mapValues), mapOptionsScroll)).width(cardsWidth).growY()
@@ -430,7 +440,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     add(summary(mapValues + gameValues)).growX()
                 }
             settings.touchable = if (!connected || busy || r.state != "WAITING") Touchable.disabled else Touchable.childrenOnly
-            if (landscape) {
+            if (UiNavigation.isIos) {
+                drawOverviewPage(width, !landscape, overviewWidth, cardsWidth, playersHeading, players, editable)
+            } else if (landscape) {
                 content.add(settings).width(settingsWidth).growY().padRight(16f)
                 content.add(scrollColumn(playersHeading, players, playersScroll)).width(cardsWidth).growY()
             } else if (editable) {
@@ -451,7 +463,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         footer.add(leave).height(44f).padRight(if (host) 10f else 0f)
         if (host) {
             startButton.setText(lobbyStartButtonText(r.state,busy).tr())
-            startButton.isEnabled = connected && !busy && !configurationPending && own != null && (r.state == "STARTING" || (r.state == "WAITING" && joined == humans.size && ready == humans.size))
+            startButton.isEnabled = connected && !busy && !configurationPending && own != null && (r.state == "STARTING" || (r.state == "WAITING" && joined == humans.size && ready == humans.size && gameSetupInfo.gameParameters.victoryTypes.isNotEmpty()))
             footer.add(startButton).height(44f)
         }
         if (r == null && !busy) footer.add("Retry".toTextButton().apply { onClick {
@@ -468,6 +480,85 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             pane.updateVisualScroll()
         }
     }
+
+    private fun selectSetupSection(section: GameSetupSection) {
+        setupSection = section
+        scrollPanes.forEach { it.scrollY = 0f }
+        drawMembers(force = true)
+    }
+
+    private fun drawOverviewPage(width: Float, portrait: Boolean, contentWidth: Float, cardsWidth: Float,
+                                 playersHeading: Table, players: Table, editable: Boolean) {
+        val r = room!!
+        val page = Table().apply { top() }
+        val own = r.seats.firstOrNull { it.playerId == userId && it.occupancy == session.occupancy }
+        val canEdit = editable && connected && !busy
+        val settings = configurationTable!!
+        val section = setupSection
+        val selectedContent: Actor = when (section) {
+            GameSetupSection.World -> mapSettings!!
+            GameSetupSection.Rules -> gameSettings!!
+            else -> players
+        }
+        if (section == GameSetupSection.World || section == GameSetupSection.Rules) {
+            if (selectedContent.parent !== settings) {
+                settings.clearChildren()
+                settings.add(selectedContent).top()
+            }
+            settings.touchable = if (canEdit) Touchable.childrenOnly else Touchable.disabled
+            page.add(GameSetupOverview.heading(section.caption,
+                if (editable) "Changes are shared with everyone in the room."
+                else "Only the host can change room rules.")).growX().padBottom(16f).row()
+            val pane = if (section == GameSetupSection.World) mapOptionsScroll else gameOptionsScroll
+            pane.actor = settings
+            page.add(pane).grow()
+        } else if (section == GameSetupSection.Civilizations) {
+            page.add(playersHeading).growX().row()
+            playersScroll.actor = players
+            page.add(playersScroll).grow()
+        } else {
+            val invitation = Table().apply {
+                add(inviteButton).minHeight(UiNavigation.minimumTouchSize()).padRight(10f)
+                add(copyInvitationButton).minHeight(UiNavigation.minimumTouchSize())
+            }
+            val roster = Table().apply {
+                top()
+                add(playersHeading).growX().row()
+                add(invitation).left().padBottom(14f).row()
+                if (portrait) add(players).growX().top()
+                else {
+                    playersScroll.actor = players
+                    add(playersScroll).grow()
+                }
+            }
+            val summaryWidth = if (portrait) contentWidth else contentWidth - cardsWidth - 20f
+            val summary = Table().apply {
+                top()
+                add("Room rules".toLabel(fontSize = 24)).left().padBottom(12f).row()
+                add(mapSettings!!.createOverviewPreview(summaryWidth, 130f)).width(summaryWidth).padBottom(10f).row()
+                add(GameSetupOverview.rulesSummary(gameSetupInfo, summaryWidth, ::selectSetupSection)).width(summaryWidth).row()
+                if (own != null) add((if (editable) "Changes are shared with everyone in the room."
+                    else "Only the host can change room rules.").toLabel(Color.LIGHT_GRAY, 16).apply { setWrap(true) })
+                    .width(summaryWidth).left().padTop(10f)
+            }
+            if (portrait) {
+                val stacked = Table().apply {
+                    top()
+                    add(roster).width(contentWidth).growX().row()
+                    add(summary).width(contentWidth).growX().padTop(20f)
+                }
+                scroll.actor = stacked
+                page.add(scroll).grow()
+            } else {
+                page.add(roster).width(cardsWidth).growY().top().padRight(20f)
+                gameOptionsScroll.actor = summary
+                page.add(gameOptionsScroll).width(summaryWidth).growY().top()
+            }
+        }
+        content.add(GameSetupOverview.layout(width, portrait, section, page,
+            multiplayer = true, select = ::selectSetupSection)).width(width).growY()
+    }
+
     private fun scrollColumn(heading: Actor, options: Table, pane: AutoScrollPane) = Table().apply {
         top()
         add(heading).growX().left().padBottom(12f).row()
@@ -480,6 +571,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             mapSettings?.generateExampleMap()
         }, updatePlayerPickerRandomLabel = {}, allowOnlineToggle = false, forInviteRoom = true,
             onConfigurationChanged = { markConfigurationChanged(immediate = true) })
+        gameSettings = gameOptions
         mapSettings = MapParametersTable(this,gameSetupInfo.mapParameters,MapGeneratedMainType.generated)
         val twoColumns = !isNarrowerThan4to3()
         val columnWidth = if(twoColumns) (width-16f)/2f else width
@@ -490,9 +582,11 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }
         return Table().apply {
             top()
-            add(column("Game Options",gameOptions,gameOptionsScroll)).width(columnWidth).growY().padRight(if(twoColumns) 16f else 0f)
-            if(!twoColumns) row()
-            add(column("Map Options",mapSettings!!,mapOptionsScroll)).width(columnWidth).growY().padTop(if(twoColumns) 0f else 16f)
+            if (!UiNavigation.isIos) {
+                add(column("Game Options",gameOptions,gameOptionsScroll)).width(columnWidth).growY().padRight(if(twoColumns) 16f else 0f)
+                if(!twoColumns) row()
+                add(column("Map Options",mapSettings!!,mapOptionsScroll)).width(columnWidth).growY().padTop(if(twoColumns) 0f else 16f)
+            }
             addListener(object : ChangeListener() {
                 override fun changed(event: ChangeEvent, actor: Actor) {
                     markConfigurationChanged(immediate = actor !is Slider && actor !is TextField)

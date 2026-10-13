@@ -87,4 +87,10 @@ class MapOptionsTable(private val newGameScreen: NewGameScreen) : Table() {
         generatedMapOptionsTable.generateExampleMap()
         randomMapOptionsTable.generateExampleMap()
     }
+
+    internal fun createOverviewPreview(width: Float, height: Float): Table? = when (mapTypeSelectBox.selected.value) {
+        MapGeneratedMainType.generated -> generatedMapOptionsTable.createOverviewPreview(width, height)
+        MapGeneratedMainType.randomGenerated -> randomMapOptionsTable.createOverviewPreview(width, height)
+        else -> null
+    }
 }

@@ -24,6 +24,7 @@ import com.unciv.logic.multiplayer.storage.MultiplayerGameCreationPartialExcepti
 import com.unciv.logic.multiplayer.storage.MultiplayerGameCreationCancelledException
 import com.unciv.models.metadata.BaseRuleset
 import com.unciv.models.metadata.GameSetupInfo
+import com.unciv.models.metadata.GameSetupPreset
 import com.unciv.models.metadata.Player
 import com.unciv.models.ruleset.Ruleset
 import com.unciv.models.ruleset.RulesetCache
@@ -32,6 +33,7 @@ import com.unciv.ui.components.extensions.addSeparator
 import com.unciv.ui.components.extensions.addSeparatorVertical
 import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.extensions.enable
+import com.unciv.ui.components.extensions.isEnabled
 import com.unciv.ui.components.extensions.pad
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
@@ -58,7 +60,8 @@ import kotlin.math.floor
 import com.unciv.ui.components.widgets.AutoScrollPane as ScrollPane
 
 class NewGameScreen(
-    defaultGameSetupInfo: GameSetupInfo? = null
+    defaultGameSetupInfo: GameSetupInfo? = null,
+    private var setupSection: GameSetupSection = GameSetupSection.Overview
 ): IPreviousScreen, PickerScreen(), RecreateOnResize {
 
     override val gameSetupInfo = com.unciv.models.metadata.NewGameMode.SinglePlayer.prepare(
@@ -69,6 +72,8 @@ class NewGameScreen(
     internal val playerPickerTable: PlayerPickerTable
     private val mapOptionsTable: MapOptionsTable
     private var mapOptionsTableInitialized = false
+    private var overviewReady = false
+    private var setupStatus = ""
 
     val useInviteRoom = false
     private val stackedLayout = isNarrowerThan4to3() ||
@@ -93,10 +98,10 @@ class NewGameScreen(
         rightSideButton.enable()  // now because PlayerPickerTable init might disable it again
         playerPickerTable = PlayerPickerTable(
             this, gameSetupInfo.gameParameters,
-            if (isPortrait) stage.width - 20f else 0f
+            if (UiNavigation.isIos) getColumnWidth() else if (isPortrait) stage.width - 20f else 0f
         )
         newGameOptionsTable = GameOptionsTable(
-            this, isPortrait,
+            this, UiNavigation.isIos || isPortrait,
             updatePlayerPickerTable = { desiredCiv -> playerPickerTable.update(desiredCiv) },
             updatePlayerPickerRandomLabel = { playerPickerTable.updateRandomNumberLabel() },
             allowOnlineToggle = false
@@ -123,7 +128,10 @@ class NewGameScreen(
             pickerPane.setNavigationContent(banner)
         else if (game.platformCapabilities.multiplayerInviteLinks)
             topTable.add(banner).colspan(if (isPortrait) 1 else 5).width(stage.width-20f).padBottom(12f).row()
-        if (isPortrait) initPortrait()
+        if (UiNavigation.isIos) {
+            overviewReady = true
+            showSetupSection(setupSection)
+        } else if (isPortrait) initPortrait()
         else initLandscape()
         bottomTable.background = skinStrings.getUiBackground("NewGameScreen/BottomTable", tintColor = skinStrings.skinConfig.clearColor)
         topTable.background = skinStrings.getUiBackground("NewGameScreen/TopTable", tintColor = skinStrings.skinConfig.clearColor)
@@ -148,14 +156,132 @@ class NewGameScreen(
             horizontalGroup.addActor(resetToDefaultsButton)
         }
 
-        val startGameButton = "Start game!".toTextButton(if (ExpeditionBlueTheme.enabled)
-            skin.get("positive", TextButtonStyle::class.java) else null).apply {
+        val startGameButton = (if (UiNavigation.isIos) rightSideButton else "Start game!".toTextButton()).apply {
+            setText("Start game!".tr())
+            if (ExpeditionBlueTheme.enabled) style = skin.get("positive", TextButtonStyle::class.java)
             if (!ExpeditionBlueTheme.enabled) color = Color.GREEN
+            name = "setup-start"
         }
         startGameButton.onClick(this::startGameAvoidANRs)
         startGameButton.keyShortcuts.add(KeyCharAndCode.RETURN)
-        horizontalGroup.addActor(startGameButton)
-        pickerPane.rightSideButton.remove()
+        if (!UiNavigation.isIos) {
+            horizontalGroup.addActor(startGameButton)
+            pickerPane.rightSideButton.remove()
+        }
+    }
+
+    private fun showSetupSection(section: GameSetupSection) {
+        setupSection = section
+        topTable.clear()
+        scrollPane.setScrollingDisabled(true, true)
+        val width = stage.width - 24f
+        val contentWidth = GameSetupOverview.contentWidth(width, stackedLayout)
+        val page = Table().apply { top() }
+        val editor = when (section) {
+            GameSetupSection.Overview -> createOverview(contentWidth)
+            GameSetupSection.World -> mapOptionsTable
+            GameSetupSection.Civilizations -> playerPickerTable
+            GameSetupSection.Rules -> Table().apply {
+                top()
+                add(newGameOptionsTable).row()
+                add(newGameOptionsTable.modCheckboxes).growX().padTop(12f)
+            }
+        }
+        if (section != GameSetupSection.Overview) {
+            page.add(GameSetupOverview.heading(section.caption, when (section) {
+                GameSetupSection.World -> "Choose the map and terrain for your game."
+                GameSetupSection.Civilizations -> "Choose your civilization and opponents."
+                else -> "Set the pace and victory conditions."
+            })).growX().padBottom(16f).row()
+        }
+        if (section == GameSetupSection.Civilizations) page.add(editor).grow()
+        else page.add(ScrollPane(editor).apply {
+            setScrollingDisabled(true, false)
+            setOverscroll(false, false)
+        }).grow()
+        topTable.add(GameSetupOverview.layout(width, stackedLayout, section, page, select = ::showSetupSection))
+            .width(width).growY().pad(0f, 12f, 0f, 12f)
+        topTable.invalidateHierarchy()
+    }
+
+    private fun createOverview(width: Float) = Table().apply {
+        top()
+        add(GameSetupOverview.heading("A new civilization begins with you.", "Choose a setup, then shape your world."))
+            .width(width).growX().left().padBottom(18f).row()
+        val presets = Table()
+        for (preset in GameSetupPreset.entries) {
+            val option = GameSetupOverview.card().apply {
+                add(preset.caption.toLabel(fontSize = 20).apply { setWrap(true) }).minWidth(0f).growX().left().row()
+                add("${preset.size.tr()} · ${preset.speed.tr()}".toLabel(Color.LIGHT_GRAY, 16).apply { setWrap(true) })
+                    .minWidth(0f).growX().left().padTop(5f)
+                onClick {
+                    if (!preset.isAvailable(ruleset)) return@onClick
+                    ConfirmPopup(this@NewGameScreen,
+                        "This changes the map, pace and opponents. Other rules are kept.", preset.caption) {
+                        mapOptionsTable.cancelBackgroundJobs()
+                        game.replaceCurrentScreen { NewGameScreen(preset.prepare(gameSetupInfo, ruleset)) }
+                    }.open()
+                }
+                if (!preset.isAvailable(ruleset)) color.a = 0.45f
+            }
+            presets.add(option).width((width - 24f) / 3f).growY().padRight(12f)
+        }
+        presets.add(GameSetupOverview.card().apply {
+            add("Custom setup".toLabel(fontSize = 20).apply { setWrap(true) }).minWidth(0f).growX().left().row()
+            add("Advanced Settings".toLabel(Color.LIGHT_GRAY, 16).apply { setWrap(true) }).minWidth(0f).growX().left().padTop(5f)
+            onClick { showSetupSection(GameSetupSection.Rules) }
+        }).width((width - 24f) / 3f).growY()
+        add(presets).growX().padBottom(18f).row()
+
+        val narrow = stackedLayout
+        val mapWidth = if (narrow) width else (width - 20f) * 0.48f
+        val summaryWidth = if (narrow) width else width - mapWidth - 20f
+        val map = GameSetupOverview.card().apply {
+            mapOptionsTable.createOverviewPreview(mapWidth - 36f, if (narrow) 180f else 210f)?.let {
+                add(it).width(mapWidth - 36f).padBottom(10f).row()
+            }
+            add(GameSetupOverview.summaryRow("Map Options", GameSetupOverview.mapDescription(gameSetupInfo)) {
+                showSetupSection(GameSetupSection.World)
+            }).width(mapWidth - 36f).growX().row()
+            add("Example map".toLabel(Color.LIGHT_GRAY, 16)).left()
+        }
+        val summary = Table().apply {
+            top()
+            add(GameSetupOverview.summaryRow("Civilizations", GameSetupOverview.playerDescription(gameSetupInfo)) {
+                showSetupSection(GameSetupSection.Civilizations)
+            }).width(summaryWidth).growX().row()
+            val parameters = gameSetupInfo.gameParameters
+            add(GameSetupOverview.summaryRow("Game pace", "${parameters.difficulty.tr()} · ${parameters.speed.tr()}") {
+                showSetupSection(GameSetupSection.Rules)
+            }).width(summaryWidth).growX().row()
+            add(GameSetupOverview.summaryRow("Victory Conditions", GameSetupOverview.victoryDescription(gameSetupInfo)) {
+                showSetupSection(GameSetupSection.Rules)
+            }).width(summaryWidth).growX()
+        }
+        add(Table().apply {
+            add(map).width(mapWidth).top().padRight(if (narrow) 0f else 20f)
+            if (narrow) row()
+            add(summary).width(summaryWidth).top().padTop(if (narrow) 12f else 0f)
+        }).growX()
+    }
+
+    override fun render(delta: Float) {
+        if (overviewReady) {
+            val parameters = gameSetupInfo.gameParameters
+            val hasHuman = parameters.players.any { it.playerType == PlayerType.Human }
+            rightSideButton.isEnabled = hasHuman && parameters.victoryTypes.isNotEmpty()
+                && (parameters.randomNumberOfPlayers || parameters.players.size >= 2)
+            val status = when {
+                parameters.victoryTypes.isEmpty() -> "No victory conditions were selected!".tr()
+                !hasHuman -> "No human players selected!".tr()
+                else -> "${GameSetupOverview.mapDescription(gameSetupInfo)} · ${parameters.speed.tr()}"
+            }
+            if (status != setupStatus) {
+                setupStatus = status
+                descriptionLabel.setText(status)
+            }
+        }
+        super.render(delta)
     }
 
     private fun startGameAvoidANRs(){
@@ -278,7 +404,8 @@ class NewGameScreen(
     /** Subtables may need an upper limit to their width - they can ask this function. */
     // In sync with isPortrait in init, here so UI details need not know about 3-column vs 1-column layout
     internal fun getColumnWidth() = floor(
-        if (stackedLayout) stage.width
+        if (UiNavigation.isIos) minOf(720f, GameSetupOverview.contentWidth(stage.width - 24f, stackedLayout) - 36f)
+        else if (stackedLayout) stage.width
         else (stage.width - 2f) / 3f
     )
 
@@ -597,5 +724,5 @@ class NewGameScreen(
         newGameOptionsTable.update()
     }
 
-    override fun recreate(): BaseScreen = NewGameScreen(gameSetupInfo)
+    override fun recreate(): BaseScreen = NewGameScreen(gameSetupInfo, setupSection)
 }
