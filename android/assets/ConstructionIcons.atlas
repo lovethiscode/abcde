@@ -888,14 +888,14 @@ BuildingIcons/Workshop
   index: -1
 MayaCalendar/0
   rotate: false
-  xy: 1810, 589
+  xy: 1882, 50
   size: 25, 50
   orig: 25, 50
   offset: 0, 0
   index: -1
 MayaCalendar/1
   rotate: false
-  xy: 354, 372
+  xy: 1876, 589
   size: 13, 50
   orig: 13, 50
   offset: 0, 0
@@ -909,35 +909,35 @@ MayaCalendar/10
   index: -1
 MayaCalendar/11
   rotate: false
-  xy: 1996, 1878
+  xy: 1997, 1820
   size: 35, 50
   orig: 35, 50
   offset: 0, 0
   index: -1
 MayaCalendar/12
   rotate: false
-  xy: 1997, 1820
+  xy: 1997, 1762
   size: 35, 50
   orig: 35, 50
   offset: 0, 0
   index: -1
 MayaCalendar/13
   rotate: false
-  xy: 1997, 1762
+  xy: 1997, 1704
   size: 35, 50
   orig: 35, 50
   offset: 0, 0
   index: -1
 MayaCalendar/14
   rotate: false
-  xy: 1997, 1704
+  xy: 1997, 1646
   size: 35, 50
   orig: 35, 50
   offset: 0, 0
   index: -1
 MayaCalendar/15
   rotate: false
-  xy: 1997, 1646
+  xy: 1844, 50
   size: 30, 50
   orig: 30, 50
   offset: 0, 0
@@ -951,21 +951,21 @@ MayaCalendar/16
   index: -1
 MayaCalendar/17
   rotate: false
-  xy: 306, 372
+  xy: 1996, 1994
   size: 40, 50
   orig: 40, 50
   offset: 0, 0
   index: -1
 MayaCalendar/18
   rotate: false
-  xy: 1996, 1994
+  xy: 1996, 1936
   size: 40, 50
   orig: 40, 50
   offset: 0, 0
   index: -1
 MayaCalendar/19
   rotate: false
-  xy: 1996, 1936
+  xy: 1996, 1878
   size: 40, 50
   orig: 40, 50
   offset: 0, 0
@@ -1000,28 +1000,28 @@ MayaCalendar/5
   index: -1
 MayaCalendar/6
   rotate: false
-  xy: 1843, 589
+  xy: 1915, 50
   size: 25, 50
   orig: 25, 50
   offset: 0, 0
   index: -1
 MayaCalendar/7
   rotate: false
-  xy: 1876, 589
+  xy: 1948, 50
   size: 25, 50
   orig: 25, 50
   offset: 0, 0
   index: -1
 MayaCalendar/8
   rotate: false
-  xy: 1736, 50
+  xy: 1810, 589
   size: 25, 50
   orig: 25, 50
   offset: 0, 0
   index: -1
 MayaCalendar/9
   rotate: false
-  xy: 1769, 50
+  xy: 1843, 589
   size: 25, 50
   orig: 25, 50
   offset: 0, 0
@@ -1049,7 +1049,7 @@ MayaCalendar/Maya
   index: -1
 MayaCalendar/Tun
   rotate: false
-  xy: 248, 372
+  xy: 306, 372
   size: 50, 50
   orig: 50, 50
   offset: 0, 0
@@ -1257,13 +1257,6 @@ UnitActionIcons/MoveTo
   orig: 50, 50
   offset: 0, 0
   index: -1
-UnitActionIcons/ShowMore
-  rotate: false
-  xy: 190, 372
-  size: 50, 50
-  orig: 50, 50
-  offset: 0, 0
-  index: -1
 UnitActionIcons/Paradrop
   rotate: false
   xy: 1378, 1188
@@ -1292,13 +1285,6 @@ UnitActionIcons/Promote
   orig: 100, 94
   offset: 0, 0
   index: -1
-UnitActionIcons/Upgrade
-  rotate: false
-  xy: 548, 4
-  size: 100, 94
-  orig: 100, 94
-  offset: 0, 0
-  index: -1
 UnitActionIcons/RemoveHeresy
   rotate: false
   xy: 1520, 216
@@ -1318,6 +1304,13 @@ UnitActionIcons/SetUp
   xy: 1486, 756
   size: 100, 100
   orig: 100, 100
+  offset: 0, 0
+  index: -1
+UnitActionIcons/ShowMore
+  rotate: false
+  xy: 248, 372
+  size: 50, 50
+  orig: 50, 50
   offset: 0, 0
   index: -1
 UnitActionIcons/Skip
@@ -1381,6 +1374,13 @@ UnitActionIcons/Transform
   xy: 4, 1580
   size: 200, 200
   orig: 200, 200
+  offset: 0, 0
+  index: -1
+UnitActionIcons/Upgrade
+  rotate: false
+  xy: 1736, 6
+  size: 100, 94
+  orig: 100, 94
   offset: 0, 0
   index: -1
 UnitFlagIcons/UnitFlag
