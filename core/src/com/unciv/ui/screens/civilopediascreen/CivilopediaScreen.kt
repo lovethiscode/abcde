@@ -52,7 +52,7 @@ class CivilopediaScreen(
      * @property sortBy Optional, enables overriding alphabetical order. Ususally supplied by [ICivilopediaText.getSortGroup]
      * @property subCategory Optional, enablesg grouping with sub-category labels. Ususally supplied by [ICivilopediaText.getSubCategory]
      */
-    private class CivilopediaEntry (
+    internal class CivilopediaEntry (
         val name: String,
         val image: Actor? = null,
         val flavour: ICivilopediaText? = null,
@@ -80,16 +80,88 @@ class CivilopediaScreen(
     private val buttonTableScroll: ScrollPane
 
     private val entrySelectTable = Table().apply { defaults().pad(6f).left() }
-    private val entrySelectScroll: ScrollPane
+    private val entrySelectScroll = ScrollPane(entrySelectTable)
     private val flavourTable = Table()
 
     private var currentCategory: CivilopediaCategories = CivilopediaCategories.Tutorial
     private var currentEntry: String = ""
     private val currentEntryPerCategory = HashMap<CivilopediaCategories, String>()
 
-    private val searchPopup by lazy { CivilopediaSearchPopup(this) {
-        selectLink(it)
+    internal val usesPages = ExpeditionBlueTheme.enabled
+    private val pageView by lazy { CivilopediaPageView(this) }
+    private enum class Page { Categories, Browse, Detail }
+    private data class Location(val page: Page, val category: CivilopediaCategories,
+                                val entry: String, val scrollY: Float, val search: Boolean = false)
+    private var page = Page.Detail
+    private val previousPages = ArrayDeque<Location>()
+    internal val visibleCategories get() = categoryToEntries.filterValues { it.isNotEmpty() }.keys
+    internal val selectedCategory get() = currentCategory
+    internal val selectedEntries get() = entryIndex.values
+
+    private val searchPopupDelegate = lazy { CivilopediaSearchPopup(this) {
+        followLink(it, fromSearch = true)
     } }
+    private val searchPopup by searchPopupDelegate
+
+    private fun location(search: Boolean = false) =
+        Location(page, currentCategory, currentEntry, pageView.scroll.scrollY, search)
+
+    private fun rememberPage(search: Boolean = false) {
+        previousPages.addLast(location(search))
+    }
+
+    internal fun openCategories() {
+        rememberPage()
+        page = Page.Categories
+        pageView.categories()
+    }
+
+    internal fun openCategory(category: CivilopediaCategories) {
+        rememberPage()
+        selectCategory(category)
+        page = Page.Browse
+        pageView.browse()
+    }
+
+    internal fun openEntry(name: String) {
+        if (name !in entryIndex) return
+        rememberPage()
+        selectEntry(name)
+    }
+
+    internal fun openLink(link: String) = followLink(link, fromSearch = false)
+
+    private fun followLink(link: String, fromSearch: Boolean) {
+        if (usesPages) {
+            val parts = link.split('/', limit = 2)
+            val category = CivilopediaCategories.fromLink(parts[0]) ?: return
+            val entries = categoryToEntries[category].orEmpty()
+            if (entries.isEmpty() || (parts.size > 1 && entries.none { it.name == parts[1] })) return
+            rememberPage(search = fromSearch)
+        }
+        selectLink(link)
+    }
+
+    internal fun openSearch() = searchPopup.open(true)
+
+    internal fun backPage() {
+        if (previousPages.isEmpty()) game.popScreen()
+        else restoreLocation(previousPages.removeLast())
+    }
+
+    private fun restoreLocation(location: Location) {
+        selectCategory(location.category)
+        selectEntry(location.entry)
+        page = location.page
+        when (page) {
+            Page.Categories -> pageView.categories()
+            Page.Browse -> pageView.browse()
+            Page.Detail -> Unit
+        }
+        pageView.scroll.scrollY = location.scrollY
+        pageView.scroll.updateVisualScroll()
+        if (location.search) searchPopup.openResults()
+    }
 
 
     /** Jump to a "link" selecting both category and entry
@@ -120,6 +192,7 @@ class CivilopediaScreen(
      * @param category Category key
      */
     private fun selectCategory(category: CivilopediaCategories) {
+        if (usesPages && category !in visibleCategories) return
         currentCategory = category
         lastCategory = category
         entrySelectTable.clear()
@@ -152,6 +225,14 @@ class CivilopediaScreen(
                     it.name.tr(hideIcons = true, hideStats = true)
                 }
             )
+
+        if (usesPages) {
+            for (entry in entries) entryIndex[entry.name] = entry
+            val selected = currentEntryPerCategory[category]?.takeIf { it in entryIndex }
+                ?: entries.firstOrNull()?.name
+            if (selected != null) selectEntry(selected, true)
+            return
+        }
 
         var currentY = -1f
         var currentSubCategory: String? = null
@@ -204,6 +285,7 @@ class CivilopediaScreen(
      */
     private fun selectEntry(name: String, noScrollAnimation: Boolean = false) {
         val entry = entryIndex[name] ?: return
+        if (usesPages) return selectEntry(entry)
         // fails: entrySelectScroll.scrollTo(0f, entry.y, 0f, entry.h, false, true)
         entrySelectScroll.scrollY = (entry.y + (entry.height - entrySelectScroll.height) / 2)
         if (noScrollAnimation)
@@ -214,6 +296,11 @@ class CivilopediaScreen(
         currentEntry = entry.name
         lastEntryName = entry.name
         currentEntryPerCategory[currentCategory] = entry.name
+        if (usesPages) {
+            page = Page.Detail
+            pageView.detail(entry)
+            return
+        }
         flavourTable.clear()
         if (entry.flavour != null) {
             flavourTable.isVisible = true
@@ -278,43 +365,53 @@ class CivilopediaScreen(
         buttonTableScroll = ScrollPane(buttonTable)
         buttonTableScroll.setScrollingDisabled(x = false, y = true)
 
-        val searchButton = "OtherIcons/Search".toImageButton(imageSize - 16f, imageSize, skinStrings.skinConfig.baseColor, Color.GOLD)
-        searchButton.onActivation(binding = KeyboardBinding.PediaSearch) { searchPopup.open(true) }
+        if (usesPages) {
+            stage.addActor(pageView)
+            globalShortcuts.add(KeyboardBinding.PediaSearch) { openSearch() }
+            for (categoryKey in visibleCategories)
+                if (categoryKey.binding != KeyboardBinding.None)
+                    globalShortcuts.add(categoryKey.binding) { openCategory(categoryKey) }
+        } else {
+            val searchButton = "OtherIcons/Search".toImageButton(imageSize - 16f, imageSize, skinStrings.skinConfig.baseColor, Color.GOLD)
+            searchButton.onActivation(binding = KeyboardBinding.PediaSearch) { searchPopup.open(true) }
 
-        val closeButton = if (UiNavigation.isIos) UiNavigation.backButton().apply {
-            onActivation { game.popScreen() }; keyShortcuts.add(KeyCharAndCode.BACK)
-        } else getCloseButton(imageSize) { game.popScreen() }
+            val closeButton = if (UiNavigation.isIos) UiNavigation.backButton().apply {
+                onActivation { game.popScreen() }; keyShortcuts.add(KeyCharAndCode.BACK)
+            } else getCloseButton(imageSize) { game.popScreen() }
 
-        val topTable = Table()
-        if (UiNavigation.isIos) topTable.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
-        topTable.add(buttonTableScroll).growX()
-        topTable.add(searchButton).padLeft(10f)
-        if (!UiNavigation.isIos) topTable.add(closeButton).padLeft(10f).padRight(10f)
-        topTable.width = stage.width
-        topTable.layout()
+            val topTable = Table()
+            if (UiNavigation.isIos) topTable.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
+            topTable.add(buttonTableScroll).growX()
+            topTable.add(searchButton).padLeft(10f)
+            if (!UiNavigation.isIos) topTable.add(closeButton).padLeft(10f).padRight(10f)
+            topTable.width = stage.width
+            topTable.layout()
 
-        val entryTable = Table()
-        val splitPane = SplitPane(topTable, entryTable, true, skin)
-        splitPane.splitAmount = topTable.prefHeight / stage.height
-        entryTable.height = stage.height - topTable.prefHeight
-        splitPane.setFillParent(true)
+            val entryTable = Table()
+            val splitPane = SplitPane(topTable, entryTable, true, skin)
+            splitPane.splitAmount = topTable.prefHeight / stage.height
+            entryTable.height = stage.height - topTable.prefHeight
+            splitPane.setFillParent(true)
 
-        stage.addActor(splitPane)
+            stage.addActor(splitPane)
 
-        entrySelectScroll = ScrollPane(entrySelectTable)
-        entrySelectTable.top()
-        entrySelectScroll.setOverscroll(false, false)
-        val descriptionTable = Table()
-        descriptionTable.add(flavourTable).padTop(7f).padBottom(5f).row()  // 2f of that 7f is used up by Portrait painting e.g. a Nation's outer border *outside its bounds*
-        val entrySplitPane = SplitPane(entrySelectScroll, ScrollPane(descriptionTable), false, skin)
-        entrySplitPane.splitAmount = 0.3f
-        entryTable.addActor(entrySplitPane)
-        entrySplitPane.setFillParent(true)
-        entrySplitPane.pack()  // ensure selectEntry has correct entrySelectScroll.height and maxY
+            entrySelectTable.top()
+            entrySelectScroll.setOverscroll(false, false)
+            val descriptionTable = Table()
+            descriptionTable.add(flavourTable).padTop(7f).padBottom(5f).row()  // 2f of that 7f is used up by Portrait painting e.g. a Nation's outer border *outside its bounds*
+            val entrySplitPane = SplitPane(entrySelectScroll, ScrollPane(descriptionTable), false, skin)
+            entrySplitPane.splitAmount = 0.3f
+            entryTable.addActor(entrySplitPane)
+            entrySplitPane.setFillParent(true)
+            entrySplitPane.pack()  // ensure selectEntry has correct entrySelectScroll.height and maxY
+        }
 
         if (link.isEmpty()) {
             // Generic open (e.g. keyboard shortcut, menu button) - resume where we left off
-            val resumeCategory = lastCategory ?: category
+            val resumeCategory = if (usesPages)
+                (lastCategory ?: category).takeIf { it in visibleCategories }
+                    ?: visibleCategories.firstOrNull() ?: category
+            else lastCategory ?: category
             val resumeEntry = lastEntryName     // capture before selectCategory overwrites it
             selectCategory(resumeCategory)
             if (resumeEntry != null && resumeEntry in entryIndex) {
@@ -340,7 +437,8 @@ class CivilopediaScreen(
     }
 
     private fun navigateCategories(direction: Int) {
-        val categoryKeys = categoryToEntries.keys
+        val categoryKeys = if (usesPages) visibleCategories else categoryToEntries.keys
+        if (categoryKeys.isEmpty()) return
         val currentIndex = categoryKeys.indexOf(currentCategory)
         val newIndex = (currentIndex + categoryKeys.size + direction) % categoryKeys.size
         selectCategory(categoryKeys.elementAt(newIndex))
@@ -348,6 +446,7 @@ class CivilopediaScreen(
 
     private fun navigateEntries(direction: Int) {
         //todo this is abusing a Map as Array - there must be a collection allowing both easy positional and associative access
+        if (entryIndex.isEmpty()) return
         val index = entryIndex.keys.indexOf(currentEntry)
         if (index < 0) return selectEntry(entryIndex.keys.first(), true)
         val newIndex = when (direction) {
@@ -358,7 +457,19 @@ class CivilopediaScreen(
         selectEntry(entryIndex.keys.drop(newIndex).first())
     }
 
-    override fun recreate(): BaseScreen = CivilopediaScreen(ruleset, currentCategory, currentEntry)
+    override fun recreate(): BaseScreen = CivilopediaScreen(ruleset, currentCategory, currentEntry).also {
+        if (usesPages) {
+            it.currentEntryPerCategory.putAll(currentEntryPerCategory)
+            it.previousPages.addAll(previousPages)
+            if (searchPopupDelegate.isInitialized()) it.searchPopup.restore(searchPopup.snapshot())
+            it.restoreLocation(location(search = searchPopupDelegate.isInitialized() && searchPopup.parent != null))
+        }
+    }
+
+    override fun dispose() {
+        if (searchPopupDelegate.isInitialized()) searchPopup.cancelSearch()
+        super.dispose()
+    }
 
     companion object {
         /** Remembers the last viewed category/entry so re-opening the Civilopedia without
