@@ -136,6 +136,10 @@ class NewGameScreen(
         else initLandscape()
         bottomTable.background = skinStrings.getUiBackground("NewGameScreen/BottomTable", tintColor = skinStrings.skinConfig.clearColor)
         topTable.background = skinStrings.getUiBackground("NewGameScreen/TopTable", tintColor = skinStrings.skinConfig.clearColor)
+        if (ExpeditionBlueTheme.enabled) {
+            topTable.background = null
+            bottomTable.background = null
+        }
 
         val horizontalGroup = HorizontalGroup().padBottom(5f).space(10f)
         rightSideGroup.addActorAt(0, horizontalGroup)
@@ -165,7 +169,10 @@ class NewGameScreen(
         }
         startGameButton.onClick(this::startGameAvoidANRs)
         startGameButton.keyShortcuts.add(KeyCharAndCode.RETURN)
-        if (!UiNavigation.isIos) {
+        if (UiNavigation.isIos) {
+            rightSideButton.remove()
+            horizontalGroup.addActor(rightSideButton)
+        } else {
             horizontalGroup.addActor(startGameButton)
             pickerPane.rightSideButton.remove()
         }
@@ -238,7 +245,7 @@ class NewGameScreen(
         val mapWidth = if (narrow) width else (width - 20f) * 0.48f
         val summaryWidth = if (narrow) width else width - mapWidth - 20f
         val map = GameSetupOverview.card().apply {
-            mapOptionsTable.createOverviewPreview(mapWidth - 36f, if (narrow) 180f else 210f)?.let {
+            mapOptionsTable.createOverviewPreview(mapWidth - 36f, if (narrow) 180f else 150f)?.let {
                 add(it).width(mapWidth - 36f).padBottom(10f).row()
             }
             add(GameSetupOverview.summaryRow("Map Options", GameSetupOverview.mapDescription(gameSetupInfo)) {
