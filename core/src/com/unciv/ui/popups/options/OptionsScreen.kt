@@ -49,6 +49,7 @@ class OptionsScreen(
 
     override fun dispose() {
         events.stopReceiving()
+        options.disposeContentFont()
         super.dispose()
     }
 }

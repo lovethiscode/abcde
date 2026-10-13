@@ -13,6 +13,7 @@ import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.components.extensions.center
 import com.unciv.ui.components.extensions.getCloseButton
+import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.widgets.TabbedPager
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.popups.Popup
@@ -39,7 +40,11 @@ class OptionsPopup(
     internal val useSidebar = ExpeditionBlueTheme.enabled
     private val navigation = Table()
     private val navigationButtons = ArrayList<IconTextButton>()
-    private val pageDescription = "".toLabel(ExpeditionBlueTheme.muted, 15).apply { wrap = true }
+    private val pageDescription = "".toLabel(ExpeditionBlueTheme.muted, 18).apply { wrap = true }
+    private val contentFontDelegate = lazy {
+        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(22f / Fonts.ORIGINAL_FONT_SIZE) }
+    }
+    internal val contentFont get() = contentFontDelegate.value
     private var frameHeight = 0f
     private lateinit var headerCell: Cell<Table>
     private lateinit var headingCell: Cell<Table>
@@ -106,11 +111,6 @@ class OptionsPopup(
         header = Table().apply {
             pad(6f, 12f, 6f, 18f)
             add(UiNavigation.backButton().apply {
-                style = com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle(style).apply {
-                    up = BaseScreen.skin.newDrawable("Rectangle", Color.CLEAR)
-                    down = BaseScreen.skin.newDrawable("Rectangle", OptionsPopupStyle.selectedNavigation)
-                    over = down
-                }
                 onClick { close() }
             }).padRight(14f)
             add().growX()
@@ -120,7 +120,7 @@ class OptionsPopup(
 
         navigation.top().pad(8f, 6f, 8f, 10f)
         for ((index, page) in visiblePages.withIndex()) {
-            val button = IconTextButton(page.label, page.getIcon(settings.language), 18).apply {
+            val button = IconTextButton(page.label, page.getIcon(settings.language), 22).apply {
                 style = Button.ButtonStyle(style).apply {
                     up = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Color.CLEAR).apply { minHeight = 0f }
                     checked = OptionsPopupStyle.selectedNavigationDrawable()
@@ -216,12 +216,17 @@ class OptionsPopup(
         finishEditing()
         onClose() // activate the passed 'on close' callback
         super.close()
+        disposeContentFont()
     }
 
     internal fun finishEditing() {
         game.musicController.onChange(null)
         tabs.selectPage(-1, false)
         settings.save()
+    }
+
+    internal fun disposeContentFont() {
+        if (contentFontDelegate.isInitialized()) contentFont.dispose()
     }
 
     override fun setVisible(visible: Boolean) {

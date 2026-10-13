@@ -2,15 +2,44 @@ package com.unciv.ui.popups.options
 
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
+import com.badlogic.gdx.graphics.g2d.BitmapFont
+import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
+import com.badlogic.gdx.scenes.scene2d.ui.Label
+import com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle
+import com.badlogic.gdx.scenes.scene2d.ui.SelectBox
+import com.badlogic.gdx.scenes.scene2d.ui.TextField
 import com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable
+import com.unciv.Constants
 import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.screens.basescreen.BaseScreen
 
 /** Local styles for the options panel; other checkboxes keep their existing appearance. */
 internal object OptionsPopupStyle {
     val sectionBackground = Color.valueOf("1D3D48")
     val selectedNavigation = Color.valueOf("254550")
+
+    fun enlargeText(actor: Actor, formFont: BitmapFont) {
+        when (actor) {
+            is Label -> {
+                val size = if (actor.fontScaleX == 1f) Constants.defaultFontSize.toFloat()
+                    else actor.fontScaleX * Fonts.ORIGINAL_FONT_SIZE
+                if (size < 22f) actor.setFontSize(22)
+            }
+            is SelectBox<*> -> if (actor.style.font !== formFont) {
+                actor.style = SelectBox.SelectBoxStyle(actor.style).apply {
+                    font = formFont
+                    listStyle = ListStyle(listStyle).apply { font = formFont }
+                }
+            }
+            is TextField -> if (actor.style.font !== formFont)
+                actor.style = TextField.TextFieldStyle(actor.style).apply { font = formFont }
+        }
+        if (actor is Group) actor.children.forEach { enlargeText(it, formFont) }
+    }
 
     fun selectedNavigationDrawable() = object : BaseDrawable() {
         private val fill = BaseScreen.skin.newDrawable("Rectangle", selectedNavigation)

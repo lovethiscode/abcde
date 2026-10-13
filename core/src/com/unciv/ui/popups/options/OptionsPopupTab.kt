@@ -41,10 +41,11 @@ internal abstract class OptionsPopupTab(
             block()
             return
         }
-        val card = ExpanderTab(title, fontSize = 18, startsOutOpened = opened,
+        val card = ExpanderTab(title, fontSize = 24, startsOutOpened = opened,
             defaultPad = 8f, headerPad = 12f, expanderWidth = 1f) {
             it.defaults().pad(4f).expand(0, 0).fill(false, false)
             it.block()
+            OptionsPopupStyle.enlargeText(it, optionsPopup.contentFont)
         }
         card.background = skin.newDrawable("RoundedEdgeRectangle", OptionsPopupStyle.sectionBackground)
         card.header.background = null
@@ -52,6 +53,7 @@ internal abstract class OptionsPopupTab(
     }
 
     open fun lateInitialize() {
+        if (optionsPopup.useSidebar) OptionsPopupStyle.enlargeText(this, optionsPopup.contentFont)
         isInitialized = true
     }
 
