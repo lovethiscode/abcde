@@ -81,6 +81,7 @@ class CivilopediaSearchPopup(
             name = "civilopedia-search-page"
             background = ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.background)
             innerTable.background = background
+            innerTable.top()
             getCell(innerTable).grow()
             addTitleWithCloseButton("Civilopedia".toLabel(fontSize = 25))
             val width = (pediaScreen.stage.width - 80f).coerceAtLeast(240f)
@@ -126,6 +127,7 @@ class CivilopediaSearchPopup(
         }
         closeListeners.add {
             if (isSearchRunning()) searchJob!!.cancel()
+            if (pediaScreen.usesPages) keyboardFocus = null
         }
     }
 
@@ -133,6 +135,7 @@ class CivilopediaSearchPopup(
 
     private fun startSearch(text: String) {
         searchButton.disable()
+        if (pediaScreen.usesPages) keyboardFocus = null
         Gdx.input.setOnscreenKeyboardVisible(false)  // UncivTextField's FocusListener will give it back when needed
 
         @Suppress("LiftReturnOrAssignment")

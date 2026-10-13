@@ -53,11 +53,11 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
         add(scroll).grow()
     }
 
-    private fun button(text: String, icon: String, actorName: String, action: () -> Unit) =
+    private fun button(text: String, icon: String, actorName: String, wrap: Boolean = false, action: () -> Unit) =
         IconTextButton(text, icon.takeIf { it.isNotEmpty() }?.let { ImageGetter.getImage(it) }, 20).apply {
             name = actorName
-            label.wrap = true
-            labelCell.minWidth(0f).growX()
+            label.wrap = wrap
+            if (wrap) labelCell.minWidth(0f).growX()
             onActivation { action() }
         }
 
@@ -82,7 +82,7 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
         val columns = (contentWidth / 220f).toInt().coerceIn(2, 5)
         val cellWidth = (contentWidth - 12f * (columns - 1)) / columns
         screen.visibleCategories.forEachIndexed { index, category ->
-            val actor = button(category.label, category.headerIcon, "civilopedia-category-${category.name}") {
+            val actor = button(category.label, category.headerIcon, "civilopedia-category-${category.name}", wrap = true) {
                 screen.openCategory(category)
             }
             grid.add(actor).width(cellWidth).minHeight(maxOf(touchSize, 86f)).fillY()
@@ -165,7 +165,7 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
                     pad(8f, 12f, 8f, 12f)
                     val caption = Table()
                     caption.add(stat.icon.toString().toLabel(fontSize = 20)).padRight(8f)
-                    caption.add(stat.label.toLabel(ExpeditionBlueTheme.muted, 17).apply { wrap = true })
+                    caption.add(stat.label.toLabel(ExpeditionBlueTheme.muted, 17, hideIcons = true).apply { wrap = true })
                         .minWidth(0f).growX()
                     add(caption).width(cellWidth - 24f).left().row()
                     add(stat.value.toString().toLabel(fontSize = 34)).left().padTop(4f)
