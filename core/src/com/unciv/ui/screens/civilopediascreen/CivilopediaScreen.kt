@@ -457,6 +457,14 @@ class CivilopediaScreen(
         selectEntry(entryIndex.keys.drop(newIndex).first())
     }
 
+    override fun resize(width: Int, height: Int) {
+        // The full-page search owns a snapshot, so it can reflow instead of keeping a popup's old width.
+        if (usesPages && width > 0 && height > 0 && searchPopupDelegate.isInitialized()
+            && activePopup === searchPopup && hasSafeAreaChanged(width, height)) {
+            game.replaceCurrentScreen { recreate() }
+        } else super.resize(width, height)
+    }
+
     override fun recreate(): BaseScreen = CivilopediaScreen(ruleset, currentCategory, currentEntry).also {
         if (usesPages) {
             it.currentEntryPerCategory.putAll(currentEntryPerCategory)
