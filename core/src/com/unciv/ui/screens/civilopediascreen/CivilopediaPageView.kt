@@ -213,15 +213,6 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
                 content.add(render(lines, width)).width(width).row()
         }
         content.add(render(article.conclusion, width)).width(width).row()
-        content.addSeparator(ExpeditionBlueTheme.border)
-        val footer = Table()
-        footer.add(button(screen.selectedCategory.label, "OtherIcons/BackArrow", "civilopedia-browse") {
-            screen.openCategory(screen.selectedCategory)
-        }).minHeight(touchSize).left().expandX()
-        footer.add(button("Category:", "OtherIcons/MenuIcon", "civilopedia-all-categories") {
-            screen.openCategories()
-        }).minHeight(touchSize).right()
-        content.add(footer).width(width).padTop(12f).row()
         finish()
     }
 }
