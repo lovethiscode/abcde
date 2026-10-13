@@ -52,14 +52,32 @@ class MultiplayerLobbySchedulingTest {
         assertEquals(0L, sent.count)
     }
 
-    @Test fun continuousChangesRestartTheDelay() {
-        val sent = CountDownLatch(1)
-        requests.add { sent.countDown() }
-        mark()
-        Thread.sleep(200)
-        mark()
-        assertFalse(sent.await(500, TimeUnit.MILLISECONDS))
-        assertTrue(sent.await(2, TimeUnit.SECONDS))
+    @Test fun newDeadlineCancelsThePreviousScheduledCallback() {
+        val callbacks = ArrayDeque<Runnable>()
+        Mockito.doAnswer { callbacks.add(it.getArgument(0)); null }
+            .`when`(Gdx.app).postRunnable(Mockito.any(Runnable::class.java))
+        var sent = 0
+        requests.add { sent++ }
+        set("configurationPending", true)
+        // Keep callbacks queued so machine load cannot consume a narrow timing margin.
+        set("configurationDue", System.currentTimeMillis() + 60_000L)
+        invoke("scheduleConfigurationSync")
+        val jobField = MultiplayerLobbyScreen::class.java.getDeclaredField("configurationJob")
+            .apply { isAccessible = true }
+        val previous = jobField.get(screen) as Job
+        set("configurationDue", System.currentTimeMillis() + 90_000L)
+        invoke("scheduleConfigurationSync")
+        val replacement = jobField.get(screen) as Job
+        assertNotSame(previous, replacement)
+        assertTrue(previous.isCancelled)
+        assertTrue(replacement.isActive)
+        callbacks.removeFirst().run()
+        assertEquals(0, sent)
+
+        mark(immediate = true)
+        while (callbacks.isNotEmpty()) callbacks.removeFirst().run()
+        assertTrue(replacement.isCancelled)
+        assertEquals(1, sent)
     }
 
     @Test fun disconnectCancelsTheScheduledCallback() {
