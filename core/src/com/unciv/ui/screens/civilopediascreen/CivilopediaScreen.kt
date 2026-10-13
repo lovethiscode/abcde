@@ -331,7 +331,7 @@ class CivilopediaScreen(
     }
 
     init {
-        val imageSize = 50f
+        val imageSize = if (usesPages) 38f else 50f
 
         val religionEnabled = showReligionInCivilopedia(ruleset) // To filter the Belief Category only
 
