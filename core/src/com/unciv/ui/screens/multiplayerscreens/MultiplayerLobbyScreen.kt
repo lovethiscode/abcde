@@ -193,6 +193,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             }
         }
         inviteButton.setText("Share invitation".tr())
+        inviteButton.label.setWrap(true)
+        copyInvitationButton.label.setWrap(true)
         inviteButton.onClick { shareInvitation() }
         copyInvitationButton.onClick { copyInvitation() }
         startButton.onClick { requestStart() }
@@ -522,8 +524,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 top()
                 add(playersHeading).growX().row()
                 add(Table().apply {
-                    add(inviteButton).minHeight(44f).padRight(10f)
-                    add(copyInvitationButton).minHeight(44f)
+                    add(inviteButton).width(((if (portrait) width else cardsWidth) - 10f) / 2f).minHeight(44f).padRight(10f)
+                    add(copyInvitationButton).width(((if (portrait) width else cardsWidth) - 10f) / 2f).minHeight(44f)
                 }).left().padBottom(14f).row()
                 if (portrait) add(players).growX().top()
                 else {
@@ -598,6 +600,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     }
                 }
             }).size(44f).padLeft(8f)
+            portrait.touchable = Touchable.enabled
             portrait.onClick {
                 selectedSeatId = s.seatId
                 previewCivilization = s.civilization
@@ -615,7 +618,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val own = r.seats.firstOrNull { it.playerId == userId && it.occupancy == session.occupancy }
         val selectedSeat = r.seats.firstOrNull { it.seatId == selectedSeatId } ?: own ?: r.seats.first()
         selectedSeatId = selectedSeat.seatId
-        if (previewCivilization.isEmpty()) previewCivilization = selectedSeat.civilization
+        if (previewCivilization.isEmpty() || (previewCivilization != Constants.random &&
+                ruleset.nations[previewCivilization]?.isMajorCiv != true))
+            previewCivilization = selectedSeat.civilization
         val seatPicker = Table().apply {
             val columns = if (portrait) 2 else 4
             for ((index, seat) in r.seats.withIndex()) {
@@ -660,8 +665,6 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             defaults().width(innerWidth).left().padBottom(16f)
             val nation = ruleset.nations[previewCivilization]
             add(previewCivilization.toLabel(ExpeditionBlueTheme.gold,26,hideIcons = true).apply { setWrap(true) }).row()
-            if (nation != null) add(MarkupRenderer.render(nation.getCivilopediaTextLines(ruleset)
-                .filter { it.header != 3 }, innerWidth, iconDisplay = IconDisplay.NoLink)).row()
             val available = previewCivilization == Constants.random || r.seats.none { it !== selectedSeat && it.civilization == previewCivilization }
             add((if (previewCivilization == selectedSeat.civilization) "Selected civilization" else "OK").toTextButton().apply {
                 isEnabled = available && canChooseCivilization(r,selectedSeat,own) && previewCivilization != selectedSeat.civilization
@@ -672,7 +675,15 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                         markConfigurationChanged(immediate = true)
                     } else runRequest { client.command(session.gameId,"civilization",seatCommand(selectedSeat).apply { this.civilization = civilization }) }
                 }
-            }).minHeight(44f)
+            }).minHeight(44f).row()
+            if (nation != null) {
+                fun description() = MarkupRenderer.render(nation.getCivilopediaTextLines(ruleset)
+                    .filter { it.header != 3 }, innerWidth - if (portrait) 20f else 0f, iconDisplay = IconDisplay.NoLink)
+                if (portrait) add(ExpanderTab("Civilopedia", startsOutOpened = false, expanderWidth = innerWidth) {
+                    it.add(description()).growX()
+                }).row()
+                else add(description()).row()
+            }
         }
         if (portrait) {
             // Keep the selected civilization's action reachable before the full collection.
