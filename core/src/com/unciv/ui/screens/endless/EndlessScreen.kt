@@ -109,7 +109,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                 val keys = (if (newRules) linkedSetOf(EndlessCatalog.newRecordKey("casual"),EndlessCatalog.newRecordKey("wild")) else linkedSetOf<String>()).apply {
                     addAll(records.best.keys.sorted()); addAll(records.recent.map { it.key })
                 }
-                for (key in keys) {
+                for (key in keys.filter { !newRules || it.split(':').getOrNull(4) == pace }) {
                     text(if (newRules) if (key.split(':').getOrNull(4) == "wild") "Wild" else "Casual" else "Legacy rules", width - 36f, Theme.gold, 17)
                     val version = key.split(':')
                     text("Map [${version.getOrNull(if (newRules) 2 else 1) ?: "?"}] · rules [${version.getOrNull(if (newRules) 5 else 3) ?: "?"}] · scoring [${version.getOrNull(if (newRules) 6 else 4) ?: "?"}]", width - 36f, Theme.muted, 13)
