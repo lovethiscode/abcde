@@ -73,6 +73,7 @@ class NewGameScreen(
     private val mapOptionsTable: MapOptionsTable
     private var mapOptionsTableInitialized = false
     private var overviewReady = false
+    private var startingGame = false
     private var setupStatus = ""
 
     val useInviteRoom = false
@@ -158,7 +159,7 @@ class NewGameScreen(
 
         val startGameButton = (if (UiNavigation.isIos) rightSideButton else "Start game!".toTextButton()).apply {
             setText("Start game!".tr())
-            if (ExpeditionBlueTheme.enabled) style = skin.get("positive", TextButtonStyle::class.java)
+            if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("positive", TextButtonStyle::class.java)
             if (!ExpeditionBlueTheme.enabled) color = Color.GREEN
             name = "setup-start"
         }
@@ -266,7 +267,7 @@ class NewGameScreen(
     }
 
     override fun render(delta: Float) {
-        if (overviewReady) {
+        if (overviewReady && !startingGame) {
             val parameters = gameSetupInfo.gameParameters
             val hasHuman = parameters.players.any { it.playerType == PlayerType.Human }
             rightSideButton.isEnabled = hasHuman && parameters.victoryTypes.isNotEmpty()
@@ -390,6 +391,7 @@ class NewGameScreen(
     private fun startGame() {
 
         Concurrency.runOnGLThread {
+            startingGame = true
             rightSideButton.disable()
             rightSideButton.setText(Constants.working.tr())
             setSkin()
@@ -532,6 +534,7 @@ class NewGameScreen(
                     addCloseButton()
                 }
                 Gdx.input.inputProcessor = stage
+                startingGame = false
                 rightSideButton.enable()
                 rightSideButton.setText("Start game!".tr())
             }
@@ -553,6 +556,7 @@ class NewGameScreen(
                             true,
                         )
                         Gdx.input.inputProcessor = stage
+                        startingGame = false
                         rightSideButton.enable()
                         rightSideButton.setText("Start game!".tr())
                     }
@@ -608,6 +612,7 @@ class NewGameScreen(
                             rightSideButton.disable()
                             rightSideButton.setText("Recovery saved".tr())
                         } else {
+                            startingGame = false
                             rightSideButton.enable()
                             rightSideButton.setText("Start game!".tr())
                         }
@@ -618,6 +623,7 @@ class NewGameScreen(
                     Concurrency.runOnGLThread {
                         popup.close()
                         Gdx.input.inputProcessor = stage
+                        startingGame = false
                         rightSideButton.enable()
                         rightSideButton.setText("Start game!".tr())
                     }
