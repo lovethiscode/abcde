@@ -278,7 +278,6 @@ class NewGameScreen(
             val parameters = gameSetupInfo.gameParameters
             val hasHuman = parameters.players.any { it.playerType == PlayerType.Human }
             rightSideButton.isEnabled = hasHuman && parameters.victoryTypes.isNotEmpty()
-                && (parameters.randomNumberOfPlayers || parameters.players.size >= 2)
             val status = when {
                 parameters.victoryTypes.isEmpty() -> "No victory conditions were selected!".tr()
                 !hasHuman -> "No human players selected!".tr()
