@@ -255,7 +255,7 @@ internal class MultiplayerTab(
                 }).left().padTop(10f)
             }
 
-            serverIpTable.add(passwordStatusTable).colspan(2).row()
+            serverIpTable.add(passwordStatusTable).colspan(2).growX().row()
         }
 
         add(serverIpTable).colspan(2).growX().row()
