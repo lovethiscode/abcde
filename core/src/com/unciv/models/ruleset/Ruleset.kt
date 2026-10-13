@@ -370,7 +370,7 @@ class Ruleset {
         RulesetFile.entries.asSequence().flatMap { it.getNames(this) }.filter { it.name.isNotEmpty() }
     @Readonly fun allICivilopediaText(): Sequence<ICivilopediaText> = allRulesetObjects()
 
-    fun load(folderHandle: FileHandle) {
+    fun load(folderHandle: FileHandle, frozenFallback: Ruleset? = null) {
         fun RulesetFile.file() = folderHandle.child(filename)
 
         // Note: Most files are loaded using createHashmap, which sets originRuleset automatically.
@@ -557,7 +557,7 @@ class Ruleset {
 
         // Add objects that might not be present in base ruleset mods, but are required
         if (modOptions.isBaseRuleset) {
-            val fallbackRuleset by lazy { RulesetCache.getVanillaRuleset() } // clone at most once
+            val fallbackRuleset by lazy { frozenFallback ?: RulesetCache.getVanillaRuleset() } // clone at most once
             // This one should be temporary
             if (unitTypes.isEmpty()) {
                 unitTypes.putAll(fallbackRuleset.unitTypes)

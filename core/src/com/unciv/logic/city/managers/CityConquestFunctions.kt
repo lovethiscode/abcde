@@ -315,6 +315,7 @@ class CityConquestFunctions(val city: City) {
 
     fun moveToCiv(newCiv: Civilization) {
         val oldCiv = city.civ
+        check(oldCiv.gameInfo.endless?.let { it.modeVersion == 2 && oldCiv.civID == it.playerId && newCiv != oldCiv && !city.hasJustBeenConquered } != true) { "Defense cities cannot be transferred." }
         com.unciv.logic.campaign.CampaignRules.cityTransferred(city, oldCiv, newCiv)
         if (oldCiv.gameInfo.endless?.playerId == oldCiv.civID && newCiv != oldCiv)
             com.unciv.logic.endless.EndlessRules.loseCore(oldCiv.gameInfo, city.id)

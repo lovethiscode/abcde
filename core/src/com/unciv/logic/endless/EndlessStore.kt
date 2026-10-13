@@ -22,7 +22,7 @@ class EndlessStore(private val files: UncivFiles) {
     }
     private val root get() = files.getLocalFile("Endless").also { it.mkdirs() }
     val slot get() = root.child("current.json")
-    private val recordsFile get() = root.child("records.json")
+    private fun recordsFile(v2: Boolean) = root.child(if (v2) "records-v2.json" else "records.json")
 
     fun saved(): GameInfo? = SaveFileLocks.withLock(slot) {
         SaveFileWriter.recover(slot)
@@ -49,7 +49,7 @@ class EndlessStore(private val files: UncivFiles) {
         } catch (ex: Exception) {
             SaveFileLocks.withLock(slot) {
                 check(saved()?.endless?.let { current -> current.attemptId == it.endless!!.attemptId && current.saveSequence == it.endless!!.saveSequence } == true)
-                val archive = root.child("Diagnostics").also { folder -> folder.mkdirs() }.child("${it.endless!!.attemptId}.json")
+                val archive = root.child("Diagnostics").also { folder -> folder.mkdirs() }.child(archiveName(it.endless!!.attemptId))
                 if (!archive.exists()) SaveFileWriter.write(archive) { target -> target.writeBytes(slot.readBytes(), false) }
                 EndlessRules.fault(it, "Invalid endless save state. The original snapshot has been preserved.")
                 write(it)
@@ -66,12 +66,13 @@ class EndlessStore(private val files: UncivFiles) {
             reconcile(old)
             // A replaced unfinished or incompatible attempt remains recoverable.
             if (old.endless?.ended != true || runCatching { EndlessCatalog.requireCompatible(old) }.isFailure) {
-                val archive = root.child("Archive").also { it.mkdirs() }.child("${old.endless!!.attemptId}.json")
+                val archive = root.child("Archive").also { it.mkdirs() }.child(archiveName(old.endless!!.attemptId))
                 SaveFileWriter.write(archive) { target -> FileConversions.writeJson(target, old, true) }
             }
             if (old.endless?.ended == false && runCatching { EndlessCatalog.requireCompatible(old) }.isSuccess) {
                 old.endless!!.apply {
                     status = "Quit"
+                    stageState?.endReason = "Voluntary"
                     endedAt = System.currentTimeMillis()
                     offer = null
                     saveSequence = reserve(saveSequence)
@@ -87,6 +88,7 @@ class EndlessStore(private val files: UncivFiles) {
     fun snapshot(game: GameInfo): GameInfo = SaveFileLocks.withLock(slot) {
         val s = requireNotNull(game.endless)
         check(!s.inTurn && s.actionDepth == 0) { "Only a stable endless boundary can be saved." }
+        check(s.pendingRewardCandidate == null) { "Retry the pending reward before saving another snapshot." }
         val old = saved()?.endless
         check(old == null || old.attemptId == s.attemptId) { "This endless attempt has been replaced." }
         s.saveSequence = reserve(maxOf(s.saveSequence, old?.saveSequence ?: 0))
@@ -134,16 +136,46 @@ class EndlessStore(private val files: UncivFiles) {
         candidate.setTransients()
         EndlessRules.applyReward(candidate, choice)
         candidate.endless!!.saveSequence = reserve(maxOf(s.saveSequence, old.saveSequence))
+        if (s.modeVersion == 2) {
+            s.pendingRewardCandidate = candidate
+            s.pendingRewardDigest = digest(candidate)
+            s.pendingRewardChoice = choice
+        }
         try { write(candidate) }
         catch (ex: Exception) { s.saveBlocked = true; throw ex }
+        s.pendingRewardCandidate = null; s.pendingRewardDigest = ""; s.pendingRewardChoice = ""
         ChallengeTelemetry.report("reward", candidate, choice)
         candidate
     }
 
+    /** Retry exactly the retained choice; a committed matching sequence is already successful. */
+    fun retryReward(game: GameInfo): GameInfo = SaveFileLocks.withLock(slot) {
+        val s = requireNotNull(game.endless)
+        val candidate = requireNotNull(s.pendingRewardCandidate)
+        val current = requireNotNull(saved())
+        check(current.endless!!.attemptId == s.attemptId && !current.endless!!.ended)
+        val target = candidate.endless!!
+        if (current.endless!!.saveSequence >= target.saveSequence) {
+            check(current.endless!!.saveSequence == target.saveSequence && digest(current) == s.pendingRewardDigest) { "The saved reward changed. Reopen the hall." }
+        } else {
+            check(current.endless!!.claimedStages == s.claimedStages && digest(candidate) == s.pendingRewardDigest)
+            write(candidate)
+        }
+        ChallengeTelemetry.report("reward",candidate,s.pendingRewardChoice)
+        s.pendingRewardCandidate = null; s.pendingRewardDigest = ""; s.pendingRewardChoice = ""; s.saveBlocked = false
+        candidate
+    }
+
+    private fun digest(game: GameInfo): String = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(com.unciv.json.json().toJson(game).toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+
+    private fun archiveName(attempt: String): String = if (runCatching { java.util.UUID.fromString(attempt).toString() == attempt }.getOrDefault(false)) "$attempt.json"
+        else java.security.MessageDigest.getInstance("SHA-256").digest(attempt.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) } + ".json"
+
     fun quit(game: GameInfo) {
         val s = requireNotNull(game.endless)
         check(!s.inTurn && !s.saveBlocked)
-        if (!s.ended) { s.status = "Quit"; s.endedAt = System.currentTimeMillis(); s.offer = null }
+        if (!s.ended) { s.stageState?.apply { resultRound = s.round; endReason = "Voluntary" }; s.status = "Quit"; s.endedAt = System.currentTimeMillis(); s.offer = null }
         save(game)
     }
 
@@ -152,26 +184,34 @@ class EndlessStore(private val files: UncivFiles) {
         ChallengeTelemetry.report(action, game)
     }
 
-    fun records(): EndlessRecords = SaveFileLocks.withLock(recordsFile) {
+    fun records(v2: Boolean = false): EndlessRecords = SaveFileLocks.withLock(recordsFile(v2)) {
+        val recordsFile = recordsFile(v2)
         SaveFileWriter.recover(recordsFile)
-        if (!recordsFile.exists()) EndlessRecords() else requireNotNull(FileConversions.readJson(recordsFile, EndlessRecords::class.java)).also {
-            require(it.schemaVersion == 1)
+        if (!recordsFile.exists()) EndlessRecords().apply { schemaVersion = if (v2) 2 else 1 } else requireNotNull(FileConversions.readJson(recordsFile, EndlessRecords::class.java)).also {
+            require(it.schemaVersion == if (v2) 2 else 1)
         }
     }
 
     fun reconcile(game: GameInfo) {
         val s = game.endless ?: return
         if (!s.ended || !s.recordEligible || s.status == "Faulted") return
+        val v2 = s.modeVersion == 2
+        val recordsFile = recordsFile(v2)
         SaveFileLocks.withLock(recordsFile) {
-            val records = records()
+            val records = records(v2)
             if (records.recent.any { it.attemptId == s.attemptId } || records.best.values.any { it.attemptId == s.attemptId }) return@withLock
             val record = EndlessRecord().apply {
                 attemptId = s.attemptId; key = s.recordKey; seed = s.seed
                 rounds = s.completedRounds; waves = s.clearedWaves; kills = s.kills
                 status = s.status; endedAt = s.endedAt
+                s.stageState?.let { state ->
+                    stages = state.completedStages
+                    partialWaves = if (state.phase == "Combat") s.waves.count { it.cleared } else 0
+                    combatRounds = state.combatRounds; endReason = state.endReason
+                }
             }
             val best = records.best[record.key]
-            val order = compareBy<EndlessRecord>({ it.rounds }, { it.waves }, { it.kills }, { -it.endedAt })
+            val order = if (v2) stageRecordOrder else compareBy<EndlessRecord>({ it.rounds }, { it.waves }, { it.kills }, { -it.endedAt })
             if (record.status == "Defeated" && (best == null || order.compare(record, best) > 0)) records.best[record.key] = record
             records.recent.add(0, record)
             while (records.recent.size > 20) records.recent.removeAt(records.recent.lastIndex)
@@ -179,3 +219,5 @@ class EndlessStore(private val files: UncivFiles) {
         }
     }
 }
+
+val stageRecordOrder = compareBy<EndlessRecord>({ it.stages },{ it.partialWaves },{ -it.combatRounds })

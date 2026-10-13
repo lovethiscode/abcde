@@ -27,7 +27,7 @@ import org.junit.runner.RunWith
 class EndlessTest {
     @get:Rule val temporary = TemporaryFolder()
     @Before fun setup() { TestGame(); UncivGame.Current.settings.citiesAutoBombardAtEndOfTurn = false }
-    private fun game(seed: Long = 1101) = EndlessCatalog.newAttempt(seed).also { UncivGame.Current.gameInfo = it }
+    private fun game(seed: Long = 1101) = legacyEndlessAttempt(seed).also { UncivGame.Current.gameInfo = it }
     private fun store() = EndlessStore(UncivFiles(Gdx.files, temporary.root.path))
     private fun prepare(g: GameInfo, round: Int) {
         g.endless!!.completedRounds = round - 1

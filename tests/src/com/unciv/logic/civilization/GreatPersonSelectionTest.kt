@@ -210,6 +210,7 @@ class GreatPersonSelectionTest {
         }
         setField(worldScreen, "viewingCiv", scenario.civ)
         setField(worldScreen, "deferFreeGreatPersonPicker", true)
+        `when`(worldScreen.gameInfo).thenReturn(scenario.game.gameInfo)
         `when`(worldScreen.autoPlay).thenReturn(autoPlay)
         `when`(worldScreen.isPlayersTurn).thenReturn(true)
         val nextTurnButton = mock(NextTurnButton::class.java)

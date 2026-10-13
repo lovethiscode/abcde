@@ -1215,6 +1215,7 @@ class Civilization : IsPartOfGameInfoSerialization {
      * Removes current capital then moves capital to argument city if not null
      */
     fun moveCapitalTo(city: City?, oldCapital: City?) {
+        check(gameInfo.endless?.let { s -> s.modeVersion == 2 && !s.coreLost && civID == s.playerId && city?.id != s.coreId } != true) { "The defense core cannot be moved." }
         // Add new capital first so the civ doesn't get stuck in a state where it has cities but no capital
         val newCapitalIndicator = if (city == null) null else capitalCityIndicator(city)
         if (newCapitalIndicator != null) {

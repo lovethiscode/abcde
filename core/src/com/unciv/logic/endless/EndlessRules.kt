@@ -24,26 +24,41 @@ object EndlessRules {
 
     @Readonly fun isInvader(civ: Civilization) = civ.gameInfo.endless?.invaderId == civ.civID
     @Readonly fun blocked(game: GameInfo) = game.endless?.let { it.ended || it.saveBlocked || it.offer != null } == true
-    @Readonly fun constructionAllowed(city: City, name: String) = city.civ.gameInfo.endless == null ||
-        name in units || name in buildings || name in setOf("Gold", "Nothing", "")
+        || game.endless?.stageState?.phase == "RewardPending"
+    @Readonly fun constructionAllowed(city: City, name: String): Boolean {
+        val s = city.civ.gameInfo.endless ?: return true
+        if (s.modeVersion == 2 && (s.ended || s.saveBlocked || !s.inTurn && s.stageState?.phase == "RewardPending")) return false
+        return if (name == "Settler") EndlessStageRules.canTrainSettler(city.civ) else name in units || name in buildings || name in setOf("Gold", "Nothing", "")
+    }
     @Readonly fun researchBlocked(civ: Civilization, name: String) = civ.gameInfo.endless != null && name !in technologies && name !in initialTechs
     @Readonly fun improvementAllowed(civ: Civilization, name: String): Boolean = civ.gameInfo.endless == null ||
         name in improvements || name in setOf("Repair", "Cancel improvement order", "Remove Road", "Remove Forest", "Remove Jungle", "Remove Marsh")
-    @Readonly fun ownershipAllowed(city: City, tile: Tile) = city.civ.gameInfo.endless == null || tile.aerialDistanceTo(city.getCenterTile()) < 8
+    @Readonly fun ownershipAllowed(city: City, tile: Tile): Boolean {
+        val s = city.civ.gameInfo.endless ?: return true
+        if (s.modeVersion == 2 && (s.ended || s.saveBlocked || !s.inTurn && s.stageState?.phase == "RewardPending")) return false
+        return tile.aerialDistanceTo(s.stageState?.corePosition?.let { city.civ.gameInfo.tileMap[it] } ?: city.getCenterTile()) < 8
+    }
 
     fun ruleset(game: GameInfo): Ruleset {
         require(game.campaign == null && game.gameParameters.mods.isEmpty() && !game.gameParameters.isOnlineMultiplayer)
-        val overlay = Ruleset().apply { name = "Endless survival"; load(Gdx.files.internal("endless/rules")) }
-        return RulesetCache.getComplexRuleset(RulesetCache.getComplexRuleset(game.gameParameters), listOf(overlay))
+        EndlessCatalog.requireCompatible(game)
+        val old = game.endless!!.modeVersion == 1
+        val overlay = Ruleset().apply { name = "Endless survival"; load(Gdx.files.internal(if (old) "endless-legacy/endless/rules" else "endless-v2/rules")) }
+        val base = if (!old) RulesetCache.getComplexRuleset(game.gameParameters) else {
+            val vanilla = Ruleset().apply { name = "Civ V - Vanilla"; load(Gdx.files.internal("endless-legacy/jsons/$name")) }
+            Ruleset().apply { name = "Civ V - Gods & Kings"; load(Gdx.files.internal("endless-legacy/jsons/$name"), vanilla) }
+        }
+        return RulesetCache.getComplexRuleset(base, listOf(overlay))
     }
 
-    fun player(game: GameInfo) = game.getCivilization(game.endless!!.playerId)
-    fun invaders(game: GameInfo) = game.getCivilization(game.endless!!.invaderId)
-    fun core(game: GameInfo) = game.getCities().firstOrNull { it.id == game.endless!!.coreId }
+    @Readonly fun player(game: GameInfo) = game.getCivilization(game.endless!!.playerId)
+    @Readonly fun invaders(game: GameInfo) = game.getCivilization(game.endless!!.invaderId)
+    @Readonly fun core(game: GameInfo) = game.getCities().firstOrNull { it.id == game.endless!!.coreId }
 
     fun loseCore(game: GameInfo, cityId: String) {
         val s = game.endless ?: return
         if (cityId != s.coreId || s.ended) return
+        s.stageState?.apply { resultRound = s.round; endReason = "CoreLost" }
         s.coreLost = true
         s.pendingGold = 0
         s.offer = null
@@ -54,6 +69,7 @@ object EndlessRules {
     fun fault(game: GameInfo, reason: String) {
         val s = game.endless ?: return
         if (s.ended) return
+        s.stageState?.resultRound = s.round
         s.status = "Faulted"
         s.recordEligible = false
         s.fault = reason
@@ -68,6 +84,7 @@ object EndlessRules {
     }
 
     fun combatDefeat(killer: ICombatant, victim: MapUnit) {
+        if (victim.civ.gameInfo.endless?.modeVersion == 2) { EndlessStageRules.combatDefeat(killer, victim); return }
         val game = victim.civ.gameInfo
         val s = game.endless ?: return
         if (s.ended || killer.getCivInfo().civID != s.playerId || victim.civ.civID != s.invaderId) return
@@ -88,6 +105,7 @@ object EndlessRules {
     }
 
     fun actionSettled(game: GameInfo) {
+        if (game.endless?.modeVersion == 2) { EndlessStageRules.actionSettled(game); return }
         val s = game.endless ?: return
         if (s.actionDepth != 0 || s.settling || s.ended) return
         s.settling = true
@@ -103,6 +121,7 @@ object EndlessRules {
     }
 
     fun settleBenefits(game: GameInfo) {
+        if (game.endless?.modeVersion == 2) { EndlessStageRules.settleBenefits(game); return }
         val s = game.endless ?: return
         if (s.ended) return
         player(game).addGold(s.pendingGold)
@@ -118,6 +137,7 @@ object EndlessRules {
 
     /** Called after normal human start-turn processing, never by render or resume. */
     fun prepareRound(game: GameInfo) {
+        if (game.endless?.modeVersion == 2) { EndlessStageRules.prepareRound(game); return }
         val s = game.endless ?: return
         if (s.ended || s.lastPreparedRound == s.round) return
         if (core(game)?.civ?.civID != s.playerId) { loseCore(game, s.coreId); return }
@@ -189,11 +209,12 @@ object EndlessRules {
         return available[role]!!
     }
 
-    fun canRepair(game: GameInfo): Boolean = core(game)!!.let { it.health < it.getMaxHealth() } ||
-        player(game).units.getCivUnits().any { it.isMilitary() && it.health < 100 }
+    fun canRepair(game: GameInfo): Boolean = if (game.endless!!.modeVersion == 2) EndlessStageRules.canRepair(game)
+        else core(game)!!.let { it.health < it.getMaxHealth() } || player(game).units.getCivUnits().any { it.isMilitary() && it.health < 100 }
 
     /** Mutates a detached candidate only; EndlessStore commits it before publication. */
     fun applyReward(game: GameInfo, choice: String) {
+        if (game.endless?.modeVersion == 2) { EndlessStageRules.applyReward(game, choice); return }
         val s = game.endless!!
         check(!s.ended)
         val reward = requireNotNull(s.offer)

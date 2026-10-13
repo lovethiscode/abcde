@@ -18,7 +18,7 @@ import yairm210.purity.annotations.Readonly
 
 class CityFounder {
     fun foundCity(civInfo: Civilization, cityLocation: HexCoord, unit: MapUnit? = null): City = AchievementTracker.action(civInfo.gameInfo) {
-        check(civInfo.gameInfo.endless == null && !com.unciv.logic.campaign.CampaignRules.foundingBlocked(civInfo)) { "本关限制继续建城" }
+        check(com.unciv.logic.endless.EndlessStageRules.canFound(civInfo,civInfo.gameInfo.tileMap[cityLocation],unit) && !com.unciv.logic.campaign.CampaignRules.foundingBlocked(civInfo)) { "本关限制继续建城" }
         com.unciv.logic.campaign.CampaignRules.beforeFounding(civInfo)
         val city = City()
 
@@ -105,6 +105,7 @@ class CityFounder {
                 UniqueTriggerActivation.triggerUnique(unique, civInfo, city, unit, triggerNotificationText = "due to founding a city")
 
         com.unciv.logic.campaign.CampaignRules.cityFounded(city)
+        if (civInfo.gameInfo.endless?.modeVersion == 2) unit!!.destroy(preserveCampaignIdentity = true)
         city
     }
 

@@ -500,11 +500,16 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
         currentPlayerCiv = player
 
         com.unciv.logic.campaign.CampaignRules.roundCompleted(this)
-        endless?.let { if (!it.ended) it.completedRounds++ }
+        endless?.let {
+            if (it.modeVersion == 2) com.unciv.logic.endless.EndlessStageRules.roundCompleted(this)
+            else if (!it.ended) it.completedRounds++
+        }
 
         // Automatic campaign results settle before granting another human action round.
-        if (campaign?.let { it.resultStars > 0 || it.failed } != true && endless?.ended != true)
+        if (campaign?.let { it.resultStars > 0 || it.failed } != true && endless?.ended != true) {
             TurnManager(player).startTurn(progressBar)
+            endless?.stageState?.normalStartedRound = endless!!.round
+        }
         endless?.inTurn = false
         com.unciv.logic.endless.EndlessRules.prepareRound(this)
 

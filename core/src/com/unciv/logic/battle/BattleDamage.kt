@@ -48,7 +48,8 @@ object BattleDamage {
             modifiers.add(unitUniqueModifiers)
 
             val pressure = if (com.unciv.logic.endless.EndlessRules.isInvader(civInfo))
-                com.unciv.logic.endless.EndlessWavePlanner.pressure(civInfo.gameInfo.endless!!.round) else 0
+                civInfo.gameInfo.endless!!.let { s -> s.stageState?.let { com.unciv.logic.endless.EndlessStagePlanner.pressure(it.currentStage) }
+                    ?: com.unciv.logic.endless.EndlessWavePlanner.pressure(s.round) } else 0
             if (pressure != 0) modifiers["Continuous siege"] = pressure
             val civResources = civInfo.getCivResourcesByName()
             for (resource in combatant.unit.getResourceRequirementsPerTurn().keys)

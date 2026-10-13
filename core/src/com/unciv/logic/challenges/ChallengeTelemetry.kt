@@ -1,6 +1,7 @@
 package com.unciv.logic.challenges
 
 import com.unciv.logic.GameInfo
+import com.unciv.logic.endless.EndlessCounter
 
 /** Optional platform observer. Contains aggregate facts only, never a seed or a save. */
 object ChallengeTelemetry {
@@ -25,9 +26,10 @@ object ChallengeTelemetry {
         }
         game.endless?.let { s ->
             return Snapshot("endless", s.attemptId, s.modeId,
-                "${s.modeVersion}:${s.mapVersion}:${s.balanceVersion}:${s.scoringVersion}:${s.difficultyId}",
-                s.completedRounds, s.clearedWaves, s.clearedPrefix / 5,
-                when (s.status) { "Defeated" -> "defeated"; "Quit" -> "quit"; "Faulted" -> "faulted"; else -> "" }, rewardStage = s.claimedStages)
+                "${s.modeVersion}:${s.mapVersion}:${s.balanceVersion}:${s.scoringVersion}:${s.difficultyId}" + (s.stageState?.pace?.let { ":$it" } ?: ""),
+                s.completedRounds, s.clearedWaves, s.stageState?.let { EndlessCounter.toInt(it.completedStages) } ?: (s.clearedPrefix / 5),
+                when (s.status) { "Defeated" -> "defeated"; "Quit" -> "quit"; "Faulted" -> "faulted"; else -> "" },
+                reason = s.stageState?.endReason ?: "", rewardStage = s.claimedStages)
         }
         return null
     }

@@ -690,6 +690,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
     }
 
     fun removeBuilding(building: Building) {
+        check(city.civ.gameInfo.endless?.let { it.modeVersion == 2 && !it.coreLost && building.name == "Palace" } != true) { "The defense Palace cannot be removed." }
         builtBuildingObjects = builtBuildingObjects.withoutItem(building)
         builtBuildings.remove(building.name)
         

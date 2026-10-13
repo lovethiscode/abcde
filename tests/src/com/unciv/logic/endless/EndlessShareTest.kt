@@ -16,7 +16,7 @@ import org.junit.runner.RunWith
 class EndlessShareTest {
     @get:Rule val temporary = TemporaryFolder()
     @Before fun setup() { TestGame() }
-    private fun game() = EndlessCatalog.newAttempt(1101).also { UncivGame.Current.gameInfo = it }
+    private fun game() = legacyEndlessAttempt(1101).also { UncivGame.Current.gameInfo = it }
 
     @Test fun `sharing counts only complete rounds and freezes the saved facts`() {
         val game = game(); val state = game.endless!!

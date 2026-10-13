@@ -17,7 +17,7 @@ import org.junit.runner.RunWith
 class EndlessPersistenceTest {
     @get:Rule val temporary = TemporaryFolder()
     @Before fun setup() { TestGame() }
-    private fun game() = EndlessCatalog.newAttempt(1101).also { UncivGame.Current.gameInfo = it }
+    private fun game() = legacyEndlessAttempt(1101).also { UncivGame.Current.gameInfo = it }
     private fun store() = EndlessStore(UncivFiles(Gdx.files, temporary.root.path))
 
     @Test fun `reward telemetry is emitted only after a persisted successful claim`() {
@@ -122,7 +122,7 @@ class EndlessPersistenceTest {
         }
         val records = store.records()
         assertEquals(20, records.recent.size); assertEquals(2, records.best.size)
-        assertEquals(100, records.best.getValue(EndlessCatalog.recordKey).rounds)
+        assertEquals(100, records.best.getValue(EndlessCatalog.legacyRecordKey).rounds)
         assertFalse(records.recent.any { it.rounds == 100 })
     }
 
@@ -163,6 +163,6 @@ class EndlessPersistenceTest {
         assertEquals(1, state.balanceVersion)
         val g = game(); val store = store(); store.start(g, null)
         assertEquals(EndlessCatalog.balanceVersion, store.resume().endless!!.balanceVersion)
-        assertNotEquals(state.recordKey, EndlessCatalog.recordKey)
+        assertNotEquals(state.recordKey, EndlessCatalog.legacyRecordKey)
     }
 }

@@ -33,6 +33,7 @@ import com.unciv.utils.Concurrency
 class EndlessScreen : BaseScreen(), RecreateOnResize {
     private val store = EndlessStore(game.files)
     private val root = Table()
+    private var pace = "casual"
 
     init {
         root.setFillParent(true)
@@ -62,11 +63,11 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
             val content = Table().apply { top(); defaults().left() }
             val mapPanel = panel(mapWidth).apply {
                 text("Border Bastion", mapWidth - 36f, Theme.gold, 25)
-                text("One city. Hold out as long as you can.", mapWidth - 36f, Theme.muted)
+                text("Five waves per stage. Clear the stage before its deadline; queued enemies do not extend it.", mapWidth - 36f, Theme.muted)
                 val height = (mapWidth * .60f).coerceIn(200f, 380f)
                 add(mapPreview(scene, mapWidth - 36f, height)).size(mapWidth - 36f, height).padTop(10f).row()
                 text("Explored terrain · enemy units remain under fog of war", mapWidth - 36f, Theme.muted, 14)
-                text("Six approaches · two full rounds of rest after an early clear", mapWidth - 36f, Theme.text, 16)
+                text("Up to 3 cities. Clear stages 2 and 4 to unlock city slots; side cities are destroyed when captured.", mapWidth - 36f, Theme.text, 16)
             }
             val status = panel(statusWidth).apply {
                 val inner = statusWidth - 36f
@@ -76,14 +77,19 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                     text("Population [4] · [160] Gold · [4] military units", inner)
                     text("The first wave arrives in round [6].", inner)
                 } else {
-                    text(endlessStatus(state), inner)
+                    text(if (state.stageState == null) "Legacy rules".tr() + " · " + endlessStatus(state).tr() else endlessStatus(state), inner)
                     text("Completed [${state.completedRounds}] rounds · cleared [${state.clearedWaves}] waves", inner)
                     if (!compatible) text("This endless save needs a compatibility update. Your save and records have been kept.", inner, Theme.danger, 16)
-                    if (state.ended) text(if (state.status == "Defeated") "The bastion has fallen." else if (state.status == "Quit") "Defense ended voluntarily." else "Defense paused by a rules error.", inner, Theme.muted)
+                    if (state.ended) text(if (state.stageState?.endReason == "StageTimeout") "The stage deadline was missed." else if (state.status == "Defeated") "The bastion has fallen." else if (state.status == "Quit") "Defense ended voluntarily." else "Defense paused by a rules error.", inner, Theme.muted)
                 }
                 if (state?.ended == false && compatible) {
                     action("Continue defense", "ui-endless-continue", inner, true) { enter(null, state.attemptId) }
                 }
+                for (option in listOf("casual","wild")) {
+                    val title = (if (option == "casual") "Casual" else "Wild").tr() + if (option == pace) " ✓" else ""
+                    action(title,"ui-endless-pace:$option",inner,option == pace) { pace = option; build() }
+                }
+                text(if (pace == "casual") "Casual: 3 full rest rounds; Gold, repairs or reinforcement." else "Wild: no rest; Gold or reinforcement.",inner,Theme.muted,16)
                 action("New defense", "ui-endless-new", inner, state?.ended != false) { confirmStart(state) }
                 if (game.endlessSharingAvailable) state?.let(EndlessShareData::fromState)?.let { data ->
                     action("Share defense", "ui-endless-share-current", inner, false) { game.showEndlessShare(data) }
@@ -96,37 +102,42 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                 else { row(); add(status).width(statusWidth).padTop(14f) }
             }
             content.add(hero).width(width).row()
-            val records = store.records()
             content.add(panel(width).apply {
                 text("Defense records", width - 36f, Theme.gold, 23)
-                val keys = linkedSetOf(EndlessCatalog.recordKey).apply {
+                for (newRules in listOf(true,false)) {
+                val records = store.records(newRules)
+                val keys = (if (newRules) linkedSetOf(EndlessCatalog.newRecordKey("casual"),EndlessCatalog.newRecordKey("wild")) else linkedSetOf<String>()).apply {
                     addAll(records.best.keys.sorted()); addAll(records.recent.map { it.key })
                 }
                 for (key in keys) {
-                    text(if (key == EndlessCatalog.recordKey) "Current rules" else "Previous rules version", width - 36f, Theme.gold, 17)
+                    text(if (newRules) if (key.split(':').getOrNull(4) == "wild") "Wild" else "Casual" else "Legacy rules", width - 36f, Theme.gold, 17)
                     val version = key.split(':')
-                    text("Map [${version.getOrNull(1) ?: "?"}] · rules [${version.getOrNull(3) ?: "?"}] · scoring [${version.getOrNull(4) ?: "?"}]", width - 36f, Theme.muted, 13)
+                    text("Map [${version.getOrNull(if (newRules) 2 else 1) ?: "?"}] · rules [${version.getOrNull(if (newRules) 5 else 3) ?: "?"}] · scoring [${version.getOrNull(if (newRules) 6 else 4) ?: "?"}]", width - 36f, Theme.muted, 13)
                     val best = records.best[key]
-                    text(if (best == null) "No record yet. Hold the bastion to set your best." else
+                    text(if (best == null) "No record yet. Hold the bastion to set your best." else if (newRules)
+                        "Best".tr() + ": " + "[${best.stages}] stages · [${best.partialWaves}] waves · [${best.combatRounds}] combat rounds".tr() else
                         "Best: [${best.rounds}] completed rounds · [${best.waves}] waves · [${best.kills}] kills", width - 36f)
                     if (game.endlessSharingAvailable) best?.let(EndlessShareData::fromRecord)?.let { data ->
                         action("Share defense", "ui-endless-share-best:${best.attemptId}", width - 36f, false) { game.showEndlessShare(data) }
                     }
                     for (record in records.recent.filter { it.key == key }) {
-                        text("[${record.rounds}] rounds · [${record.waves}] waves · [${record.kills}] kills · [${if (record.status == "Quit") "Ended voluntarily".tr() else "Defeated".tr()}]", width - 36f, Theme.muted, 15)
+                        text(if (newRules) "[${record.stages}] stages · [${record.partialWaves}] waves · [${record.combatRounds}] combat rounds" else
+                            "[${record.rounds}] rounds · [${record.waves}] waves · [${record.kills}] kills · [${if (record.status == "Quit") "Ended voluntarily".tr() else "Defeated".tr()}]", width - 36f, Theme.muted, 15)
                         if (game.endlessSharingAvailable) EndlessShareData.fromRecord(record)?.let { data ->
                             action("Share defense", "ui-endless-share-record:${record.attemptId}", width - 36f, false) { game.showEndlessShare(data) }
                         }
                     }
                 }
+                }
             }).width(width).padTop(16f).row()
             content.add(panel(width).apply {
                 text("Prepare · defend · resupply", width - 36f, Theme.gold, 23)
-                text("Build your economy, research fourteen technologies and protect the core city. Clear five waves to choose Gold, repairs or one reinforcement.", width - 36f)
-                text("A new wave arrives at most eight rounds after the previous wave. Clearing all enemies earlier brings it forward after two full rest rounds.", width - 36f)
-                text("Losing the core city ends the defense. Your score counts fully completed rounds. Quitting is kept in recent history but does not set a best record.", width - 36f)
+                text("Five waves per stage. Clear the stage before its deadline; queued enemies do not extend it.", width - 36f)
+                text("Casual: 3 full rest rounds; Gold, repairs or reinforcement.", width - 36f)
+                text("Wild: no rest; Gold or reinforcement.", width - 36f)
+                text("Core loss or a missed deadline ends the defense. Scores compare stages, waves and completed-stage combat time.", width - 36f)
                 text("Starting garrison: 2 Spearmen, 2 Archers and 1 Worker. Palace, Granary and Monument are already built.", width - 36f, Theme.muted, 16)
-                text("Local singleplayer · one city · no ordinary victory conditions", width - 36f, Theme.muted, 14)
+                text("Up to 3 cities. Clear stages 2 and 4 to unlock city slots; side cities are destroyed when captured.", width - 36f, Theme.muted, 14)
             }).width(width).padTop(16f).row()
             root.add(AutoScrollPane(content).apply { name = "ui-endless-hall-scroll"; setScrollingDisabled(true, false) })
                 .grow().minHeight(0f).pad(0f, 22f, 14f, 22f)
@@ -149,7 +160,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
         Concurrency.runOnGLThread {
             try {
                 game.files.autosaves.autoSaveJob?.join()
-                val attempt = if (seed == null) store.resume() else EndlessCatalog.newAttempt(seed).also { store.start(it, replacing) }
+                val attempt = if (seed == null) store.resume() else EndlessCatalog.newAttempt(seed,pace).also { store.start(it, replacing) }
                 game.loadGame(attempt)
                 ChallengeTelemetry.report(if (seed == null) "resume" else "start", attempt)
             } catch (ex: Exception) {
@@ -220,8 +231,22 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
 
 internal fun endlessStatus(s: EndlessState): String = when {
     s.saveBlocked -> "Save failed · retry required"
+    s.stageState != null -> stageStatus(s)
     s.ended -> "Completed [${s.completedRounds}] rounds"
     s.offer != null -> "Stage [${s.offer!!.stage}] cleared · choose a reward"
     s.waveNumber == 0 -> "Preparation · first wave in [${(6 - s.round).coerceAtLeast(0)}] rounds"
     else -> "Wave [${s.waveNumber}] · [${s.activeCount}] enemies · [${s.pendingCount}] waiting · next in [${(s.nextWaveRound - s.round).coerceAtLeast(0)}] rounds"
+}
+
+private fun stageStatus(s: EndlessState): String {
+    val state = s.stageState!!
+    val pace = (if (state.pace == "wild") "Wild" else "Casual").tr()
+    val text = when {
+        s.ended -> "[${state.completedStages}] stages · [${if (state.phase == "Combat") s.waves.count { it.cleared } else 0}] waves · [${state.combatRounds}] combat rounds"
+        state.phase == "RewardPending" -> "Stage [${state.completedStages}] cleared · choose a reward"
+        state.phase == "Preparation" -> "Preparation · first wave in [${(6 - s.round).coerceAtLeast(0)}] rounds"
+        state.phase == "Rest" -> "Rest · [${minOf(if (state.pace == "wild") 0 else 3,(state.nextStageRound - s.round).coerceAtLeast(0))}] full rounds until stage [${state.completedStages + 1}]"
+        else -> "Stage [${state.currentStage}] · combat round [${s.round - state.startRound + 1}]/[${state.deadline - state.startRound + 1}] · [${state.deadline - s.round + 1}] rounds remaining"
+    }
+    return pace + " · " + text.tr()
 }

@@ -482,6 +482,7 @@ class City : IsPartOfGameInfoSerialization, INamed {
     }
 
     fun destroyCity(overrideSafeties: Boolean = false) {
+        check(civ.gameInfo.endless?.let { s -> s.modeVersion == 2 && civ.civID == s.playerId && !s.inTurn && !hasJustBeenConquered } != true) { "The defense cities cannot be voluntarily destroyed." }
         // Original capitals and holy cities cannot be destroyed,
         // unless, of course, they are captured by a one-city-challenger.
         if (!canBeDestroyed() && !overrideSafeties) return
@@ -559,6 +560,8 @@ class City : IsPartOfGameInfoSerialization, INamed {
     }
 
     fun sellBuilding(building: Building) {
+        check(civ.gameInfo.endless?.modeVersion != 2 || !com.unciv.logic.endless.EndlessRules.blocked(civ.gameInfo)) { "Resolve the defense boundary before selling a building." }
+        check(civ.gameInfo.endless?.modeVersion != 2 || building.name != "Palace") { "The defense Palace cannot be sold." }
         cityConstructions.removeBuilding(building)
         civ.addGold(getGoldForSellingBuilding(building.name))
         hasSoldBuildingThisTurn = true

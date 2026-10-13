@@ -36,24 +36,20 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
             add(value.toLabel(if (muted) Theme.muted else Theme.text, 18).apply { wrap = true }).width(width).left().padBottom(10f).row()
         }
         text("Action round [${mode.round}] · completed [${mode.completedRounds}] rounds")
+        if (mode.stageState == null) text("Legacy rules",true)
         text(endlessStatus(mode))
         if (mode.saveBlocked) {
             text("Your last successful save is preserved. Retry saving to continue.")
-            addButton("Retry save") {
-                try {
-                    store.save(screen.gameInfo)
-                    close(); screen.shouldUpdate = true; EndlessPopup(screen)
-                } catch (ex: Exception) { ToastPopup("Could not save game!", screen) }
-            }.minHeight(UiNavigation.minimumTouchSize())
+            addButton("Retry save") { retrySave() }.minHeight(UiNavigation.minimumTouchSize())
         } else if (mode.ended) {
             text(when (mode.status) {
-                "Defeated" -> "The bastion has fallen."
+                "Defeated" -> if (mode.stageState?.endReason == "StageTimeout") "The stage deadline was missed." else "The bastion has fallen."
                 "Quit" -> "Defense ended voluntarily."
                 else -> "Defense paused by a rules error."
             })
             text("[${mode.clearedWaves}] waves cleared · [${mode.kills}] battle kills")
             text("Military losses [${mode.militaryLosses}] · civilian losses [${mode.civilianLosses}]", true)
-            text("Stages cleared [${mode.clearedPrefix / 5}] · highest wave [${mode.waveNumber}]", true)
+            text("Stages cleared [${mode.stageState?.completedStages ?: (mode.clearedPrefix / 5)}] · highest wave [${mode.waveNumber}]", true)
             if (mode.status == "Faulted") text(mode.fault, true)
             else text(if (mode.status == "Quit") "Quitting does not set a best record." else "Saved on this device", true)
             addButton("New defense") { start() }
@@ -61,7 +57,9 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
             val offer = mode.offer!!
             text("Stage [${offer.stage}] cleared · choose one reward")
             val wide = width >= 750f
-            val cardWidth = if (wide) (width - 24f) / 3 else width
+            val repairAllowed = mode.stageState?.pace != "wild"
+            val cardCount = if (repairAllowed) 3 else 2
+            val cardWidth = if (wide) (width - 12f * (cardCount - 1)) / cardCount else width
             val choices = Table()
             fun choice(key: String, title: String, detail: String, enabled: Boolean, reason: String) {
                 val card = Table().apply {
@@ -79,7 +77,7 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
                 if (!wide) choices.row()
             }
             choice("Gold", "Emergency supplies", "Gain [${offer.gold}] Gold.", true, "")
-            choice("Repair", "Field repairs", "Restore 30% of the city's maximum health and 25% for every surviving military unit. Actions are not restored.",
+            if (repairAllowed) choice("Repair", "Field repairs", if (mode.stageState != null) "Restore 30% of each surviving city's maximum health and 25% for every surviving military unit. Actions are not restored." else "Restore 30% of the city's maximum health and 25% for every surviving military unit. Actions are not restored.",
                 EndlessRules.canRepair(screen.gameInfo), "The city and all military units are at full health.")
             choice("Reinforcement", "Reinforcements", "Receive [${offer.unit.tr()}]. It cannot act this round. If blocked for three rounds, receive [${offer.gold}] Gold instead.",
                 mode.reinforcement == null, "A reinforcement is already waiting to arrive.")
@@ -89,11 +87,20 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
             val city = EndlessRules.core(screen.gameInfo)!!
             text("Core city: [${city.health}] / [${com.unciv.logic.battle.CityCombatant(city).getMaxHealth()}] HP · population [${city.population.population}]")
             text("[${mode.clearedWaves}] waves cleared · [${mode.kills}] battle kills")
-            if (mode.waves.isNotEmpty()) text("Clearing all enemies can bring the next wave forward.", true)
-            val preview = EndlessWavePlanner.plan(mode.clone().apply { completedRounds = nextWaveRound - 1 })
+            mode.stageState?.let { state ->
+                text("Cities [${EndlessRules.player(screen.gameInfo).cities.size}] / [${com.unciv.logic.endless.EndlessStageRules.capacity(mode)}] · found within 4 tiles of the core · territory within 7 tiles",true)
+                text("[${mode.activeCount}] enemies · [${mode.pendingCount}] waiting",true)
+                if (state.phase == "Rest") text("Next stage [${state.completedStages + 1}] · [${com.unciv.logic.endless.EndlessStagePlanner.duration(state.completedStages + 1)}] combat rounds · [+${com.unciv.logic.endless.EndlessStagePlanner.pressure(state.completedStages + 1)}]% enemy strength",true)
+            }
+            if (mode.stageState == null && mode.waves.isNotEmpty()) text("Clearing all enemies can bring the next wave forward.", true)
+            val preview = if (mode.stageState != null) mode.waves.firstOrNull { !it.announced } ?: mode.stageState!!.preview
+                else EndlessWavePlanner.plan(mode.clone().apply { completedRounds = nextWaveRound - 1 })
+            if (preview != null && (mode.stageState?.phase != "Preparation" || mode.round >= 4))
             text("Next approach: [${directionName(preview.mainSector).tr()}] · [${preview.template.tr()}]", true)
+            if (mode.stageState == null) {
             text("Continuous siege: [+${EndlessWavePlanner.pressure(mode.round)}]% enemy strength", true)
             if (mode.round < EndlessWavePlanner.finalTierRound) text("Next unit tier unlocks in round [${if (mode.round < 36) 36 else EndlessWavePlanner.finalTierRound}].", true)
+            }
             mode.reinforcement?.let { text("Reinforcement waiting: [${it.unit.tr()}] · converts after round [${it.expiresRound}]", true) }
             addButton("End defense") {
                 close()
@@ -118,6 +125,22 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
         }
         getScrollPane()?.setScrollingDisabled(true, false)
         open(force = true)
+    }
+
+    private fun retrySave() {
+        val loading = LoadingPopup(screen)
+        Concurrency.runOnGLThread {
+            try {
+                if (mode.pendingRewardCandidate != null) {
+                    val candidate = store.retryReward(screen.gameInfo)
+                    close(); screen.game.loadGame(candidate)
+                } else {
+                    store.save(screen.gameInfo)
+                    close(); screen.shouldUpdate = true; EndlessPopup(screen)
+                }
+            } catch (ex: Exception) { ToastPopup("Could not save game!",screen) }
+            finally { loading.close() }
+        }
     }
 
     private fun claim(choice: String) {

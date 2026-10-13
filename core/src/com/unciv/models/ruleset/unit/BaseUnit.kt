@@ -239,7 +239,12 @@ class BaseUnit : RulesetObject(), INonPerpetualConstruction {
             yield(RejectionReasonType.ShouldNotBeDisplayed.toInstance())
             return@sequence
         }
-        if (civ.gameInfo.endless != null && name !in com.unciv.logic.endless.EndlessRules.units) {
+        if (name == "Settler" && civ.gameInfo.endless?.modeVersion == 2 && !com.unciv.logic.endless.EndlessStageRules.canTrainSettler(civ)) {
+            yield(RejectionReasonType.Unbuildable.toInstance())
+            return@sequence
+        }
+        if (civ.gameInfo.endless != null && name !in com.unciv.logic.endless.EndlessRules.units &&
+            !(name == "Settler" && civ.gameInfo.endless?.modeVersion == 2)) {
             yield(RejectionReasonType.ShouldNotBeDisplayed.toInstance())
             return@sequence
         }

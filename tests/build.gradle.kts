@@ -114,6 +114,14 @@ tasks.register<JavaExec>("endlessRoutes") {
     args = (project.findProperty("endless.args") as? String ?: "").split(" ").filter { it.isNotEmpty() }
 }
 
+tasks.register<JavaExec>("endlessStress") {
+    group = "verification"
+    mainClass.set("com.unciv.dev.EndlessStress")
+    classpath = sourceSets["test"].runtimeClasspath
+    workingDir = file("../android/assets")
+    args = (project.findProperty("endless.output") as? String)?.let { listOf(it) } ?: emptyList()
+}
+
 tasks.register<JavaExec>("civilWarRoutes") {
     group = "verification"
     mainClass.set("com.unciv.dev.CivilWarRoutes")

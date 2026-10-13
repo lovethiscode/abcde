@@ -746,7 +746,8 @@ object Battle {
             )
         }
 
-        if (attackerCiv.isBarbarian || attackerCiv.isOneCityChallenger()) {
+        if (attackerCiv.isBarbarian || attackerCiv.isOneCityChallenger() ||
+            attackerCiv.gameInfo.endless?.modeVersion == 2 && com.unciv.logic.endless.EndlessRules.isInvader(attackerCiv)) {
             city.destroyCity(true)
             return
         }

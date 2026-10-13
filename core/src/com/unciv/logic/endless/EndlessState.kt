@@ -45,18 +45,27 @@ class EndlessState : IsPartOfGameInfoSerialization {
     var recordEligible = true
     var saveSequence = 0L
     var endedAt = 0L
+    var stageState: EndlessStageState? = null
     @Transient var actionDepth = 0
     @Transient var settling = false
     @Transient var inTurn = false
     @Transient var saveBlocked = false
+    @Transient var pendingRewardCandidate: com.unciv.logic.GameInfo? = null
+    @Transient var pendingRewardDigest = ""
+    @Transient var pendingRewardChoice = ""
 
-    val round get() = completedRounds + 1
+    val round get() = stageState?.resultRound?.takeIf { ended && it > 0 } ?: EndlessCounter.add(completedRounds, 1)
     val ended get() = status != "Active"
-    val nextWaveRound get() = if (waveNumber == 0) 6 else
+    val nextWaveRound get() = if (stageState != null) waves.firstOrNull { !it.announced }?.round
+        ?: stageState!!.nextStageRound.takeIf { it > 0 } ?: EndlessCounter.add(stageState!!.deadline, 1)
+        else if (waveNumber == 0) 6 else
         if (earlyWaveRound > 0) minOf(lastWaveRound + 8, earlyWaveRound) else lastWaveRound + 8
-    val pendingCount get() = waves.sumOf { w -> w.members.count { it.unitId == 0 } }
-    val activeCount get() = waves.sumOf { w -> w.members.count { it.unitId != 0 } }
-    val recordKey get() = "$modeId:$mapVersion:$difficultyId:$balanceVersion:$scoringVersion"
+    val pendingCount get() = if (stageState == null) waves.sumOf { w -> w.members.count { it.unitId == 0 } }
+        else waves.filter { it.announced }.sumOf { w -> w.members.count { it.lifecycle == "Pending" } }
+    val activeCount get() = if (stageState == null) waves.sumOf { w -> w.members.count { it.unitId != 0 } }
+        else waves.sumOf { w -> w.members.count { it.lifecycle == "Active" } }
+    val recordKey get() = if (modeVersion == 2) "$modeId:$modeVersion:$mapVersion:$difficultyId:${stageState?.pace}:$balanceVersion:$scoringVersion"
+        else "$modeId:$mapVersion:$difficultyId:$balanceVersion:$scoringVersion"
 
     fun clone(): EndlessState = com.unciv.json.json().let {
         it.fromJson(EndlessState::class.java, it.toJson(this))
@@ -71,6 +80,8 @@ class EndlessWave : IsPartOfGameInfoSerialization {
     var mainSector = 0
     var secondarySector = 0
     var members = arrayListOf<EndlessMember>()
+    var announced = false
+    var cleared = false
 }
 
 class EndlessMember : IsPartOfGameInfoSerialization {
@@ -80,6 +91,9 @@ class EndlessMember : IsPartOfGameInfoSerialization {
     var sector = 0
     var promotion = ""
     var unitId = 0
+    var lifecycle = "Future"
+    var idleRounds = 0
+    var stallReason = ""
 }
 
 class EndlessReward : IsPartOfGameInfoSerialization {
@@ -103,6 +117,31 @@ class EndlessRecord {
     var kills = 0
     var status = ""
     var endedAt = 0L
+    var stages = 0L
+    var partialWaves = 0
+    var combatRounds = 0L
+    var endReason = ""
+}
+
+/** Explicit v2 facts. An absent group always remains a legacy save. */
+class EndlessStageState : IsPartOfGameInfoSerialization {
+    var pace = ""
+    var phase = ""
+    var currentStage = 0L
+    var completedStages = -1L
+    var startRound = 0
+    var deadline = 0
+    var clearedAt = 0
+    var nextStageRound = 0
+    var combatRounds = -1L
+    var corePosition: com.unciv.logic.map.HexCoord? = null
+    var preparedRound = -1
+    var prepareStep = -1
+    var normalStartedRound = -1
+    var resultRound = 0
+    var endReason = ""
+    var preview: EndlessWave? = null
+
 }
 
 class EndlessRecords {

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Camp",
+    "turnsToBuild": 7,
+    "techRequired": "Pottery",
+    "uniques": [
+      "Does not need removal of [Forest]",
+      "Does not need removal of [Jungle]",
+      "[+1 Gold] <after discovering [Economics]>",
+      "Can only be built to improve a resource",
+      "Pillaging this improvement yields approximately [+10 Gold]"
+    ],
+    "shortcutKey": "C"
+  },
+  {
+    "name": "Plantation",
+    "turnsToBuild": 6,
+    "gold": 1,
+    "techRequired": "Pottery",
+    "uniques": [
+      "[+1 Food] <after discovering [Fertilizer]>",
+      "Can only be built to improve a resource",
+      "Pillaging this improvement yields approximately [+10 Gold]"
+    ],
+    "shortcutKey": "P"
+  },
+  {
+    "name": "Fort",
+    "terrainsCanBeBuiltOn": [
+      "Plains",
+      "Grassland",
+      "Desert",
+      "Hill",
+      "Tundra",
+      "Snow",
+      "Forest",
+      "Jungle"
+    ],
+    "turnsToBuild": 6,
+    "techRequired": "Chivalry",
+    "uniques": [
+      "Can be built outside your borders",
+      "Gives a defensive bonus of [50]%"
+    ],
+    "shortcutKey": "O"
+  }
+]

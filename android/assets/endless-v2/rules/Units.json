@@ -1,0 +1,167 @@
+[
+  {
+    "name": "Spearman",
+    "unitType": "Sword",
+    "movement": 2,
+    "strength": 11,
+    "cost": 56,
+    "requiredTech": "Bronze Working",
+    "uniques": [
+      "[+50]% Strength <vs [Mounted] units>"
+    ],
+    "attackSound": "metalhit",
+    "upgradesTo": "Swordsman"
+  },
+  {
+    "name": "Swordsman",
+    "unitType": "Sword",
+    "movement": 2,
+    "strength": 14,
+    "cost": 75,
+    "requiredTech": "Iron Working",
+    "requiredResource": "Iron",
+    "hurryCostModifier": 20,
+    "attackSound": "metalhit",
+    "upgradesTo": "Longswordsman",
+    "uniques": []
+  },
+  {
+    "name": "Longswordsman",
+    "unitType": "Sword",
+    "movement": 2,
+    "strength": 21,
+    "cost": 120,
+    "requiredTech": "Steel",
+    "requiredResource": "Iron",
+    "attackSound": "metalhit",
+    "uniques": []
+  },
+  {
+    "name": "Archer",
+    "unitType": "Archery",
+    "movement": 2,
+    "strength": 5,
+    "rangedStrength": 7,
+    "cost": 40,
+    "requiredTech": "Archery",
+    "attackSound": "arrow",
+    "upgradesTo": "Composite Bowman",
+    "uniques": []
+  },
+  {
+    "name": "Composite Bowman",
+    "unitType": "Archery",
+    "movement": 2,
+    "strength": 7,
+    "rangedStrength": 11,
+    "cost": 75,
+    "requiredTech": "Construction",
+    "attackSound": "arrow",
+    "upgradesTo": "Crossbowman",
+    "uniques": []
+  },
+  {
+    "name": "Crossbowman",
+    "unitType": "Archery",
+    "movement": 2,
+    "strength": 13,
+    "rangedStrength": 18,
+    "cost": 120,
+    "requiredTech": "Machinery",
+    "attackSound": "crossbow",
+    "uniques": []
+  },
+  {
+    "name": "Horseman",
+    "unitType": "Mounted",
+    "movement": 4,
+    "strength": 12,
+    "cost": 75,
+    "requiredTech": "Horseback Riding",
+    "requiredResource": "Horses",
+    "uniques": [
+      "Can move after attacking",
+      "No defensive terrain bonus",
+      "[-33]% Strength <vs cities> <when attacking>"
+    ],
+    "hurryCostModifier": 20,
+    "attackSound": "horse",
+    "upgradesTo": "Knight"
+  },
+  {
+    "name": "Knight",
+    "unitType": "Mounted",
+    "movement": 4,
+    "strength": 20,
+    "cost": 120,
+    "requiredTech": "Chivalry",
+    "requiredResource": "Horses",
+    "uniques": [
+      "Can move after attacking",
+      "No defensive terrain bonus",
+      "[-33]% Strength <vs cities> <when attacking>",
+      "Never appears as a Barbarian unit"
+    ],
+    "attackSound": "horse"
+  },
+  {
+    "name": "Catapult",
+    "unitType": "Siege",
+    "movement": 2,
+    "strength": 7,
+    "rangedStrength": 8,
+    "cost": 75,
+    "requiredTech": "Mathematics",
+    "uniques": [
+      "[+200]% Strength <vs cities> <when attacking>",
+      "No defensive terrain bonus",
+      "Must set up to ranged attack",
+      "[-1] Sight",
+      "Never appears as a Barbarian unit"
+    ],
+    "hurryCostModifier": 20,
+    "attackSound": "throw",
+    "upgradesTo": "Trebuchet"
+  },
+  {
+    "name": "Trebuchet",
+    "unitType": "Siege",
+    "movement": 2,
+    "strength": 12,
+    "rangedStrength": 14,
+    "cost": 120,
+    "requiredTech": "Physics",
+    "uniques": [
+      "[+200]% Strength <vs cities> <when attacking>",
+      "No defensive terrain bonus",
+      "Must set up to ranged attack",
+      "[-1] Sight",
+      "Never appears as a Barbarian unit"
+    ],
+    "attackSound": "throw"
+  },
+  {
+    "name": "Worker",
+    "unitType": "Civilian",
+    "movement": 2,
+    "requiredTech": "Agriculture",
+    "uniques": [
+      "Can build [Land] improvements on tiles",
+      "Automation is a primary action"
+    ],
+    "cost": 70
+  },
+  {
+    "name": "Settler",
+    "unitType": "Civilian",
+    "movement": 2,
+    "cost": 106,
+    "requiredTech": "Agriculture",
+    "uniques": [
+      "Founds a new city <by consuming this unit>",
+      "Excess Food converted to Production when under construction",
+      "Requires at least [2] population"
+    ],
+    "hurryCostModifier": 20
+  }
+]

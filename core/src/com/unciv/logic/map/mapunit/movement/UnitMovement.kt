@@ -502,6 +502,9 @@ class UnitMovement(val unit: MapUnit) {
     }
 
     fun moveToTile(destination: Tile, considerZoneOfControl: Boolean = true): Unit = timeThis<Unit>("moveToTile") {
+        val endless = unit.civ.gameInfo.endless
+        if (endless?.modeVersion == 2 && unit.civ.civID == endless.playerId && !endless.inTurn &&
+            com.unciv.logic.endless.EndlessRules.blocked(unit.civ.gameInfo)) return@timeThis
         if (destination == unit.getTile() || unit.isDestroyed) return // already here (or dead)!
         if (AutomationPreview.move(unit, destination)) return
         // Reset closestEnemy chache

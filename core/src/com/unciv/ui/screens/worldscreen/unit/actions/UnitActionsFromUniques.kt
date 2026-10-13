@@ -55,7 +55,8 @@ object UnitActionsFromUniques {
         if (unit.civ.isOneCityChallenger() && unit.civ.hasEverOwnedOriginalCapital) return null
         val useFrequency = getUseFrequency(unit, unique, 80f)
 
-        if (!unit.hasMovement() || !tile.canBeSettled(unit.civ) || com.unciv.logic.campaign.CampaignRules.foundingBlocked(unit.civ))
+        if (!unit.hasMovement() || !tile.canBeSettled(unit.civ) || com.unciv.logic.campaign.CampaignRules.foundingBlocked(unit.civ) ||
+            !com.unciv.logic.endless.EndlessStageRules.canFound(unit.civ,tile,unit))
             return UnitAction(UnitActionType.FoundCity, useFrequency, action = null)
 
         val hasActionModifiers = unique.modifiers.any { it.type?.targetTypes?.contains(
@@ -67,8 +68,10 @@ object UnitActionsFromUniques {
             // Get the city to be able to change it into puppet, for modding.
             val city = unit.civ.addCity(tile.position, unit)
 
-            if (hasActionModifiers) UnitActionModifiers.activateSideEffects(unit, unique)
-            else unit.destroy()
+            if (unit.civ.gameInfo.endless?.modeVersion != 2 || !unit.isDestroyed) {
+                if (hasActionModifiers) UnitActionModifiers.activateSideEffects(unit, unique)
+                else unit.destroy()
+            }
             GUI.setUpdateWorldOnNextRender() // Set manually, since this could be triggered from the ConfirmPopup and not from the UnitActionsTable
             // If unit has FoundPuppetCity make it into a puppet city.
             if (unique.type == UniqueType.FoundPuppetCity) {

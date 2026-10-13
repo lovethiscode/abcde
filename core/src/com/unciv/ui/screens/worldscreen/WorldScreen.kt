@@ -592,6 +592,7 @@ class WorldScreen(
                 endlessButton.setText("R ${state.round} · C ${state.completedRounds}\n" +
                     com.unciv.ui.screens.endless.endlessStatus(state).tr())
             }
+            endlessButton.validate()
             endlessButton.height = maxOf(42f, endlessButton.prefHeight)
             val top = if (stacked) minOf(techPolicyAndDiplomacy.y, statusButtons.y) else topBar.y
             endlessButton.setPosition((stage.width - endlessButton.width) / 2, top - endlessButton.height - 6f)
