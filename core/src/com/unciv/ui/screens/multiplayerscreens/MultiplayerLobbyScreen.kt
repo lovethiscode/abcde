@@ -651,6 +651,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 val available = name == Constants.random || r.seats.none { it !== selectedSeat && it.civilization == name }
                 val nation = ruleset.nations[name]
                 val tile = GameSetupOverview.card().apply {
+                    touchable = Touchable.enabled
                     pad(10f)
                     if (name == previewCivilization) background = skinStrings.getUiBackground("GameSetup/SelectedNation",
                         skinStrings.roundedEdgeRectangleSmallShape, ExpeditionBlueTheme.raised)
