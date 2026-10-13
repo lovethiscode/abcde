@@ -115,7 +115,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                     text("Map [${version.getOrNull(if (newRules) 2 else 1) ?: "?"}] · rules [${version.getOrNull(if (newRules) 5 else 3) ?: "?"}] · scoring [${version.getOrNull(if (newRules) 6 else 4) ?: "?"}]", width - 36f, Theme.muted, 13)
                     val best = records.best[key]
                     text(if (best == null) "No record yet. Hold the bastion to set your best." else if (newRules)
-                        "Best".tr() + ": " + "[${best.stages}] stages · [${best.partialWaves}] waves · [${best.combatRounds}] combat rounds".tr() else
+                        "Best result".tr() + ": " + "[${best.stages}] stages · [${best.partialWaves}] waves · [${best.combatRounds}] combat rounds".tr() else
                         "Best: [${best.rounds}] completed rounds · [${best.waves}] waves · [${best.kills}] kills", width - 36f)
                     if (game.endlessSharingAvailable) best?.let(EndlessShareData::fromRecord)?.let { data ->
                         action("Share defense", "ui-endless-share-best:${best.attemptId}", width - 36f, false) { game.showEndlessShare(data) }
