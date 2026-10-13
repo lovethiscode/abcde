@@ -2,6 +2,7 @@ package com.unciv.ui.screens.civilopediascreen
 
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.addSeparator
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.KeyCharAndCode
@@ -165,7 +166,8 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
                     pad(8f, 12f, 8f, 12f)
                     val caption = Table()
                     caption.add(stat.icon.toString().toLabel(fontSize = 20)).padRight(8f)
-                    caption.add(stat.label.toLabel(ExpeditionBlueTheme.muted, 17, hideIcons = true).apply { wrap = true })
+                    val text = stat.label.tr(hideIcons = true).replace(stat.icon.toString(), "")
+                    caption.add(text.toLabel(ExpeditionBlueTheme.muted, 17).apply { wrap = true })
                         .minWidth(0f).growX()
                     add(caption).width(cellWidth - 24f).left().row()
                     add(stat.value.toString().toLabel(fontSize = 34)).left().padTop(4f)
