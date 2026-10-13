@@ -26,7 +26,7 @@ class EndlessStageTranslationsTest {
     @After fun restore() { UncivGame.Current.settings.language = "English" }
 
     @Test fun `new rules text covers all forty seven languages without changing legacy keys`() {
-        assertEquals(18,keys.size); assertEquals(keys.size,keys.distinct().size)
+        assertEquals(21,keys.size); assertEquals(keys.size,keys.distinct().size)
         val languages = LocaleCode.getSupportedLanguages().toList(); assertEquals(47,languages.size)
         for (language in languages) {
             val file = Gdx.files.internal("jsons/translations/$language.properties")

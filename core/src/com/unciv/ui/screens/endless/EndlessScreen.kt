@@ -22,7 +22,6 @@ import com.unciv.ui.components.tilegroups.TileSetStrings
 import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.images.ImageGetter
-import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.popups.LoadingPopup
 import com.unciv.ui.popups.ToastPopup
 import com.unciv.ui.screens.basescreen.BaseScreen
@@ -33,7 +32,7 @@ import com.unciv.utils.Concurrency
 class EndlessScreen : BaseScreen(), RecreateOnResize {
     private val store = EndlessStore(game.files)
     private val root = Table()
-    private var pace = "casual"
+    private var recordsPace = "casual"
 
     init {
         root.setFillParent(true)
@@ -83,14 +82,16 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                     if (state.ended) text(if (state.stageState?.endReason == "StageTimeout") "The stage deadline was missed." else if (state.status == "Defeated") "The bastion has fallen." else if (state.status == "Quit") "Defense ended voluntarily." else "Defense paused by a rules error.", inner, Theme.muted)
                 }
                 if (state?.ended == false && compatible) {
-                    action("Continue defense", "ui-endless-continue", inner, true) { enter(null, state.attemptId) }
+                    action("Continue defense", "ui-endless-continue", inner, true) { resumeDefense() }
                 }
-                for (option in listOf("casual","wild")) {
-                    val title = (if (option == "casual") "Casual" else "Wild").tr() + if (option == pace) " ✓" else ""
-                    action(title,"ui-endless-pace:$option",inner,option == pace) { pace = option; build() }
+                if (state != null) {
+                    action("Endless settings", "ui-endless-settings", inner) {
+                        game.pushScreen { EndlessConfigScreen(savedState = state.clone()) }
+                    }
                 }
-                text(if (pace == "casual") "Casual: 3 full rest rounds; Gold, repairs or reinforcement." else "Wild: no rest; Gold or reinforcement.",inner,Theme.muted,16)
-                action("New defense", "ui-endless-new", inner, state?.ended != false) { confirmStart(state) }
+                action("New defense", "ui-endless-new", inner, state?.ended != false) {
+                    game.pushScreen { EndlessConfigScreen(replacingAttempt = state?.attemptId) }
+                }
                 if (game.endlessSharingAvailable) state?.let(EndlessShareData::fromState)?.let { data ->
                     action("Share defense", "ui-endless-share-current", inner, false) { game.showEndlessShare(data) }
                 }
@@ -104,12 +105,16 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
             content.add(hero).width(width).row()
             content.add(panel(width).apply {
                 text("Defense records", width - 36f, Theme.gold, 23)
+                for (option in listOf("casual","wild")) {
+                    val title = (if (option == "casual") "Casual" else "Wild").tr() + if (option == recordsPace) " ✓" else ""
+                    action(title,"ui-endless-records-pace:$option",width - 36f,option == recordsPace) { recordsPace = option; build() }
+                }
                 for (newRules in listOf(true,false)) {
                 val records = store.records(newRules)
                 val keys = (if (newRules) linkedSetOf(EndlessCatalog.newRecordKey("casual"),EndlessCatalog.newRecordKey("wild")) else linkedSetOf<String>()).apply {
                     addAll(records.best.keys.sorted()); addAll(records.recent.map { it.key })
                 }
-                for (key in keys.filter { !newRules || it.split(':').getOrNull(4) == pace }) {
+                for (key in keys.filter { !newRules || it.split(':').getOrNull(4) == recordsPace }) {
                     text(if (newRules) if (key.split(':').getOrNull(4) == "wild") "Wild" else "Casual" else "Legacy rules", width - 36f, Theme.gold, 17)
                     val version = key.split(':')
                     text("Map [${version.getOrNull(if (newRules) 2 else 1) ?: "?"}] · rules [${version.getOrNull(if (newRules) 5 else 3) ?: "?"}] · scoring [${version.getOrNull(if (newRules) 6 else 4) ?: "?"}]", width - 36f, Theme.muted, 13)
@@ -148,24 +153,17 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
         }
     }
 
-    private fun confirmStart(state: EndlessState?) {
-        if (state == null) { enter(kotlin.random.Random.nextLong(), null); return }
-        ConfirmPopup(this, "Replace the current defense?", "Start new defense") {
-            enter(kotlin.random.Random.nextLong(), state.attemptId)
-        }.open()
-    }
-
-    private fun enter(seed: Long?, replacing: String?) {
+    private fun resumeDefense() {
         val loading = LoadingPopup(this)
         Concurrency.runOnGLThread {
             try {
                 game.files.autosaves.autoSaveJob?.join()
-                val attempt = if (seed == null) store.resume() else EndlessCatalog.newAttempt(seed,pace).also { store.start(it, replacing) }
+                val attempt = store.resume()
                 game.loadGame(attempt)
-                ChallengeTelemetry.report(if (seed == null) "resume" else "start", attempt)
+                ChallengeTelemetry.report("resume", attempt)
             } catch (ex: Exception) {
                 if (ex !is kotlinx.coroutines.CancellationException)
-                    ChallengeTelemetry.error("endless", if (seed == null) "resume_failed" else "start_failed")
+                    ChallengeTelemetry.error("endless", "resume_failed")
                 com.unciv.utils.Log.error("Cannot enter endless defense", ex)
                 ToastPopup(ex.message ?: "Could not start defense", this@EndlessScreen)
             } finally { loading.close() }

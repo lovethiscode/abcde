@@ -1,6 +1,5 @@
 package com.unciv.ui.screens.endless
 
-import com.unciv.logic.challenges.ChallengeTelemetry
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.logic.endless.EndlessRules
 import com.unciv.logic.endless.EndlessShareData
@@ -112,6 +111,10 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
         }
         if (screen.game.endlessSharingAvailable && EndlessShareData.fromState(mode) != null)
             addButton("Share defense") { share() }.apply { actor.name = "ui-endless-share" }.minHeight(UiNavigation.minimumTouchSize())
+        if (!mode.saveBlocked) addButton("Endless settings") {
+            close()
+            screen.game.pushScreen { EndlessConfigScreen(savedState = mode.clone()) }
+        }.minHeight(UiNavigation.minimumTouchSize())
         if (!mode.saveBlocked) addButton("Return to defense hall") { leave() }.minHeight(UiNavigation.minimumTouchSize())
         addCloseButton(if (mode.offer != null) "Claim later" else "View map").minHeight(UiNavigation.minimumTouchSize())
         val buttons = bottomTable.children.toList()
@@ -173,17 +176,8 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
 
     private fun start() {
         if (mode.saveBlocked || !mode.ended) return
-        val loading = LoadingPopup(screen)
-        Concurrency.runOnGLThread {
-            try {
-                screen.game.files.autosaves.autoSaveJob?.join()
-                val attempt = com.unciv.logic.endless.EndlessCatalog.newAttempt(kotlin.random.Random.nextLong())
-                store.start(attempt, mode.attemptId)
-                close(); screen.game.loadGame(attempt)
-                ChallengeTelemetry.report("start", attempt)
-            } catch (ex: Exception) { ToastPopup(ex.message ?: "Could not start defense", screen) }
-            finally { loading.close() }
-        }
+        close()
+        screen.game.pushScreen { EndlessConfigScreen(replacingAttempt = mode.attemptId) }
     }
 
     fun leave(toHall: Boolean = true) {
