@@ -74,7 +74,7 @@ class OptionsPopup(
         val tabMaxHeight: Float
         screen.run {
             sidebarWidth = if (stage.width < 700f) 132f else 174f
-            tabMaxWidth = if (useSidebar) stage.width * 0.94f - sidebarWidth
+            tabMaxWidth = if (useSidebar) stage.width * 0.9f - sidebarWidth
                 else if (isPortrait()) stage.width - 10f else 0.8f * stage.width
             tabMinWidth = if (useSidebar) tabMaxWidth else 0.6f * stage.width
             tabMaxHeight = if (useSidebar) stage.height * 0.9f - 120f else 0.8f * stage.height
@@ -176,7 +176,7 @@ class OptionsPopup(
             val editing = visibleArea.height < stageToShowOn.height * 0.65f
             headerCell.setActor(if (editing) null else header)
             headingCell.setActor(if (editing) null else heading)
-            tabs.resizePageArea(stageToShowOn.width * 0.94f - sidebarWidth,
+            tabs.resizePageArea(stageToShowOn.width * 0.9f - sidebarWidth,
                 (visibleArea.height * 0.9f - if (editing) footerHeight else frameHeight).coerceAtLeast(60f))
         } else if (com.badlogic.gdx.Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
             tabs.resizePageArea(
