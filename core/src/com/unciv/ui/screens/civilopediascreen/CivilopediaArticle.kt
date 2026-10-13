@@ -1,7 +1,7 @@
 package com.unciv.ui.screens.civilopediascreen
 
 /** Values accompany their original generated line, so search and legacy rendering stay unchanged. */
-data class CivilopediaStat(val label: String, val value: Int, val icon: Char)
+class CivilopediaStat(val label: String, val value: Int, val icon: Char)
 
 /** Reorganizes only explicitly tagged generated content; custom paragraphs retain their order. */
 class CivilopediaArticle(val originalLines: List<FormattedLine>) {

@@ -90,7 +90,7 @@ class CivilopediaScreen(
     internal val usesPages = ExpeditionBlueTheme.enabled
     private val pageView by lazy { CivilopediaPageView(this) }
     private enum class Page { Categories, Browse, Detail }
-    private data class Location(val page: Page, val category: CivilopediaCategories,
+    private class Location(val page: Page, val category: CivilopediaCategories,
                                 val entry: String, val scrollY: Float, val search: Boolean = false)
     private var page = Page.Detail
     private val previousPages = ArrayDeque<Location>()

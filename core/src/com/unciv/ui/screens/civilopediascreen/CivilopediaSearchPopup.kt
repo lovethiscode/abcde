@@ -55,7 +55,7 @@ class CivilopediaSearchPopup(
     private var submittedScope: String? = null
     private var restoredScrollY: Float? = null
 
-    internal data class SearchState(val text: String, val scope: String, val submittedText: String?,
+    internal class SearchState(val text: String, val scope: String, val submittedText: String?,
                                     val submittedScope: String?, val expanded: Boolean, val scrollY: Float)
     internal fun snapshot() = SearchState(searchText.text, modSelect.selected.key, submittedText, submittedScope,
         !::resultExpander.isInitialized || resultExpander.isOpen, getScrollPane()?.scrollY ?: 0f)
