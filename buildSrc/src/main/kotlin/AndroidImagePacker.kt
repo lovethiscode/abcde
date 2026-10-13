@@ -53,7 +53,7 @@ object AndroidImagePacker {
         paddingY = 8
         duplicatePadding = true
         filterMin = Texture.TextureFilter.MipMapLinearLinear
-        filterMag = Texture.TextureFilter.MipMapLinearLinear // I'm pretty sure this doesn't make sense for magnification, but setting it to Linear gives strange results
+        filterMag = Texture.TextureFilter.Linear // Magnification supports only Linear or Nearest.
     }
 
     fun packImages(workingPath: String) {
