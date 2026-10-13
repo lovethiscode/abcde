@@ -114,6 +114,9 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
         if (!mode.saveBlocked) addButton("Endless settings") {
             close()
             screen.game.pushScreen { EndlessConfigScreen(savedState = mode.clone()) }
+        }.apply {
+            actor.labelCell.width(minOf(actor.label.prefWidth, width - 24f))
+            actor.label.setWrap(true)
         }.minHeight(UiNavigation.minimumTouchSize())
         if (!mode.saveBlocked) addButton("Return to defense hall") { leave() }.minHeight(UiNavigation.minimumTouchSize())
         addCloseButton(if (mode.offer != null) "Claim later" else "View map").minHeight(UiNavigation.minimumTouchSize())

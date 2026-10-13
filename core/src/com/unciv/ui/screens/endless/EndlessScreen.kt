@@ -87,7 +87,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                 if (state != null) {
                     action("Endless settings", "ui-endless-settings", inner) {
                         game.pushScreen { EndlessConfigScreen(savedState = state.clone()) }
-                    }
+                    }.actor.apply { label.setWrap(true); labelCell.width(inner - 24f) }
                 }
                 action("New defense", "ui-endless-new", inner, state?.ended != false) {
                     game.pushScreen { EndlessConfigScreen(replacingAttempt = state?.attemptId) }
@@ -180,7 +180,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
         add(value.toLabel(color, size).apply { wrap = true }).width(width).left().row()
     }
 
-    private fun Table.action(value: String, id: String, width: Float, primary: Boolean = false, action: () -> Unit) {
+    private fun Table.action(value: String, id: String, width: Float, primary: Boolean = false, action: () -> Unit) =
         add(value.toTextButton().apply {
             name = id; label.setFontSize(20)
             if (primary) style = TextButton.TextButtonStyle(style).apply {
@@ -190,8 +190,6 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
             }
             onActivation { action() }
         }).width(width).minHeight(maxOf(48f, UiNavigation.minimumTouchSize())).padTop(3f).row()
-    }
-
     private fun mapPreview(scene: GameInfo, width: Float, height: Float): Group {
         val group = Group().apply { setSize(width, height); touchable = Touchable.disabled }
         val scale = minOf((width - 40f) / 32, (height - 36f) / 37)
