@@ -45,6 +45,7 @@ import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.popups.ToastPopup
 import com.unciv.ui.popups.options.OptionsPopup
+import com.unciv.ui.popups.options.OptionsScreen
 import com.unciv.ui.popups.options.OptionsPopupPages
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.basescreen.RecreateOnResize
@@ -732,7 +733,9 @@ class ModManagementScreen private constructor(
 
         val checkModButton = ModManagementStyle.button("Check mod")
         checkModButton.onClick {
-            OptionsPopup(this, OptionsPopupPages.ModCheck, subSelect = mod.name).open()
+            if (ExpeditionBlueTheme.enabled)
+                game.pushScreen { OptionsScreen(this, OptionsPopupPages.ModCheck, subSelect = mod.name) }
+            else OptionsPopup(this, OptionsPopupPages.ModCheck, subSelect = mod.name).open()
         }
         modActionTable.add(checkModButton).growX().minWidth(0f).minHeight(58f).row()
 

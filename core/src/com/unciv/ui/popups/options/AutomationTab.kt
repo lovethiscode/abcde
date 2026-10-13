@@ -2,7 +2,6 @@ package com.unciv.ui.popups.options
 
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Table
-import com.unciv.GUI
 
 internal class AutomationTab(
     optionsPopup: OptionsPopup
@@ -29,14 +28,14 @@ internal class AutomationTab(
             addCheckbox("Cities auto-bombard at end of turn", settings::citiesAutoBombardAtEndOfTurn)
         }
 
-        if (GUI.getWorldScreenIfActive()?.gameInfo?.allowsPlayerAutoPlay() == false) {
+        if (optionsWorldScreen()?.gameInfo?.allowsPlayerAutoPlay() == false) {
             super.lateInitialize()
             return
         }
 
         section("AutoPlay", opened = false) {
             addCheckbox("Show AutoPlay button", settings.autoPlay::showAutoPlayButton, updateWorld = true) {
-                GUI.getWorldScreenIfActive()?.autoPlay?.stopAutoPlay()
+                optionsWorldScreen()?.autoPlay?.stopAutoPlay()
             }
 
             addCheckbox("AutoPlay until victory", settings.autoPlay::autoPlayUntilEnd) {
@@ -82,7 +81,7 @@ internal class AutomationTab(
 
     private fun allCitiesChooseNextConstruction(shouldAutoAssignCityProduction: Boolean) {
         if (!shouldAutoAssignCityProduction) return
-        val worldScreen = GUI.getWorldScreenIfActive() ?: return
+        val worldScreen = optionsWorldScreen() ?: return
         if (!worldScreen.selectedGameView.civView.isCurrentPlayer() || !worldScreen.selectedGameView.civView.isHuman()) return
         for (city in worldScreen.gameInfo.getCurrentPlayerCivilization().cities) {
             city.cityConstructions.chooseNextConstruction()

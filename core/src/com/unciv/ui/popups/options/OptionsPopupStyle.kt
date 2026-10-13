@@ -1,5 +1,6 @@
 package com.unciv.ui.popups.options
 
+import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
 import com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable
@@ -8,6 +9,19 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 
 /** Local styles for the options panel; other checkboxes keep their existing appearance. */
 internal object OptionsPopupStyle {
+    val sectionBackground = Color.valueOf("1D3D48")
+    val selectedNavigation = Color.valueOf("254550")
+
+    fun selectedNavigationDrawable() = object : BaseDrawable() {
+        private val fill = BaseScreen.skin.newDrawable("Rectangle", selectedNavigation)
+        private val accent = BaseScreen.skin.newDrawable("Rectangle", ExpeditionBlueTheme.gold)
+
+        override fun draw(batch: Batch, x: Float, y: Float, width: Float, height: Float) {
+            fill.draw(batch, x, y, width, height)
+            accent.draw(batch, x, y + 10f, 2f, height - 20f)
+        }
+    }
+
     fun styleSwitch(checkbox: CheckBox) {
         checkbox.style = CheckBox.CheckBoxStyle(checkbox.style).apply {
             checkboxOff = switchDrawable(false)

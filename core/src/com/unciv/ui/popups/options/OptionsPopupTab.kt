@@ -1,7 +1,6 @@
 package com.unciv.ui.popups.options
 
 import com.badlogic.gdx.scenes.scene2d.ui.Table
-import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.widgets.ExpanderTab
 import com.unciv.ui.components.widgets.TabbedPager
 import com.unciv.ui.screens.basescreen.BaseScreen.Companion.skin
@@ -47,10 +46,8 @@ internal abstract class OptionsPopupTab(
             it.defaults().pad(4f).expand(0, 0).fill(false, false)
             it.block()
         }
-        card.background = ExpeditionBlueTheme.outlinedControl(
-            skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.panel),
-            skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.border))
-        card.header.background = skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.raised)
+        card.background = skin.newDrawable("RoundedEdgeRectangle", OptionsPopupStyle.sectionBackground)
+        card.header.background = null
         add(card).colspan(2).growX().padBottom(8f).row()
     }
 

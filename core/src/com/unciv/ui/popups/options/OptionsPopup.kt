@@ -1,20 +1,20 @@
 package com.unciv.ui.popups.options
 
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Table
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.toLabel
-import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.components.extensions.center
 import com.unciv.ui.components.extensions.getCloseButton
 import com.unciv.ui.components.widgets.TabbedPager
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.mainmenuscreen.MainMenuScreen
@@ -26,7 +26,7 @@ import com.unciv.ui.screens.worldscreen.WorldScreen
  */
 //region Fields
 class OptionsPopup(
-    screen: BaseScreen,
+    private val screen: BaseScreen,
     private val selectPage: OptionsPopupPages = defaultPage,
     withDebug: Boolean = false,
     private val onClose: () -> Unit = {},
@@ -39,10 +39,9 @@ class OptionsPopup(
     internal val useSidebar = ExpeditionBlueTheme.enabled
     private val navigation = Table()
     private val navigationButtons = ArrayList<IconTextButton>()
-    private val pageTitle = "".toLabel(ExpeditionBlueTheme.gold, 26).apply { wrap = true }
+    private val pageTitle = "".toLabel(ExpeditionBlueTheme.text, 26).apply { wrap = true }
     private val pageDescription = "".toLabel(ExpeditionBlueTheme.muted, 15).apply { wrap = true }
     private var frameHeight = 0f
-    private var footerHeight = 0f
     private lateinit var headerCell: Cell<Table>
     private lateinit var headingCell: Cell<Table>
     private lateinit var header: Table
@@ -63,10 +62,10 @@ class OptionsPopup(
     }
 
     init {
-        clickBehindToClose = true
+        clickBehindToClose = screen !is OptionsScreen
 
         if (settings.addCompletedTutorialTask("Open the options table"))
-            (screen as? WorldScreen)?.shouldUpdate = true
+            ((screen as? OptionsScreen)?.sourceScreen as? WorldScreen ?: screen as? WorldScreen)?.shouldUpdate = true
 
         innerTable.pad(0f)
 
@@ -74,10 +73,10 @@ class OptionsPopup(
         val tabMaxHeight: Float
         screen.run {
             sidebarWidth = if (stage.width < 700f) 132f else 174f
-            tabMaxWidth = if (useSidebar) stage.width * 0.9f - sidebarWidth
+            tabMaxWidth = if (useSidebar) stage.width - sidebarWidth - 1f
                 else if (isPortrait()) stage.width - 10f else 0.8f * stage.width
             tabMinWidth = if (useSidebar) tabMaxWidth else 0.6f * stage.width
-            tabMaxHeight = if (useSidebar) stage.height * 0.9f - 120f else 0.8f * stage.height
+            tabMaxHeight = if (useSidebar) stage.height - 130f else 0.8f * stage.height
         }
         // Since all pages now initialize their content late, on activation, we can't measure their preferred size anymore -> use tabMaxHeight for tabMinHeight
         // That's not really bad, the tabs are long enough so some will always need scrolling even on the largest UI size setting.
@@ -102,37 +101,40 @@ class OptionsPopup(
     }
 
     private fun buildSidebarLayout() {
-        innerTable.background = ExpeditionBlueTheme.outlinedControl(
-            BaseScreen.skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.background),
-            BaseScreen.skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.border))
+        innerTable.background = null
         tabs.background = null
         innerTable.defaults().pad(0f)
         header = Table().apply {
-            pad(4f, 18f, 4f, 12f)
-            add("Options".toLabel(ExpeditionBlueTheme.gold, 24)).left().growX()
-            add("Unciv4iOS".toLabel(ExpeditionBlueTheme.muted, 14)).padRight(18f)
-            add(getCloseButton { close() })
+            pad(6f, 12f, 6f, 18f)
+            add(UiNavigation.backButton().apply {
+                style = com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle(style).apply {
+                    up = BaseScreen.skin.newDrawable("Rectangle", Color.CLEAR)
+                    down = BaseScreen.skin.newDrawable("Rectangle", OptionsPopupStyle.selectedNavigation)
+                    over = down
+                }
+                onClick { close() }
+            }).padRight(14f)
+            add("Options".toLabel(ExpeditionBlueTheme.text, 24)).left().growX()
         }
-        headerCell = add(header).colspan(2).growX()
+        headerCell = add(header).colspan(3).growX()
         headerCell.row()
 
-        navigation.top().pad(8f)
-        navigation.background = BaseScreen.skin.newDrawable("Rectangle", ExpeditionBlueTheme.panel)
+        navigation.top().pad(8f, 6f, 8f, 10f)
         for ((index, page) in visiblePages.withIndex()) {
             val button = IconTextButton(page.label, page.getIcon(settings.language), 18).apply {
                 style = Button.ButtonStyle(style).apply {
                     up = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Color.CLEAR).apply { minHeight = 0f }
-                    checked = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.raised).apply { minHeight = 0f }
+                    checked = OptionsPopupStyle.selectedNavigationDrawable()
                     down = checked
                     over = checked
                 }
                 label.wrap = true
                 labelCell.minWidth(0f).growX().left()
-                iconCell.size(22f).padRight(10f)
+                iconCell.size(22f).padLeft(10f).padRight(10f)
                 onClick { tabs.selectPage(index); isChecked = true }
             }
             navigationButtons.add(button)
-            navigation.add(button).width(sidebarWidth - 16f).minHeight(42f).padBottom(2f).row()
+            navigation.add(button).width(sidebarWidth - 16f).minHeight(UiNavigation.minimumTouchSize()).padBottom(4f).row()
         }
         val sidebar = AutoScrollPane(navigation).apply {
             setScrollingDisabled(true, false)
@@ -148,27 +150,45 @@ class OptionsPopup(
             add(tabs).grow()
         }
         add(sidebar).width(sidebarWidth).growY()
+        add(com.badlogic.gdx.scenes.scene2d.ui.Image(BaseScreen.skin.newDrawable("Rectangle",
+            ExpeditionBlueTheme.border.cpy().apply { a = 0.35f }))).width(1f).growY().padTop(10f).padBottom(12f)
         add(content).grow().row()
-        val footer = Table().apply {
-            pad(6f, 18f, 6f, 12f)
-            add("Settings are saved when you close this window.".toLabel(ExpeditionBlueTheme.muted, 14).apply { wrap = true })
-                .minWidth(0f).left().growX()
-            add("Done".toTextButton(style = BaseScreen.skin.get("positive", TextButton.TextButtonStyle::class.java)).onClick { close() }).minWidth(112f).minHeight(44f)
-        }
-        add(footer).colspan(2).growX().row()
         pageTitle.width = tabs.prefWidth - 44f
         pageDescription.width = tabs.prefWidth - 44f
-        footerHeight = footer.prefHeight
-        frameHeight = header.prefHeight + footerHeight + heading.prefHeight
-        tabs.resizePageArea(tabs.prefWidth, (stageToShowOn.height * 0.9f - frameHeight).coerceAtLeast(80f))
+        frameHeight = header.prefHeight + heading.prefHeight
+        tabs.resizePageArea(tabs.prefWidth, (stageToShowOn.height - frameHeight).coerceAtLeast(80f))
         tabs.onSelection { index, caption, _ ->
             pageTitle.setText(caption.tr())
             pageDescription.setText(visiblePages[index].description.tr())
             navigationButtons.forEachIndexed { i, button ->
                 button.isChecked = i == index
-                button.label.color = if (i == index) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.text
+                button.label.color = if (i == index) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.muted
             }
         }
+    }
+
+    internal fun mountOnScreen() {
+        // Reuse the settings table, without attaching a Popup or its modal input layer to the stage.
+        innerTable.remove()
+        stageToShowOn.addActor(innerTable)
+        isVisible = true
+        layoutScreen(Rectangle(0f, 0f, stageToShowOn.width, stageToShowOn.height))
+    }
+
+    internal fun layoutScreen(visibleArea: Rectangle) {
+        val editing = visibleArea.height < stageToShowOn.height * 0.65f
+        headingCell.setActor(if (editing) null else heading)
+        val contentWidth = stageToShowOn.width - sidebarWidth - 1f
+        pageTitle.width = contentWidth - 44f
+        pageDescription.width = contentWidth - 44f
+        heading.invalidateHierarchy()
+        val headingHeight = if (editing) 0f else heading.prefHeight
+        tabs.resizePageArea(contentWidth,
+            (visibleArea.height - header.prefHeight - headingHeight).coerceAtLeast(60f))
+        innerTable.setBounds(0f, visibleArea.y, stageToShowOn.width, visibleArea.height)
+        innerTable.validate()
+        tabs.validate()
+        stageToShowOn.keyboardFocus?.takeIf { it.isDescendantOf(tabs) }?.let { tabs.pageScrollTo(it) }
     }
 
     override fun onVisibleAreaChanged(visibleArea: com.badlogic.gdx.math.Rectangle) {
@@ -177,7 +197,7 @@ class OptionsPopup(
             headerCell.setActor(if (editing) null else header)
             headingCell.setActor(if (editing) null else heading)
             tabs.resizePageArea(stageToShowOn.width * 0.9f - sidebarWidth,
-                (visibleArea.height * 0.9f - if (editing) footerHeight else frameHeight).coerceAtLeast(60f))
+                (visibleArea.height * 0.9f - if (editing) 0f else frameHeight).coerceAtLeast(60f))
         } else if (com.badlogic.gdx.Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
             tabs.resizePageArea(
                 if (stageToShowOn.height > stageToShowOn.width) stageToShowOn.width - 10f else stageToShowOn.width * 0.8f,
@@ -194,12 +214,19 @@ class OptionsPopup(
     }
 
     override fun close() {
-        game.musicController.onChange(null)
-        center(stageToShowOn)
-        tabs.selectPage(-1, false)
-        settings.save()
+        if (screen is OptionsScreen) {
+            screen.close()
+            return
+        }
+        finishEditing()
         onClose() // activate the passed 'on close' callback
         super.close()
+    }
+
+    internal fun finishEditing() {
+        game.musicController.onChange(null)
+        tabs.selectPage(-1, false)
+        settings.save()
     }
 
     override fun setVisible(visible: Boolean) {

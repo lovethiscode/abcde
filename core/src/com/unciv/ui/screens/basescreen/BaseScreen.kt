@@ -42,6 +42,7 @@ import com.unciv.ui.popups.Popup
 import com.unciv.ui.popups.activePopup
 import com.unciv.ui.popups.options.OptionsPopup
 import com.unciv.ui.popups.options.OptionsPopupPages
+import com.unciv.ui.popups.options.OptionsScreen
 import com.unciv.ui.screens.civilopediascreen.CivilopediaScreen
 import com.unciv.ui.screens.mainmenuscreen.MainMenuScreen
 import com.unciv.ui.screens.worldscreen.WorldScreen
@@ -269,7 +270,9 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
     fun isNarrowerThan4to3() = stage.isNarrowerThan4to3()
 
     open fun openOptionsPopup(startingPage: OptionsPopupPages = OptionsPopup.defaultPage, withDebug: Boolean = false, onClose: () -> Unit = {}) {
-        OptionsPopup(this, startingPage, withDebug, onClose).open(force = true)
+        if (ExpeditionBlueTheme.enabled)
+            game.pushScreen { OptionsScreen(this, startingPage, withDebug, onClose) }
+        else OptionsPopup(this, startingPage, withDebug, onClose).open(force = true)
     }
 
     /**

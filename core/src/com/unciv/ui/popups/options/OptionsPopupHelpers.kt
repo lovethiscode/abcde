@@ -64,6 +64,10 @@ internal interface OptionsPopupHelpers {
     /** Access the active page of the TabbedPager in [OptionsPopup] */
     val activePage: OptionsPopupPages
 
+    fun optionsWorldScreen(): WorldScreen? =
+        (UncivGame.Current.screen as? OptionsScreen)?.sourceScreen as? WorldScreen
+            ?: GUI.getWorldScreenIfActive()
+
 
     /**
      *  Adds a header row (larger font, centered, colspan 2).
@@ -92,7 +96,7 @@ internal interface OptionsPopupHelpers {
     fun Table.addCheckbox(text: String, initialState: Boolean, updateWorld: Boolean = false, newRow: Boolean = true, action: ((Boolean) -> Unit)) {
         val checkbox = text.toCheckBox(initialState) {
             action(it)
-            val worldScreen = GUI.getWorldScreenIfActive()
+            val worldScreen = optionsWorldScreen()
             if (updateWorld && worldScreen != null) worldScreen.shouldUpdate = true
         }
         if (ExpeditionBlueTheme.enabled) OptionsPopupStyle.styleSwitch(checkbox)
@@ -299,8 +303,10 @@ internal interface OptionsPopupHelpers {
 
     /** Reload the [OptionsPopup] after major changes (resolution, tileset, language, font) */
     fun reloadWorldAndOptions() {
+        val page = activePage
         Concurrency.run("Reload from options") {
             withGLContext {
+                (UncivGame.Current.screen as? OptionsScreen)?.close()
                 // We have to run setSkin before the screen is rebuild else changing skins
                 // would only load the new SkinConfig after the next rebuild
                 BaseScreen.setSkin()
@@ -314,7 +320,7 @@ internal interface OptionsPopupHelpers {
                 }
             }
             withGLContext {
-                UncivGame.Current.screen?.openOptionsPopup(activePage)
+                UncivGame.Current.screen?.openOptionsPopup(page)
             }
         }
     }
@@ -330,6 +336,11 @@ internal interface OptionsPopupHelpers {
             delay((if (force) 0 else 100).milliseconds)
             withGLContext {
                 val screen = UncivGame.Current.screen ?: return@withGLContext
+                if (screen is OptionsScreen) {
+                    if (!screen.hasOpenPopups())
+                        UncivGame.Current.replaceCurrentScreen { screen.recreate() }
+                    return@withGLContext
+                }
                 val page = activePage // Must be fetched before force-closing the current OptionsPopup
                 if (force) (screen.activePopup as? OptionsPopup)?.close()
                 if (screen.hasOpenPopups()) return@withGLContext // e.g. Orientation auto to fixed while auto is already the new orientation
