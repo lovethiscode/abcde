@@ -108,7 +108,7 @@ internal class CampaignHomeMenu(
             "OtherIcons/Nations", actionsWidth, action = ::showFreePlay)).width(actionsWidth)
             .height(actionHeight).padBottom(16f).row()
 
-        actions.add(menuButton("Endless survival", "One city · endless waves · survival records",
+        actions.add(menuButton("Endless survival", "Defense hall",
             "OtherIcons/Shield", actionsWidth) {
             game.pushScreen { com.unciv.ui.screens.endless.EndlessScreen() }
         }.apply { name = "ui-endless-open" }).width(actionsWidth).height(actionHeight).padBottom(10f).row()
