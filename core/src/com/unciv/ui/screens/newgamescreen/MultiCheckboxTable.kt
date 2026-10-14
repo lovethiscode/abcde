@@ -19,6 +19,7 @@ class MultiCheckboxTable(
     title: String,
     persistenceID: String,
     private val values: HashSet<String>,
+    directLayoutWidth: Float? = null,
     onUpdate: (String) -> Unit
 ) : Table() {
     private val checkBoxes = ArrayList<CheckBox>()
@@ -36,10 +37,17 @@ class MultiCheckboxTable(
         }
 
         if (checkBoxes.any()) {
-            add(ExpanderTab(title, persistenceID = persistenceID, startsOutOpened = false) {
-                it.defaults().pad(5f,0f)
-                for (checkbox in checkBoxes) it.add(checkbox).row()
-            }).pad(0f).padTop(10f).colspan(2).growX().row()
+            if (directLayoutWidth != null) {
+                add(SinglePlayerSetup.group(title, directLayoutWidth, persistenceID) {
+                    it.defaults().left().growX().minHeight(44f).padBottom(8f)
+                    for (checkbox in checkBoxes) it.add(checkbox).row()
+                }).width(directLayoutWidth).padTop(8f).growX().row()
+            } else {
+                add(ExpanderTab(title, persistenceID = persistenceID, startsOutOpened = false) {
+                    it.defaults().pad(5f,0f)
+                    for (checkbox in checkBoxes) it.add(checkbox).row()
+                }).pad(0f).padTop(10f).colspan(2).growX().row()
+            }
         }
     }
 

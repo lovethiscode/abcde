@@ -367,7 +367,7 @@ internal class NationPickerPopup(
                 background = SinglePlayerSetup.surface(ExpeditionBlueTheme.raised, ExpeditionBlueTheme.gold)
                 findActor<com.badlogic.gdx.scenes.scene2d.Actor>("nation-selected").isVisible = true
             }
-            nationDetailsTable.add(councilDetails(selectInfo.nation)).width(detailsWidth).top()
+            nationDetailsScroll.actor = councilDetails(selectInfo.nation)
             nationDetailsScroll.scrollY = 0f
         }
         selection = selectInfo
@@ -384,6 +384,7 @@ internal class NationPickerPopup(
     private fun councilDetails(nation: Nation) = Table().apply {
         val textWidth = detailsWidth - 16f
         top()
+        padBottom(44f)
         defaults().left().growX().padBottom(8f)
         fun heading(caption: String, icon: String) = Table().apply {
             add(ImageGetter.getImage(icon, ExpeditionBlueTheme.gold)).size(20f).padRight(8f)
@@ -443,7 +444,7 @@ internal class NationPickerPopup(
         add(SinglePlayerSetup.group("Civilopedia", textWidth, "NationDetails") { content ->
             content.add(com.unciv.ui.screens.civilopediascreen.MarkupRenderer.render(nation.getCivilopediaTextLines(ruleset), textWidth - 24f,
                 iconDisplay = com.unciv.ui.screens.civilopediascreen.FormattedLine.IconDisplay.NoLink)).growX()
-        }).width(textWidth).padTop(4f)
+        }).width(textWidth).padTop(4f).row()
     }
 
     @Suppress("UsePropertyAccessSyntax")  // setColor _is_ a field-by-field copy not a reference set

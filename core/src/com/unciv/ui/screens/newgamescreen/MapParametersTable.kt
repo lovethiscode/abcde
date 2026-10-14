@@ -81,6 +81,8 @@ class MapParametersTable(
     // A HashMap indexed on a Widget is problematic, as it does not define its own hashCode and equals
     // overrides nor is a Widget a data class. Seems to work anyway.
     private val advancedSliders = HashMap<UncivSlider, ()->Float>()
+    private val directLayoutWidth: Float?
+        get() = (previousScreen as? NewGameScreen)?.takeIf { UiNavigation.isIos }?.directSetupWidth
 
     private lateinit var hexWarningLabel: Label
     private lateinit var rectWarningLabel: Label
@@ -103,10 +105,10 @@ class MapParametersTable(
         clear()
 
         skin = BaseScreen.skin
-        defaults().pad(5f, 5f)
+        defaults().pad(if (directLayoutWidth == null) 5f else 0f)
         if (mapGeneratedMainType == MapGeneratedMainType.randomGenerated) {
             val prompt = "Which options should be available to the random selection?"
-            val width = (previousScreen as? NewGameScreen)?.getColumnWidth() ?: 200f
+            val width = directLayoutWidth ?: (previousScreen as? NewGameScreen)?.getColumnWidth() ?: 200f
             val label = WrappableLabel(prompt, width - 10f)  // 20 is the defaults() padding
             label.setAlignment(Align.center)
             label.wrap = true
@@ -120,6 +122,12 @@ class MapParametersTable(
         addMirrorSelectBox()
         if (previousScreen is NewGameScreen && UiNavigation.isIos && mapGeneratedMainType == MapGeneratedMainType.generated)
             buildDirectLayout(previousScreen.directSetupWidth)
+        else if (directLayoutWidth != null) {
+            add(SinglePlayerSetup.group("Advanced Settings", directLayoutWidth!!, "World.RandomAdvanced") {
+                addAdvancedControls(it)
+            }).width(directLayoutWidth!!).padTop(8f).growX().row()
+            SinglePlayerSetup.style(this, (previousScreen as NewGameScreen).formFont)
+        }
         else if (roomLayoutWidth == null) addAdvancedSettings()
         else buildRoomLayout(roomLayoutWidth)
         generateExampleMap()
@@ -172,7 +180,7 @@ class MapParametersTable(
 
         if (mapGeneratedMainType == MapGeneratedMainType.randomGenerated) {
             mapShapesOptionsValues = mapShapes.toHashSet()
-            val optionsTable = MultiCheckboxTable("{Enabled Map Shapes}", "NewGameMapShapes", mapShapesOptionsValues) {
+            val optionsTable = MultiCheckboxTable("{Enabled Map Shapes}", "NewGameMapShapes", mapShapesOptionsValues, directLayoutWidth) {
                 if (mapShapesOptionsValues.isEmpty()) {
                     mapParameters.shape = mapShapes.random(rng)
                 } else {
@@ -334,7 +342,7 @@ class MapParametersTable(
 
         if (mapGeneratedMainType == MapGeneratedMainType.randomGenerated) {
             mapTypesOptionsValues = mapTypes.toHashSet()
-            val optionsTable = MultiCheckboxTable("{Enabled Map Generation Types}", "NewGameMapGenerationTypes", mapTypesOptionsValues) {
+            val optionsTable = MultiCheckboxTable("{Enabled Map Generation Types}", "NewGameMapGenerationTypes", mapTypesOptionsValues, directLayoutWidth) {
                 if (mapTypesOptionsValues.isEmpty()) {
                     mapParameters.type = mapTypes.random(rng)
                 } else {
@@ -367,7 +375,7 @@ class MapParametersTable(
         if (mapGeneratedMainType == MapGeneratedMainType.randomGenerated) {
             val mapSizes = MapSize.names()
             mapSizesOptionsValues = mapSizes.toHashSet()
-            val optionsTable = MultiCheckboxTable("{Enabled World Sizes}", "NewGameWorldSizes", mapSizesOptionsValues) {
+            val optionsTable = MultiCheckboxTable("{Enabled World Sizes}", "NewGameWorldSizes", mapSizesOptionsValues, directLayoutWidth) {
                 if (mapSizesOptionsValues.isEmpty()) {
                     mapParameters.mapSize = MapSize(mapSizes.random(rng))
                 } else {
@@ -464,7 +472,7 @@ class MapParametersTable(
 
         if (mapGeneratedMainType == MapGeneratedMainType.randomGenerated) {
             mapResourcesOptionsValues = mapResources.toHashSet()
-            val optionsTable = MultiCheckboxTable("{Enabled Resource Settings}", "NewGameResourceSettings", mapResourcesOptionsValues) {
+            val optionsTable = MultiCheckboxTable("{Enabled Resource Settings}", "NewGameResourceSettings", mapResourcesOptionsValues, directLayoutWidth) {
                 if (mapResourcesOptionsValues.isEmpty()) {
                     mapParameters.mapResources = mapResources.random(rng)
                 } else {
@@ -550,6 +558,18 @@ class MapParametersTable(
     private fun addWrappedCheckBoxes() {
         val worldWrapWarning = "World wrap maps are very memory intensive - creating large world wrap maps on Android can lead to crashes!"
         if (mapGeneratedMainType == MapGeneratedMainType.randomGenerated) {
+            if (directLayoutWidth != null) {
+                add(SinglePlayerSetup.group("{Other Settings}", directLayoutWidth!!, "World.RandomOther") {
+                    it.defaults().left().growX().minHeight(44f).padBottom(8f)
+                    it.addStrategicBalanceCheckbox()
+                    it.addLegendaryStartCheckbox()
+                    it.addNoRuinsCheckbox()
+                    it.addNoNaturalWondersCheckbox()
+                    it.addWorldWrapCheckbox()
+                    it.add(worldWrapWarning.toLabel(fontSize = 18).apply { wrap = true }).minWidth(0f).row()
+                }).width(directLayoutWidth!!).padTop(8f).growX().row()
+                return
+            }
             add(ExpanderTab("{Other Settings}",
                 icon = ImageGetter.getImage("OtherIcons/Settings").apply { setSize(20f, 20f) },
                 persistenceID = "NewGameOtherSettings", startsOutOpened = false) {

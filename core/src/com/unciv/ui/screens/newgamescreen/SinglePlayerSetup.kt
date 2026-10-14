@@ -39,6 +39,7 @@ internal object SinglePlayerSetup {
         when (actor) {
             is Label -> actor.setFontSize(18)
             is CheckBox -> actor.style = CheckBox.CheckBoxStyle(actor.style).apply {
+                actor.align(com.badlogic.gdx.utils.Align.left)
                 this.font = font
                 checkedFontColor = ExpeditionBlueTheme.text
                 checkboxOff = ExpeditionBlueTheme.outlinedControl(
@@ -98,6 +99,7 @@ internal object SinglePlayerSetup {
             }
         }
         if (actor is Group) actor.children.forEach { style(it, font) }
+        if (actor is ExpanderTab && !actor.isOpen) style(actor.innerTable, font)
     }
 
     fun field(title: String, control: Actor, width: Float) = Table().apply {
