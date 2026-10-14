@@ -118,7 +118,9 @@ class MapParametersTable(
         addResourceSelectBox()
         addWrappedCheckBoxes()
         addMirrorSelectBox()
-        if (roomLayoutWidth == null) addAdvancedSettings()
+        if (previousScreen is NewGameScreen && UiNavigation.isIos && mapGeneratedMainType == MapGeneratedMainType.generated)
+            buildDirectLayout(previousScreen.directSetupWidth)
+        else if (roomLayoutWidth == null) addAdvancedSettings()
         else buildRoomLayout(roomLayoutWidth)
         generateExampleMap()
     }
@@ -126,6 +128,41 @@ class MapParametersTable(
     fun reseed() {
         mapParameters.reseed()
         seedTextField.value = mapParameters.seed
+    }
+
+    internal fun createOverviewFields(editWorld: () -> Unit): List<Pair<String, com.badlogic.gdx.scenes.scene2d.Actor>> {
+        val type = TranslatedSelectBox(MapType.allValues, mapParameters.type).apply {
+            onChange { mapTypeSelectBox.setSelected(selected.value) }
+        }
+        val size = TranslatedSelectBox(MapSize.names() + MapSize.custom, mapParameters.mapSize.name).apply {
+            onChange {
+                worldSizeSelectBox.setSelected(selected.value)
+                if (selected.value == MapSize.custom) editWorld()
+            }
+        }
+        return listOf("Map Generation Type" to type, "World Size" to size)
+    }
+
+    private fun buildDirectLayout(width: Float) {
+        clearChildren()
+        defaults().pad(0f)
+        add(SinglePlayerSetup.form(width, listOf(
+            "Map Generation Type" to mapTypeSelectBox, "World Size" to worldSizeSelectBox,
+            "Map Shape" to mapShapeSelectBox, "Resource Setting" to resourceSelectBox
+        ))).growX().row()
+        add(customWorldSizeTable).growX().row()
+        add(SinglePlayerSetup.group("World features", width, "World.Features") { table ->
+            table.defaults().left().growX().minHeight(44f).padBottom(8f)
+            for (check in listOf(strategicBalanceCheckbox, legendaryStartCheckbox, noRuinsCheckbox,
+                noNaturalWondersCheckbox, worldWrapCheckbox)) table.add(check).row()
+            table.add("World wrap maps are very memory intensive - creating large world wrap maps on Android can lead to crashes!"
+                .toLabel(fontSize = 18).apply { wrap = true }).row()
+            SinglePlayerSetup.style(table, (previousScreen as NewGameScreen).formFont)
+        }).width(width).padTop(6f).row()
+        add(SinglePlayerSetup.group("Advanced terrain settings", width, "World.Advanced") { table ->
+            addAdvancedControls(table)
+            SinglePlayerSetup.style(table, (previousScreen as NewGameScreen).formFont)
+        }).width(width).padTop(6f).row()
     }
 
     private fun addMapShapeSelectBox() {

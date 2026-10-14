@@ -1,10 +1,14 @@
 package com.unciv.ui.screens.newgamescreen
 
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.Actor
 import com.unciv.logic.map.MapGeneratedMainType
 import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.onChange
+import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.TranslatedSelectBox
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
 
 class MapOptionsTable(private val newGameScreen: NewGameScreen) : Table() {
@@ -65,16 +69,32 @@ class MapOptionsTable(private val newGameScreen: NewGameScreen) : Table() {
 
         mapTypeSelectBox.onChange { updateOnMapTypeChange() }
 
-        val mapTypeSelectWrapper = Table()  // wrap to center-align Label and SelectBox easier
-        mapTypeSelectWrapper.add("{Map Type}:".toLabel()).left().expandX()
-        mapTypeSelectWrapper.add(mapTypeSelectBox).right()
-        add(mapTypeSelectWrapper).pad(10f).fillX().row()
-        add(mapTypeSpecificTable).row()
+        if (UiNavigation.isIos) {
+            background = null
+            add(SinglePlayerSetup.form(newGameScreen.directSetupWidth,
+                listOf("Map Type" to mapTypeSelectBox))).growX().row()
+            add(mapTypeSpecificTable).growX().row()
+        } else {
+            val mapTypeSelectWrapper = Table()  // wrap to center-align Label and SelectBox easier
+            mapTypeSelectWrapper.add("{Map Type}:".toLabel()).left().expandX()
+            mapTypeSelectWrapper.add(mapTypeSelectBox).right()
+            add(mapTypeSelectWrapper).pad(10f).fillX().row()
+            add(mapTypeSpecificTable).row()
+        }
     }
 
     internal fun getSelectedScenario(): ScenarioSelectTable.ScenarioData? {
         if (mapTypeSelectBox.selected.value != MapGeneratedMainType.scenario) return null
         return scenarioOptionsTable.selectedScenario
+    }
+
+    internal fun createOverviewFields(editWorld: () -> Unit): List<Pair<String, Actor>> {
+        if (mapTypeSelectBox.selected.value == MapGeneratedMainType.generated)
+            return generatedMapOptionsTable.createOverviewFields(editWorld)
+        return listOf(
+            "Map Type" to mapTypeSelectBox.selected.value.toTextButton().onClick(editWorld),
+            "World Size" to mapParameters.mapSize.name.toTextButton().onClick(editWorld)
+        )
     }
 
     internal fun cancelBackgroundJobs() {

@@ -3,6 +3,7 @@ package com.unciv.ui.screens.newgamescreen
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
+import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
 import com.badlogic.gdx.scenes.scene2d.ui.SelectBox
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -49,7 +50,8 @@ class GameOptionsTable(
     private val allowOnlineToggle: Boolean = true,
     private val forInviteRoom: Boolean = false,
     private val onConfigurationChanged: (() -> Unit)? = null,
-    private val roomLayoutWidth: Float? = null
+    private val roomLayoutWidth: Float? = null,
+    private val directLayoutWidth: Float? = null
 ) : Table(BaseScreen.skin) {
     private var gameParameters = previousScreen.gameSetupInfo.gameParameters
     private var ruleset = previousScreen.ruleset
@@ -90,6 +92,11 @@ class GameOptionsTable(
             modCheckboxes.setBaseRuleset(gameParameters.baseRuleset)
         }
 
+        if (directLayoutWidth != null) {
+            buildDirectLayout(directLayoutWidth)
+            pack()
+            return
+        }
         if (roomLayoutWidth != null) {
             buildRoomLayout(roomLayoutWidth)
             pack()
@@ -148,6 +155,64 @@ class GameOptionsTable(
         ) {
             addAdvancedSettings(it)
         }
+
+    internal fun createOverviewFields(): List<Pair<String, Actor>> = listOf(
+        "Difficulty" to Table().addDifficultySelectBox(), "Game Speed" to Table().addGameSpeedSelectBox()
+    )
+
+    private fun buildDirectLayout(width: Float) {
+        background = null
+        defaults().pad(0f)
+        val fields = createOverviewFields().toMutableList()
+        Table().addEraSelectBox()?.let { fields.add("Starting Era" to it) }
+        if (!gameParameters.randomNumberOfCityStates && numberOfCityStates() > 0)
+            fields.add("City-States" to SinglePlayerSetup.counter(gameParameters.numberOfCityStates,
+                numberOfCityStates(), !locked) { gameParameters.numberOfCityStates = it })
+        add(SinglePlayerSetup.form(width, fields)).growX().row()
+        if (gameParameters.randomNumberOfCityStates)
+            add(Table().apply { defaults().growX(); addMinMaxCityStatesSliders() }).growX().row()
+        add("Victory Conditions".toLabel(fontSize = 22)).left().padTop(4f).padBottom(12f).row()
+        addVictoryTypeCheckboxes()
+        Table().addMaxTurnsSlider()?.let { slider ->
+            add(SinglePlayerSetup.field("Max Turns", slider, width)).growX().padTop(12f).row()
+        }
+        fun group(title: String, id: String, opened: Boolean = false, build: Table.() -> Unit) {
+            add(SinglePlayerSetup.group(title, width, "Rules.$id", opened) { table ->
+                table.defaults().left().growX().minHeight(44f).padBottom(8f)
+                table.build()
+                SinglePlayerSetup.style(table, (previousScreen as NewGameScreen).formFont)
+            }).width(width).padTop(8f).row()
+        }
+        group("War and challenges", "War") {
+            addNoCityRazingCheckbox()
+            addOneCityChallengeCheckbox()
+            addNoBarbariansCheckbox()
+            addRagingBarbariansCheckbox()
+            addNuclearWeaponsCheckbox()
+            addEnableEspionageCheckbox()
+        }
+        group("Randomness and starting conditions", "Random", gameParameters.enableRandomNationsPool) {
+            addNoStartBiasCheckbox()
+            addRandomPlayersCheckbox()
+            addRandomCityStatesCheckbox()
+            if (gameParameters.randomNumberOfPlayers) addMinMaxPlayersSliders()
+            addRandomNationsPoolCheckbox()
+            if (gameParameters.enableRandomNationsPool) addNationsSelectTextButton()
+        }
+        group("Show Civilization Stats", "Statistics") {
+            addShowCivilizationStatsCheckbox()
+            if (gameParameters.showCivilizationStats == true) {
+                addShowRankingsCheckbox()
+                addShowChartsCheckbox()
+                addShowDemographicsCheckbox()
+                addCensorStatsCheckbox()
+                addShowAdditionalRankingTypesCheckbox()
+            }
+        }
+        group("Base Ruleset", "Ruleset") { addBaseRulesetSelectBox() }
+        add(modCheckboxes).width(width).padTop(8f).row()
+        SinglePlayerSetup.style(this, (previousScreen as NewGameScreen).formFont)
+    }
 
     private fun addAdvancedSettings(it: Table) {
         it.defaults().pad(5f, 0f)
@@ -518,10 +583,9 @@ class GameOptionsTable(
         return selectBox
     }
 
-    private fun Table.addDifficultySelectBox() {
+    private fun Table.addDifficultySelectBox() =
         addSelectBox("{Difficulty}:", ruleset.difficulties.keys, gameParameters.difficulty)
         { gameParameters.difficulty = it; null }
-    }
 
     private fun Table.addBaseRulesetSelectBox() {
         fun onBaseRulesetSelected(newBaseRuleset: String): String? {
@@ -559,19 +623,18 @@ class GameOptionsTable(
             { InputDisabling.withInputDisabled { onBaseRulesetSelected(it) } }
     }
 
-    private fun Table.addGameSpeedSelectBox() {
+    private fun Table.addGameSpeedSelectBox() =
         addSelectBox("{Game Speed}:", ruleset.speeds.values.map { it.name }, gameParameters.speed)
         { gameParameters.speed = it; null }
-    }
 
-    private fun Table.addEraSelectBox() {
-        if (ruleset.eras.isEmpty()) return // mod with no techs
+    private fun Table.addEraSelectBox(): TranslatedSelectBox? {
+        if (ruleset.eras.isEmpty()) return null // mod with no techs
         if (ruleset.modOptions.hasUnique(UniqueType.CanOnlyStartFromStartingEra)){
             gameParameters.startingEra = ruleset.eras.keys.first()
-            return
+            return null
         }
         val eras = ruleset.eras.keys
-        addSelectBox("{Starting Era}:", eras, gameParameters.startingEra)
+        return addSelectBox("{Starting Era}:", eras, gameParameters.startingEra)
         { gameParameters.startingEra = it; null }
     }
 
@@ -634,7 +697,7 @@ class GameOptionsTable(
         }
     }
     private fun addVictoryTypeCheckboxes() {
-        add("{Victory Conditions}:".toLabel()).colspan(2).row()
+        if (directLayoutWidth == null) add("{Victory Conditions}:".toLabel()).colspan(2).row()
 
         // Create a checkbox for each VictoryType existing
         val victoryConditionsTable = Table().apply { defaults().pad(5f) }
@@ -655,7 +718,7 @@ class GameOptionsTable(
             victoryConditionsTable.add(victoryCheckbox).left()
             if ((i + 1) % 2 == 0) victoryConditionsTable.row()
         }
-        add(victoryConditionsTable).colspan(2).row()
+        add(victoryConditionsTable).colspan(if (directLayoutWidth == null) 2 else 1).left().row()
     }
 
     fun updateRuleset(ruleset: Ruleset) {

@@ -32,6 +32,8 @@ import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onClick
+import com.unciv.ui.components.input.onChange
+import com.unciv.ui.components.widgets.TranslatedSelectBox
 import com.unciv.ui.components.widgets.UncivTextField
 import com.unciv.ui.components.widgets.WrappableLabel
 import com.unciv.ui.images.ImageGetter
@@ -61,6 +63,7 @@ class PlayerPickerTable(
     val playerListTable = Table()
     val civBlocksWidth = if (blockWidth <= 10f) previousScreen.stage.width / 3 - 5f else blockWidth
     private var randomNumberLabel: WrappableLabel? = null
+    private val directSetup = previousScreen is NewGameScreen && UiNavigation.isIos
 
     /** Locks player table for editing, currently unused, was previously used for scenarios and could be useful in the future. */
     var locked = false
@@ -75,11 +78,15 @@ class PlayerPickerTable(
             player.playerId = "" // This is to stop people from getting other users' IDs and cheating with them in multiplayer games
 
         top()
-        gameParameters.shufflePlayerOrder = false
-        add("Shuffle Civ Order at Start".toCheckBox(false) { gameParameters.shufflePlayerOrder = it }).padTop(5f).padBottom(5f).row()
-        add(ScrollPane(playerListTable).apply { setOverscroll(false, false) }).width(civBlocksWidth)
+        if (!directSetup) {
+            gameParameters.shufflePlayerOrder = false
+            add("Shuffle Civ Order at Start".toCheckBox(false) { gameParameters.shufflePlayerOrder = it }).padTop(5f).padBottom(5f).row()
+        }
+        add(ScrollPane(playerListTable).apply { setOverscroll(false, false) })
+            .width(if (directSetup) (previousScreen as NewGameScreen).directSetupWidth else civBlocksWidth)
         update()
         background = BaseScreen.skinStrings.getUiBackground("NewGameScreen/PlayerPickerTable", tintColor = BaseScreen.skinStrings.skinConfig.clearColor)
+        if (directSetup) background = null
     }
 
     /**
@@ -115,6 +122,14 @@ class PlayerPickerTable(
             gameParameters.players.removeRange(newRulesetPlayableCivs, gameParameters.players.size)
 
         if (desiredCiv.isNotEmpty()) assignDesiredCiv(desiredCiv)
+
+        if (directSetup) {
+            buildDirectLayout()
+            val isValid = gameParameters.players.any { it.playerType == Human } &&
+                (gameParameters.randomNumberOfPlayers || gameParameters.players.size >= 2)
+            (previousScreen as PickerScreen).setRightSideButtonEnabled(isValid)
+            return
+        }
 
         for (player in gameParameters.players) {
             playerListTable.add(getPlayerTable(player)).width(civBlocksWidth).padBottom(10f).row()
@@ -169,6 +184,85 @@ class PlayerPickerTable(
             setText(text.tr())
             wrap = true
         }
+    }
+
+    internal fun createCivilizationSelector(player: Player = gameParameters.players.first()): TranslatedSelectBox {
+        val nations = getAvailablePlayerCivs(player.chosenCiv).map { it.name }.toList()
+            .sortedWith(compareBy(UncivGame.Current.settings.getCollatorFromLocale()) { it.tr(hideIcons = true) })
+        val canRandom = !noRandom && !(gameParameters.randomNumberOfPlayers && player.playerType == AI)
+        val choices = (if (canRandom) listOf(Constants.random) else emptyList()) + nations +
+            listOf(player.chosenCiv).filter { it !in nations && it != Constants.random }
+        return TranslatedSelectBox(choices, player.chosenCiv).apply {
+            isDisabled = locked
+            onChange {
+                player.chosenCiv = selected.value
+                if (player.chosenCiv != Constants.random) player.setNationTransient(previousScreen.ruleset)
+                update()
+            }
+        }
+    }
+
+    internal fun createOpponentCounter() = SinglePlayerSetup.counter(
+        gameParameters.players.count { it.playerType == AI },
+        (previousScreen.ruleset.nations.values.count { it.isMajorCiv &&
+            !it.hasUnique(UniqueType.WillNotBeChosenForNewGames) } - 1).coerceAtLeast(0),
+        !locked && !gameParameters.randomNumberOfPlayers
+    ) { count ->
+        while (gameParameters.players.size > count + 1) gameParameters.players.removeAt(gameParameters.players.lastIndex)
+        while (gameParameters.players.size < count + 1) gameParameters.players.add(Player())
+        update()
+    }
+
+    private fun buildDirectLayout() {
+        val width = (previousScreen as NewGameScreen).directSetupWidth
+        val columns = if (width >= 600f) 2 else 1
+        val panelWidth = (width - (columns - 1) * 24f) / columns
+        val self = gameParameters.players.first()
+        val civilization = Table().apply {
+            top()
+            add(SinglePlayerSetup.field("Selected civilization", createCivilizationSelector(), panelWidth)).growX().padBottom(16f).row()
+            val choices = (listOf(Constants.random, self.chosenCiv) + getAvailablePlayerCivs(self.chosenCiv).map { it.name }.toList())
+                .distinct().take(6)
+            add(Table().apply {
+                for ((index, civ) in choices.withIndex()) {
+                    add(GameSetupOverview.choice(civ, self.chosenCiv == civ).apply {
+                        isDisabled = locked || noRandom && civ == Constants.random
+                        onClick {
+                            self.chosenCiv = civ
+                            if (civ != Constants.random) self.setNationTransient(previousScreen.ruleset)
+                            update()
+                        }
+                    }).width((panelWidth - 16f) / 3f).minHeight(44f).padRight(if (index % 3 == 2) 0f else 8f).padBottom(8f)
+                    if (index % 3 == 2) row()
+                }
+            }).growX().row()
+            add("Civilizations".toTextButton().apply {
+                isDisabled = locked
+                onClick { popupNationPicker(self, noRandom) }
+            }).left().minHeight(44f).padTop(4f)
+        }
+        val opponents = Table().apply {
+            top()
+            add(SinglePlayerSetup.field("AI opponents", createOpponentCounter(), panelWidth)).growX().row()
+            if (gameParameters.randomNumberOfPlayers) {
+                randomNumberLabel = WrappableLabel("", panelWidth, Color.LIGHT_GRAY)
+                add(randomNumberLabel).growX().padTop(8f).row()
+                updateRandomNumberLabel()
+            }
+            add(SinglePlayerSetup.group("Choose opponent civilizations", panelWidth, "Civilizations.Opponents") { table ->
+                for (player in gameParameters.players.drop(1))
+                    table.add(SinglePlayerSetup.field("AI", createCivilizationSelector(player), panelWidth - 24f))
+                        .width(panelWidth - 24f).padBottom(8f).row()
+                SinglePlayerSetup.style(table, previousScreen.formFont)
+            }).width(panelWidth).padTop(12f).row()
+            add("Shuffle Civ Order at Start".toCheckBox(gameParameters.shufflePlayerOrder) {
+                gameParameters.shufflePlayerOrder = it
+            }.apply { isDisabled = locked; label.wrap = true }).growX().left().minHeight(44f).padTop(12f)
+        }
+        playerListTable.add(civilization).width(panelWidth).top().padRight(if (columns == 2) 24f else 0f)
+        if (columns == 1) playerListTable.row()
+        playerListTable.add(opponents).width(panelWidth).top().padTop(if (columns == 1) 20f else 0f)
+        SinglePlayerSetup.style(playerListTable, previousScreen.formFont)
     }
 
     /**

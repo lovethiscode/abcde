@@ -6,6 +6,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.HorizontalGroup
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.GameInfo
@@ -37,6 +38,7 @@ import com.unciv.ui.components.extensions.isEnabled
 import com.unciv.ui.components.extensions.pad
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
+import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onActivation
@@ -75,6 +77,14 @@ class NewGameScreen(
     private var overviewReady = false
     private var startingGame = false
     private var setupStatus = ""
+    private val setupFont = lazy {
+        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(22f / Fonts.ORIGINAL_FONT_SIZE) }
+    }
+    internal val formFont get() = setupFont.value
+    internal val directSetupWidth get() = stage.width - 48f
+    private val presetButtons = LinkedHashMap<GameSetupPreset?, TextButton>()
+    private var displayedPreset: GameSetupPreset? = null
+    private var customSetupSelected = false
 
     val useInviteRoom = false
     private val stackedLayout = isNarrowerThan4to3() ||
@@ -105,7 +115,8 @@ class NewGameScreen(
             this, UiNavigation.isIos || isPortrait,
             updatePlayerPickerTable = { desiredCiv -> playerPickerTable.update(desiredCiv) },
             updatePlayerPickerRandomLabel = { playerPickerTable.updateRandomNumberLabel() },
-            allowOnlineToggle = false
+            allowOnlineToggle = false,
+            directLayoutWidth = if (UiNavigation.isIos) directSetupWidth else null
         )
         mapOptionsTable = MapOptionsTable(this)
         mapOptionsTableInitialized = true
@@ -125,9 +136,7 @@ class NewGameScreen(
             add(heading).left().growX().row()
             add(roomHint).left().growX().padTop(6f)
         }
-        if (UiNavigation.isIos)
-            pickerPane.setNavigationContent(banner)
-        else if (game.platformCapabilities.multiplayerInviteLinks)
+        if (!UiNavigation.isIos && game.platformCapabilities.multiplayerInviteLinks)
             topTable.add(banner).colspan(if (isPortrait) 1 else 5).width(stage.width-20f).padBottom(12f).row()
         if (UiNavigation.isIos) {
             overviewReady = true
@@ -182,46 +191,39 @@ class NewGameScreen(
         setupSection = section
         topTable.clear()
         scrollPane.setScrollingDisabled(true, true)
-        val width = stage.width - 24f
-        val contentWidth = GameSetupOverview.contentWidth(width, stackedLayout)
+        val width = directSetupWidth
+        val navigationWidth = stage.width - closeButton.prefWidth - 48f - if (stackedLayout) 0f else 160f
+        val navigation = GameSetupOverview.navigation(navigationWidth, true, section, select = ::showSetupSection)
+        SinglePlayerSetup.style(navigation, formFont)
+        pickerPane.setNavigationContent(Table().apply {
+            add("Singleplayer".toLabel(fontSize = 24)).left().padRight(20f)
+            if (stackedLayout) row()
+            add(navigation).minWidth(0f).growX()
+        })
         val page = Table().apply { top() }
         val editor = when (section) {
-            GameSetupSection.Overview -> createOverview(contentWidth)
+            GameSetupSection.Overview -> createOverview(width)
             GameSetupSection.World -> mapOptionsTable
             GameSetupSection.Civilizations -> playerPickerTable
-            GameSetupSection.Rules -> Table().apply {
-                top()
-                add(newGameOptionsTable).row()
-                add(newGameOptionsTable.modCheckboxes).growX().padTop(12f)
-            }
-        }
-        if (section != GameSetupSection.Overview) {
-            page.add(GameSetupOverview.heading(section.caption, when (section) {
-                GameSetupSection.World -> "Choose the map and terrain for your game."
-                GameSetupSection.Civilizations -> "Choose your civilization and opponents."
-                else -> "Set the pace and victory conditions."
-            })).growX().padBottom(16f).row()
+            GameSetupSection.Rules -> newGameOptionsTable.apply { update() }
         }
         if (section == GameSetupSection.Civilizations) page.add(editor).grow()
         else page.add(ScrollPane(editor).apply {
             setScrollingDisabled(true, false)
             setOverscroll(false, false)
         }).grow()
-        topTable.add(GameSetupOverview.layout(width, stackedLayout, section, page, select = ::showSetupSection))
-            .width(width).growY().pad(0f, 12f, 0f, 12f)
+        SinglePlayerSetup.style(editor, formFont)
+        topTable.add(page).width(width).growY().pad(12f, 24f, 0f, 24f)
         topTable.invalidateHierarchy()
     }
 
     private fun createOverview(width: Float) = Table().apply {
         top()
-        add(GameSetupOverview.heading("A new civilization begins with you.", "Choose a setup, then shape your world."))
-            .width(width).growX().left().padBottom(18f).row()
         val presets = Table()
+        presetButtons.clear()
+        displayedPreset = if (customSetupSelected) null else currentPreset()
         for (preset in GameSetupPreset.entries) {
-            val option = GameSetupOverview.card().apply {
-                add(preset.caption.toLabel(fontSize = 20).apply { setWrap(true) }).minWidth(0f).growX().left().row()
-                add("${preset.size.tr()} · ${preset.speed.tr()}".toLabel(Color.LIGHT_GRAY, 16).apply { setWrap(true) })
-                    .minWidth(0f).growX().left().padTop(5f)
+            val option = GameSetupOverview.choice(preset.caption, preset == displayedPreset).apply {
                 onClick {
                     if (!preset.isAvailable(ruleset)) return@onClick
                     ConfirmPopup(this@NewGameScreen,
@@ -230,51 +232,43 @@ class NewGameScreen(
                         game.replaceCurrentScreen { NewGameScreen(preset.prepare(gameSetupInfo, ruleset)) }
                     }.open()
                 }
-                if (!preset.isAvailable(ruleset)) color.a = 0.45f
+                isDisabled = !preset.isAvailable(ruleset)
             }
-            presets.add(option).width((width - 24f) / 3f).growY().padRight(12f)
+            presetButtons[preset] = option
+            presets.add(option).width((width - 24f) / 3f).minHeight(44f).padRight(12f)
         }
-        presets.add(GameSetupOverview.card().apply {
-            add("Custom setup".toLabel(fontSize = 20).apply { setWrap(true) }).minWidth(0f).growX().left().row()
-            add("Advanced Settings".toLabel(Color.LIGHT_GRAY, 16).apply { setWrap(true) }).minWidth(0f).growX().left().padTop(5f)
-            onClick { showSetupSection(GameSetupSection.Rules) }
-        }).width((width - 24f) / 3f).growY()
-        add(presets).growX().padBottom(18f).row()
+        val custom = GameSetupOverview.choice("Custom setup", displayedPreset == null).apply {
+            onClick { customSetupSelected = true }
+        }
+        presetButtons[null] = custom
+        presets.add(custom).width((width - 24f) / 3f).minHeight(44f)
+        add(presets).growX().padBottom(24f).row()
+        val mapFields = mapOptionsTable.createOverviewFields { showSetupSection(GameSetupSection.World) }
+        val paceFields = newGameOptionsTable.createOverviewFields()
+        add(SinglePlayerSetup.form(width, listOf(
+            "Selected civilization" to playerPickerTable.createCivilizationSelector(), paceFields[0],
+            mapFields[0], mapFields[1], "AI opponents" to playerPickerTable.createOpponentCounter(), paceFields[1]
+        ))).growX()
+    }
 
-        val narrow = stackedLayout
-        val mapWidth = if (narrow) width else (width - 20f) * 0.48f
-        val summaryWidth = if (narrow) width else width - mapWidth - 20f
-        val map = GameSetupOverview.card().apply {
-            mapOptionsTable.createOverviewPreview(mapWidth - 36f, if (narrow) 180f else 150f)?.let {
-                add(it).width(mapWidth - 36f).padBottom(10f).row()
-            }
-            add(GameSetupOverview.summaryRow("Map Options", GameSetupOverview.mapDescription(gameSetupInfo)) {
-                showSetupSection(GameSetupSection.World)
-            }).width(mapWidth - 36f).growX().row()
-            add("Example map".toLabel(Color.LIGHT_GRAY, 16)).left()
+    private fun currentPreset(): GameSetupPreset? {
+        val map = gameSetupInfo.mapParameters
+        val parameters = gameSetupInfo.gameParameters
+        return GameSetupPreset.entries.firstOrNull {
+            map.type == com.unciv.logic.map.MapType.pangaea && map.mapSize.name == it.size &&
+                parameters.speed == it.speed && parameters.difficulty == it.difficulty &&
+                !parameters.randomNumberOfPlayers && parameters.players.count { player -> player.playerType == PlayerType.AI } == 3
         }
-        val summary = Table().apply {
-            top()
-            add(GameSetupOverview.summaryRow("Civilizations", GameSetupOverview.playerDescription(gameSetupInfo)) {
-                showSetupSection(GameSetupSection.Civilizations)
-            }).width(summaryWidth).growX().row()
-            val parameters = gameSetupInfo.gameParameters
-            add(GameSetupOverview.summaryRow("Game pace", "${parameters.difficulty.tr()} · ${parameters.speed.tr()}") {
-                showSetupSection(GameSetupSection.Rules)
-            }).width(summaryWidth).growX().row()
-            add(GameSetupOverview.summaryRow("Victory Conditions", GameSetupOverview.victoryDescription(gameSetupInfo)) {
-                showSetupSection(GameSetupSection.Rules)
-            }).width(summaryWidth).growX()
-        }
-        add(Table().apply {
-            add(map).width(mapWidth).top().padRight(if (narrow) 0f else 20f)
-            if (narrow) row()
-            add(summary).width(summaryWidth).top().padTop(if (narrow) 12f else 0f)
-        }).growX()
     }
 
     override fun render(delta: Float) {
         if (overviewReady && !startingGame) {
+            val preset = if (customSetupSelected) null else currentPreset()
+            if (setupSection == GameSetupSection.Overview && preset != displayedPreset) {
+                displayedPreset = preset
+                for ((choice, button) in presetButtons)
+                    button.style = GameSetupOverview.choice(button.text.toString(), choice == preset).style
+            }
             val parameters = gameSetupInfo.gameParameters
             val hasHuman = parameters.players.any { it.playerType == PlayerType.Human }
             rightSideButton.isEnabled = hasHuman && parameters.victoryTypes.isNotEmpty()
@@ -412,7 +406,7 @@ class NewGameScreen(
     /** Subtables may need an upper limit to their width - they can ask this function. */
     // In sync with isPortrait in init, here so UI details need not know about 3-column vs 1-column layout
     internal fun getColumnWidth() = floor(
-        if (UiNavigation.isIos) minOf(720f, GameSetupOverview.contentWidth(stage.width - 24f, stackedLayout) - 36f)
+        if (UiNavigation.isIos) minOf(360f, directSetupWidth * .43f)
         else if (stackedLayout) stage.width
         else (stage.width - 2f) / 3f
     )
@@ -737,4 +731,10 @@ class NewGameScreen(
     }
 
     override fun recreate(): BaseScreen = NewGameScreen(gameSetupInfo, setupSection)
+
+    override fun dispose() {
+        mapOptionsTable.cancelBackgroundJobs()
+        if (setupFont.isInitialized()) formFont.dispose()
+        super.dispose()
+    }
 }

@@ -25,28 +25,31 @@ object GameSetupOverview {
 
     fun contentWidth(width: Float, portrait: Boolean) = if (portrait) width else width - 160f
 
+    fun navigation(width: Float, portrait: Boolean, selected: GameSetupSection,
+                   multiplayer: Boolean = false, select: (GameSetupSection) -> Unit) = Table().apply {
+        top()
+        for (section in GameSetupSection.entries) {
+            val caption = if (multiplayer && section == GameSetupSection.Overview) "Room" else section.caption
+            val button = caption.toTextButton().apply {
+                name = "setup-section-${section.name}"
+                label.setWrap(true)
+                if (ExpeditionBlueTheme.enabled) style = TextButton.TextButtonStyle(style).apply {
+                    up = BaseScreen.skinStrings.getUiBackground("GameSetup/Navigation",
+                        BaseScreen.skinStrings.roundedEdgeRectangleSmallShape,
+                        if (section == selected) ExpeditionBlueTheme.raised else ExpeditionBlueTheme.background)
+                    fontColor = if (section == selected) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.muted
+                }
+                onClick { select(section) }
+            }
+            add(button).width(if (portrait) width / 4f else 144f)
+                .minHeight(UiNavigation.minimumTouchSize()).padBottom(if (portrait) 0f else 8f)
+            if (!portrait) row()
+        }
+    }
+
     fun layout(width: Float, portrait: Boolean, selected: GameSetupSection, content: Actor,
                multiplayer: Boolean = false, select: (GameSetupSection) -> Unit): Table {
-        val navigation = Table().apply {
-            top()
-            for (section in GameSetupSection.entries) {
-                val caption = if (multiplayer && section == GameSetupSection.Overview) "Room" else section.caption
-                val button = caption.toTextButton().apply {
-                    name = "setup-section-${section.name}"
-                    label.setWrap(true)
-                    if (ExpeditionBlueTheme.enabled) style = TextButton.TextButtonStyle(style).apply {
-                        up = BaseScreen.skinStrings.getUiBackground("GameSetup/Navigation",
-                            BaseScreen.skinStrings.roundedEdgeRectangleSmallShape,
-                            if (section == selected) ExpeditionBlueTheme.raised else ExpeditionBlueTheme.background)
-                        fontColor = if (section == selected) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.muted
-                    }
-                    onClick { select(section) }
-                }
-                add(button).width(if (portrait) width / 4f else 144f)
-                    .minHeight(UiNavigation.minimumTouchSize()).padBottom(if (portrait) 0f else 8f)
-                if (!portrait) row()
-            }
-        }
+        val navigation = navigation(width, portrait, selected, multiplayer, select)
         return Table().apply {
             top()
             add(navigation).top()
