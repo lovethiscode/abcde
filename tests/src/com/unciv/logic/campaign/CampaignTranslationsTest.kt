@@ -29,7 +29,8 @@ class CampaignTranslationsTest {
 
     @Test fun `campaign entries exist in every supported language with intact placeholders`() {
         val keys = Gdx.files.internal("jsons/translations/template.properties").readString("UTF-8")
-            .substringAfterLast("# Campaign mode").lines().filter { " = " in it }
+            .substringAfterLast("# Campaign mode").substringBefore("# Endless survival v2")
+            .lines().filter { " = " in it }
             .map { it.substringBefore(" = ").replace("\\n", "\n") }
         assertTrue(keys.size > 500)
         for (language in languages) {

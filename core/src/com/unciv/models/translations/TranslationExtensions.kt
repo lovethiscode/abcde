@@ -109,7 +109,7 @@ private fun String.translateConditionals(hideIcons: Boolean, language: String): 
     // Now sort the input conditionals by looking their sort priority up (sorting to the end if none defined).
     // Remember this sort operator is stable - entries with identical priority keep their original ordering,
     // so if the conditional order definition is empty, all conditionals keep their place.
-    fun sortPriority(unique: Unique) = sortPriorities.getOrDefault(unique.placeholderText, Int.MAX_VALUE)
+    fun sortPriority(unique: Unique) = sortPriorities[unique.placeholderText] ?: Int.MAX_VALUE
     val translatedConditionals = this.getModifiersSequence()
         .sortedBy(::sortPriority)
         .map { it.text.tr(hideIcons) }

@@ -3,6 +3,7 @@ package com.unciv.testing
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.GameInfo
+import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.city.City
 import com.unciv.logic.city.managers.CityFounder
 import com.unciv.logic.civilization.Civilization
@@ -24,6 +25,8 @@ import com.unciv.models.ruleset.unit.BaseUnit
 import com.unciv.models.ruleset.unit.Promotion
 import com.unciv.models.ruleset.unit.UnitType
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.audio.MusicController
+import org.mockito.Mockito.mock
 import kotlin.random.Random
 
 /**
@@ -51,6 +54,8 @@ class TestGame(vararg addGlobalUniques: String, forUITesting: Boolean = false, b
         if (!forUITesting) {
             // Set UncivGame.Current so that debug variables are initialized
             UncivGame.Current = UncivGame()
+            UncivGame.Current.files = mock(UncivFiles::class.java)
+            UncivGame.Current.musicController = mock(MusicController::class.java)
             // And the settings can be reached for the locale used in .tr()
             UncivGame.Current.settings = GameSettings().apply {
                 musicVolume = 0f
