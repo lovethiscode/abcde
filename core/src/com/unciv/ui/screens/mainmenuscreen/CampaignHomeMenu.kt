@@ -2,7 +2,9 @@ package com.unciv.ui.screens.mainmenuscreen
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.scenes.scene2d.Touchable
+import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Stack
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -33,6 +35,7 @@ import kotlin.math.roundToInt
 /** iOS home layout; game creation, loading and tools keep their existing implementations. */
 internal class CampaignHomeMenu(
     private val screen: MainMenuScreen,
+    appIcon: Texture,
     private val resumeGame: () -> Unit,
     private val quickstartNewGame: () -> Unit,
     private val stopBackground: () -> Unit
@@ -63,12 +66,8 @@ internal class CampaignHomeMenu(
         val sectionGap = 16f * pointScale
 
         val header = Table()
-        header.add(ImageGetter.getImage("OtherIcons/HexagonOutline", iconColor)).size(42f).padRight(16f)
-        val brand = Table().apply {
-            add("Unciv4iOS".toLabel(ink, 34)).left().row()
-            add("Civilization, written by you".toLabel(muted, 18)).left()
-        }
-        header.add(brand).expandX().left()
+        header.add(Image(appIcon)).size(42f).padRight(16f)
+        header.add("Civilization, written by you".toLabel(muted, 18)).expandX().left()
         val version = game.displayBuildNumber?.let { "v${UncivGame.VERSION.text} ($it)" }
             ?: "v${UncivGame.VERSION.text}"
         header.add(version.toLabel(muted, (13f * pointScale).roundToInt()).apply {
