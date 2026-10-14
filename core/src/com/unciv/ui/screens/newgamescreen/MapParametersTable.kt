@@ -251,7 +251,26 @@ class MapParametersTable(
         preview.clear()
         val map = lastExampleMap
         if (map == null) preview.add("Loading...".toLabel())
-        else preview.add(LoadMapPreview(map, overviewPreviewWidth, overviewPreviewHeight))
+        else if (UiNavigation.isIos && previousScreen is NewGameScreen) {
+            val tileSet = com.unciv.ui.components.tilegroups.TileSetStrings()
+            val view = com.unciv.view.TileMapView(map, null)
+            val groups = map.values.map { tile ->
+                com.unciv.ui.components.tilegroups.TileGroup(view.getTile(tile), tileSet).apply { update() }
+            }
+            val terrain = com.unciv.ui.components.tilegroups.TileGroupMap(
+                com.unciv.ui.components.widgets.ZoomableScrollPane(), groups).apply {
+                val scale = minOf(overviewPreviewWidth / width, overviewPreviewHeight / height)
+                setScale(scale)
+                setPosition((overviewPreviewWidth - width * scale) / 2f,
+                    (overviewPreviewHeight - height * scale) / 2f)
+                touchable = com.badlogic.gdx.scenes.scene2d.Touchable.disabled
+            }
+            preview.background = SinglePlayerSetup.surface(com.badlogic.gdx.graphics.Color.valueOf("163D58"))
+            preview.add(com.badlogic.gdx.scenes.scene2d.Group().apply {
+                setSize(overviewPreviewWidth, overviewPreviewHeight)
+                addActor(terrain)
+            }).size(overviewPreviewWidth, overviewPreviewHeight)
+        } else preview.add(LoadMapPreview(map, overviewPreviewWidth, overviewPreviewHeight))
     }
 
     private fun buildRoomLayout(width: Float) {

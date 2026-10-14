@@ -180,7 +180,10 @@ class GameOptionsTable(
         add(SinglePlayerSetup.form(width, fields)).growX().row()
         if (gameParameters.randomNumberOfCityStates)
             add(Table().apply { defaults().growX(); addMinMaxCityStatesSliders() }).growX().row()
-        add("Victory Conditions".toLabel(ExpeditionBlueTheme.gold, 20)).left().padTop(4f).padBottom(8f).row()
+        add(Table().apply {
+            add(ImageGetter.getImage("OtherIcons/AchievementTrophy", ExpeditionBlueTheme.gold)).size(22f).padRight(8f)
+            add("Council victory conditions".toLabel(ExpeditionBlueTheme.gold, 20))
+        }).left().padTop(4f).padBottom(4f).row()
         addVictoryTypeCheckboxes()
         fun group(title: String, id: String, opened: Boolean = false, build: Table.() -> Unit) {
             add(SinglePlayerSetup.group(title, width, "Rules.$id", opened) { table ->
@@ -200,7 +203,7 @@ class GameOptionsTable(
             if (gameParameters.randomNumberOfPlayers) addMinMaxPlayersSliders()
         }
         if (modCheckboxes.children.size == 0)
-            group("Extension Mods", "Mods") { add("No mods installed".toLabel().apply { wrap = true }).growX().row() }
+            group("Extension mods", "Mods") { add("No mods installed".toLabel().apply { wrap = true }).growX().row() }
         else add(modCheckboxes).width(width).padTop(8f).row()
         SinglePlayerSetup.style(this, (previousScreen as NewGameScreen).formFont)
     }
@@ -691,13 +694,14 @@ class GameOptionsTable(
         if (directLayoutWidth == null) add("{Victory Conditions}:".toLabel()).colspan(2).row()
 
         // Create a checkbox for each VictoryType existing
-        val victoryConditionsTable = Table().apply { defaults().pad(5f) }
+        val victoryConditionsTable = Table().apply { defaults().pad(if (directLayoutWidth == null) 5f else 2f) }
         val victories = if (directLayoutWidth == null) ruleset.selectableVictories()
             else ruleset.selectableVictories().filter { !it.enablesMaxTurns() }.sortedBy {
                 listOf("Scientific", "Diplomatic", "Cultural", "Domination").indexOf(it.name).let { index -> if (index < 0) 4 else index }
             }
         for ((i, victoryType) in victories.withIndex()) {
-            val victoryCheckbox = victoryType.name.toCheckBox(gameParameters.victoryTypes.contains(victoryType.name)) {
+            val caption = if (directLayoutWidth != null && victoryType.name == "Domination") "Military" else victoryType.name
+            val victoryCheckbox = caption.toCheckBox(gameParameters.victoryTypes.contains(victoryType.name)) {
                 // If the checkbox is checked, adds the victoryTypes else remove it
                 if (it) {
                     gameParameters.victoryTypes.add(victoryType.name)
@@ -710,7 +714,9 @@ class GameOptionsTable(
             }
             victoryCheckbox.name = victoryType.name
             victoryCheckbox.isDisabled = locked
-            victoryConditionsTable.add(victoryCheckbox).left()
+            victoryConditionsTable.add(victoryCheckbox).left().apply {
+                if (directLayoutWidth != null) width(directLayoutWidth / 2f - 10f).minHeight(28f)
+            }
             if ((i + 1) % 2 == 0) victoryConditionsTable.row()
         }
         add(victoryConditionsTable).colspan(if (directLayoutWidth == null) 2 else 1).left().row()

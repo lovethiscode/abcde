@@ -86,11 +86,11 @@ class NewGameScreen(
     internal val directSetupWidth get() = if (stackedLayout) stage.width - 72f else (stage.width - 96f) / 3f
     private val headingFont = lazy {
         val renderer = Fonts.fontImplementation.javaClass.getDeclaredConstructor().newInstance() as FontImplementation
-        renderer.setFontFamily(FontFamilyData("Songti SC"), Fonts.ORIGINAL_FONT_SIZE.toInt())
+        renderer.setFontFamily(FontFamilyData("Hiragino Mincho ProN"), Fonts.ORIGINAL_FONT_SIZE.toInt())
         renderer.getBitmapFont()
     }
 
-    internal fun councilHeading(text: String, size: Int = 24) = text.toLabel(ExpeditionBlueTheme.gold, size).apply {
+    internal fun councilHeading(text: String, size: Int = 24) = text.toLabel(ExpeditionBlueTheme.text, size, hideIcons = true).apply {
         style = Label.LabelStyle(style).apply { font = headingFont.value }
         setFontScale(size / Fonts.ORIGINAL_FONT_SIZE)
     }
@@ -185,7 +185,7 @@ class NewGameScreen(
         }
 
         val startGameButton = (if (UiNavigation.isIos) rightSideButton else "Start game!".toTextButton()).apply {
-            setText("Start game!".tr())
+            setText((if (UiNavigation.isIos) "Council start game" else "Start game!").tr())
             if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("positive", TextButtonStyle::class.java)
             if (!ExpeditionBlueTheme.enabled) color = Color.GREEN
             name = "setup-start"
@@ -203,11 +203,23 @@ class NewGameScreen(
             startGameButton.pad(10f, 18f, 10f, 18f)
             val startLabel = startGameButton.label
             startGameButton.clearChildren()
-            startGameButton.add(ImageGetter.getImage("OtherIcons/Triangle", ExpeditionBlueTheme.primaryInk)).size(20f).padRight(10f)
+            startGameButton.add(ImageGetter.getImage("OtherIcons/Triangle", ExpeditionBlueTheme.primaryInk).apply {
+                setSize(20f, 20f)
+                setOrigin(com.badlogic.gdx.utils.Align.center)
+                rotation = -90f
+            }).size(20f).padRight(10f)
             startGameButton.add(startLabel)
             horizontalGroup.addActor(rightSideButton)
             descriptionLabel.setFontSize(16)
-            bottomTable.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel, ExpeditionBlueTheme.controlBorder)
+            bottomTable.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel, ExpeditionBlueTheme.border)
+            val summaryTitle = Table().apply {
+                add(ImageGetter.getImage("OtherIcons/Scenarios", ExpeditionBlueTheme.text)).size(26f).padRight(8f)
+                add("Game settings summary".toLabel(fontSize = 18))
+            }
+            bottomTable.clear()
+            if (!stackedLayout) bottomTable.add(summaryTitle).pad(12f)
+            bottomTable.add(pickerPane.descriptionScroll).minWidth(0f).grow()
+            bottomTable.add(rightSideGroup).pad(10f).right()
         } else {
             horizontalGroup.addActor(startGameButton)
             pickerPane.rightSideButton.remove()
@@ -216,19 +228,23 @@ class NewGameScreen(
 
     private fun initCouncilLayout() {
         topTable.clear()
+        pickerPane.setFillParent(false)
+        pickerPane.setBounds(12f, 8f, stage.width - 24f, stage.height - 16f)
+        pickerPane.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.controlBorder)
         scrollPane.setScrollingDisabled(true, true)
         val header = Table().apply {
-            add(councilHeading("Singleplayer", 28)).growX().center()
+            add().width((190f - closeButton.prefWidth).coerceAtLeast(0f))
+            add(councilHeading("Singleplayer", 28).apply { setAlignment(com.badlogic.gdx.utils.Align.center) }).growX()
             newGameOptionsTable.createBaseRulesetSelector()?.let {
                 SinglePlayerSetup.style(it, formFont)
                 add(it).width(190f).minHeight(44f).padLeft(16f)
             }
         }
         SinglePlayerSetup.style(closeButton, formFont)
+        closeButton.setText("← ${"Back".tr()}")
         pickerPane.setNavigationContent(header)
         val columns = Table().apply {
-            background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.controlBorder)
-            pad(12f)
+            pad(6f, 12f, 6f, 12f)
             top()
         }
         fun column(title: String, icon: String, editor: Table, ownsScroll: Boolean = false) = Table().apply {
@@ -236,8 +252,12 @@ class NewGameScreen(
             top()
             add(Table().apply {
                 add(ImageGetter.getImage(icon, ExpeditionBlueTheme.gold)).size(24f).padRight(10f)
-                add(councilHeading(title, 22)).left().growX()
-            }).growX().padBottom(10f).row()
+                add(councilHeading(when (title) {
+                    "Game Options" -> "Council game options"
+                    "Map Options" -> "Council map options"
+                    else -> title
+                }, 22)).left().growX()
+            }).growX().padBottom(6f).row()
             if (!ownsScroll) SinglePlayerSetup.style(editor, formFont)
             if (ownsScroll) add(editor).grow()
             else add(ScrollPane(editor).apply {
@@ -247,8 +267,8 @@ class NewGameScreen(
         }
         val editors = listOf(
             column("Game Options", "OtherIcons/Options", newGameOptionsTable),
-            column("Map Options", "OtherIcons/MapEditor", mapOptionsTable),
-            column("Civilizations", "OtherIcons/Multiplayer", playerPickerTable, true)
+            column("Map Options", "OtherIcons/Scenarios", mapOptionsTable),
+            column("Civilizations", "OtherIcons/Nations", playerPickerTable, true)
         )
         for ((index, editor) in editors.withIndex()) {
             if (index > 0) {
@@ -261,7 +281,7 @@ class NewGameScreen(
         if (stackedLayout) {
             scrollPane.setScrollingDisabled(true, false)
             topTable.add(columns).width(stage.width - 48f).top().pad(8f, 24f)
-        } else topTable.add(columns).width(stage.width - 48f).growY().pad(8f, 24f)
+        } else topTable.add(columns).width(stage.width - 48f).growY().pad(0f, 12f)
     }
 
     override fun render(delta: Float) {
@@ -273,7 +293,8 @@ class NewGameScreen(
             val status = when {
                 parameters.victoryTypes.isEmpty() -> "No victory conditions were selected!".tr()
                 !hasHuman -> "No human players selected!".tr()
-                else -> "${GameSetupOverview.mapDescription(gameSetupInfo)} · ${parameters.speed.tr()}"
+                else -> "${parameters.baseRuleset.tr()} | ${parameters.difficulty.tr()} | ${parameters.speed.tr()} | ${parameters.startingEra.tr()} | ${parameters.numberOfCityStates} ${"City-States".tr()}\n" +
+                    "${"Council victory conditions".tr()}: ${parameters.victoryTypes.joinToString(" / ") { (if (it == "Domination") "Military" else it).tr() }} | ${"Council map".tr()}: ${GameSetupOverview.mapDescription(gameSetupInfo)}"
             }
             if (status != setupStatus) {
                 setupStatus = status

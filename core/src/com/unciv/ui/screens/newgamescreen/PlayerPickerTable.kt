@@ -187,8 +187,9 @@ class PlayerPickerTable(
     }
 
     internal fun createCivilizationSelector(player: Player = gameParameters.players.first()): IconTextButton {
-        fun portrait() = previousScreen.ruleset.nations[player.chosenCiv]?.let { ImageGetter.getNationPortrait(it, 32f) }
-            ?: ImageGetter.getRandomNationPortrait(32f)
+        val portraitSize = if (directSetup) 40f else 32f
+        fun portrait() = previousScreen.ruleset.nations[player.chosenCiv]?.let { ImageGetter.getNationPortrait(it, portraitSize) }
+            ?: ImageGetter.getRandomNationPortrait(portraitSize)
         return object : IconTextButton(player.chosenCiv, portrait(), fontSize = 22) {
             private var displayedCiv = player.chosenCiv
 
@@ -201,11 +202,12 @@ class PlayerPickerTable(
             }
         }.apply {
             isDisabled = locked
-            pad(6f, 10f, 6f, 10f)
-            iconCell.size(32f).padRight(10f)
+            val verticalPad = if (directSetup) 2f else 6f
+            pad(verticalPad, 10f, verticalPad, 10f)
+            iconCell.size(portraitSize).padRight(10f)
             label.wrap = true
             labelCell.minWidth(0f).growX().left().padTop(0f)
-            add("›".toLabel(Color.LIGHT_GRAY, 22)).padLeft(8f)
+            if (!directSetup) add("›".toLabel(Color.LIGHT_GRAY, 22)).padLeft(8f)
             onClick {
                 popupNationPicker(player, noRandom || gameParameters.randomNumberOfPlayers && player.playerType == AI)
             }
@@ -226,7 +228,10 @@ class PlayerPickerTable(
                 add((if (index == 0) "You".tr() else "${"AI".tr()} $index").toLabel(fontSize = 16))
                     .width(48f).left().padRight(4f)
                 add(selector).minWidth(0f).growX().minHeight(44f)
-                add((if (index == 0) "Human" else "AI").toLabel(fontSize = 16)).width(46f).center()
+                add(Table().apply {
+                    background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background)
+                    add((if (index == 0) "Human role" else "AI").toLabel(fontSize = 16)).pad(6f)
+                }).width(62f).center()
                 if (index > 0) add("×".toTextButton().apply {
                     name = "setup-remove-$index"
                     isDisabled = locked
@@ -234,12 +239,13 @@ class PlayerPickerTable(
                 }).size(36f).padLeft(4f)
                 else add().width(40f)
             }
-            playerListTable.add(row).width(width).minHeight(54f).padBottom(8f).row()
+            playerListTable.add(row).width(width).minHeight(54f).padBottom(6f).row()
         }
         val maximum = previousScreen.ruleset.nations.values.count {
             it.isMajorCiv && !it.hasUnique(UniqueType.WillNotBeChosenForNewGames)
         }
         playerListTable.add(IconTextButton("Add civilization", ImageGetter.getImage("OtherIcons/New"), fontSize = 18).apply {
+            pad(6f)
             name = "setup-add"
             isDisabled = locked || gameParameters.players.size >= maximum
             onClick {
@@ -249,6 +255,7 @@ class PlayerPickerTable(
             }
         }).width(width).minHeight(44f).padTop(4f).padBottom(8f).row()
         playerListTable.add(IconTextButton("Random civilizations", ImageGetter.getImage("OtherIcons/NationSwap"), fontSize = 18).apply {
+            pad(6f)
             name = "setup-random"
             isDisabled = locked || noRandom || gameParameters.randomNumberOfPlayers
             onClick { gameParameters.players.forEach { it.chosenCiv = Constants.random }; update() }

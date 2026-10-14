@@ -32,7 +32,26 @@ internal object SinglePlayerSetup {
     fun style(actor: Actor, font: BitmapFont) {
         when (actor) {
             is Label -> actor.setFontSize(18)
-            is CheckBox -> actor.style = CheckBox.CheckBoxStyle(actor.style).apply { this.font = font }
+            is CheckBox -> actor.style = CheckBox.CheckBoxStyle(actor.style).apply {
+                this.font = font
+                checkedFontColor = ExpeditionBlueTheme.text
+                checkboxOff = ExpeditionBlueTheme.outlinedControl(
+                    ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.panel),
+                    ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.controlBorder)).apply {
+                    minWidth = 22f; minHeight = 22f
+                }
+                checkboxOver = checkboxOff
+                checkboxOn = object : BaseDrawable() {
+                    private val fill = ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.gold)
+                    private val check = ImageGetter.getDrawable("OtherIcons/Checkmark").tint(ExpeditionBlueTheme.primaryInk)
+                    init { minWidth = 22f; minHeight = 22f }
+                    override fun draw(batch: com.badlogic.gdx.graphics.g2d.Batch, x: Float, y: Float, width: Float, height: Float) {
+                        fill.draw(batch, x, y, width, height)
+                        check.draw(batch, x + 4f, y + 4f, width - 8f, height - 8f)
+                    }
+                }
+                checkboxOnOver = checkboxOn
+            }
             is TextButton -> actor.style = TextButton.TextButtonStyle(actor.style).apply {
                 this.font = font
                 up = surface()
@@ -67,11 +86,19 @@ internal object SinglePlayerSetup {
     }
 
     fun field(title: String, control: Actor, width: Float) = Table().apply {
-        val labelWidth = (width * .36f).coerceAtMost(175f)
+        background = surface(ExpeditionBlueTheme.panel)
+        pad(3f, 8f, 3f, 4f)
+        val labelWidth = (width * .35f).coerceAtMost(175f)
+        val caption = when (title) {
+            "City-States" -> "City-State count"
+            "Map Type", "Map Generation Type" -> "Map type"
+            "World Size" -> "Map size"
+            else -> title
+        }
         control.name = "setup-field-$title"
-        add(title.toLabel(ExpeditionBlueTheme.text, 18).apply { wrap = true })
+        add(caption.toLabel(ExpeditionBlueTheme.text, 18).apply { wrap = true })
             .width(labelWidth).left().padRight(8f)
-        add(control).minWidth(0f).width(width - labelWidth - 8f).minHeight(44f).fillX()
+        add(control).minWidth(0f).width(width - labelWidth - 20f).height(36f).fillX()
     }
 
     fun form(width: Float, fields: List<Pair<String, Actor>>) = Table().apply {
@@ -80,7 +107,7 @@ internal object SinglePlayerSetup {
         val fieldWidth = (width - (columns - 1) * 12f) / columns
         for ((index, item) in fields.withIndex()) {
             add(field(item.first, item.second, fieldWidth)).width(fieldWidth).top()
-                .padRight(if (index % columns == columns - 1) 0f else 12f).padBottom(8f)
+                .padRight(if (index % columns == columns - 1) 0f else 12f).padBottom(6f)
             if (index % columns == columns - 1) row()
         }
     }
@@ -88,8 +115,11 @@ internal object SinglePlayerSetup {
     fun group(title: String, width: Float, id: String, opened: Boolean = false,
               content: (Table) -> Unit) = ExpanderTab(title, fontSize = 18,
         startsOutOpened = opened, defaultPad = 12f, expanderWidth = width,
-        expanderHeight = 44f, headerPad = 0f, persistenceID = "SinglePlayer.$id", initContent = content).apply {
+        expanderHeight = 36f, headerPad = 0f, persistenceID = "SinglePlayer.$id", initContent = content).apply {
+        name = "setup-group-$title"
+        header.pad(0f, 10f, 0f, 10f)
         header.background = surface()
+        headerIcon.rotation = 180f
     }
 
 }

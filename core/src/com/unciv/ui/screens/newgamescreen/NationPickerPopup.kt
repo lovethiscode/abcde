@@ -323,17 +323,19 @@ internal class NationPickerPopup(
                 yield(NationIterationElement(random))
             }
             val spectator = ruleset.nations[Constants.spectator]
-            if (submit == null && spectator != null && player.playerType != PlayerType.AI)  // only humans can spectate, sorry robots
+            if (councilScreen == null && submit == null && spectator != null && player.playerType != PlayerType.AI)  // only humans can spectate, sorry robots
                 yield(NationIterationElement(spectator))
         }
         // Then what PlayerPickerTable says we should display - see its doc
         val part2 = (availableCivs ?: playerPicker!!.getAvailablePlayerCivs(player.chosenCiv).toList())
             .map { NationIterationElement(it) }
         // Combine and Sort
-        return part1 +
-            part2.sortedWith(
-                compareBy(UncivGame.Current.settings.getCollatorFromLocale()) { it.translatedName }
-            )
+        val sorted = part2.sortedWith(compareBy<NationIterationElement> {
+            if (councilScreen != null && it.nation.name == initialCiv) 0 else 1
+        }.thenBy(UncivGame.Current.settings.getCollatorFromLocale()) { it.translatedName })
+        val spectator = ruleset.nations[Constants.spectator]
+        return part1 + sorted + if (councilScreen != null && submit == null && spectator != null && player.playerType != PlayerType.AI)
+            sequenceOf(NationIterationElement(spectator)) else emptySequence()
     }
 
     private fun onKeyPress(key: Char) {
@@ -380,6 +382,13 @@ internal class NationPickerPopup(
         val textWidth = detailsWidth - 16f
         top()
         defaults().left().growX().padBottom(8f)
+        fun heading(caption: String, icon: String) = Table().apply {
+            add(ImageGetter.getImage(icon, ExpeditionBlueTheme.gold)).size(20f).padRight(8f)
+            add(caption.toLabel(ExpeditionBlueTheme.gold, 18, hideIcons = true)).left().growX()
+        }
+        fun text(value: String, width: Float = textWidth) = value.toLabel(fontSize = 18, hideIcons = true).apply {
+            wrap = true
+        }.also { it.setSize(width, it.prefHeight) }
         add(Table().apply {
             val banner = Table().apply {
                 background = ImageGetter.getWhiteDotDrawable().tint(nation.getOuterColor())
@@ -387,23 +396,51 @@ internal class NationPickerPopup(
                     add(ImageGetter.getNationPortrait(nation, 64f)).size(72f)
                 else add(ImageGetter.getImage("NationIcons/${nation.name}", nation.getInnerColor())).size(72f)
             }
-            add(banner).size(128f, 88f).padRight(18f)
+            add(banner).size(128f, 104f).top().padRight(18f)
             add(Table().apply {
-                add(councilScreen!!.councilHeading(nation.name, 28)).left().growX().row()
+                val introWidth = textWidth - 146f
+                add(councilScreen!!.councilHeading(nation.name, 28).apply { color = ExpeditionBlueTheme.gold }).left().growX().row()
                 if (nation.leaderName.isNotEmpty())
-                    add(nation.leaderName.toLabel(fontSize = 18).apply { wrap = true }).growX().left().padTop(8f)
+                    add(text("{Council leader}: {${nation.leaderName}}", introWidth)).width(introWidth).left().padTop(4f).row()
+                if (nation.startIntroPart1.isNotEmpty()) {
+                    add(heading("Civilization introduction", "OtherIcons/Scenarios")).padTop(8f).growX().row()
+                    val intro = if (nation.name == "Rome") "Rome is known for city building, law and military strength. Lead your empire from a single city to the world."
+                        else nation.startIntroPart1
+                    add(text(intro, introWidth)).width(introWidth).left().padTop(4f)
+                }
             }).minWidth(0f).growX()
-        }).width(textWidth).padBottom(12f).row()
-        if (nation.startIntroPart1.isNotEmpty()) {
-            add("Civilization introduction".toLabel(ExpeditionBlueTheme.gold, 18)).row()
-            val intro = if (nation.name == "Rome") "Rome is known for city building, law and military strength. Lead your empire from a single city to the world."
-                else nation.startIntroPart1
-            add(intro.toLabel(fontSize = 18).apply { wrap = true }).width(textWidth).row()
+        }).width(textWidth).padBottom(10f).row()
+        if (nation.uniqueName.isNotEmpty()) add(heading(nation.uniqueName, "OtherIcons/Star")).row()
+        val ability = nation.uniqueText.ifEmpty {
+            nation.uniqueObjects.filterNot { it.isHiddenToUsers() }.joinToString("\n") { it.getDisplayText() }
         }
-        add(com.unciv.ui.screens.civilopediascreen.MarkupRenderer.render(
-            nation.getCivilopediaTextLines(ruleset).filter { it.header != 3 }, textWidth,
-            iconDisplay = com.unciv.ui.screens.civilopediascreen.FormattedLine.IconDisplay.NoLink))
-            .width(textWidth).row()
+        if (ability.isNotEmpty()) add(text(ability)).width(textWidth).row()
+        val units = ruleset.units.values.filter { it.uniqueTo != null && nation.matchesFilter(it.uniqueTo!!) && !it.isHiddenFromCivilopedia(ruleset) }
+        if (units.isNotEmpty()) {
+            add(heading("Council unique units", "OtherIcons/UnitNameGroups")).padTop(4f).row()
+            add(Table().apply {
+                for ((index, unit) in units.withIndex()) {
+                    val cardWidth = textWidth / 2f
+                    add(Table().apply {
+                        add(ImageGetter.getConstructionPortrait(unit.name, 42f)).size(46f).padRight(8f)
+                        add(Table().apply {
+                            add(text(unit.name, cardWidth - 58f)).width(cardWidth - 58f).left().row()
+                            unit.replaces?.let { add(text("Replaces [$it]", cardWidth - 58f)).width(cardWidth - 58f).left().padTop(4f) }
+                        }).minWidth(0f).growX()
+                    }).width(cardWidth).padBottom(4f)
+                    if (index % 2 == 1) row()
+                }
+            }).width(textWidth).row()
+        }
+        val bias = nation.getStartBias(ruleset)
+        if (bias.isNotEmpty()) {
+            add(heading("Start bias:", "OtherIcons/MapEditor")).padTop(4f).row()
+            add(text(bias.joinToString(" · ") { it.tr() })).width(textWidth).row()
+        }
+        add(SinglePlayerSetup.group("Civilopedia", textWidth, "NationDetails") { content ->
+            content.add(com.unciv.ui.screens.civilopediascreen.MarkupRenderer.render(nation.getCivilopediaTextLines(ruleset), textWidth - 24f,
+                iconDisplay = com.unciv.ui.screens.civilopediascreen.FormattedLine.IconDisplay.NoLink)).growX()
+        }).width(textWidth).padTop(4f)
     }
 
     @Suppress("UsePropertyAccessSyntax")  // setColor _is_ a field-by-field copy not a reference set
