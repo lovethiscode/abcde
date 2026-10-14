@@ -856,6 +856,15 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }
         runRequest(configurationWrite = true, backAfter = backAfter) { client.command(session.gameId,"configuration",update) }
     }
+    private fun removeSeat(r: LobbyRoom, s: LobbySeat): Boolean {
+        if (!connected || busy || configurationPending || room?.configurationVersion != r.configurationVersion) return false
+        val index = seatSources.indexOf(s.seatId)
+        val players = gameSetupInfo.gameParameters.players
+        if (index !in players.indices) return false
+        players.removeAt(index)
+        seatSources.removeAt(index)
+        return true
+    }
     private fun playerCard(r: LobbyRoom, s: LobbySeat, own: LobbySeat?, width: Float, beforeModal: () -> Unit = {}): Table {
         val mine = s === own
         val empty = s.human && s.playerId.isEmpty()
@@ -880,6 +889,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 add((if(s.human) "Human" else "AI").toTextButton().apply {
                     isEnabled = connected && !busy && !configurationPending
                     onClick {
+                        beforeModal()
+                        if (busy || configurationPending || room?.configurationVersion != r.configurationVersion) return@onClick
                         gameSetupInfo.gameParameters.players[s.seatId].apply {
                             playerType = if(s.human) PlayerType.AI else PlayerType.Human
                             chosenCiv = Constants.random
@@ -923,8 +934,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             controls.add("−".toTextButton().apply {
                 isEnabled = connected && !busy && !configurationPending
                 onClick {
-                    gameSetupInfo.gameParameters.players.removeAt(s.seatId)
-                    seatSources.removeAt(s.seatId); markConfigurationChanged(immediate = true)
+                    beforeModal()
+                    if (removeSeat(r,s)) markConfigurationChanged(immediate = true)
                 }
             }).height(44f).padLeft(8f)
         if (empty) {
