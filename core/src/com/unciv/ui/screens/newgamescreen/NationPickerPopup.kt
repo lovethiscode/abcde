@@ -44,6 +44,7 @@ internal class NationPickerPopup(
     private val ruleset: com.unciv.models.ruleset.Ruleset = playerPicker!!.previousScreen.ruleset,
     private val availableCivs: List<Nation>? = null,
     private val submit: ((String) -> Unit)? = null,
+    private val initialCiv: String = player.chosenCiv,
 ) : Popup(screen, if (UiNavigation.isIos) Scrollability.WithoutButtons else Scrollability.None) {
     companion object {
         // Note - innerTable has pad(20f) and defaults().pad(5f), so content bottomLeft is at x=25/y=25
@@ -246,7 +247,7 @@ internal class NationPickerPopup(
                 returnSelected()
             }
 
-            if (player.chosenCiv == element.nation.name) {
+            if (initialCiv == element.nation.name) {
                 selectInfo = currentSelectInfo
             }
 

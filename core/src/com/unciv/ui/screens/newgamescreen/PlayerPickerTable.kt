@@ -32,11 +32,10 @@ import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onClick
-import com.unciv.ui.components.input.onChange
-import com.unciv.ui.components.widgets.TranslatedSelectBox
 import com.unciv.ui.components.widgets.UncivTextField
 import com.unciv.ui.components.widgets.WrappableLabel
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.multiplayerscreens.FriendPickerList
@@ -186,18 +185,28 @@ class PlayerPickerTable(
         }
     }
 
-    internal fun createCivilizationSelector(player: Player = gameParameters.players.first()): TranslatedSelectBox {
-        val nations = getAvailablePlayerCivs(player.chosenCiv).map { it.name }.toList()
-            .sortedWith(compareBy(UncivGame.Current.settings.getCollatorFromLocale()) { it.tr(hideIcons = true) })
-        val canRandom = !noRandom && !(gameParameters.randomNumberOfPlayers && player.playerType == AI)
-        val choices = (if (canRandom) listOf(Constants.random) else emptyList()) + nations +
-            listOf(player.chosenCiv).filter { it !in nations && it != Constants.random }
-        return TranslatedSelectBox(choices, player.chosenCiv).apply {
+    internal fun createCivilizationSelector(player: Player = gameParameters.players.first()): IconTextButton {
+        fun portrait() = previousScreen.ruleset.nations[player.chosenCiv]?.let { ImageGetter.getNationPortrait(it, 32f) }
+            ?: ImageGetter.getRandomNationPortrait(32f)
+        return object : IconTextButton(player.chosenCiv, portrait(), fontSize = 22) {
+            private var displayedCiv = player.chosenCiv
+
+            override fun act(delta: Float) {
+                super.act(delta)
+                if (displayedCiv == player.chosenCiv) return
+                displayedCiv = player.chosenCiv
+                label.setText(displayedCiv.tr(hideIcons = true))
+                iconCell.setActor(portrait())
+            }
+        }.apply {
             isDisabled = locked
-            onChange {
-                player.chosenCiv = selected.value
-                if (player.chosenCiv != Constants.random) player.setNationTransient(previousScreen.ruleset)
-                update()
+            pad(6f, 10f, 6f, 10f)
+            iconCell.size(32f).padRight(10f)
+            label.wrap = true
+            labelCell.minWidth(0f).growX().left().padTop(0f)
+            add("›".toLabel(Color.LIGHT_GRAY, 22)).padLeft(8f)
+            onClick {
+                popupNationPicker(player, noRandom || gameParameters.randomNumberOfPlayers && player.playerType == AI)
             }
         }
     }
@@ -227,11 +236,7 @@ class PlayerPickerTable(
                 for ((index, civ) in choices.withIndex()) {
                     add(GameSetupOverview.choice(civ, self.chosenCiv == civ).apply {
                         isDisabled = locked || noRandom && civ == Constants.random
-                        onClick {
-                            self.chosenCiv = civ
-                            if (civ != Constants.random) self.setNationTransient(previousScreen.ruleset)
-                            update()
-                        }
+                        onClick { popupNationPicker(self, noRandom, civ) }
                     }).width((panelWidth - 16f) / 3f).minHeight(44f).padRight(if (index % 3 == 2) 0f else 8f).padBottom(8f)
                     if (index % 3 == 2) row()
                 }
@@ -467,8 +472,8 @@ class PlayerPickerTable(
      * ruleset and other players nation choice.
      * @param player current player
      */
-    private fun popupNationPicker(player: Player, noRandom: Boolean) {
-        NationPickerPopup(this, player, noRandom).open()
+    private fun popupNationPicker(player: Player, noRandom: Boolean, initialCiv: String = player.chosenCiv) {
+        NationPickerPopup(this, player, noRandom, initialCiv = initialCiv).open()
         update()
     }
 
