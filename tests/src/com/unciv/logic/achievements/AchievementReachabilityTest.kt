@@ -14,7 +14,7 @@ import com.unciv.logic.trade.TradeOfferType
 import com.unciv.models.metadata.BaseRuleset
 import com.unciv.models.ruleset.BeliefType
 import com.unciv.models.ruleset.tile.ResourceType
-import com.unciv.ui.screens.worldscreen.unit.actions.UnitActions
+import com.unciv.logic.map.mapunit.actions.UnitActions
 import com.unciv.models.UnitActionType
 import com.unciv.testing.RedirectOutput
 import com.unciv.testing.RedirectPolicy

@@ -16,7 +16,7 @@ import com.unciv.logic.files.FileConversions
 import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.logic.map.tile.Tile
-import com.unciv.ui.screens.worldscreen.unit.actions.UnitActionsUpgrade
+import com.unciv.logic.map.mapunit.actions.UnitActionsUpgrade
 import java.io.File
 
 /** Legal orders shared by JVM and simulator acceptance; never packaged in the normal app. */

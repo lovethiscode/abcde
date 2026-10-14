@@ -20,7 +20,7 @@ import com.unciv.models.metadata.BaseRuleset
 import com.unciv.models.stats.Stat
 import com.unciv.testing.BaseTestRunner
 import com.unciv.testing.TestGame
-import com.unciv.ui.screens.worldscreen.unit.actions.UnitActionsFromUniques
+import com.unciv.logic.map.mapunit.actions.UnitActionsFromUniques
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule

@@ -18,7 +18,10 @@ internal interface ConsoleCommand {
 internal class ConsoleHintException(val hint: String) : Exception()
 
 /** An Exception representing a user error in [DevConsolePopup] input. [error] is user-readable but never translated. */
-internal class ConsoleErrorException(val error: String) : Exception()
+internal open class ConsoleErrorException(val error: String) : Exception()
+
+/** An Exception representing a user error in [DevConsolePopup] input involving a Unique text. [error] is user-readable but never translated. */
+internal class ConsoleUniqueErrorException(error: String) : ConsoleErrorException(error)
 
 internal open class ConsoleAction(
     val format: String,
@@ -39,6 +42,9 @@ internal open class ConsoleAction(
             }
         } catch (hintException: ConsoleHintException) {
             DevConsoleResponse.hint(hintException.hint)
+        } catch (errorException: ConsoleUniqueErrorException) {
+            console.showUniqueBuilderButton()
+            DevConsoleResponse.error(errorException.error)
         } catch (errorException: ConsoleErrorException) {
             DevConsoleResponse.error(errorException.error)
         }

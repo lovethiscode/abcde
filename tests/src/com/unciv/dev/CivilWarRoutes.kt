@@ -260,7 +260,7 @@ object CivilWarRoutes {
                             val repair = roads.firstOrNull { it.roadIsPillaged }
                             if (repair != null) {
                                 if (u.currentTile != repair) move(u, repair)
-                                if (u.currentTile == repair) com.unciv.ui.screens.worldscreen.unit.actions.UnitActionsFromUniques.getRepairAction(u)?.let { action ->
+                                if (u.currentTile == repair) com.unciv.logic.map.mapunit.actions.UnitActionsFromUniques.getRepairAction(u)?.let { action ->
                                     if (action.action != null) { record("worker-repair\t${u.id}\t${repair.position}\t${action.title}"); action.action!!.invoke() }
                                 }
                             } else if (player.tech.isResearched("Military Transport")) {

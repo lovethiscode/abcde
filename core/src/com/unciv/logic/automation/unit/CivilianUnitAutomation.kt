@@ -7,9 +7,9 @@ import com.unciv.models.UnitActionType
 import com.unciv.models.ruleset.unique.GameContext
 import com.unciv.models.ruleset.unique.UniqueTriggerActivation
 import com.unciv.models.ruleset.unique.UniqueType
-import com.unciv.ui.screens.worldscreen.unit.actions.UnitActionModifiers
-import com.unciv.ui.screens.worldscreen.unit.actions.UnitActionModifiers.canUse
-import com.unciv.ui.screens.worldscreen.unit.actions.UnitActions
+import com.unciv.logic.map.mapunit.actions.UnitActionModifiers
+import com.unciv.logic.map.mapunit.actions.UnitActionModifiers.canUse
+import com.unciv.logic.map.mapunit.actions.UnitActions
 import com.unciv.view.MapUnitView
 import com.unciv.view.TileView
 import yairm210.purity.annotations.Readonly
@@ -85,7 +85,7 @@ object CivilianUnitAutomation {
         // We try to add any unit in the capital we can, though that might not always be desirable
         // For now its a simple option to allow AI to win a science victory again
         if (unit.hasUnique(UniqueType.AddInCapital))
-            return SpecificUnitAutomation.automateAddInCapital(mapUnit)
+            return SpecificUnitAutomation.automateAddInCapital(unit)
 
         //todo this now supports "Great General"-like mod units not combining 'aura' and citadel
         // abilities, but not additional capabilities if automation finds no use for those two
