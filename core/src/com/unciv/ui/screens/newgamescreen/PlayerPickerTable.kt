@@ -267,7 +267,12 @@ class PlayerPickerTable(
         }
         playerListTable.add("Shuffle Civ Order at Start".toCheckBox(gameParameters.shufflePlayerOrder) {
             gameParameters.shufflePlayerOrder = it
-        }.apply { isDisabled = locked; label.wrap = true }).width(width).left().minHeight(44f)
+        }.apply {
+            isDisabled = locked
+            label.wrap = true
+            label.setAlignment(com.badlogic.gdx.utils.Align.left)
+            getCell(label).minWidth(0f).width(width - 40f).growX()
+        }).width(width).left().minHeight(44f)
         SinglePlayerSetup.style(playerListTable, screen.formFont)
         for (selector in selectors) selector.style = com.badlogic.gdx.scenes.scene2d.ui.Button.ButtonStyle(selector.style).apply {
             up = null
