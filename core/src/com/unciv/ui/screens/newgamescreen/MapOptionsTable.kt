@@ -15,6 +15,7 @@ class MapOptionsTable(private val newGameScreen: NewGameScreen) : Table() {
 
     private val mapParameters = newGameScreen.gameSetupInfo.mapParameters
     private var mapTypeSpecificTable = Table()
+    private val councilPreview = Table()
     internal val generatedMapOptionsTable = MapParametersTable(newGameScreen, mapParameters, MapGeneratedMainType.generated)
     private val randomMapOptionsTable = MapParametersTable(newGameScreen, mapParameters, MapGeneratedMainType.randomGenerated)
     private val savedMapOptionsTable = MapFileSelectTable(newGameScreen, mapParameters)
@@ -60,6 +61,15 @@ class MapOptionsTable(private val newGameScreen: NewGameScreen) : Table() {
                     newGameScreen.lockTables()
                 }
             }
+            if (UiNavigation.isIos) {
+                councilPreview.clear()
+                createOverviewPreview(newGameScreen.directSetupWidth,
+                    (newGameScreen.stage.height * .28f).coerceIn(100f, 165f))?.let {
+                    councilPreview.add(it).grow()
+                }
+                getCell(councilPreview)?.height(if (councilPreview.children.size == 0) 0f
+                    else (newGameScreen.stage.height * .28f).coerceIn(100f, 165f))
+            }
             newGameScreen.gameSetupInfo.gameParameters.godMode = false
             newGameScreen.updateTables()
         }
@@ -71,8 +81,11 @@ class MapOptionsTable(private val newGameScreen: NewGameScreen) : Table() {
 
         if (UiNavigation.isIos) {
             background = null
+            add(councilPreview).width(newGameScreen.directSetupWidth)
+                .height(if (councilPreview.children.size == 0) 0f else (newGameScreen.stage.height * .28f).coerceIn(100f, 165f))
+                .padBottom(8f).row()
             add(SinglePlayerSetup.form(newGameScreen.directSetupWidth,
-                listOf("Map Type" to mapTypeSelectBox))).growX().row()
+                listOf("Map source" to mapTypeSelectBox))).growX().row()
             add(mapTypeSpecificTable).growX().row()
         } else {
             val mapTypeSelectWrapper = Table()  // wrap to center-align Label and SelectBox easier

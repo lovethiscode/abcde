@@ -2,6 +2,7 @@ package com.unciv.ui.screens.newgamescreen
 
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
@@ -160,22 +161,27 @@ class GameOptionsTable(
         "Difficulty" to Table().addDifficultySelectBox(), "Game Speed" to Table().addGameSpeedSelectBox()
     )
 
+    internal fun createBaseRulesetSelector(): Actor? {
+        Table().addBaseRulesetSelectBox()
+        return baseRulesetSelectBox
+    }
+
     private fun buildDirectLayout(width: Float) {
         background = null
         defaults().pad(0f)
         val fields = createOverviewFields().toMutableList()
         Table().addEraSelectBox()?.let { fields.add("Starting Era" to it) }
         if (!gameParameters.randomNumberOfCityStates && numberOfCityStates() > 0)
-            fields.add("City-States" to SinglePlayerSetup.counter(gameParameters.numberOfCityStates,
-                numberOfCityStates(), !locked) { gameParameters.numberOfCityStates = it })
+            fields.add("City-States" to TranslatedSelectBox((0..numberOfCityStates()).map { it.toString() },
+                gameParameters.numberOfCityStates.toString()).apply {
+                isDisabled = locked
+                onChange { gameParameters.numberOfCityStates = selected.value.toInt() }
+            })
         add(SinglePlayerSetup.form(width, fields)).growX().row()
         if (gameParameters.randomNumberOfCityStates)
             add(Table().apply { defaults().growX(); addMinMaxCityStatesSliders() }).growX().row()
-        add("Victory Conditions".toLabel(fontSize = 22)).left().padTop(4f).padBottom(12f).row()
+        add("Victory Conditions".toLabel(ExpeditionBlueTheme.gold, 20)).left().padTop(4f).padBottom(8f).row()
         addVictoryTypeCheckboxes()
-        Table().addMaxTurnsSlider()?.let { slider ->
-            add(SinglePlayerSetup.field("Max Turns", slider, width)).growX().padTop(12f).row()
-        }
         fun group(title: String, id: String, opened: Boolean = false, build: Table.() -> Unit) {
             add(SinglePlayerSetup.group(title, width, "Rules.$id", opened) { table ->
                 table.defaults().left().growX().minHeight(44f).padBottom(8f)
@@ -183,34 +189,19 @@ class GameOptionsTable(
                 SinglePlayerSetup.style(table, (previousScreen as NewGameScreen).formFont)
             }).width(width).padTop(8f).row()
         }
-        group("War and challenges", "War") {
-            addNoCityRazingCheckbox()
-            addOneCityChallengeCheckbox()
-            addNoBarbariansCheckbox()
-            addRagingBarbariansCheckbox()
-            addNuclearWeaponsCheckbox()
-            addEnableEspionageCheckbox()
-        }
-        group("Randomness and starting conditions", "Random", gameParameters.enableRandomNationsPool) {
-            addNoStartBiasCheckbox()
-            addRandomPlayersCheckbox()
-            addRandomCityStatesCheckbox()
+        group("Advanced Settings", "Advanced", gameParameters.enableRandomNationsPool) {
+            for (victory in ruleset.selectableVictories().filter { it.enablesMaxTurns() })
+                add(victory.name.toCheckBox(victory.name in gameParameters.victoryTypes) {
+                    if (it) gameParameters.victoryTypes.add(victory.name) else gameParameters.victoryTypes.remove(victory.name)
+                    update()
+                }.apply { name = victory.name; isDisabled = locked }).growX().row()
+            addMaxTurnsSlider()?.let { add(it).growX().row() }
+            addAdvancedSettings(this)
             if (gameParameters.randomNumberOfPlayers) addMinMaxPlayersSliders()
-            addRandomNationsPoolCheckbox()
-            if (gameParameters.enableRandomNationsPool) addNationsSelectTextButton()
         }
-        group("Show Civilization Stats", "Statistics") {
-            addShowCivilizationStatsCheckbox()
-            if (gameParameters.showCivilizationStats == true) {
-                addShowRankingsCheckbox()
-                addShowChartsCheckbox()
-                addShowDemographicsCheckbox()
-                addCensorStatsCheckbox()
-                addShowAdditionalRankingTypesCheckbox()
-            }
-        }
-        group("Base Ruleset", "Ruleset") { addBaseRulesetSelectBox() }
-        add(modCheckboxes).width(width).padTop(8f).row()
+        if (modCheckboxes.children.size == 0)
+            group("Extension Mods", "Mods") { add("No mods installed".toLabel().apply { wrap = true }).growX().row() }
+        else add(modCheckboxes).width(width).padTop(8f).row()
         SinglePlayerSetup.style(this, (previousScreen as NewGameScreen).formFont)
     }
 
@@ -701,7 +692,11 @@ class GameOptionsTable(
 
         // Create a checkbox for each VictoryType existing
         val victoryConditionsTable = Table().apply { defaults().pad(5f) }
-        for ((i, victoryType) in ruleset.selectableVictories().withIndex()) {
+        val victories = if (directLayoutWidth == null) ruleset.selectableVictories()
+            else ruleset.selectableVictories().filter { !it.enablesMaxTurns() }.sortedBy {
+                listOf("Scientific", "Diplomatic", "Cultural", "Domination").indexOf(it.name).let { index -> if (index < 0) 4 else index }
+            }
+        for ((i, victoryType) in victories.withIndex()) {
             val victoryCheckbox = victoryType.name.toCheckBox(gameParameters.victoryTypes.contains(victoryType.name)) {
                 // If the checkbox is checked, adds the victoryTypes else remove it
                 if (it) {

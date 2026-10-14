@@ -147,19 +147,20 @@ class MapParametersTable(
         clearChildren()
         defaults().pad(0f)
         add(SinglePlayerSetup.form(width, listOf(
-            "Map Generation Type" to mapTypeSelectBox, "World Size" to worldSizeSelectBox,
-            "Map Shape" to mapShapeSelectBox, "Resource Setting" to resourceSelectBox
+            "Map Type" to mapTypeSelectBox, "World Size" to worldSizeSelectBox
         ))).growX().row()
         add(customWorldSizeTable).growX().row()
-        add(SinglePlayerSetup.group("World features", width, "World.Features") { table ->
+        add(SinglePlayerSetup.group("Map parameters", width, "World.Parameters") { table ->
+            table.add(SinglePlayerSetup.form(width - 24f, listOf(
+                "Map Shape" to mapShapeSelectBox, "Resource Setting" to resourceSelectBox
+            ))).growX().row()
             table.defaults().left().growX().minHeight(44f).padBottom(8f)
             for (check in listOf(strategicBalanceCheckbox, legendaryStartCheckbox, noRuinsCheckbox,
                 noNaturalWondersCheckbox, worldWrapCheckbox)) table.add(check).row()
             table.add("World wrap maps are very memory intensive - creating large world wrap maps on Android can lead to crashes!"
                 .toLabel(fontSize = 18).apply { wrap = true }).row()
-            SinglePlayerSetup.style(table, (previousScreen as NewGameScreen).formFont)
-        }).width(width).padTop(6f).row()
-        add(SinglePlayerSetup.group("Advanced terrain settings", width, "World.Advanced") { table ->
+            if (this::mirrorSelectBox.isInitialized)
+                table.add(SinglePlayerSetup.field("Map mirroring", mirrorSelectBox, width - 24f)).growX().row()
             addAdvancedControls(table)
             SinglePlayerSetup.style(table, (previousScreen as NewGameScreen).formFont)
         }).width(width).padTop(6f).row()
@@ -579,7 +580,7 @@ class MapParametersTable(
         fun addSlider(text: String, getValue:()->Float, min: Float, max: Float, step: Float, onChange: (value: Float)->Unit): UncivSlider {
             val slider = UncivSlider(min, max, step, onChange = {onChange(it); generateExampleMap()}, initial = getValue())
             table.add(text.toLabel()).left()
-            if (roomLayoutWidth != null) table.row()
+            if (roomLayoutWidth != null || previousScreen is NewGameScreen && UiNavigation.isIos) table.row()
             table.add(slider).fillX().row()
             advancedSliders[slider] = getValue
             return slider

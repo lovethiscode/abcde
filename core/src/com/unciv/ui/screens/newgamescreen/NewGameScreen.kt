@@ -25,7 +25,6 @@ import com.unciv.logic.multiplayer.storage.MultiplayerGameCreationPartialExcepti
 import com.unciv.logic.multiplayer.storage.MultiplayerGameCreationCancelledException
 import com.unciv.models.metadata.BaseRuleset
 import com.unciv.models.metadata.GameSetupInfo
-import com.unciv.models.metadata.GameSetupPreset
 import com.unciv.models.metadata.Player
 import com.unciv.models.ruleset.Ruleset
 import com.unciv.models.ruleset.RulesetCache
@@ -35,10 +34,14 @@ import com.unciv.ui.components.extensions.addSeparatorVertical
 import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.extensions.isEnabled
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.pad
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.fonts.Fonts
+import com.unciv.ui.components.fonts.FontFamilyData
+import com.unciv.ui.components.fonts.FontImplementation
+import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onActivation
@@ -62,8 +65,7 @@ import kotlin.math.floor
 import com.unciv.ui.components.widgets.AutoScrollPane as ScrollPane
 
 class NewGameScreen(
-    defaultGameSetupInfo: GameSetupInfo? = null,
-    private var setupSection: GameSetupSection = GameSetupSection.Overview
+    defaultGameSetupInfo: GameSetupInfo? = null
 ): IPreviousScreen, PickerScreen(), RecreateOnResize {
 
     override val gameSetupInfo = com.unciv.models.metadata.NewGameMode.SinglePlayer.prepare(
@@ -78,13 +80,20 @@ class NewGameScreen(
     private var startingGame = false
     private var setupStatus = ""
     private val setupFont = lazy {
-        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(22f / Fonts.ORIGINAL_FONT_SIZE) }
+        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(18f / Fonts.ORIGINAL_FONT_SIZE) }
     }
     internal val formFont get() = setupFont.value
-    internal val directSetupWidth get() = stage.width - 48f
-    private val presetButtons = LinkedHashMap<GameSetupPreset?, TextButton>()
-    private var displayedPreset: GameSetupPreset? = null
-    private var customSetupSelected = false
+    internal val directSetupWidth get() = if (stackedLayout) stage.width - 72f else (stage.width - 96f) / 3f
+    private val headingFont = lazy {
+        val renderer = Fonts.fontImplementation.javaClass.getDeclaredConstructor().newInstance() as FontImplementation
+        renderer.setFontFamily(FontFamilyData("Songti SC"), Fonts.ORIGINAL_FONT_SIZE.toInt())
+        renderer.getBitmapFont()
+    }
+
+    internal fun councilHeading(text: String, size: Int = 24) = text.toLabel(ExpeditionBlueTheme.gold, size).apply {
+        style = Label.LabelStyle(style).apply { font = headingFont.value }
+        setFontScale(size / Fonts.ORIGINAL_FONT_SIZE)
+    }
 
     val useInviteRoom = false
     private val stackedLayout = isNarrowerThan4to3() ||
@@ -140,7 +149,7 @@ class NewGameScreen(
             topTable.add(banner).colspan(if (isPortrait) 1 else 5).width(stage.width-20f).padBottom(12f).row()
         if (UiNavigation.isIos) {
             overviewReady = true
-            showSetupSection(setupSection)
+            initCouncilLayout()
         } else if (isPortrait) initPortrait()
         else initLandscape()
         bottomTable.background = skinStrings.getUiBackground("NewGameScreen/BottomTable", tintColor = skinStrings.skinConfig.clearColor)
@@ -153,7 +162,7 @@ class NewGameScreen(
         val horizontalGroup = HorizontalGroup().padBottom(5f).space(10f)
         rightSideGroup.addActorAt(0, horizontalGroup)
 
-        if (UncivGame.Current.settings.lastGameSetup != null) {
+        if (UiNavigation.isIos || UncivGame.Current.settings.lastGameSetup != null) {
             val resetToDefaultsButton = "Reset to defaults".toTextButton()
             resetToDefaultsButton.onClick {
                 ConfirmPopup(
@@ -166,6 +175,11 @@ class NewGameScreen(
                     }
                     game.replaceCurrentScreen{ NewGameScreen(gameSetupInfo) }
                 }.open(true)
+            }
+            if (UiNavigation.isIos) {
+                SinglePlayerSetup.style(resetToDefaultsButton, formFont)
+                resetToDefaultsButton.name = "setup-reset"
+                resetToDefaultsButton.pad(10f, 16f, 10f, 16f)
             }
             horizontalGroup.addActor(resetToDefaultsButton)
         }
@@ -180,98 +194,82 @@ class NewGameScreen(
         startGameButton.keyShortcuts.add(KeyCharAndCode.RETURN)
         if (UiNavigation.isIos) {
             rightSideButton.remove()
+            SinglePlayerSetup.style(startGameButton, formFont)
+            startGameButton.style = TextButtonStyle(startGameButton.style).apply {
+                up = SinglePlayerSetup.surface(ExpeditionBlueTheme.gold, ExpeditionBlueTheme.gold)
+                down = SinglePlayerSetup.surface(ExpeditionBlueTheme.hero, ExpeditionBlueTheme.gold)
+                fontColor = ExpeditionBlueTheme.primaryInk
+            }
+            startGameButton.pad(10f, 18f, 10f, 18f)
+            val startLabel = startGameButton.label
+            startGameButton.clearChildren()
+            startGameButton.add(ImageGetter.getImage("OtherIcons/Triangle", ExpeditionBlueTheme.primaryInk)).size(20f).padRight(10f)
+            startGameButton.add(startLabel)
             horizontalGroup.addActor(rightSideButton)
+            descriptionLabel.setFontSize(16)
+            bottomTable.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel, ExpeditionBlueTheme.controlBorder)
         } else {
             horizontalGroup.addActor(startGameButton)
             pickerPane.rightSideButton.remove()
         }
     }
 
-    private fun showSetupSection(section: GameSetupSection) {
-        setupSection = section
+    private fun initCouncilLayout() {
         topTable.clear()
         scrollPane.setScrollingDisabled(true, true)
-        val width = directSetupWidth
-        val navigationWidth = stage.width - closeButton.prefWidth - 48f - if (stackedLayout) 0f else 160f
-        val navigation = GameSetupOverview.navigation(navigationWidth, true, section, select = ::showSetupSection)
-        SinglePlayerSetup.style(navigation, formFont)
-        pickerPane.setNavigationContent(Table().apply {
-            add("Singleplayer".toLabel(fontSize = 24)).left().padRight(20f)
-            if (stackedLayout) row()
-            add(navigation).minWidth(0f).growX()
-        })
-        val page = Table().apply { top() }
-        val editor = when (section) {
-            GameSetupSection.Overview -> createOverview(width)
-            GameSetupSection.World -> mapOptionsTable
-            GameSetupSection.Civilizations -> playerPickerTable
-            GameSetupSection.Rules -> newGameOptionsTable.apply { update() }
-        }
-        if (section == GameSetupSection.Civilizations) page.add(editor).grow()
-        else page.add(ScrollPane(editor).apply {
-            setScrollingDisabled(true, false)
-            setOverscroll(false, false)
-        }).grow()
-        SinglePlayerSetup.style(editor, formFont)
-        topTable.add(page).width(width).growY().pad(12f, 24f, 0f, 24f)
-        topTable.invalidateHierarchy()
-    }
-
-    private fun createOverview(width: Float) = Table().apply {
-        top()
-        val presets = Table()
-        presetButtons.clear()
-        displayedPreset = if (customSetupSelected) null else currentPreset()
-        for (preset in GameSetupPreset.entries) {
-            val option = GameSetupOverview.choice(preset.caption, preset == displayedPreset).apply {
-                onClick {
-                    if (!preset.isAvailable(ruleset)) return@onClick
-                    ConfirmPopup(this@NewGameScreen,
-                        "This changes the map, pace and opponents. Other rules are kept.", preset.caption) {
-                        mapOptionsTable.cancelBackgroundJobs()
-                        game.replaceCurrentScreen { NewGameScreen(preset.prepare(gameSetupInfo, ruleset)) }
-                    }.open()
-                }
-                isDisabled = !preset.isAvailable(ruleset)
+        val header = Table().apply {
+            add(councilHeading("Singleplayer", 28)).growX().center()
+            newGameOptionsTable.createBaseRulesetSelector()?.let {
+                SinglePlayerSetup.style(it, formFont)
+                add(it).width(190f).minHeight(44f).padLeft(16f)
             }
-            presetButtons[preset] = option
-            presets.add(option).width((width - 24f) / 3f).minHeight(44f).padRight(12f)
         }
-        val custom = GameSetupOverview.choice("Custom setup", displayedPreset == null).apply {
-            onClick { customSetupSelected = true }
+        SinglePlayerSetup.style(closeButton, formFont)
+        pickerPane.setNavigationContent(header)
+        val columns = Table().apply {
+            background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.controlBorder)
+            pad(12f)
+            top()
         }
-        presetButtons[null] = custom
-        presets.add(custom).width((width - 24f) / 3f).minHeight(44f)
-        add(presets).growX().padBottom(24f).row()
-        val mapFields = mapOptionsTable.createOverviewFields { showSetupSection(GameSetupSection.World) }
-        val paceFields = newGameOptionsTable.createOverviewFields()
-        add(SinglePlayerSetup.form(width, listOf(
-            "Selected civilization" to playerPickerTable.createCivilizationSelector(), paceFields[0],
-            mapFields[0], mapFields[1], "AI opponents" to playerPickerTable.createOpponentCounter(), paceFields[1]
-        ))).growX()
-    }
-
-    private fun currentPreset(): GameSetupPreset? {
-        val map = gameSetupInfo.mapParameters
-        val parameters = gameSetupInfo.gameParameters
-        return GameSetupPreset.entries.firstOrNull {
-            map.type == com.unciv.logic.map.MapType.pangaea && map.mapSize.name == it.size &&
-                parameters.speed == it.speed && parameters.difficulty == it.difficulty &&
-                !parameters.randomNumberOfPlayers && parameters.players.count { player -> player.playerType == PlayerType.AI } == 3
+        fun column(title: String, icon: String, editor: Table, ownsScroll: Boolean = false) = Table().apply {
+            name = "setup-column-$title"
+            top()
+            add(Table().apply {
+                add(ImageGetter.getImage(icon, ExpeditionBlueTheme.gold)).size(24f).padRight(10f)
+                add(councilHeading(title, 22)).left().growX()
+            }).growX().padBottom(10f).row()
+            if (!ownsScroll) SinglePlayerSetup.style(editor, formFont)
+            if (ownsScroll) add(editor).grow()
+            else add(ScrollPane(editor).apply {
+                setScrollingDisabled(true, false)
+                setOverscroll(false, false)
+            }).grow()
         }
+        val editors = listOf(
+            column("Game Options", "OtherIcons/Options", newGameOptionsTable),
+            column("Map Options", "OtherIcons/MapEditor", mapOptionsTable),
+            column("Civilizations", "OtherIcons/Multiplayer", playerPickerTable, true)
+        )
+        for ((index, editor) in editors.withIndex()) {
+            if (index > 0) {
+                if (stackedLayout) columns.row()
+                else columns.add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.border })
+                    .width(1f).growY().pad(0f, 5.5f)
+            }
+            columns.add(editor).width(directSetupWidth).growY().top()
+        }
+        if (stackedLayout) {
+            scrollPane.setScrollingDisabled(true, false)
+            topTable.add(columns).width(stage.width - 48f).top().pad(8f, 24f)
+        } else topTable.add(columns).width(stage.width - 48f).growY().pad(8f, 24f)
     }
 
     override fun render(delta: Float) {
         if (overviewReady && !startingGame) {
-            val preset = if (customSetupSelected) null else currentPreset()
-            if (setupSection == GameSetupSection.Overview && preset != displayedPreset) {
-                displayedPreset = preset
-                for ((choice, button) in presetButtons)
-                    button.style = GameSetupOverview.choice(button.text.toString(), choice == preset).style
-            }
             val parameters = gameSetupInfo.gameParameters
             val hasHuman = parameters.players.any { it.playerType == PlayerType.Human }
-            rightSideButton.isEnabled = hasHuman && parameters.victoryTypes.isNotEmpty()
+            rightSideButton.isEnabled = hasHuman && parameters.victoryTypes.isNotEmpty() &&
+                (parameters.randomNumberOfPlayers || parameters.players.size >= 2)
             val status = when {
                 parameters.victoryTypes.isEmpty() -> "No victory conditions were selected!".tr()
                 !hasHuman -> "No human players selected!".tr()
@@ -406,7 +404,7 @@ class NewGameScreen(
     /** Subtables may need an upper limit to their width - they can ask this function. */
     // In sync with isPortrait in init, here so UI details need not know about 3-column vs 1-column layout
     internal fun getColumnWidth() = floor(
-        if (UiNavigation.isIos) minOf(360f, directSetupWidth * .43f)
+        if (UiNavigation.isIos) directSetupWidth
         else if (stackedLayout) stage.width
         else (stage.width - 2f) / 3f
     )
@@ -730,11 +728,12 @@ class NewGameScreen(
         newGameOptionsTable.update()
     }
 
-    override fun recreate(): BaseScreen = NewGameScreen(gameSetupInfo, setupSection)
+    override fun recreate(): BaseScreen = NewGameScreen(gameSetupInfo)
 
     override fun dispose() {
         mapOptionsTable.cancelBackgroundJobs()
         if (setupFont.isInitialized()) formFont.dispose()
+        if (headingFont.isInitialized()) headingFont.value.dispose()
         super.dispose()
     }
 }

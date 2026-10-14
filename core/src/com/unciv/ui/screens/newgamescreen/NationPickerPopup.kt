@@ -5,6 +5,11 @@ import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.actions.TemporalAction
 import com.badlogic.gdx.scenes.scene2d.ui.Container
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton
+import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.extensions.toTextButton
+import com.unciv.ui.components.extensions.pad
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.WidgetGroup
 import com.badlogic.gdx.utils.Align
@@ -63,12 +68,17 @@ internal class NationPickerPopup(
         const val iconViewPadHorz = iconViewSpacing / 2  // a little empiric
     }
 
+    private val councilScreen = (playerPicker?.previousScreen as? NewGameScreen)?.takeIf { UiNavigation.isIos }
+    private val councilWidth = (stageToShowOn.width * .76f - 50f).coerceAtMost(1000f)
     private val settings = GUI.getSettings()
 
     // This Popup's body has two halves of same size, either side by side or arranged vertically
     // depending on screen proportions - determine height for one of those
-    private val partHeight = stageToShowOn.height * (if (stageToShowOn.isNarrowerThan4to3()) 0.45f else 0.8f)
-    private val civBlocksWidth = playerPicker?.civBlocksWidth ?: minOf(300f, stageToShowOn.width * 0.43f)
+    private val partHeight = if (councilScreen != null) (stageToShowOn.height * .84f - 140f).coerceAtLeast(140f)
+        else stageToShowOn.height * (if (stageToShowOn.isNarrowerThan4to3()) 0.45f else 0.8f)
+    private val civBlocksWidth = if (councilScreen != null) councilWidth * .34f
+        else playerPicker?.civBlocksWidth ?: minOf(300f, stageToShowOn.width * 0.43f)
+    private val detailsWidth = if (councilScreen != null) councilWidth * .66f else civBlocksWidth
 
     private val nationListTable = Table()
     private val nationListScroll = AutoScrollPane(nationListTable)
@@ -78,9 +88,10 @@ internal class NationPickerPopup(
     private class SelectInfo(
         val nation: Nation,
         val scrollY: Float,
-        val widget: Container<Portrait>? = null  // null = unused in List mode
+        val widget: Container<Portrait>? = null,  // null = unused in List mode
+        val row: Table? = null
     )
-    private var listMode: NationPickerListMode = settings.nationPickerListMode
+    private var listMode: NationPickerListMode = if (councilScreen != null) NationPickerListMode.List else settings.nationPickerListMode
     private var selection: SelectInfo? = null
     private val keySelectMap = mutableMapOf<Char, MutableList<SelectInfo>>()
     private var lastKeyPressed = Char.MIN_VALUE
@@ -88,11 +99,15 @@ internal class NationPickerPopup(
 
     init {
         nationListScroll.setOverscroll(false, false)
-        add(nationListScroll).size( civBlocksWidth + 10f, partHeight )
+        if (councilScreen != null) {
+            innerTable.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel, ExpeditionBlueTheme.controlBorder)
+            addTitleWithCloseButton(councilScreen.councilHeading("Choose civilization", 26))
+        }
+        add(nationListScroll).size(civBlocksWidth + 10f, partHeight).padRight(if (councilScreen != null) 12f else 0f)
         // +10, because the nation table has a 5f pad, for a total of +10f
         if (stageToShowOn.isNarrowerThan4to3()) row()
         nationDetailsScroll.setOverscroll(false, false)
-        add(nationDetailsScroll).size(civBlocksWidth + 10f, partHeight) // Same here, see above
+        add(nationDetailsScroll).size(detailsWidth + 10f, partHeight) // Same here, see above
 
         updateNationListTable()
 
@@ -100,7 +115,7 @@ internal class NationPickerPopup(
         addActionIcons()
 
         nationDetailsTable.touchable = Touchable.enabled
-        nationDetailsTable.onClick { returnSelected() }
+        if (councilScreen == null) nationDetailsTable.onClick { returnSelected() }
     }
 
     /** Note - [newMode]==null toggles, but this is prepared for key shortcuts _setting_ a mode.
@@ -121,6 +136,21 @@ internal class NationPickerPopup(
         toImageButton(buttonsIconSize, buttonsCircleSize, buttonsBackColor, overColor)
 
     private fun addActionIcons() {
+        if (councilScreen != null) {
+            bottomTable.add().growX()
+            val cancel = addCloseButton("Cancel").width(140f).minHeight(44f).actor
+            cancel.name = "setup-civ-cancel"
+            SinglePlayerSetup.style(cancel, councilScreen.formFont)
+            val confirm = addButton("Confirm selection", KeyCharAndCode.RETURN) { returnSelected() }
+                .width(160f).minHeight(44f).actor
+            confirm.name = "setup-civ-confirm"
+            SinglePlayerSetup.style(confirm, councilScreen.formFont)
+            confirm.style = TextButton.TextButtonStyle(confirm.style).apply {
+                up = SinglePlayerSetup.surface(ExpeditionBlueTheme.gold, ExpeditionBlueTheme.gold)
+                fontColor = ExpeditionBlueTheme.primaryInk
+            }
+            return
+        }
         // Despite being a Popup we use our own buttons - floating circular ones
         if (!UiNavigation.isIos) {
             val closeButton = getCloseButton(buttonsCircleSize, buttonsIconSize, buttonsBackColor, Color.FIREBRICK) { close() }
@@ -198,9 +228,21 @@ internal class NationPickerPopup(
         // Decide by listMode how each block is built -
         // for each a factory producing an Actor and info on how to select it
         fun getListModeNationActor(element: NationIterationElement): Pair<WidgetGroup, SelectInfo> {
-            val currentSelectInfo = SelectInfo(element.nation, currentY)
-            val nationTable = NationTable(element.nation, civBlocksWidth, 0f) // no need for min height
-            val cell = nationListTable.add(nationTable)
+            val nationTable = if (councilScreen == null) NationTable(element.nation, civBlocksWidth, 0f)
+                else Table().apply {
+                    background = SinglePlayerSetup.surface()
+                    pad(8f, 10f, 8f, 10f)
+                    add(ImageGetter.getNationPortrait(element.nation, 34f)).size(38f).padRight(10f)
+                    add(element.translatedName.toLabel(fontSize = 18)).minWidth(0f).growX().left()
+                    add(ImageGetter.getImage("OtherIcons/Checkmark", ExpeditionBlueTheme.gold).apply {
+                        name = "nation-selected"
+                        isVisible = false
+                    }).size(20f)
+                }
+            nationTable.name = "setup-nation-${element.nation.name}"
+            val currentSelectInfo = SelectInfo(element.nation, currentY, row = if (councilScreen == null) null else nationTable)
+            val cell = nationListTable.add(nationTable).width(civBlocksWidth)
+            if (councilScreen != null) cell.minHeight(54f).padBottom(8f)
             currentY += cell.padBottom + cell.prefHeight + cell.padTop
             cell.row()
             return nationTable to currentSelectInfo
@@ -242,7 +284,7 @@ internal class NationPickerPopup(
                     highlightNation(currentSelectInfo)
                 }
             }
-            nationActor.onDoubleClick {
+            if (councilScreen == null) nationActor.onDoubleClick {
                 selection = currentSelectInfo
                 returnSelected()
             }
@@ -310,7 +352,19 @@ internal class NationPickerPopup(
         }
 
         nationDetailsTable.clearChildren()  // .clear() also clears listeners!
-        nationDetailsTable.add(NationTable(selectInfo.nation, civBlocksWidth, partHeight, ruleset))
+        if (councilScreen == null) nationDetailsTable.add(NationTable(selectInfo.nation, civBlocksWidth, partHeight, ruleset))
+        else {
+            selection?.row?.apply {
+                background = SinglePlayerSetup.surface()
+                findActor<com.badlogic.gdx.scenes.scene2d.Actor>("nation-selected").isVisible = false
+            }
+            selectInfo.row?.apply {
+                background = SinglePlayerSetup.surface(ExpeditionBlueTheme.raised, ExpeditionBlueTheme.gold)
+                findActor<com.badlogic.gdx.scenes.scene2d.Actor>("nation-selected").isVisible = true
+            }
+            nationDetailsTable.add(councilDetails(selectInfo.nation)).width(detailsWidth).top()
+            nationDetailsScroll.scrollY = 0f
+        }
         selection = selectInfo
 
         nationListScroll.scrollY = selectInfo.scrollY -
@@ -320,6 +374,36 @@ internal class NationPickerPopup(
         // the scrollY centering is enough in List mode - the selection gets a thin border
         // oscillating between the Nation's colours:
         selectInfo.widget?.addAction(HighlightAction(selectInfo))
+    }
+
+    private fun councilDetails(nation: Nation) = Table().apply {
+        val textWidth = detailsWidth - 16f
+        top()
+        defaults().left().growX().padBottom(8f)
+        add(Table().apply {
+            val banner = Table().apply {
+                background = ImageGetter.getWhiteDotDrawable().tint(nation.getOuterColor())
+                if (nation.name == Constants.random || nation.name == Constants.spectator)
+                    add(ImageGetter.getNationPortrait(nation, 64f)).size(72f)
+                else add(ImageGetter.getImage("NationIcons/${nation.name}", nation.getInnerColor())).size(72f)
+            }
+            add(banner).size(128f, 88f).padRight(18f)
+            add(Table().apply {
+                add(councilScreen!!.councilHeading(nation.name, 28)).left().growX().row()
+                if (nation.leaderName.isNotEmpty())
+                    add(nation.leaderName.toLabel(fontSize = 18).apply { wrap = true }).growX().left().padTop(8f)
+            }).minWidth(0f).growX()
+        }).width(textWidth).padBottom(12f).row()
+        if (nation.startIntroPart1.isNotEmpty()) {
+            add("Civilization introduction".toLabel(ExpeditionBlueTheme.gold, 18)).row()
+            val intro = if (nation.name == "Rome") "Rome is known for city building, law and military strength. Lead your empire from a single city to the world."
+                else nation.startIntroPart1
+            add(intro.toLabel(fontSize = 18).apply { wrap = true }).width(textWidth).row()
+        }
+        add(com.unciv.ui.screens.civilopediascreen.MarkupRenderer.render(
+            nation.getCivilopediaTextLines(ruleset).filter { it.header != 3 }, textWidth,
+            iconDisplay = com.unciv.ui.screens.civilopediascreen.FormattedLine.IconDisplay.NoLink))
+            .width(textWidth).row()
     }
 
     @Suppress("UsePropertyAccessSyntax")  // setColor _is_ a field-by-field copy not a reference set

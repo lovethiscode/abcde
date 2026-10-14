@@ -22,6 +22,7 @@ import com.unciv.models.ruleset.nation.Nation
 import com.unciv.models.ruleset.unique.UniqueType
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.darken
+import com.unciv.ui.components.extensions.pad
 import com.unciv.ui.components.extensions.isEnabled
 import com.unciv.ui.components.extensions.setFontColor
 import com.unciv.ui.components.extensions.surroundWithCircle
@@ -211,63 +212,61 @@ class PlayerPickerTable(
         }
     }
 
-    internal fun createOpponentCounter() = SinglePlayerSetup.counter(
-        gameParameters.players.count { it.playerType == AI },
-        (previousScreen.ruleset.nations.values.count { it.isMajorCiv &&
-            !it.hasUnique(UniqueType.WillNotBeChosenForNewGames) } - 1).coerceAtLeast(0),
-        !locked && !gameParameters.randomNumberOfPlayers
-    ) { count ->
-        while (gameParameters.players.size > count + 1) gameParameters.players.removeAt(gameParameters.players.lastIndex)
-        while (gameParameters.players.size < count + 1) gameParameters.players.add(Player())
-        update()
-    }
-
     private fun buildDirectLayout() {
-        val width = (previousScreen as NewGameScreen).directSetupWidth
-        val columns = if (width >= 600f) 2 else 1
-        val panelWidth = (width - (columns - 1) * 24f) / columns
-        val self = gameParameters.players.first()
-        val civilization = Table().apply {
-            top()
-            add(SinglePlayerSetup.field("Selected civilization", createCivilizationSelector(), panelWidth)).growX().padBottom(16f).row()
-            val choices = (listOf(Constants.random, self.chosenCiv) + getAvailablePlayerCivs(self.chosenCiv).map { it.name }.toList())
-                .distinct().take(6)
-            add(Table().apply {
-                for ((index, civ) in choices.withIndex()) {
-                    add(GameSetupOverview.choice(civ, self.chosenCiv == civ).apply {
-                        isDisabled = locked || noRandom && civ == Constants.random
-                        onClick { popupNationPicker(self, noRandom, civ) }
-                    }).width((panelWidth - 16f) / 3f).minHeight(44f).padRight(if (index % 3 == 2) 0f else 8f).padBottom(8f)
-                    if (index % 3 == 2) row()
-                }
-            }).growX().row()
-            add("Civilizations".toTextButton().apply {
-                isDisabled = locked
-                onClick { popupNationPicker(self, noRandom) }
-            }).left().minHeight(44f).padTop(4f)
-        }
-        val opponents = Table().apply {
-            top()
-            add(SinglePlayerSetup.field("AI opponents", createOpponentCounter(), panelWidth)).growX().row()
-            if (gameParameters.randomNumberOfPlayers) {
-                randomNumberLabel = WrappableLabel("", panelWidth, Color.LIGHT_GRAY)
-                add(randomNumberLabel).growX().padTop(8f).row()
-                updateRandomNumberLabel()
+        val screen = previousScreen as NewGameScreen
+        val width = screen.directSetupWidth
+        val selectors = ArrayList<IconTextButton>()
+        for ((index, player) in gameParameters.players.withIndex()) {
+            val selector = createCivilizationSelector(player).apply { name = "setup-civ-$index" }
+            selectors.add(selector)
+            val row = Table().apply {
+                background = SinglePlayerSetup.surface(ExpeditionBlueTheme.raised,
+                    if (index == 0) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.border)
+                pad(4f, 8f, 4f, 8f)
+                add((if (index == 0) "You".tr() else "${"AI".tr()} $index").toLabel(fontSize = 16))
+                    .width(48f).left().padRight(4f)
+                add(selector).minWidth(0f).growX().minHeight(44f)
+                add((if (index == 0) "Human" else "AI").toLabel(fontSize = 16)).width(46f).center()
+                if (index > 0) add("×".toTextButton().apply {
+                    name = "setup-remove-$index"
+                    isDisabled = locked
+                    onClick { gameParameters.players.remove(player); update() }
+                }).size(36f).padLeft(4f)
+                else add().width(40f)
             }
-            add(SinglePlayerSetup.group("Choose opponent civilizations", panelWidth, "Civilizations.Opponents") { table ->
-                for (player in gameParameters.players.drop(1))
-                    table.add(SinglePlayerSetup.field("AI", createCivilizationSelector(player), panelWidth - 24f))
-                        .width(panelWidth - 24f).padBottom(8f).row()
-                SinglePlayerSetup.style(table, previousScreen.formFont)
-            }).width(panelWidth).padTop(12f).row()
-            add("Shuffle Civ Order at Start".toCheckBox(gameParameters.shufflePlayerOrder) {
-                gameParameters.shufflePlayerOrder = it
-            }.apply { isDisabled = locked; label.wrap = true }).growX().left().minHeight(44f).padTop(12f)
+            playerListTable.add(row).width(width).minHeight(54f).padBottom(8f).row()
         }
-        playerListTable.add(civilization).width(panelWidth).top().padRight(if (columns == 2) 24f else 0f)
-        if (columns == 1) playerListTable.row()
-        playerListTable.add(opponents).width(panelWidth).top().padTop(if (columns == 1) 20f else 0f)
-        SinglePlayerSetup.style(playerListTable, previousScreen.formFont)
+        val maximum = previousScreen.ruleset.nations.values.count {
+            it.isMajorCiv && !it.hasUnique(UniqueType.WillNotBeChosenForNewGames)
+        }
+        playerListTable.add(IconTextButton("Add civilization", ImageGetter.getImage("OtherIcons/New"), fontSize = 18).apply {
+            name = "setup-add"
+            isDisabled = locked || gameParameters.players.size >= maximum
+            onClick {
+                val available = if (noRandom || gameParameters.randomNumberOfPlayers) getAvailablePlayerCivs().firstOrNull() else null
+                gameParameters.players.add(if (available == null) Player() else Player(available.name))
+                update()
+            }
+        }).width(width).minHeight(44f).padTop(4f).padBottom(8f).row()
+        playerListTable.add(IconTextButton("Random civilizations", ImageGetter.getImage("OtherIcons/NationSwap"), fontSize = 18).apply {
+            name = "setup-random"
+            isDisabled = locked || noRandom || gameParameters.randomNumberOfPlayers
+            onClick { gameParameters.players.forEach { it.chosenCiv = Constants.random }; update() }
+        }).width(width).minHeight(44f).padBottom(8f).row()
+        if (gameParameters.randomNumberOfPlayers) {
+            randomNumberLabel = WrappableLabel("", width, ExpeditionBlueTheme.muted)
+            playerListTable.add(randomNumberLabel).growX().row()
+            updateRandomNumberLabel()
+        }
+        playerListTable.add("Shuffle Civ Order at Start".toCheckBox(gameParameters.shufflePlayerOrder) {
+            gameParameters.shufflePlayerOrder = it
+        }.apply { isDisabled = locked; label.wrap = true }).width(width).left().minHeight(44f)
+        SinglePlayerSetup.style(playerListTable, screen.formFont)
+        for (selector in selectors) selector.style = com.badlogic.gdx.scenes.scene2d.ui.Button.ButtonStyle(selector.style).apply {
+            up = null
+            down = SinglePlayerSetup.surface(ExpeditionBlueTheme.hero)
+            over = down
+        }
     }
 
     /**
