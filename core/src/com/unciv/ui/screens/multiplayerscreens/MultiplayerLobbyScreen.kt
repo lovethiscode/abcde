@@ -745,7 +745,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     setCouncilEnabled(this,connected && !busy && !configurationPending)
                     onClick {
                         Popup(this@MultiplayerLobbyScreen).apply {
-                            val card = playerCard(r,s,own,minOf(520f,this@MultiplayerLobbyScreen.stage.width - 80f))
+                            val card = playerCard(r,s,own,minOf(520f,this@MultiplayerLobbyScreen.stage.width - 80f)) { close() }
                             SinglePlayerSetup.style(card,formFont)
                             add(card).row()
                             addCloseButton()
@@ -853,7 +853,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }
         runRequest(configurationWrite = true, backAfter = backAfter) { client.command(session.gameId,"configuration",update) }
     }
-    private fun playerCard(r: LobbyRoom, s: LobbySeat, own: LobbySeat?, width: Float): Table {
+    private fun playerCard(r: LobbyRoom, s: LobbySeat, own: LobbySeat?, width: Float, beforeModal: () -> Unit = {}): Table {
         val mine = s === own
         val empty = s.human && s.playerId.isEmpty()
         val manualControl = s.manual && r.hostId == userId && own != null && r.state == "WAITING"
@@ -892,7 +892,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             add("Manually added".toLabel(Color.LIGHT_GRAY,16)).growX().left()
             if (manualControl) add("Player ID".toTextButton().apply {
                 isEnabled = connected && !busy && !configurationPending
-                onClick { editManualPlayer(s) }
+                onClick { beforeModal(); editManualPlayer(s) }
             }).height(36f)
         }).growX().padTop(4f).row()
         val controls = Table()
@@ -910,6 +910,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 }; isEnabled = connected && !busy && !configurationPending }).height(44f)
             }
             r.hostId == userId && s.human && !empty && r.state == "WAITING" -> controls.add("Kick".toTextButton().apply { onClick {
+                beforeModal()
                 ConfirmPopup(this@MultiplayerLobbyScreen,"Remove this player from the room?","Kick") {
                     runRequest { client.command(session.gameId,"kick",command().apply { seatId = s.seatId; targetOccupancy = s.occupancy }) }
                 }.open()
@@ -928,7 +929,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             if (r.hostId == userId && own != null && configurationSupported && r.state == "WAITING")
                 card.add("Add player manually".toTextButton().apply {
                     isEnabled = connected && !busy && !configurationPending
-                    onClick { editManualPlayer(s) }
+                    onClick { beforeModal(); editManualPlayer(s) }
                 }).height(44f).padTop(12f).left()
         } else {
             val civilization = Table().apply {
@@ -939,6 +940,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     portrait.touchable = Touchable.enabled
                     portrait.onClick {
                         if (busy || configurationPending) return@onClick
+                        beforeModal()
                         if (mine || manualControl) chooseCivilization(s) else chooseAiCivilization(s)
                     }
                 }
