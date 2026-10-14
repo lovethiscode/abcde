@@ -339,9 +339,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             ruleset.clear(); ruleset.add(RulesetCache.getComplexRuleset(gameSetupInfo.gameParameters))
             seatSources = ArrayList(latest.seats.map { it.seatId })
         }
-        if (!configurationPending) setup?.gameParameters?.players = ArrayList(latest.seats.map {
-            Player(it.civilization,if (it.human) PlayerType.Human else PlayerType.AI,it.playerId)
-        })
+        if (!configurationPending) {
+            setup?.gameParameters?.players = ArrayList(latest.seats.map {
+                Player(it.civilization,if (it.human) PlayerType.Human else PlayerType.AI,it.playerId)
+            })
+            seatSources = ArrayList(latest.seats.map { it.seatId })
+        }
         room = latest
         session.gameId = latest.gameId
         session.setup = latest.setup

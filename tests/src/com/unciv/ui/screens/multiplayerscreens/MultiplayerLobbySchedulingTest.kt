@@ -2,6 +2,10 @@ package com.unciv.ui.screens.multiplayerscreens
 
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
+import com.unciv.logic.multiplayer.lobby.LobbySession
+import com.unciv.logic.multiplayer.lobby.protocol.LobbyRoom
+import com.unciv.logic.multiplayer.lobby.protocol.LobbySeat
+import com.unciv.models.metadata.GameSetupInfo
 import kotlinx.coroutines.Job
 import org.junit.After
 import org.junit.Before
@@ -50,6 +54,26 @@ class MultiplayerLobbySchedulingTest {
         requests.add { sent.countDown() }
         mark(immediate = true)
         assertEquals(0L, sent.count)
+    }
+
+    @Test fun configurationAcknowledgementReindexesSeatsWithoutReplacingTheForm() {
+        val setup = GameSetupInfo().apply { mapParameters.seed = 424242L }
+        set("setup", setup)
+        set("session", LobbySession())
+        set("userId", "host")
+        set("seatSources", arrayListOf(0, 1, 3))
+        val latest = LobbyRoom().apply {
+            state = "WAITING"
+            seats = ArrayList((0..2).map { LobbySeat().apply { seatId = it } })
+        }
+
+        MultiplayerLobbyScreen::class.java.getDeclaredMethod("accept", LobbyRoom::class.java, Boolean::class.javaPrimitiveType)
+            .apply { isAccessible = true }.invoke(screen, latest, true)
+
+        assertEquals(listOf(0, 1, 2), MultiplayerLobbyScreen::class.java.getDeclaredField("seatSources")
+            .apply { isAccessible = true }.get(screen))
+        assertSame(setup, screen.gameSetupInfo)
+        assertEquals(424242L, screen.gameSetupInfo.mapParameters.seed)
     }
 
     @Test fun newDeadlineCancelsThePreviousScheduledCallback() {
