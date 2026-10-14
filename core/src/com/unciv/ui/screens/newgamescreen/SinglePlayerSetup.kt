@@ -24,10 +24,16 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 
 /** Compact forms used only by the iOS single-player setup. */
 internal object SinglePlayerSetup {
-    fun surface(color: Color = ExpeditionBlueTheme.raised, outline: Color = ExpeditionBlueTheme.border) =
-        ExpeditionBlueTheme.outlinedControl(
-            BaseScreen.skinStrings.getUiBackground("SinglePlayerSetup/Surface", BaseScreen.skinStrings.roundedEdgeRectangleSmallShape, color),
-            BaseScreen.skinStrings.getUiBackground("SinglePlayerSetup/Outline", BaseScreen.skinStrings.roundedEdgeRectangleSmallShape, outline))
+    fun surface(color: Color = ExpeditionBlueTheme.raised, outline: Color = ExpeditionBlueTheme.border): BaseDrawable {
+        val fill = BaseScreen.skinStrings.getUiBackground("SinglePlayerSetup/Surface", BaseScreen.skinStrings.roundedEdgeRectangleSmallShape, color)
+        val edge = BaseScreen.skinStrings.getUiBackground("SinglePlayerSetup/Outline", BaseScreen.skinStrings.roundedEdgeRectangleSmallShape, outline)
+        return object : BaseDrawable(fill) {
+            override fun draw(batch: com.badlogic.gdx.graphics.g2d.Batch, x: Float, y: Float, width: Float, height: Float) {
+                edge.draw(batch, x, y, width, height)
+                fill.draw(batch, x + 1f, y + 1f, width - 2f, height - 2f)
+            }
+        }
+    }
 
     fun style(actor: Actor, font: BitmapFont) {
         when (actor) {
@@ -62,12 +68,21 @@ internal object SinglePlayerSetup {
             is SelectBox<*> -> actor.style = SelectBox.SelectBoxStyle(actor.style).apply {
                 this.font = font
                 listStyle = ListStyle(listStyle).apply { this.font = font }
-                val body = surface(ExpeditionBlueTheme.raised, ExpeditionBlueTheme.controlBorder)
+                val body = surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.border)
+                val iconName = when (actor.name) {
+                    "setup-field-Difficulty" -> "OtherIcons/Capital"
+                    "setup-field-Game Speed" -> "OtherIcons/Timer"
+                    "setup-field-Starting Era" -> "VictoryTypeIcons/Time"
+                    "setup-field-City-States" -> "OtherIcons/Cities"
+                    else -> null
+                }
+                val icon = iconName?.let { ImageGetter.getDrawable(it).tint(ExpeditionBlueTheme.gold) }
                 val arrow = ImageGetter.getDrawable("OtherIcons/ArrowRight").tint(ExpeditionBlueTheme.text) as TransformDrawable
                 background = object : BaseDrawable(body) {
-                    init { leftWidth = 10f; rightWidth = 28f; topHeight = 8f; bottomHeight = 8f }
+                    init { leftWidth = if (icon == null) 10f else 38f; rightWidth = 28f; topHeight = 8f; bottomHeight = 8f }
                     override fun draw(batch: com.badlogic.gdx.graphics.g2d.Batch, x: Float, y: Float, width: Float, height: Float) {
                         body.draw(batch, x, y, width, height)
+                        icon?.draw(batch, x + 10f, y + height / 2f - 9f, 18f, 18f)
                         arrow.draw(batch, x + width - 24f, y + height / 2f - 7f, 7f, 7f, 14f, 14f, 1f, 1f, -90f)
                     }
                 }
@@ -96,8 +111,16 @@ internal object SinglePlayerSetup {
             else -> title
         }
         control.name = "setup-field-$title"
-        add(caption.toLabel(ExpeditionBlueTheme.text, 18).apply { wrap = true })
-            .width(labelWidth).left().padRight(8f)
+        val captionIcon = when (title) {
+            "Map source" -> "OtherIcons/Resources"
+            "Map Type", "Map Generation Type" -> "OtherIcons/Terrains"
+            "World Size" -> "OtherIcons/Hexagon"
+            else -> null
+        }
+        add(Table().apply {
+            if (captionIcon != null) add(ImageGetter.getImage(captionIcon, ExpeditionBlueTheme.text)).size(18f).padRight(7f)
+            add(caption.toLabel(ExpeditionBlueTheme.text, 18).apply { wrap = true }).minWidth(0f).growX().left()
+        }).width(labelWidth).left().padRight(8f)
         add(control).minWidth(0f).width(width - labelWidth - 20f).height(36f).fillX()
     }
 
@@ -114,10 +137,16 @@ internal object SinglePlayerSetup {
 
     fun group(title: String, width: Float, id: String, opened: Boolean = false,
               content: (Table) -> Unit) = ExpanderTab(title, fontSize = 18,
+        icon = ImageGetter.getImage(when (title) {
+            "Advanced Settings" -> "OtherIcons/Options"
+            "Extension mods" -> "OtherIcons/Mods"
+            else -> "OtherIcons/Settings"
+        }, ExpeditionBlueTheme.text).apply { setSize(20f, 20f) },
         startsOutOpened = opened, defaultPad = 12f, expanderWidth = width,
         expanderHeight = 36f, headerPad = 0f, persistenceID = "SinglePlayer.$id", initContent = content).apply {
         name = "setup-group-$title"
         header.pad(0f, 10f, 0f, 10f)
+        header.cells.first().size(20f).padRight(10f)
         header.background = surface()
         headerIcon.rotation = 180f
     }

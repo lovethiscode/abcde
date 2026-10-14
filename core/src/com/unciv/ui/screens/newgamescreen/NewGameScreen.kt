@@ -179,7 +179,14 @@ class NewGameScreen(
             if (UiNavigation.isIos) {
                 SinglePlayerSetup.style(resetToDefaultsButton, formFont)
                 resetToDefaultsButton.name = "setup-reset"
-                resetToDefaultsButton.pad(10f, 16f, 10f, 16f)
+                resetToDefaultsButton.style = TextButtonStyle(resetToDefaultsButton.style).apply {
+                    up = SinglePlayerSetup.surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.gold)
+                }
+                val resetLabel = resetToDefaultsButton.label
+                resetToDefaultsButton.clearChildren()
+                resetToDefaultsButton.add(ImageGetter.getImage("OtherIcons/Load", ExpeditionBlueTheme.gold)).size(20f).padRight(8f)
+                resetToDefaultsButton.add(resetLabel)
+                resetToDefaultsButton.pad(12f, 18f, 12f, 18f)
             }
             horizontalGroup.addActor(resetToDefaultsButton)
         }
@@ -200,7 +207,7 @@ class NewGameScreen(
                 down = SinglePlayerSetup.surface(ExpeditionBlueTheme.hero, ExpeditionBlueTheme.gold)
                 fontColor = ExpeditionBlueTheme.primaryInk
             }
-            startGameButton.pad(10f, 18f, 10f, 18f)
+            startGameButton.pad(12f, 32f, 12f, 32f)
             val startLabel = startGameButton.label
             startGameButton.clearChildren()
             startGameButton.add(ImageGetter.getImage("OtherIcons/Triangle", ExpeditionBlueTheme.primaryInk).apply {
@@ -234,7 +241,13 @@ class NewGameScreen(
         scrollPane.setScrollingDisabled(true, true)
         val header = Table().apply {
             add().width((190f - closeButton.prefWidth).coerceAtLeast(0f))
-            add(councilHeading("Singleplayer", 28).apply { setAlignment(com.badlogic.gdx.utils.Align.center) }).growX()
+            add(Table().apply {
+                add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX()
+                add("◇".toLabel(ExpeditionBlueTheme.gold, 14)).padRight(22f)
+                add(councilHeading("Singleplayer", 28)).pad(0f, 14f, 0f, 14f)
+                add("◇".toLabel(ExpeditionBlueTheme.gold, 14)).padLeft(22f)
+                add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX()
+            }).growX().pad(0f, 30f, 0f, 30f)
             newGameOptionsTable.createBaseRulesetSelector()?.let {
                 SinglePlayerSetup.style(it, formFont)
                 add(it).width(190f).minHeight(44f).padLeft(16f)

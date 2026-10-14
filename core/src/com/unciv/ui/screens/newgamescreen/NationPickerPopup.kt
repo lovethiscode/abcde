@@ -101,7 +101,10 @@ internal class NationPickerPopup(
         nationListScroll.setOverscroll(false, false)
         if (councilScreen != null) {
             innerTable.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel, ExpeditionBlueTheme.controlBorder)
-            addTitleWithCloseButton(councilScreen.councilHeading("Choose civilization", 26))
+            addTitleWithCloseButton(Table().apply {
+                add(ImageGetter.getImage("OtherIcons/Cities", ExpeditionBlueTheme.gold)).size(24f).padRight(10f)
+                add(councilScreen.councilHeading("Choose civilization", 26))
+            })
         }
         add(nationListScroll).size(civBlocksWidth + 10f, partHeight).padRight(if (councilScreen != null) 12f else 0f)
         // +10, because the nation table has a 5f pad, for a total of +10f
