@@ -401,7 +401,7 @@ internal class NationPickerPopup(
                 val introWidth = textWidth - 146f
                 add(councilScreen!!.councilHeading(nation.name, 28).apply { color = ExpeditionBlueTheme.gold }).left().growX().row()
                 if (nation.leaderName.isNotEmpty())
-                    add(text("{Council leader}: {${nation.leaderName}}", introWidth)).width(introWidth).left().padTop(4f).row()
+                    add(text("{Leader}: {${nation.leaderName}}", introWidth)).width(introWidth).left().padTop(4f).row()
                 if (nation.startIntroPart1.isNotEmpty()) {
                     add(heading("Civilization introduction", "OtherIcons/Scenarios")).padTop(8f).growX().row()
                     val intro = if (nation.name == "Rome") "Rome is known for city building, law and military strength. Lead your empire from a single city to the world."
@@ -417,7 +417,7 @@ internal class NationPickerPopup(
         if (ability.isNotEmpty()) add(text(ability)).width(textWidth).row()
         val units = ruleset.units.values.filter { it.uniqueTo != null && nation.matchesFilter(it.uniqueTo!!) && !it.isHiddenFromCivilopedia(ruleset) }
         if (units.isNotEmpty()) {
-            add(heading("Council unique units", "OtherIcons/UnitNameGroups")).padTop(4f).row()
+            add(heading("Unique units", "OtherIcons/UnitNameGroups")).padTop(4f).row()
             add(Table().apply {
                 for ((index, unit) in units.withIndex()) {
                     val cardWidth = textWidth / 2f

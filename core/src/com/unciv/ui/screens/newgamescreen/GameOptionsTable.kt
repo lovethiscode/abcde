@@ -182,7 +182,7 @@ class GameOptionsTable(
             add(Table().apply { defaults().growX(); addMinMaxCityStatesSliders() }).growX().row()
         add(Table().apply {
             add(ImageGetter.getImage("OtherIcons/AchievementTrophy", ExpeditionBlueTheme.gold)).size(22f).padRight(8f)
-            add("Council victory conditions".toLabel(ExpeditionBlueTheme.gold, 20))
+            add("Victory conditions".toLabel(ExpeditionBlueTheme.gold, 20))
         }).left().padTop(4f).padBottom(4f).row()
         addVictoryTypeCheckboxes()
         fun group(title: String, id: String, opened: Boolean = false, build: Table.() -> Unit) {

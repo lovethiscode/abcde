@@ -593,7 +593,7 @@ class MapParametersTable(
         }
 
         table.add("RNG Seed".toLabel()).left()
-        if (roomLayoutWidth != null) table.row()
+        if (roomLayoutWidth != null || previousScreen is NewGameScreen && UiNavigation.isIos) table.row()
         table.add(seedTextField).fillX().padBottom(10f).row()
 
         fun addSlider(text: String, getValue:()->Float, min: Float, max: Float, step: Float, onChange: (value: Float)->Unit): UncivSlider {
@@ -614,7 +614,7 @@ class MapParametersTable(
             val button = text.toTextButton()
             button.onClick { action.invoke(true) }
             if (shouldAddToTable)
-                table.add(button).colspan(2).padTop(10f).row()
+                table.add(button).colspan(if (previousScreen is NewGameScreen && UiNavigation.isIos) 1 else 2).padTop(10f).row()
         }
 
         fun addCheckBox(text: String, initialState: Boolean, action: ((Boolean) -> Unit)) {

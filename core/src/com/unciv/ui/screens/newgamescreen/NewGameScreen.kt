@@ -185,7 +185,7 @@ class NewGameScreen(
         }
 
         val startGameButton = (if (UiNavigation.isIos) rightSideButton else "Start game!".toTextButton()).apply {
-            setText((if (UiNavigation.isIos) "Council start game" else "Start game!").tr())
+            setText((if (UiNavigation.isIos) "Start game" else "Start game!").tr())
             if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("positive", TextButtonStyle::class.java)
             if (!ExpeditionBlueTheme.enabled) color = Color.GREEN
             name = "setup-start"
@@ -253,8 +253,8 @@ class NewGameScreen(
             add(Table().apply {
                 add(ImageGetter.getImage(icon, ExpeditionBlueTheme.gold)).size(24f).padRight(10f)
                 add(councilHeading(when (title) {
-                    "Game Options" -> "Council game options"
-                    "Map Options" -> "Council map options"
+                    "Game Options" -> "Game options"
+                    "Map Options" -> "Map options"
                     else -> title
                 }, 22)).left().growX()
             }).growX().padBottom(6f).row()
@@ -294,7 +294,7 @@ class NewGameScreen(
                 parameters.victoryTypes.isEmpty() -> "No victory conditions were selected!".tr()
                 !hasHuman -> "No human players selected!".tr()
                 else -> "${parameters.baseRuleset.tr()} | ${parameters.difficulty.tr()} | ${parameters.speed.tr()} | ${parameters.startingEra.tr()} | ${parameters.numberOfCityStates} ${"City-States".tr()}\n" +
-                    "${"Council victory conditions".tr()}: ${parameters.victoryTypes.joinToString(" / ") { (if (it == "Domination") "Military" else it).tr() }} | ${"Council map".tr()}: ${GameSetupOverview.mapDescription(gameSetupInfo)}"
+                    "${"Victory conditions".tr()}: ${parameters.victoryTypes.joinToString(" / ") { (if (it == "Domination") "Military" else it).tr() }} | ${"Map".tr()}: ${GameSetupOverview.mapDescription(gameSetupInfo)}"
             }
             if (status != setupStatus) {
                 setupStatus = status
