@@ -136,19 +136,37 @@ internal object SinglePlayerSetup {
     }
 
     fun group(title: String, width: Float, id: String, opened: Boolean = false,
-              content: (Table) -> Unit) = ExpanderTab(title, fontSize = 18,
+              content: (Table) -> Unit): ExpanderTab {
+        lateinit var expander: ExpanderTab
+        expander = ExpanderTab(title, fontSize = 18,
         icon = ImageGetter.getImage(when (title) {
             "Advanced Settings" -> "OtherIcons/Options"
             "Extension mods" -> "OtherIcons/Mods"
             else -> "OtherIcons/Settings"
         }, ExpeditionBlueTheme.text).apply { setSize(20f, 20f) },
         startsOutOpened = opened, defaultPad = 12f, expanderWidth = width,
-        expanderHeight = 36f, headerPad = 0f, persistenceID = "SinglePlayer.$id", initContent = content).apply {
-        name = "setup-group-$title"
-        header.pad(0f, 10f, 0f, 10f)
-        header.cells.first().size(20f).padRight(10f)
-        header.background = surface()
-        headerIcon.rotation = 180f
+        expanderHeight = 36f, headerPad = 0f, persistenceID = "SinglePlayer.$id",
+        onChange = {
+            expander.headerIcon.rotation = if (expander.isOpen) 90f else 180f
+            if (expander.isOpen) {
+                var parent = expander.parent
+                while (parent != null && parent !is com.badlogic.gdx.scenes.scene2d.ui.ScrollPane) parent = parent.parent
+                val scroll = parent as? com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
+                if (scroll != null) {
+                    scroll.validate()
+                    val headerOrigin = expander.header.localToActorCoordinates(scroll.actor, com.badlogic.gdx.math.Vector2())
+                    scroll.scrollY = (scroll.actor.height - headerOrigin.y - expander.header.height).coerceIn(0f, scroll.maxY)
+                    scroll.updateVisualScroll()
+                }
+            }
+        }, initContent = content).apply {
+            name = "setup-group-$title"
+            header.pad(0f, 10f, 0f, 10f)
+            header.cells.first().size(20f).padRight(10f)
+            header.background = surface()
+            headerIcon.rotation = if (isOpen) 90f else 180f
+        }
+        return expander
     }
 
 }

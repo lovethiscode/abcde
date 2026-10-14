@@ -217,6 +217,7 @@ class PlayerPickerTable(
     private fun buildDirectLayout() {
         val screen = previousScreen as NewGameScreen
         val width = screen.directSetupWidth
+        playerListTable.top()
         val selectors = ArrayList<IconTextButton>()
         for ((index, player) in gameParameters.players.withIndex()) {
             val selector = createCivilizationSelector(player).apply { name = "setup-civ-$index" }

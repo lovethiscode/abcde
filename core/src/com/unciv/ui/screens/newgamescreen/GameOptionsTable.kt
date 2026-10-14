@@ -197,8 +197,8 @@ class GameOptionsTable(
                 add(victory.name.toCheckBox(victory.name in gameParameters.victoryTypes) {
                     if (it) gameParameters.victoryTypes.add(victory.name) else gameParameters.victoryTypes.remove(victory.name)
                     update()
-                }.apply { name = victory.name; isDisabled = locked }).growX().row()
-            addMaxTurnsSlider()?.let { add(it).growX().row() }
+                }.apply { name = victory.name; isDisabled = locked; align(Align.left) }).colspan(2).growX().row()
+            addMaxTurnsSlider()?.let { add(it).colspan(2).minWidth(0f).growX().row() }
             addAdvancedSettings(this)
             if (gameParameters.randomNumberOfPlayers) addMinMaxPlayersSliders()
         }
@@ -233,7 +233,8 @@ class GameOptionsTable(
                 addCensorStatsCheckbox()
                 addShowAdditionalRankingTypesCheckbox()
             }
-            it.add(statsTable).left()
+            if (directLayoutWidth != null) it.add(statsTable).colspan(2).minWidth(0f).growX().left().row()
+            else it.add(statsTable).left()
         }
     }
 
@@ -426,7 +427,7 @@ class GameOptionsTable(
             popup.open()
             popup.update()
         }
-        add(button).row()
+        add(button).colspan(if (directLayoutWidth != null) 2 else 1).row()
     }
 
     private fun numberOfMajorCivs() = ruleset.nations.values.count {
@@ -515,10 +516,17 @@ class GameOptionsTable(
         }
         maxSlider.isDisabled = locked
 
-        add(minText.toLabel()).left().expandX()
-        add(minSlider).padTop(10f).row()
-        add(maxText.toLabel()).left().expandX()
-        add(maxSlider).padTop(10f).row()
+        if (directLayoutWidth != null) {
+            add(minText.toLabel()).colspan(2).left().row()
+            add(minSlider).colspan(2).minWidth(0f).growX().padTop(10f).row()
+            add(maxText.toLabel()).colspan(2).left().row()
+            add(maxSlider).colspan(2).minWidth(0f).growX().padTop(10f).row()
+        } else {
+            add(minText.toLabel()).left().expandX()
+            add(minSlider).padTop(10f).row()
+            add(maxText.toLabel()).left().expandX()
+            add(maxSlider).padTop(10f).row()
+        }
     }
 
     private fun Table.addMinMaxPlayersSliders() {
@@ -552,7 +560,8 @@ class GameOptionsTable(
         if (gameParameters.victoryTypes.none { ruleset.victories[it]?.enablesMaxTurns() == true })
             return null
 
-        add("{Max Turns}:".toLabel()).left().expandX()
+        if (directLayoutWidth != null) add("{Max Turns}:".toLabel()).colspan(2).left().row()
+        else add("{Max Turns}:".toLabel()).left().expandX()
         val slider = UncivSlider(100f, 1500f, 5f, initial = gameParameters.maxTurns.toFloat()) {
             gameParameters.maxTurns = it.toInt()
         }
