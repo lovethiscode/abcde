@@ -84,7 +84,7 @@ class GameOptionsTable(
     }
 
     fun update() {
-        clear()
+        clearChildren()
 
         // Mods may have changed (e.g. custom map selection)
         modCheckboxes.updateSelection()
