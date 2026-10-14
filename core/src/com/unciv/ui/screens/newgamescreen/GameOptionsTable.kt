@@ -52,7 +52,8 @@ class GameOptionsTable(
     private val forInviteRoom: Boolean = false,
     private val onConfigurationChanged: (() -> Unit)? = null,
     private val roomLayoutWidth: Float? = null,
-    private val directLayoutWidth: Float? = null
+    private val directLayoutWidth: Float? = null,
+    private val directLayoutFont: com.badlogic.gdx.graphics.g2d.BitmapFont? = null
 ) : Table(BaseScreen.skin) {
     private var gameParameters = previousScreen.gameSetupInfo.gameParameters
     private var ruleset = previousScreen.ruleset
@@ -167,6 +168,7 @@ class GameOptionsTable(
     }
 
     private fun buildDirectLayout(width: Float) {
+        val font = directLayoutFont ?: (previousScreen as NewGameScreen).formFont
         background = null
         defaults().pad(0f)
         val fields = createOverviewFields().toMutableList()
@@ -189,7 +191,7 @@ class GameOptionsTable(
             add(SinglePlayerSetup.group(title, width, "Rules.$id", opened) { table ->
                 table.defaults().left().growX().minHeight(44f).padBottom(8f)
                 table.build()
-                SinglePlayerSetup.style(table, (previousScreen as NewGameScreen).formFont)
+                SinglePlayerSetup.style(table, font)
             }).width(width).padTop(8f).row()
         }
         group("Advanced Settings", "Advanced", gameParameters.enableRandomNationsPool) {
@@ -202,10 +204,13 @@ class GameOptionsTable(
             addAdvancedSettings(this)
             if (gameParameters.randomNumberOfPlayers) addMinMaxPlayersSliders()
         }
-        if (modCheckboxes.children.size == 0)
-            group("Extension mods", "Mods") { add("No mods installed".toLabel().apply { wrap = true }).growX().row() }
+        if (forInviteRoom || modCheckboxes.children.size == 0)
+            group("Extension mods", "Mods") {
+                add((if (forInviteRoom) "Rooms require generated maps without mods" else "No mods installed")
+                    .toLabel().apply { wrap = true }).growX().row()
+            }
         else add(modCheckboxes).width(width).padTop(8f).row()
-        SinglePlayerSetup.style(this, (previousScreen as NewGameScreen).formFont)
+        SinglePlayerSetup.style(this, font)
     }
 
     private fun addAdvancedSettings(it: Table) {

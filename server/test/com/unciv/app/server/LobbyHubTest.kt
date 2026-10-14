@@ -222,6 +222,29 @@ class LobbyHubTest {
         now++
         assertEquals("",service.maintain(room.gameId).seats[1].playerId)
     }
+    @Test fun rejectedCommandStillBroadcastsCommittedMemberExpiry() = runBlocking {
+        val room = create(3); val h = connect(room,host)
+        val stale = connect(room,UUID.randomUUID().toString(),true)
+        val live = connect(room,UUID.randomUUID().toString(),true)
+        val joined = service.find(room.gameId)!!
+        hub.detach(stale.socket)
+        now += 5 * 60_000L - 1
+        for (peer in listOf(h,live)) hub.handle(peer.socket,message(joined,peer.socket.playerId,"heartbeat"))
+        hub.maintain()
+        now += 2
+        for (peer in listOf(h,live)) hub.handle(peer.socket,message(joined,peer.socket.playerId,"heartbeat"))
+        val offsets = listOf(h,live).associateWith { it.history.size }
+        val request = message(service.find(room.gameId)!!,live.socket.playerId,"ready").apply {
+            command!!.seatRevision += 99; command!!.ready = true
+        }
+        assertEquals("COMMAND_FAILED",issue(live,request).code)
+        assertEquals("",service.find(room.gameId)!!.seats[1].playerId)
+        for (peer in listOf(h,live)) {
+            val snapshot = peer.history.drop(offsets.getValue(peer)).last { it.type == "snapshot" }.room!!
+            assertEquals("",snapshot.seats[1].playerId)
+            assertEquals("Random",snapshot.seats[1].civilization)
+        }
+    }
     @Test fun connectionTimeoutUsesLastSignalInsteadOfExtendingRetentionToDetectionTime() = runBlocking {
         val room = create(); connect(room,host)
         val guest = UUID.randomUUID().toString(); val g = connect(room,guest,true); ready(g)
