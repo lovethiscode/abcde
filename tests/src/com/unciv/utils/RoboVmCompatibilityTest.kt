@@ -8,7 +8,7 @@ class RoboVmCompatibilityTest {
     fun knownCallSitesAvoidUnsupportedRoboVmJavaDefaultMethods() {
         // Scope: reachable source call sites, not Kotlin-generated collection bridge methods.
         val forbiddenReferences = mapOf(
-            "com/unciv/models/translations/TranslationsKt.class" to "getOrDefault",
+            "com/unciv/models/translations/TranslationExtensionsKt.class" to "getOrDefault",
             "com/unciv/ui/components/widgets/SortableGrid.class" to "reversed",
             "com/unciv/logic/BackwardCompatibility.class" to "replaceAll",
         )
