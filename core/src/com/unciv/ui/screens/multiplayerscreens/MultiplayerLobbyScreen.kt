@@ -571,8 +571,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val gameContent = if (editable) gameSettings!! else readOnlyGameSettings(columnWidth)
         val mapContent = Table().apply {
             top()
-            add(mapSettings!!.createOverviewPreview(columnWidth, (columnWidth / 1.85f).coerceAtMost(190f)))
-                .width(columnWidth).padBottom(6f).row()
+            val previewHeight = (columnWidth / 1.85f).coerceAtMost(190f)
+            add(mapSettings!!.createOverviewPreview(columnWidth, previewHeight))
+                .size(columnWidth,previewHeight).padBottom(6f).row()
             add("Example map".toLabel(ExpeditionBlueTheme.muted,14)).padBottom(8f).row()
             add(if (editable) mapSettings!! else readOnlyMapSettings(columnWidth)).width(columnWidth).top()
         }

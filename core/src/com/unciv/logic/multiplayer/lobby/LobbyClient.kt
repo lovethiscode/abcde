@@ -141,6 +141,7 @@ class LobbyClient(val roomApiUrl: String, private val transport: LobbyTransport 
                     onConnection(false,if (e is LobbyConnectionException) e.message ?: "Room request failed. Please retry." else "Connection failed. Retrying...")
                     if (e is LobbyConnectionException && e.code != "RETRY") {
                         if (e.code in setOf("MEMBERSHIP_EXPIRED","ROOM_NOT_FOUND","ROOM_CLOSED")) current.clearIfCurrent()
+                        if (e.code == "MEMBERSHIP_EXPIRED") current.occupancy = ""
                         break
                     }
                 } finally { withContext(NonCancellable) { disconnect() } }
