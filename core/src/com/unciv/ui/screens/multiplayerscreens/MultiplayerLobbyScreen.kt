@@ -736,7 +736,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     setCouncilEnabled(this,connected && !busy && !configurationPending)
                     onClick {
                         Popup(this@MultiplayerLobbyScreen).apply {
-                            val card = playerCard(r,s,own,minOf(520f,stage.width - 80f))
+                            val card = playerCard(r,s,own,minOf(520f,this@MultiplayerLobbyScreen.stage.width - 80f))
                             SinglePlayerSetup.style(card,formFont)
                             add(card).row()
                             addCloseButton()
