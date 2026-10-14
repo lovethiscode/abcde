@@ -175,6 +175,7 @@ class MapParametersTable(
             addAdvancedControls(table)
             SinglePlayerSetup.style(table, directLayoutFont)
         }).width(width).padTop(6f).row()
+        SinglePlayerSetup.style(this, directLayoutFont)
     }
 
     private fun addMapShapeSelectBox() {
@@ -616,13 +617,13 @@ class MapParametersTable(
         }
 
         table.add("RNG Seed".toLabel()).left()
-        if (roomLayoutWidth != null || previousScreen is NewGameScreen && UiNavigation.isIos) table.row()
+        if (roomLayoutWidth != null || directLayoutWidth != null) table.row()
         table.add(seedTextField).fillX().padBottom(10f).row()
 
         fun addSlider(text: String, getValue:()->Float, min: Float, max: Float, step: Float, onChange: (value: Float)->Unit): UncivSlider {
             val slider = UncivSlider(min, max, step, onChange = {onChange(it); generateExampleMap()}, initial = getValue())
             table.add(text.toLabel()).left()
-            if (roomLayoutWidth != null || previousScreen is NewGameScreen && UiNavigation.isIos) table.row()
+            if (roomLayoutWidth != null || directLayoutWidth != null) table.row()
             table.add(slider).fillX().row()
             advancedSliders[slider] = getValue
             return slider
@@ -637,7 +638,7 @@ class MapParametersTable(
             val button = text.toTextButton()
             button.onClick { action.invoke(true) }
             if (shouldAddToTable)
-                table.add(button).colspan(if (previousScreen is NewGameScreen && UiNavigation.isIos) 1 else 2).padTop(10f).row()
+                table.add(button).colspan(if (directLayoutWidth != null) 1 else 2).padTop(10f).row()
         }
 
         fun addCheckBox(text: String, initialState: Boolean, action: ((Boolean) -> Unit)) {

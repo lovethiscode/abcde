@@ -134,6 +134,13 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             disabledFontColor = ExpeditionBlueTheme.muted
         }
     }
+    private fun setCouncilEnabled(button: TextButton, enabled: Boolean) {
+        if (!UiNavigation.isIos) button.isEnabled = enabled
+        else {
+            button.isDisabled = !enabled
+            button.touchable = if (enabled) Touchable.enabled else Touchable.disabled
+        }
+    }
 
     companion object {
         fun openRoom() {
@@ -422,8 +429,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             host -> "Everyone is ready. You can start the game.".tr()
             else -> "Everyone is ready. Waiting for the host to start.".tr()
         })
-        inviteButton.isEnabled = connected && r?.state == "WAITING" && own != null && !busy && !configurationPending
-        copyInvitationButton.isEnabled = inviteButton.isEnabled
+        setCouncilEnabled(inviteButton,connected && r?.state == "WAITING" && own != null && !busy && !configurationPending)
+        setCouncilEnabled(copyInvitationButton,inviteButton.isEnabled)
         val width = stage.width - if (UiNavigation.isIos) 48f else 32f
         val landscape = r != null && !isNarrowerThan4to3()
         if (landscape || UiNavigation.isIos) {
@@ -462,7 +469,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 add(counts.toLabel(if (UiNavigation.isIos) ExpeditionBlueTheme.muted else Color.LIGHT_GRAY,
                     if (UiNavigation.isIos) 14 else 18)).left().padTop(4f).padBottom(if (UiNavigation.isIos) 4f else 12f).row()
             }
-            val players = Table()
+            val players = Table().apply { if (UiNavigation.isIos) top() }
             if (!landscape && !UiNavigation.isIos) players.add(playersHeading).growX().row()
             if (own == null && r.state == "WAITING") players.add("Rejoin room".toTextButton().apply {
                 onClick {
@@ -470,7 +477,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     session.save(); client.stop(); connectRoom(join = true)
                 }
                 isEnabled = !busy
-            }).height(44f).padBottom(12f).row()
+            }).height(44f).growX().padBottom(12f).row()
             val grid = Table()
             val columns = if (!UiNavigation.isIos && cardsWidth >= 640f) 2 else 1
             val cardWidth = (cardsWidth - (columns - 1) * 12f) / columns
@@ -482,12 +489,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             players.add(grid).growX().row()
             if (editable) players.add((if (UiNavigation.isIos) "Add seat" else "Add player").toTextButton().apply {
                 if (UiNavigation.isIos) SinglePlayerSetup.style(this,formFont)
-                isEnabled = connected && !busy && !configurationPending && r.seats.size < minOf(64,ruleset.nations.values.count { it.isMajorCiv })
+                setCouncilEnabled(this,connected && !busy && !configurationPending && r.seats.size < minOf(64,ruleset.nations.values.count { it.isMajorCiv }))
                 onClick {
                     gameSetupInfo.gameParameters.players.add(Player(playerType = PlayerType.Human))
                     seatSources.add(-1); markConfigurationChanged(immediate = true)
                 }
-            }).height(44f).padBottom(12f).row()
+            }).height(44f).growX().padBottom(12f).row()
             val information: (Table) -> Unit = { table ->
                 table.add("Game ID".toLabel(Color.LIGHT_GRAY,16)).left().row()
                 table.add(r.gameId.toLabel(fontSize = 16).apply { setText(r.gameId); setWrap(true) }).growX().row()
@@ -526,22 +533,22 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             if (UiNavigation.isIos) SinglePlayerSetup.style(this,formFont)
             onClick {
                 if (r == null || r.state == "CLOSED" || own == null) game.popScreen() else leaveRoom()
-            }; isEnabled = !busy
+            }; setCouncilEnabled(this,!busy)
         }
         footer.add(status).growX().left().padRight(12f).colspan(if (UiNavigation.isIos && stage.width < 850f) 2 else 1)
         if (stage.width < 850f) footer.row()
-        footer.add(leave).height(44f).padRight(if (host) 10f else 0f)
+        footer.add(leave).height(44f).apply { if (UiNavigation.isIos) width(126f) }.padRight(if (host) 10f else 0f)
         if (host) {
             startButton.setText(lobbyStartButtonText(r.state,busy).tr())
-            startButton.isEnabled = connected && !busy && !configurationPending && own != null && (r.state == "STARTING" || (r.state == "WAITING" && joined == humans.size && ready == humans.size && gameSetupInfo.gameParameters.victoryTypes.isNotEmpty()))
-            footer.add(startButton).height(44f)
+            setCouncilEnabled(startButton,connected && !busy && !configurationPending && own != null && (r.state == "STARTING" || (r.state == "WAITING" && joined == humans.size && ready == humans.size && gameSetupInfo.gameParameters.victoryTypes.isNotEmpty())))
+            footer.add(startButton).height(44f).apply { if (UiNavigation.isIos) width(180f) }
         }
         if (UiNavigation.isIos && !host && own != null && r.state == "WAITING") {
             footer.add((if (own.ready) "Cancel ready" else "Ready").toTextButton().apply {
                 stylePrimary(this)
-                isEnabled = connected && !busy && !configurationPending
+                setCouncilEnabled(this,connected && !busy && !configurationPending)
                 onClick { runRequest { client.command(session.gameId,"ready",command().apply { this.ready = !own.ready }) } }
-            }).height(44f).padLeft(10f)
+            }).height(44f).width(164f).padLeft(10f)
         }
         if (r == null && !busy) footer.add("Retry".toTextButton().apply { onClick {
             if (session.pendingAction == "join") { session.pendingAction = ""; session.pendingRequestId = ""; session.pendingCommand = "" }
@@ -606,7 +613,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         for ((caption,value) in values) {
             add(caption.toLabel(ExpeditionBlueTheme.text,18).apply { wrap = true })
                 .width(width * .44f).left().padRight(8f).padBottom(12f)
-            add(value.toLabel(ExpeditionBlueTheme.text,18,hideIcons = true).apply { wrap = true })
+            add(value.toLabel(ExpeditionBlueTheme.text,18,hideIcons = true).apply { wrap = true; setText(value) })
                 .minWidth(0f).growX().left().padBottom(12f).row()
         }
     }
@@ -628,23 +635,23 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             .apply { wrap = true }).width(width).left().padBottom(12f).row()
         add(SinglePlayerSetup.group("View advanced settings",width,"Room.ReadOnlyRules") { table ->
             table.add(readOnlyRows(width - 24f,listOf(
-                "Base ruleset" to p.baseRuleset.tr(),
-                "Max turns" to p.maxTurns.toString(),
+                "Base Ruleset" to p.baseRuleset.tr(),
+                "Max Turns" to p.maxTurns.toString(),
                 "No City Razing" to state(p.noCityRazing),
                 "No Barbarians" to state(p.noBarbarians),
                 "Raging Barbarians" to state(p.ragingBarbarians),
                 "One City Challenge" to state(p.oneCityChallenge),
-                "Nuclear Weapons" to state(p.nuclearWeaponsEnabled),
+                "Enable Nuclear Weapons" to state(p.nuclearWeaponsEnabled),
                 "Enable Espionage" to state(p.espionageEnabled),
-                "No Start Bias" to state(p.noStartBias),
+                "Disable starting bias" to state(p.noStartBias),
                 "Random number of City-States" to state(p.randomNumberOfCityStates),
-                "Random Nations Pool" to state(p.enableRandomNationsPool),
-                "Show civilization stats" to state(p.showCivilizationStats == true),
-                "Show rankings" to state(p.showRankings),
-                "Show charts" to state(p.showCharts),
-                "Show demographics" to state(p.showDemographics),
-                "Hide other civilizations' stats" to state(p.hideOtherCivilizationStats),
-                "Show additional ranking types" to state(p.showAdditionalRankingTypes)
+                "Set available nations for random pool" to state(p.enableRandomNationsPool),
+                "Show Civilization Stats" to state(p.showCivilizationStats == true),
+                "Show Rankings" to state(p.showRankings),
+                "Show Charts" to state(p.showCharts),
+                "Show Demographics" to state(p.showDemographics),
+                "Restrict to own civilization" to state(p.hideOtherCivilizationStats),
+                "Show additional stat types" to state(p.showAdditionalRankingTypes)
             ))).growX()
             if (p.enableRandomNationsPool) {
                 table.row()
@@ -665,15 +672,15 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         add(SinglePlayerSetup.group("View map parameters",width,"Room.ReadOnlyMap") {
             it.add(readOnlyRows(width - 24f,listOf(
                 "Map Shape" to p.shape.tr(), "Resource Setting" to p.mapResources.tr(),
-                "Map width" to p.mapSize.width.toString(), "Map height" to p.mapSize.height.toString(),
+                "Width" to p.mapSize.width.toString(), "Height" to p.mapSize.height.toString(), "Radius" to p.mapSize.radius.toString(),
                 "Strategic Balance" to state(p.strategicBalance), "Legendary Start" to state(p.legendaryStart),
                 "No Ancient Ruins" to state(p.noRuins), "No Natural Wonders" to state(p.noNaturalWonders),
-                "World Wrap" to state(p.worldWrap), "Map mirroring" to p.mirroring.tr(),
-                "Seed" to p.seed.toString(), "Elevation" to p.elevationExponent.toString(),
-                "Temperature" to p.temperatureintensity.toString(), "Temperature shift" to p.temperatureShift.toString(),
-                "Vegetation" to p.vegetationRichness.toString(), "Rare features" to p.rareFeaturesRichness.toString(),
-                "Resource richness" to p.resourceRichness.toString(), "Sea level" to p.waterThreshold.toString(),
-                "Coastline extension" to p.maxCoastExtension.toString(), "Tiles per biome" to p.tilesPerBiomeArea.toString()
+                "World Wrap" to state(p.worldWrap), "Mirroring Type" to p.mirroring.tr(),
+                "RNG Seed" to p.seed.toString(), "Map Elevation" to p.elevationExponent.toString(),
+                "Temperature intensity" to p.temperatureintensity.toString(), "Temperature shift" to p.temperatureShift.toString(),
+                "Vegetation richness" to p.vegetationRichness.toString(), "Rare features richness" to p.rareFeaturesRichness.toString(),
+                "Resource richness" to p.resourceRichness.toString(), "Water level" to p.waterThreshold.toString(),
+                "Max Coast extension" to p.maxCoastExtension.toString(), "Biome size" to p.tilesPerBiomeArea.toString()
             ))).growX()
         }).width(width)
     }
@@ -692,7 +699,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         return Table().apply {
             name = "room-seat-${s.seatId}"
             background = SinglePlayerSetup.surface(if (mine) ExpeditionBlueTheme.raised else ExpeditionBlueTheme.panel,
-                if (mine) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.border)
+                if (mine && r.hostId == userId) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.border)
             pad(8f)
             add(title.toLabel(if (mine) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.text,18)
                 .apply { wrap = true }).width(width * .23f).left().padRight(8f)
@@ -707,7 +714,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 add((if (empty) "Waiting for player" else s.civilization).toLabel(ExpeditionBlueTheme.text,18,hideIcons = true)
                     .apply { wrap = true }).minWidth(0f).growX().left()
                 if (!empty && canChooseCivilization(r,s,own)) {
-                    add(ImageGetter.getImage("OtherIcons/ArrowRight",ExpeditionBlueTheme.text).apply { rotation = -90f })
+                    add(ImageGetter.getImage("OtherIcons/ArrowRight",ExpeditionBlueTheme.text).apply { setOrigin(7f,7f); rotation = -90f })
                         .size(14f).padLeft(6f)
                     touchable = Touchable.enabled
                     onClick { if (s.human) chooseCivilization(s) else chooseAiCivilization(s) }
@@ -717,7 +724,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             if (!empty) add(Table().apply {
                 if (s.human && s.ready)
                     add(ImageGetter.getImage("OtherIcons/Checkmark",ExpeditionBlueTheme.success)).size(18f).padRight(5f)
-                add((if (!s.human) "Computer" else if (s.ready) "Prepared" else "Not ready")
+                add((if (!s.human) "AI" else if (s.ready) "Prepared" else "Not ready")
                     .toLabel(if (s.human && s.ready) ExpeditionBlueTheme.success else ExpeditionBlueTheme.muted,16)
                     .apply { wrap = true }).minWidth(0f).growX()
             }).width(72f).padLeft(8f)
@@ -726,7 +733,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     SinglePlayerSetup.style(this,formFont)
                     clearChildren()
                     repeat(3) { add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.text }).size(3f).pad(2f) }
-                    isEnabled = connected && !busy && !configurationPending
+                    setCouncilEnabled(this,connected && !busy && !configurationPending)
                     onClick {
                         Popup(this@MultiplayerLobbyScreen).apply {
                             val card = playerCard(r,s,own,minOf(520f,stage.width - 80f))
