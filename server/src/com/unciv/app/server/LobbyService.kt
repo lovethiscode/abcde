@@ -184,7 +184,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
     private fun clear(s: LobbySeat) { s.manual = false; s.playerId = ""; s.occupancy = ""; s.ready = false; s.civilization = "Random"; s.lastSeen = 0; s.revision++ }
     private fun waiting(r: LobbyRoom) { if (r.state != "WAITING") fail("Room is no longer waiting") }
     private fun member(r: LobbyRoom, c: LobbyCommand) = r.seats.firstOrNull { !it.manual && it.playerId == c.playerId && it.occupancy == c.occupancy && c.occupancy.isNotEmpty() }
-        ?: fail("You have left this room or were removed. Open the invitation to rejoin.")
+        ?: fail("You have left this room or were removed. Open the invitation to rejoin.", 410)
     private fun host(r: LobbyRoom, c: LobbyCommand) { member(r, c); if (r.hostId != c.playerId) fail("Only the host can do this", 403) }
     private fun controlledSeat(r: LobbyRoom, c: LobbyCommand): LobbySeat {
         val own = member(r,c)

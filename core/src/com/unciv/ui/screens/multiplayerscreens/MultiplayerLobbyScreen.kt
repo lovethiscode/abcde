@@ -652,7 +652,11 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 "Show Charts" to state(p.showCharts),
                 "Show Demographics" to state(p.showDemographics),
                 "Restrict to own civilization" to state(p.hideOtherCivilizationStats),
-                "Show additional stat types" to state(p.showAdditionalRankingTypes)
+                "Show additional stat types" to state(p.showAdditionalRankingTypes),
+                "Allow anyone to spectate" to state(p.anyoneCanSpectate),
+                "Time until skip turn:" to "[${p.minutesUntilSkipTurn}] minutes".tr(),
+                "Total time to play:" to "[${p.minutesUntilForceResign}] minutes".tr(),
+                "Time recovered per turn:" to "[${p.minutesRecoveredPerTurn}] minutes".tr()
             ))).growX()
             if (p.enableRandomNationsPool) {
                 table.row()

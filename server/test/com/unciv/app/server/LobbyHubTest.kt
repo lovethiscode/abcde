@@ -75,6 +75,17 @@ class LobbyHubTest {
         val result = issue(peer,message(room,peer.socket.playerId,"ready").apply { command!!.ready = true })
         assertEquals("",result.code)
     }
+    @Test fun removedMemberResumeReturnsTerminalMembershipFailure() = runBlocking {
+        val room = create()
+        val guest = UUID.randomUUID().toString()
+        val joined = service.command(room.gameId,"join",command(room,guest))
+        service.command(room.gameId,"leave",command(joined,guest))
+        val peer = Peer()
+        val result = issue(peer,message(joined,guest,"resume"))
+        assertEquals("MEMBERSHIP_EXPIRED",result.code)
+        assertEquals("",peer.socket.gameId)
+        assertEquals("",service.find(room.gameId)!!.seats[1].playerId)
+    }
     private suspend fun reply(peer: Peer) {
         val check = next(peer) { it.type == "check" }
         hub.handle(peer.socket,LobbyMessage().apply { type = "checkReply"; gameId = peer.socket.gameId; checkId = check.checkId })
