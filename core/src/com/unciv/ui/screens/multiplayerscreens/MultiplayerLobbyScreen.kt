@@ -328,11 +328,11 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private fun seatCommand(s: LobbySeat) = command().apply {
         seatId = s.seatId; seatRevision = s.revision; targetOccupancy = s.occupancy
     }
-    private fun accept(latest: LobbyRoom) {
+    private fun accept(latest: LobbyRoom, preserveConfiguration: Boolean = false) {
         if (latest.version < (room?.version ?: -1)) return
         val settingsChanged = room?.configurationVersion != latest.configurationVersion || configurationTable == null || latest.state != "WAITING"
         if (latest.state != "WAITING") { configurationPending = false; cancelConfigurationSync() }
-        if (settingsChanged && !configurationPending) {
+        if (settingsChanged && !configurationPending && !preserveConfiguration) {
             mapSettings?.cancelBackgroundJobs()
             configurationTable = null
             setup = json().fromJson(GameSetupInfo::class.java,latest.setup)
@@ -366,11 +366,13 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     if (disposed || paused || generation != connectionGeneration) return@launchOnGLThread
                     busy = false
                     if (leaveAfter) { session.clearIfCurrent(); game.popScreen(); return@launchOnGLThread }
-                    if (configurationWrite && sentRevision == draftRevision) {
-                        configurationPending = false; configurationTable = null; cancelConfigurationSync()
+                    val preserveConfiguration = configurationWrite && sentRevision == draftRevision
+                    if (preserveConfiguration) {
+                        configurationPending = false; cancelConfigurationSync()
+                        mapSettings?.generateExampleMap()
                     }
                     if (configurationWrite && configurationPending) draftBaseConfigurationVersion = result.configurationVersion
-                    accept(result); drawMembers()
+                    accept(result,preserveConfiguration); drawMembers()
                     if (backAfter) {
                         if (configurationPending) saveConfiguration(backAfter = true) else game.popScreen()
                         return@launchOnGLThread
@@ -400,6 +402,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val signature = "$connected|$busy|$configurationPending|${r?.configurationVersion}|${r?.state}|${r?.reason}|${r?.seats?.map { listOf(it.seatId,it.playerId,it.occupancy,it.manual,it.civilization,it.ready) }}"
         if (!force && updateStatus && renderedState == signature) return
         renderedState = signature
+        val keyboardFocus = stage.keyboardFocus
         val scrollPositions = scrollPanes.map { it.scrollY }
         content.clear()
         body.clear()
@@ -563,6 +566,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             pane.scrollY = scrollPositions[index]
             pane.updateVisualScroll()
         }
+        if (keyboardFocus is TextField && keyboardFocus.stage === stage) stage.keyboardFocus = keyboardFocus
     }
 
     private fun drawCouncilPage(width: Float, portrait: Boolean, playersWidth: Float,
