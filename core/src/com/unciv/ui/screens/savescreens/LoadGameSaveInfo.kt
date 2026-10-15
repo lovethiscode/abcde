@@ -10,7 +10,7 @@ data class LoadGameSaveKey(val path: String, val modified: Long, val length: Lon
     }
 }
 
-internal data class LoadGameSaveInfo(
+internal class LoadGameSaveInfo(
     val key: LoadGameSaveKey,
     val civilizations: List<String>,
     val difficulty: String,

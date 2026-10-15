@@ -3,6 +3,7 @@ package com.unciv.ui.screens.savescreens
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -25,8 +26,6 @@ import com.unciv.models.translations.tr
 import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
 import com.unciv.ui.components.extensions.UncivDateFormat.formatDate
 import com.unciv.ui.components.extensions.allChildren
-import com.unciv.ui.components.extensions.disable
-import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.KeyCharAndCode
@@ -53,7 +52,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 class LoadGameScreen(private val initialSavePath: String? = null, initialDetails: Boolean = false) :
     PickerScreen(disableScroll = true), RecreateOnResize {
-    private val ui = LoadGameScreenStyle(UiNavigation.minimumTouchSize() / 44f, game.settings.fontSizeMultiplier)
+    private val ui = LoadGameScreenStyle(UiNavigation.minimumTouchSize() / 44f)
     private val narrow = stage.width / ui.unit <= 700f
     private val wide = stage.width / ui.unit >= 1150f
     private var showingDetails = initialDetails
@@ -137,8 +136,9 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         cloudButton.onActivation { openCloudMenu() }
         cloudButton.add(SaveIcon.Down.image(ui.muted)).size(ui.px(14f)).padLeft(ui.px(8f))
         updateCloudStatus(cloudSaveSync.status)
-        rightSideButton.name = "load-read"; ui.decorate(rightSideButton, SaveIcon.Play, primary = true, size = 16)
-        rightSideButton.setText(loadThisSave.tr()); rightSideButton.disable()
+        rightSideButton.name = "load-read"; rightSideButton.setText(loadThisSave.tr())
+        ui.decorate(rightSideButton, SaveIcon.Play, primary = true, size = 16)
+        rightSideButton.setText(loadThisSave.tr()); rightSideButton.setLoadEnabled(false)
         rightSideButton.onActivation { onLoadGame(selectedSave) }
         rightSideButton.keyShortcuts.add(KeyCharAndCode.RETURN)
         copySavedGameToClipboardButton.name = "load-copy"
@@ -149,7 +149,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         ui.decorate(deleteSaveButton, SaveIcon.Delete, ghost = true, size = 13, tint = ui.danger)
         deleteSaveButton.onActivation { deleteSelectedSave() }
         deleteSaveButton.keyShortcuts.add(KeyCharAndCode.DEL)
-        deleteSaveButton.disable(); copySavedGameToClipboardButton.disable()
+        deleteSaveButton.setLoadEnabled(false); copySavedGameToClipboardButton.setLoadEnabled(false)
         showAutosavesCheckbox.name = "load-autosaves"
         showAutosavesCheckbox.style = ui.checkboxStyle()
         showAutosavesCheckbox.label.setFontSize(ui.font(13)); showAutosavesCheckbox.label.color = ui.muted
@@ -184,7 +184,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
     private fun initLayout() {
         val heading = Table().apply {
             add(ui.label("Load game", if (wide) 30 else 26)).growX().minWidth(0f).left().row()
-            add(ui.label("Select a save to continue", 13, ui.muted).apply { setEllipsis(true) })
+            add(ui.label("Choose a save and continue your civilization", 13, ui.muted).apply { setEllipsis(true) })
                 .growX().minWidth(0f).left().padTop(ui.px(3f))
         }
         val actions = Table().apply {
@@ -232,25 +232,29 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         val generation = ++listGeneration
         val previous = selectedSave ?: initialSavePath?.let(::FileHandle)
         val autosaves = showAutosavesCheckbox.isChecked
-        pendingLoad = null; rightSideButton.disable()
+        pendingLoad = null; rightSideButton.setLoadEnabled(false)
         countLabel.setText("Loading...".tr())
         Concurrency.run("LoadGameSaveList") {
-            val result = runCatching { game.files.getSaves(autosaves).sortedByDescending { it.lastModified() }.toList() }
+            val result = runCatching { game.files.getSaves(true).sortedByDescending { it.lastModified() }.toList() }
             launchOnGLThread {
                 if (disposed || generation != listGeneration) return@launchOnGLThread
-                val files = result.getOrElse { error ->
+                val allFiles = result.getOrElse { error ->
                     errorLabel.setText("Could not load game!".tr()); errorLabel.isVisible = true
                     Log.error("Could not list saves", error); emptyList()
                 }
+                val files = if (autosaves) allFiles else allFiles.filterNot { it.name().startsWith("Autosave") }
                 countLabel.setText("Local saves [${files.size}]".tr())
                 listContent.clear()
                 restoringFiles = true; savesList.setFiles(files, previous); restoringFiles = false
                 if (files.isEmpty()) {
                     selectedSave = null; selectedPreview = null; ++selectionGeneration
-                    copySavedGameToClipboardButton.disable(); deleteSaveButton.disable(); updateReadButton()
-                    listContent.add(emptySaves()).grow().minWidth(0f).minHeight(0f)
+                    copySavedGameToClipboardButton.setLoadEnabled(false); deleteSaveButton.setLoadEnabled(false); updateReadButton()
+                    listContent.add(emptySaves(allFiles.isNotEmpty())).grow().minWidth(0f).minHeight(0f)
                     showDetails()
-                } else listContent.add(savesList).grow().minWidth(0f).minHeight(0f)
+                } else {
+                    listContent.add(savesList).grow().minWidth(0f).minHeight(0f)
+                    root.validate(); savesList.scrollToSelection()
+                }
                 Concurrency.run("LoadGameRowPreviews") {
                     for (file in files) {
                         if (disposed || generation != listGeneration) break
@@ -269,7 +273,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
     private fun selectSave(file: FileHandle) {
         selectedSave = file; selectedPreview = null; pendingLoad = null
         descriptionLabel.setText(""); errorLabel.setText(""); errorLabel.isVisible = false
-        copySavedGameToClipboardButton.enable(); deleteSaveButton.enable()
+        copySavedGameToClipboardButton.setLoadEnabled(true); deleteSaveButton.setLoadEnabled(true)
         if (narrow && !restoringFiles) { showingDetails = true; layoutBody() }
         val key = LoadGameSaveKey.of(file)
         val generation = ++selectionGeneration
@@ -289,11 +293,22 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         }
     }
 
+    private fun TextButton.setLoadEnabled(enabled: Boolean) {
+        isDisabled = !enabled
+        touchable = Touchable.enabled
+    }
+
+    private fun detailInnerWidth(): Float {
+        val available = stage.width - root.padLeft - root.padRight
+        val panelWidth = if (narrow) available else (available - ui.px(20f)) * if (wide) .455f else .505f
+        return panelWidth - ui.px(if (wide) 56f else 40f)
+    }
+
     private fun updateReadButton() {
         val blocked = selectedSave?.let(LoadGameSaveKey::of) == blockedSave && blockedSave != null
         val unreadable = selectedPreview?.error != null || blocked
         rightSideButton.setText((if (loadingGame) Constants.loading else if (unreadable) "Cannot load this save" else loadThisSave).tr())
-        rightSideButton.isDisabled = selectedPreview?.info == null || unreadable || loadingGame
+        rightSideButton.setLoadEnabled(selectedPreview?.info != null && !unreadable && !loadingGame)
         rightSideButton.children.filterIsInstance<com.badlogic.gdx.scenes.scene2d.ui.Image>().forEach {
             it.color = if (rightSideButton.isDisabled) ui.muted else ui.ink
         }
@@ -326,7 +341,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             val text = Table().apply {
                 add(ui.label(if (info == null) file.name() else civilizationAndTurn(info), if (wide) 28 else 23, wrap = true).apply {
                     if (info == null) setText(file.name())
-                }).growX().minWidth(0f).left().row()
+                }).width((detailInnerWidth()-ui.px(56f)).coerceAtLeast(ui.px(80f))).left().row()
                 if (info != null) add(ui.label("", 13, ui.muted, true).apply { setText(file.name()) }).growX().minWidth(0f).padTop(ui.px(3f))
             }
             add(text).growX().minWidth(0f)
@@ -339,16 +354,29 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
                 .growX().minWidth(0f).left().padTop(ui.px(12f)).row()
         } else {
             val grid = Table().apply { defaults().growX().minWidth(0f).top() }
-            fun field(label: String, value: String): Table = Table().apply {
-                add(ui.label(label, if (wide) 14 else 12, ui.muted)).growX().minWidth(0f).left().row()
-                add(ui.label("", if (wide) 17 else 14, wrap = true).apply { setText(value) }).growX().minWidth(0f).left().padTop(ui.px(1f))
+            val singleColumn = detailInnerWidth() / ui.unit / game.settings.fontSizeMultiplier < 260f
+            val fieldWidth = if (singleColumn) detailInnerWidth() else (detailInnerWidth()-ui.px(16f))/2
+            fun field(label: String, value: String, width: Float = fieldWidth): Table = Table().apply {
+                add(ui.label(label, if (wide) 14 else 12, ui.muted, true)).width(width).left().row()
+                add(ui.label("", if (wide) 17 else 14, wrap = true).apply { setText(value) })
+                    .width(width).left().padTop(ui.px(1f))
             }
-            grid.add(field("Saved at", Date(info.key.modified).formatDate())).expandX().fillX().padRight(ui.px(16f))
-            grid.add(field("Save type", (if (file.name().startsWith("Autosave")) "Automatic save" else "Manual save").tr())).expandX().fillX().row()
-            grid.add(field("Difficulty", info.difficulty.tr())).padTop(ui.px(if (wide) 20f else 8f)).padRight(ui.px(16f))
-            grid.add(field("Mods", if (info.mods.isEmpty()) "None".tr() else info.mods.joinToString())).padTop(ui.px(if (wide) 20f else 8f)).row()
-            grid.add(field("Base ruleset", info.ruleset)).colspan(2).padTop(ui.px(if (wide) 20f else 8f)).growX().row()
-            if (info.online) grid.add(ui.label("Online Multiplayer", 13, ui.muted, true)).colspan(2).padTop(ui.px(8f)).growX().row()
+            val fields = listOf(
+                "Saved at" to Date(info.key.modified).formatDate(),
+                "Save type" to (if (file.name().startsWith("Autosave")) "Automatic save" else "Manual save").tr(),
+                "Difficulty" to info.difficulty.tr(),
+                "Mods" to if (info.mods.isEmpty()) "None".tr() else info.mods.joinToString()
+            )
+            fields.forEachIndexed { index, (label, value) ->
+                grid.add(field(label, value)).width(fieldWidth)
+                    .padTop(if (index < (if (singleColumn) 1 else 2)) 0f else ui.px(if (wide) 20f else 8f))
+                    .padRight(if (!singleColumn && index % 2 == 0) ui.px(16f) else 0f)
+                if (singleColumn || index % 2 == 1) grid.row()
+            }
+            grid.add(field("Base ruleset", info.ruleset, detailInnerWidth())).colspan(if (singleColumn) 1 else 2)
+                .padTop(ui.px(if (wide) 20f else 8f)).row()
+            if (info.online) grid.add(ui.label("Online Multiplayer", 13, ui.muted, true))
+                .colspan(if (singleColumn) 1 else 2).padTop(ui.px(8f)).growX().row()
             detailContent.add(grid).growX().minWidth(0f).left().row()
         }
         detailContent.add(statusHolder).growX().minWidth(0f).row()
@@ -356,19 +384,23 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         detailScroll.scrollY = 0f
     }
 
-    private fun emptySaves(): Table = Table().apply {
+    private fun emptySaves(filtered: Boolean): Table = Table().apply {
         name = "load-empty"
         val symbol = Table().apply { background = ui.surface(ui.panel, 16f); add(SaveIcon.Archive.image(ui.muted)).size(ui.px(28f)) }
         add(symbol).size(ui.px(56f)).padBottom(ui.px(16f)).row()
-        add(ui.label("No saves yet", 22)).padBottom(ui.px(12f)).row()
-        add(ui.label("Import a save file or restore from iCloud.", 14, ui.muted, true)).growX().minWidth(0f).padBottom(ui.px(16f)).row()
+        add(ui.label(if (filtered) "No manual saves" else "No saves yet", 22, wrap = true)).growX().minWidth(0f).padBottom(ui.px(12f)).row()
+        add(ui.label(if (filtered) "Show autosaves or import a save." else "Import a save file or restore from iCloud.", 14, ui.muted, true)).growX().minWidth(0f).padBottom(ui.px(16f)).row()
         val actions = Table().apply {
-            add(ui.button("Import save", SaveIcon.Import, primary = true).apply {
-                name = "load-empty-import"; onActivation { ImportSaveMenu(this) }
+            add(ui.button(if (filtered) "Show autosaves" else "Import save", if (filtered) SaveIcon.Clock else SaveIcon.Import, primary = true).apply {
+                name = "load-empty-import"; onActivation { if (filtered) showAutosavesCheckbox.isChecked = true else ImportSaveMenu(this) }
             }).minHeight(ui.px(44f))
-            if (cloudSaveSync.isSupported) add(ui.button("Restore from iCloud", SaveIcon.Cloud, outline = true).apply {
+            if (cloudSaveSync.isSupported) {
+                val stack = game.settings.fontSizeMultiplier > 1.2f || narrow
+                if (stack) row()
+                add(ui.button("Restore from iCloud", SaveIcon.Cloud, outline = true).apply {
                 name = "load-empty-restore"; onActivation { openCloudSyncConfirmation(confirmRestoreSaves, "Restore saves from iCloud", CloudSyncTrigger.Restore) }
-            }).minHeight(ui.px(44f)).padLeft(ui.px(12f))
+            }).minHeight(ui.px(44f)).padLeft(if (stack) 0f else ui.px(12f)).padTop(if (stack) ui.px(8f) else 0f)
+            }
         }
         add(actions)
     }
@@ -512,7 +544,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
     private fun loadFromClipboard() {
         if (!Gdx.app.clipboard.hasContents()) return
         importSaveButton.setText(Constants.working.tr())
-        importSaveButton.disable()
+        importSaveButton.setLoadEnabled(false)
         Concurrency.run(loadFromClipboard) {
             try {
                 val clipboardContentsString = Gdx.app.clipboard.contents.trim()
@@ -523,7 +555,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             } finally {
                 launchOnGLThread {
                     importSaveButton.setText(importSave.tr())
-                    importSaveButton.enable()
+                    importSaveButton.setLoadEnabled(true)
                 }
             }
         }
@@ -532,10 +564,10 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
     private fun loadFromCustomLocation() {
         errorLabel.isVisible = false
         importSaveButton.setText(Constants.loading.tr())
-        importSaveButton.disable()
+        importSaveButton.setLoadEnabled(false)
         fun revertButton() {
             importSaveButton.setText(importSave.tr())
-            importSaveButton.enable()
+            importSaveButton.setLoadEnabled(true)
         }
         Concurrency.run(loadFromCustomLocation) {
             game.files.loadGameFromCustomLocation(
@@ -567,7 +599,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
                 copySaveToClipboard(file)
             }
         }
-        copyButton.disable()
+        copyButton.setLoadEnabled(false)
         val ctrlC = KeyCharAndCode.ctrl('c')
         copyButton.keyShortcuts.add(ctrlC)
         copyButton.addTooltip(ctrlC)

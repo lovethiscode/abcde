@@ -14,8 +14,10 @@ import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onDoubleClick
 import com.unciv.ui.components.widgets.AutoScrollPane
 import java.text.DateFormat
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 
 /** Rich rows are local to Load Game; the save/export screen keeps its existing list. */
 internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrollPane(Table()) {
@@ -30,8 +32,8 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
         table.top().defaults().growX().minWidth(0f)
         keyShortcuts.add(Input.Keys.UP) { move(-1) }
         keyShortcuts.add(Input.Keys.DOWN) { move(1) }
-        keyShortcuts.add(Input.Keys.HOME) { rows.firstOrNull()?.let(::select) }
-        keyShortcuts.add(Input.Keys.END) { rows.lastOrNull()?.let(::select) }
+        keyShortcuts.add(Input.Keys.HOME) { rows.firstOrNull()?.let { select(it) } }
+        keyShortcuts.add(Input.Keys.END) { rows.lastOrNull()?.let { select(it) } }
         keyShortcuts.add(Input.Keys.PAGE_UP) { movePage(-1) }
         keyShortcuts.add(Input.Keys.PAGE_DOWN) { movePage(1) }
     }
@@ -46,7 +48,8 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
             table.add(row.button).growX().minWidth(0f).minHeight(ui.px(70f)).padBottom(ui.px(3f)).row()
         }
         val initial = rows.firstOrNull { it.file.path() == previous?.path() } ?: rows.firstOrNull()
-        initial?.let(::select)
+        initial?.let { select(it, reveal = false) }
+        scrollY = 0f
     }
 
     fun updatePreview(file: FileHandle, preview: LoadGamePreview) {
@@ -57,20 +60,25 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
         row.button.invalidateHierarchy()
     }
 
-    fun selectFile(file: FileHandle) { rows.firstOrNull { it.file.path() == file.path() }?.let(::select) }
+    fun selectFile(file: FileHandle) { rows.firstOrNull { it.file.path() == file.path() }?.let { select(it) } }
 
-    private fun select(row: SaveRow) {
-        selected?.let { it.setSelected(false) }
-        selected = row; row.setSelected(true)
+    fun scrollToSelection() {
+        val row = selected ?: return
         validate(); table.validate()
         scrollTo(row.button.x, row.button.y, row.button.width, row.button.height, false, true)
         updateVisualScroll()
+    }
+
+    private fun select(row: SaveRow, reveal: Boolean = true) {
+        selected?.let { it.setSelected(false) }
+        selected = row; row.setSelected(true)
+        if (reveal) scrollToSelection()
         onSelected(row.file)
     }
     private fun move(delta: Int) {
         if (rows.isEmpty()) return
         val index = rows.indexOf(selected)
-        select(rows[Math.floorMod(index + delta, rows.size)])
+        select(rows[((index + delta) % rows.size + rows.size) % rows.size])
     }
     private fun movePage(direction: Int) {
         val rowHeight = selected?.button?.height ?: ui.px(70f)
@@ -104,7 +112,9 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
                 add(meta).growX().minWidth(0f).left().padTop(ui.px(4f))
             }
             button.add(text).growX().minWidth(0f)
-            button.add(ui.label(compactSaveDate(file.lastModified()), 12, ui.muted)).padLeft(ui.px(8f))
+            // Time punctuation and leading zeroes are data, not localizable numbers.
+            button.add(ui.label("", 12, ui.muted).apply { setText(compactSaveDate(file.lastModified())) })
+                .padLeft(ui.px(8f))
             button.add(check).size(ui.px(16f)).padLeft(ui.px(8f))
         }
         fun setSelected(value: Boolean) {
@@ -118,7 +128,7 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
 }
 
 internal fun civilizationAndTurn(info: LoadGameSaveInfo): String =
-    "[${info.civilizations.joinToString { it.tr() }}] · Turn [${info.turns}]".tr()
+    "[${info.civilizations.joinToString { it.tr(hideIcons = true) }}] · Turn [${info.turns}]".tr(hideIcons = true)
 
 internal fun compactSaveDate(timestamp: Long): String {
     val then = Calendar.getInstance().apply { timeInMillis = timestamp }
@@ -126,10 +136,10 @@ internal fun compactSaveDate(timestamp: Long): String {
     val yesterday = (today.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
     fun sameDay(other: Calendar) = then.get(Calendar.ERA) == other.get(Calendar.ERA) &&
         then.get(Calendar.YEAR) == other.get(Calendar.YEAR) && then.get(Calendar.DAY_OF_YEAR) == other.get(Calendar.DAY_OF_YEAR)
-    val time = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(timestamp))
+    val time = SimpleDateFormat("HH:mm", Locale.ROOT).format(Date(timestamp))
     return when {
-        sameDay(today) -> "Today [$time]".tr()
-        sameDay(yesterday) -> "Yesterday [$time]".tr()
+        sameDay(today) -> "Today [load-game-time]".tr().replace("load-game-time", time)
+        sameDay(yesterday) -> "Yesterday [load-game-time]".tr().replace("load-game-time", time)
         else -> DateFormat.getDateInstance(DateFormat.SHORT).format(Date(timestamp))
     }
 }

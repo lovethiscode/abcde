@@ -3,6 +3,7 @@ package com.unciv.ui.screens.savescreens
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.ui.Image
+import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -19,7 +20,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /** Page-local realization of approved prototype A, expressed in safe-area points. */
-internal class LoadGameScreenStyle(val unit: Float, private val fontMultiplier: Float) {
+internal class LoadGameScreenStyle(val unit: Float) {
     val background = ExpeditionBlueTheme.color(BaseScreen.skinStrings.skinConfig.clearColor, ExpeditionBlueTheme.background)
     val panel = ExpeditionBlueTheme.color(BaseScreen.skinStrings.skinConfig.baseColor, ExpeditionBlueTheme.panel)
     val raised = ExpeditionBlueTheme.color(panel.cpy().lerp(Color.WHITE, .12f), ExpeditionBlueTheme.raised)
@@ -69,6 +70,7 @@ internal class LoadGameScreenStyle(val unit: Float, private val fontMultiplier: 
     fun decorate(button: TextButton, icon: SaveIcon? = null, primary: Boolean = false,
                  outline: Boolean = false, ghost: Boolean = false, size: Int = 14, tint: Color? = null): TextButton {
         button.style = buttonStyle(primary, outline, ghost)
+        button.touchable = Touchable.enabled
         tint?.let { button.style.fontColor = it; button.style.downFontColor = it; button.style.overFontColor = it }
         button.label.setFontSize(font(size)); button.label.setEllipsis(true)
         button.clearChildren(); button.pad(0f, px(14f), 0f, px(14f))
@@ -91,7 +93,7 @@ internal class LoadGameScreenStyle(val unit: Float, private val fontMultiplier: 
         }
         checkboxOn = box(true); checkboxOff = box(false)
         checkboxOnOver = checkboxOn; checkboxOver = checkboxOff
-        fontColor = muted; overFontColor = muted; downFontColor = muted
+        fontColor = muted; overFontColor = muted; downFontColor = muted; checkedFontColor = muted
     }
 }
 
