@@ -31,7 +31,7 @@ import kotlin.math.roundToInt
 
 /** Local styles for the options panel; other checkboxes keep their existing appearance. */
 internal object OptionsPopupStyle {
-    val background = Color.valueOf("0D303B")
+    val background = ExpeditionBlueTheme.color(Color.valueOf("0D303B"), ExpeditionBlueTheme.background)
     val sidebar = Color.valueOf("103843")
     val sectionBackground = Color.valueOf("194650")
     val selectedNavigation = Color.valueOf("2C5560")

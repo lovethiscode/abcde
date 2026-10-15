@@ -8,6 +8,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.images.ImageGetter
@@ -16,12 +17,12 @@ import kotlin.math.atan2
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-/** Screen-local palette: the approved multiplayer comp must not recolour other screens. */
+/** Approved multiplayer layout using the shared iOS surface palette. */
 internal class MultiplayerScreenStyle(val unit: Float) {
-    val background = Color.valueOf("102d43")
-    val panel = Color.valueOf("17394f")
-    val control = Color.valueOf("21465d")
-    val selected = Color.valueOf("234f68")
+    val background = ExpeditionBlueTheme.color(Color.valueOf("102d43"), ExpeditionBlueTheme.background)
+    val panel = ExpeditionBlueTheme.color(Color.valueOf("17394f"), ExpeditionBlueTheme.panel)
+    val control = ExpeditionBlueTheme.color(Color.valueOf("21465d"), ExpeditionBlueTheme.raised)
+    val selected = ExpeditionBlueTheme.color(Color.valueOf("234f68"), ExpeditionBlueTheme.hero)
     val text = Color.valueOf("f1f4f3")
     val muted = Color.valueOf("b2c9d4")
     val border = Color.valueOf("3c5e73")

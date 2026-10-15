@@ -12,6 +12,7 @@ import com.unciv.logic.map.mapgenerator.MapResourceSetting
 import com.unciv.models.metadata.GameParameters
 import com.unciv.models.ruleset.RulesetCache
 import com.unciv.models.ruleset.unique.GameContext
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.*
 import com.unciv.ui.components.input.onChange
@@ -277,7 +278,8 @@ class MapParametersTable(
                     (overviewPreviewHeight - height * scale) / 2f)
                 touchable = com.badlogic.gdx.scenes.scene2d.Touchable.disabled
             }
-            preview.background = SinglePlayerSetup.surface(com.badlogic.gdx.graphics.Color.valueOf("163D58"))
+            preview.background = SinglePlayerSetup.surface(
+                ExpeditionBlueTheme.color(Color.valueOf("163D58"), ExpeditionBlueTheme.panel))
             preview.add(com.badlogic.gdx.scenes.scene2d.Group().apply {
                 setSize(overviewPreviewWidth, overviewPreviewHeight)
                 addActor(terrain)
