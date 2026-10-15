@@ -240,14 +240,19 @@ class NewGameScreen(
         pickerPane.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.controlBorder)
         scrollPane.setScrollingDisabled(true, true)
         val header = Table().apply {
-            add().width((190f - closeButton.prefWidth).coerceAtLeast(0f))
-            add(Table().apply {
-                add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX()
-                add("◇".toLabel(ExpeditionBlueTheme.gold, 14)).padRight(22f)
-                add(councilHeading("Singleplayer", 28)).pad(0f, 14f, 0f, 14f)
-                add("◇".toLabel(ExpeditionBlueTheme.gold, 14)).padLeft(22f)
-                add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX()
-            }).growX().pad(0f, 30f, 0f, 30f)
+            if (stackedLayout) {
+                add(councilHeading("Singleplayer", 28).apply { setEllipsis(true) })
+                    .growX().minWidth(0f).left()
+            } else {
+                add().width((190f - closeButton.prefWidth).coerceAtLeast(0f))
+                add(Table().apply {
+                    add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX()
+                    add("◇".toLabel(ExpeditionBlueTheme.gold, 14)).padRight(22f)
+                    add(councilHeading("Singleplayer", 28)).pad(0f, 14f, 0f, 14f)
+                    add("◇".toLabel(ExpeditionBlueTheme.gold, 14)).padLeft(22f)
+                    add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX()
+                }).growX().pad(0f, 30f, 0f, 30f)
+            }
             newGameOptionsTable.createBaseRulesetSelector()?.let {
                 SinglePlayerSetup.style(it, formFont)
                 add(it).width(190f).minHeight(44f).padLeft(16f)
