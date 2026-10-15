@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
+import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -14,8 +16,6 @@ import com.unciv.models.ruleset.unique.UniqueType
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.addBorder
 import com.unciv.ui.components.extensions.addSeparator
-import com.unciv.ui.components.extensions.addSeparatorVertical
-import com.unciv.ui.components.extensions.equalizeColumns
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.fonts.Fonts
@@ -69,114 +69,96 @@ class GlobalPoliticsOverviewTable(
     }
 
     override fun getFixedContent() = fixedContent
+    override val usesOwnScroll get() = !persistableData.showDiagram
 
     //region Politics Table View
 
     private fun updatePoliticsTable() {
         persistableData.showDiagram = false
-        createGlobalPoliticsHeader()
-        createGlobalPoliticsTable()
-        equalizeColumns(fixedContent, this)
-    }
-
-    /** Clears fixedContent and adds the header cells.
-     *  Needs to stay matched to [createGlobalPoliticsTable].
-     *
-     *  9 Columns: 5 info, 4 separators. The first column gets an empty header, the content below is the civ image
-     */
-    private fun createGlobalPoliticsHeader() = fixedContent.run {
-        val diagramButton = "Show diagram".toTextButton().onClick(::updateDiagram)
-
         clear()
-        add()
-        addSeparatorVertical(Color.GRAY)
-        add("Civilization Info".toLabel())
-        addSeparatorVertical(Color.GRAY)
-        add("Social policies".toLabel())
-        addSeparatorVertical(Color.GRAY)
-        add("Wonders".toLabel())
-        addSeparatorVertical(Color.GRAY)
-        add(Table().apply {
-            add("Relations".toLabel()).padTop(10f).row()
-            add(diagramButton).pad(10f)
-        })
-        addSeparator(Color.GRAY)
-    }
-
-    /** Clears [EmpireOverviewTab]'s main Table and adds data columns/rows.
-     *  Needs to stay matched to [createGlobalPoliticsHeader].
-     */
-    private fun createGlobalPoliticsTable() {
-        clear()
-
-        val civsToShow = if (viewingPlayer.isSpectator()) emptySequence() else sequenceOf(viewingPlayer.getCiv())
-        for (civ in civsToShow + viewingPlayer.getCiv().diplomacyFunctions.getKnownCivsSorted(includeCityStates = false)) {
-            // We already have a separator under the fixed header, we only need them here between rows.
-            // This is also the replacement for calling row() explicitly
-            if (cells.size > 0) addSeparator(Color.GRAY)
-
-            // civ image
-            add(ImageGetter.getNationPortrait(civ.nation, 100f)).pad(20f)
-
-            addSeparatorVertical(Color.GRAY)
-
-            // info about civ
-            add(getCivInfoTable(civ)).pad(20f)
-
-            addSeparatorVertical(Color.GRAY)
-
-            // policies
-            add(getPoliciesTable(civ)).pad(20f)
-
-            addSeparatorVertical(Color.GRAY)
-
-            // wonders
-            add(getWondersOfCivTable(civ)).pad(20f)
-
-            addSeparatorVertical(Color.GRAY)
-
-            //politics
-            add(getPoliticsOfCivTable(civ)).pad(20f)
+        fixedContent.clear()
+        val diagram = OverviewUi.button(flat = true) { updateDiagram(); overviewScreen.resizePage(this) }.apply {
+            add(OverviewUi.plainLabel("Relations diagram", 14, OverviewUi.accent)).padRight(pt(8f))
+            add(ImageGetter.getImage("OtherIcons/ArrowRight").apply { color = OverviewUi.accent }).size(pt(12f))
+            pad(0f, pt(12f), 0f, pt(12f))
         }
+        val ownCiv = viewingPlayer.getCiv()
+        val identity = Table().apply {
+            top().left().pad(pt(16f))
+            background = OverviewUi.rounded(OverviewUi.panel, 10f)
+            add(getCivInfoTable(ownCiv)).growX().left().padBottom(pt(12f)).row()
+            add(getPoliciesTable(ownCiv)).growX().left().padBottom(pt(12f)).row()
+            add(getWondersOfCivTable(ownCiv)).growX().left()
+        }
+        val relations = Table().apply {
+            top().left()
+            background = OverviewUi.rounded(OverviewUi.panel, 10f)
+            add(getPoliticsOfCivTable(ownCiv)).growX().pad(pt(16f)).row()
+            // Keep other known civilizations' real information below the current relations.
+            for (civ in ownCiv.diplomacyFunctions.getKnownCivsSorted(includeCityStates = false)) {
+                add(getCivInfoTable(civ)).growX().pad(pt(16f)).row()
+                add(getPoliciesTable(civ)).growX().pad(pt(16f)).row()
+                add(getWondersOfCivTable(civ)).growX().pad(pt(16f)).row()
+                add(getPoliticsOfCivTable(civ)).growX().pad(pt(16f)).row()
+            }
+        }
+        val relationsPanel = Table().apply {
+            background = OverviewUi.rounded(OverviewUi.panel, 10f)
+            val header = Table().apply {
+                add(OverviewUi.plainLabel("Relations", 15)).growX().left().padLeft(pt(16f))
+                add(diagram).height(OverviewUi.touch)
+            }
+            add(header).growX().row()
+            add(ImageGetter.getWhiteDot().apply { color = OverviewUi.border }).growX().height(pt(1f)).row()
+            add(OverviewUi.scroll(relations)).grow().minHeight(0f)
+        }
+        val height = overviewScreen.centerAreaHeight - pt(8f)
+        add(OverviewUi.scroll(identity)).width(pt(210f)).height(height).padTop(pt(8f))
+        add(relationsPanel).growX().minWidth(0f).height(height).padLeft(pt(14f)).padTop(pt(8f))
     }
 
     private fun getCivInfoTable(civ: Civilization): Table {
-        val civInfoTable = Table(skin)
-        val leaderName = civ.nation.leaderName
-        civInfoTable.add(leaderName.toLabel(fontSize = 30)).row()
-        civInfoTable.add(civ.civName.toLabel(hideIcons = true)).row()
-        civInfoTable.add(civ.tech.era.name.toLabel()).row()
+        val civInfoTable = Table(skin).apply { left(); defaults().left() }
+        civInfoTable.add(civ.civName.toLabel(fontSize = font(18), hideIcons = true)).row()
+        civInfoTable.add(civ.nation.leaderName.toLabel(fontColor = OverviewUi.muted, fontSize = font(13))).padTop(pt(5f)).row()
+        civInfoTable.add(civ.tech.era.name.toLabel(fontSize = font(14))).padTop(pt(10f)).row()
         return civInfoTable
     }
 
     private fun getPoliciesTable(civ: Civilization): Table {
-        val policiesTable = Table(skin)
+        val policiesTable = Table(skin).apply { left() }
         for (branch in civ.policies.branches)
             if (civ.policies.isAdopted(branch.name)) {
                 val count = 1 + branch.policies.count {
                     it.policyBranchType != PolicyBranchType.BranchComplete &&
                     civ.policies.isAdopted(it.name)
                 }
-                policiesTable.add("[${branch.name}]: $count".toLabel()).row()
+                with(OverviewUi) { policiesTable.detailRow(branch.name, count.toString()) }
             }
         return policiesTable
     }
 
     private fun getWondersOfCivTable(civ: Civilization): Table {
-        val wonderTable = Table(skin)
+        val wonderTable = Table(skin).apply { left() }
         val wonderInfo = WonderInfo()
         val allWorldWonders = wonderInfo.collectInfo(viewingPlayer.getCiv())
 
         for (wonder in allWorldWonders) {
             if (wonder.civ == civ) {
-                val wonderName = wonder.name.toLabel()
+                val wonderEntry = Table().apply {
+                    left()
+                    // Portrait children keep their creation size when the table cell resizes.
+                    add(wonder.getImage(pt(20f))).size(pt(20f)).padRight(pt(12f))
+                    add(wonder.name.toLabel(fontSize = font(14), hideIcons = true).apply { wrap = true })
+                        .growX().minWidth(0f).left()
+                }
                 if (wonder.location != null && wonder.location.isVisible(viewingPlayer.getCiv())) {
-                    wonderName.onClick {
+                    wonderEntry.onClick {
                         val worldScreen = UncivGame.Current.resetToWorldScreen()
                         worldScreen.mapHolder.setCenterPosition(wonder.location.position)
                     }
                 }
-                wonderTable.add(wonderName).left().row()
+                wonderTable.add(wonderEntry).growX().minWidth(0f).left().minHeight(pt(40f)).row()
             }
         }
 
@@ -192,7 +174,7 @@ class GlobalPoliticsOverviewTable(
     }
 
     private fun getPoliticsOfCivTable(civ: Civilization): Table {
-        val politicsTable = Table(skin)
+        val politicsTable = Table(skin).apply { left(); defaults().left().minHeight(pt(40f)) }
 
         if (!viewingPlayer.getCiv().knows(civ) && civ != viewingPlayer.getCiv())
             return politicsTable
@@ -205,7 +187,7 @@ class GlobalPoliticsOverviewTable(
         // wars
         for (otherCiv in civ.getKnownCivs()) {
             if (civ.isAtWarWith(otherCiv)) {
-                val warText = ColorMarkupLabel("At war with [${getCivName(otherCiv)}]", Color.RED)
+                val warText = ColorMarkupLabel("At war with [${getCivName(otherCiv)}]", Color.RED, fontSize = font(14))
                 politicsTable.add(warText).row()
             }
         }
@@ -214,12 +196,12 @@ class GlobalPoliticsOverviewTable(
         // defensive pacts and declaration of friendships
         for (otherCiv in civ.getKnownCivs()) {
             if (civ.getDiplomacyManager(otherCiv)?.hasFlag(DiplomacyFlags.DefensivePact) == true) {
-                val friendText = ColorMarkupLabel("Defensive pact with [${getCivName(otherCiv)}]", Color.CYAN)
+                val friendText = ColorMarkupLabel("Defensive pact with [${getCivName(otherCiv)}]", Color.CYAN, fontSize = font(14))
                 val turnsLeftText = " (${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.DefensivePact)} ${Fonts.turn})".toLabel()
                 politicsTable.add(friendText)
                 politicsTable.add(turnsLeftText).row()
             } else if (civ.getDiplomacyManager(otherCiv)?.hasFlag(DiplomacyFlags.DeclarationOfFriendship) == true) {
-                val friendText = ColorMarkupLabel("Friends with [${getCivName(otherCiv)}]", Color.GREEN)
+                val friendText = ColorMarkupLabel("Friends with [${getCivName(otherCiv)}]", Color.GREEN, fontSize = font(14))
                 val turnsLeftText = " (${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.DeclarationOfFriendship)} ${Fonts.turn})".toLabel()
                 politicsTable.add(friendText)
                 politicsTable.add(turnsLeftText).row()
@@ -230,7 +212,7 @@ class GlobalPoliticsOverviewTable(
         // denounced civs
         for (otherCiv in civ.getKnownCivs()) {
             if (civ.getDiplomacyManager(otherCiv)?.hasFlag(DiplomacyFlags.Denunciation) == true) {
-                val denouncedText = ColorMarkupLabel("Denounced [${getCivName(otherCiv)}]", Color.RED)
+                val denouncedText = ColorMarkupLabel("Denounced [${getCivName(otherCiv)}]", Color.RED, fontSize = font(14))
                 val turnsLeftText = "(${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.Denunciation)} ${Fonts.turn})".toLabel()
                 politicsTable.add(denouncedText)
                 politicsTable.add(turnsLeftText).row()
@@ -241,7 +223,7 @@ class GlobalPoliticsOverviewTable(
         //allied CS
         for (cityState in gameInfo.getAliveCityStates()) {
             if (cityState.getDiplomacyManager(civ)?.isRelationshipLevelEQ(RelationshipLevel.Ally) == true) {
-                val alliedText = ColorMarkupLabel("Allied with [${getCivName(cityState)}]", Color.CYAN)
+                val alliedText = ColorMarkupLabel("Allied with [${getCivName(cityState)}]", Color.CYAN, fontSize = font(14))
                 politicsTable.add(alliedText).row()
             }
         }

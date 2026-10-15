@@ -1,7 +1,8 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
+import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.graphics.Color
-import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -15,7 +16,6 @@ import com.unciv.ui.screens.civilopediascreen.MarkupRenderer
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.components.extensions.addSeparator
-import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toLabel
@@ -33,36 +33,37 @@ class ReligionOverviewTab(
     override val persistableData = (persistedData as? ReligionTabPersistableData) ?: ReligionTabPersistableData()
 
     private val civStatsTable = Table()
-    private val religionButtons = Table()
+    private val religionButtons = Table().apply { top() }
     private val religionButtonLabel = "Click an icon to see the stats of this religion".toLabel()
     private val statsTable = Table()
     private val beliefsTable = Table()
-    private val headerTable = Table()
 
-    override fun getFixedContent() = headerTable
+    override val usesOwnScroll = true
 
     init {
         civStatsTable.defaults().left().pad(5f)
         civStatsTable.addCivSpecificStats()
 
-        headerTable.apply {
-            defaults().pad(5f)
-            align(Align.top)
-            add(civStatsTable).row()
-            add(religionButtons).row()
-            add(religionButtonLabel)
-            addSeparator()
-        }
-
-        defaults().pad(5f)
-        align(Align.top)
+        if (persistableData.selectedReligion == null)
+            persistableData.selectedReligion = viewingPlayer.getCiv().religionManager.religion?.name
+                ?: gameInfo.religions.values.firstOrNull()?.name
         loadReligionButtons()
-
-        statsTable.defaults().left().pad(5f)
-        beliefsTable.defaults().padBottom(20f)
+        statsTable.defaults().left().pad(0f)
+        beliefsTable.defaults().padBottom(16f)
         loadReligion(persistableData.selectedReligion)
-        add(statsTable).row()
-        add(beliefsTable).pad(20f)
+        val detail = Table().apply {
+            background = OverviewUi.rounded(OverviewUi.panel, 10f)
+            top().left().pad(pt(16f))
+            add(religionButtonLabel).left().padBottom(pt(12f)).row()
+            add(statsTable).growX().row()
+            add(civStatsTable).growX().padTop(pt(12f)).row()
+            add(beliefsTable).growX().minWidth(0f).padTop(pt(12f))
+        }
+        val split = Table().apply {
+            add(OverviewUi.scroll(religionButtons)).width(pt(170f)).growY()
+            add(OverviewUi.scroll(detail)).grow().minWidth(0f).padLeft(pt(14f))
+        }
+        add(split).width(overviewScreen.contentWidth).height(overviewScreen.centerAreaHeight - pt(8f)).padTop(pt(8f))
     }
 
     private fun Table.addCivSpecificStats() {
@@ -73,7 +74,7 @@ class ReligionOverviewTab(
             if (viewingPlayer.getCiv().shouldHideCivCount()) "Religions to be founded: [?]"
             else "Religions to be founded: [${manager.remainingFoundableReligions()}]"
         val religionCountExpander = ExpanderTab(
-            headerText, fontSize = 18, headerPad =  5f,
+            headerText, fontSize = font(14), headerPad =  5f,
             startsOutOpened = false, defaultPad =  0f, expanderWidth = minWidth,
             onChange = { overviewScreen.resizePage(this@ReligionOverviewTab) }
         ) {
@@ -106,28 +107,28 @@ class ReligionOverviewTab(
         for (religion in existingReligions) {
             val image = if (religion.isPantheon()) {
                 if (viewingPlayer.getCiv().knows(religion.foundingCiv) || viewingPlayer.getCiv() == religion.foundingCiv)
-                    ImageGetter.getNationPortrait(religion.foundingCiv.nation, 60f)
+                    ImageGetter.getNationPortrait(religion.foundingCiv.nation, 28f)
                 else
-                    ImageGetter.getRandomNationPortrait(60f)
+                    ImageGetter.getRandomNationPortrait(28f)
             } else {
-                    ImageGetter.getReligionPortrait(religion.getIconName(), 60f)
+                    ImageGetter.getReligionPortrait(religion.getIconName(), 28f)
             }
-            val button = Button(image, BaseScreen.skin)
-
-            button.onClick {
+            val button = OverviewUi.button(persistableData.selectedReligion == religion.name) {
                 persistableData.selectedReligion = religion.name
                 loadReligionButtons()
                 loadReligion(religion)
+            }.apply {
+                add(image).size(28f).padRight(10f)
+                add(religion.getReligionDisplayName().toLabel(fontSize = font(14)).apply { wrap = true }).minWidth(0f).growX().left()
+                pad(12f)
             }
 
-            if (persistableData.selectedReligion == religion.name)
-                button.disable()
-
-            religionButtons.add(button).pad(5f)
+            religionButtons.add(button).growX().minHeight(OverviewUi.touch).padBottom(1f).row()
         }
     }
 
     override fun select(selection: String): Float? {
+        if (selection.isEmpty()) return null
         persistableData.selectedReligion = selection
         loadReligionButtons()  // so the icon is "highlighted"
         loadReligion(selection)
@@ -142,37 +143,27 @@ class ReligionOverviewTab(
         statsTable.clear()
         beliefsTable.clear()
         religionButtonLabel.setText(religion.getReligionDisplayName().tr())
-        religionButtonLabel.setFontSize(Constants.headingFontSize)
-        religionButtonLabel.color = Color.CORAL
+        religionButtonLabel.setFontSize(font(18))
+        religionButtonLabel.color = com.unciv.models.skins.ExpeditionBlueTheme.text
 
         for (belief in religion.getAllBeliefsOrdered()) {
             beliefsTable.add(createBeliefDescription(belief)).row()
         }
 
-        statsTable.add((if (religion.isPantheon()) "Pantheon Name:" else "Religion Name:").toLabel())
-        statsTable.add(religion.getReligionDisplayName().toLabel()).right().row()
-        statsTable.add("Founding Civ:".toLabel())
         val foundingCivName =
             if (viewingPlayer.getCiv().knows(religion.foundingCiv) || viewingPlayer.getCiv() == religion.foundingCiv)
-                religion.foundingCivName
-            else Constants.unknownNationName
-        statsTable.add(foundingCivName.toLabel()).right().row()
-        if (religion.isMajorReligion()) {
-            val holyCity = gameInfo.getCities().firstOrNull { it.isHolyCityOf(religion.name) }
-            if (holyCity != null) {
-                statsTable.add("Holy City:".toLabel())
-                val cityName =
-                    if (viewingPlayer.getCiv().hasExplored(holyCity.getCenterTile()))
-                        holyCity.name
-                    else Constants.unknownNationName
-                statsTable.add(cityName.toLabel(hideIcons = true)).right().row()
+                religion.foundingCivName else Constants.unknownNationName
+        with(OverviewUi) {
+            statsTable.detailRow("Founding Civ:", foundingCivName)
+            if (religion.isMajorReligion()) {
+                val holyCity = gameInfo.getCities().firstOrNull { it.isHolyCityOf(religion.name) }
+                if (holyCity != null) statsTable.detailRow("Holy City:",
+                    if (viewingPlayer.getCiv().hasExplored(holyCity.getCenterTile())) holyCity.name else Constants.unknownNationName)
             }
+            val manager = religion.foundingCiv.religionManager
+            statsTable.detailRow("Cities following this religion:", manager.numberOfCitiesFollowingThisReligion().toString())
+            statsTable.detailRow("Followers of this religion:", manager.numberOfFollowersFollowingThisReligion("in all cities").toString())
         }
-        val manager = religion.foundingCiv.religionManager
-        statsTable.add("Cities following this religion:".toLabel())
-        statsTable.add(manager.numberOfCitiesFollowingThisReligion().toLabel()).right().row()
-        statsTable.add("Followers of this religion:".toLabel())
-        statsTable.add(manager.numberOfFollowersFollowingThisReligion("in all cities").toLabel()).right().row()
 
         val minWidth = max(statsTable.minWidth, beliefsTable.minWidth) + 5
 
@@ -191,7 +182,8 @@ class ReligionOverviewTab(
 
     private fun createBeliefDescription(belief: Belief) =
         MarkupRenderer.render(
-            belief.getCivilopediaTextLines(withHeader = true)
+            belief.getCivilopediaTextLines(withHeader = true),
+            labelWidth = overviewScreen.contentWidth * .65f
         ) {
             overviewScreen.openCivilopedia(it)
         }.apply {

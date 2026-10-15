@@ -1,9 +1,10 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
+import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
-import com.badlogic.gdx.utils.Align
 import com.unciv.UncivGame
 import com.unciv.logic.city.City
 import com.unciv.logic.map.tile.Tile
@@ -13,13 +14,7 @@ import com.unciv.models.ruleset.tile.ResourceType
 import com.unciv.models.ruleset.tile.TileResource
 import com.unciv.models.ruleset.unique.UniqueType
 import com.unciv.models.translations.tr
-import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
-import com.unciv.ui.components.extensions.addSeparator
-import com.unciv.ui.components.extensions.addSeparatorVertical
-import com.unciv.ui.components.extensions.equalizeColumns
 import com.unciv.ui.components.input.onClick
-import com.unciv.ui.components.extensions.pad
-import com.unciv.ui.components.extensions.surroundWithCircle
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
@@ -44,17 +39,6 @@ class ResourcesOverviewTab(
         private const val tooltipSize = 24f
         private const val total = "Total" // Used both as label and as invisible pseudo-origin
     }
-
-    private fun getTurnImage(vertical: Boolean) =
-        ImageGetter.getImage("OtherIcons/Turn right")
-            .apply {
-                color = BaseScreen.skinStrings.skinConfig.baseColor
-                if (vertical)
-                    rotateBy(90f)
-            }
-            .surroundWithCircle(iconSize, color = Color.LIGHT_GRAY)
-    private val turnImageH = getTurnImage(false)
-    private val turnImageV = getTurnImage(true)
 
     private val resourceDrilldown: ResourceSupplyList = viewingPlayer.getCiv().detailedCivResources
     private val extraDrilldown: ResourceSupplyList = getExtraDrilldown()
@@ -100,7 +84,7 @@ class ResourcesOverviewTab(
     private fun ResourceSupplyList.getLabel(resource: TileResource, origin: String, amount: Int): Label {
         val color = if (isDeficit(resource, origin, amount)) Color.RED else Color.WHITE
         val text = (if (resource.isStockpiled && amount >= 0 && origin != ExtraInfoOrigin.Stockpile.name) "+" else "") + amount.toString()
-        return text.toLabel(color)
+        return text.toLabel(color, fontSize = font(14))
     }
 
     private fun ResourceSupplyList.getOrZero(resource: TileResource, origin: String) =
@@ -116,7 +100,7 @@ class ResourcesOverviewTab(
     }
 
     private fun getResourceImage(name: String) =
-        ImageGetter.getResourcePortrait(name, iconSize).apply {
+        ImageGetter.getResourcePortrait(name, pt(28f)).apply {
             onClick { overviewScreen.showOneTimeNotification(
                 gameInfo.getExploredResourcesNotification(viewingPlayer.getCiv(), name)
             ) }
@@ -124,7 +108,7 @@ class ResourcesOverviewTab(
     private fun TileResource.getLabel(): Label {
         val deficit = resourceDrilldown.isDeficit(this, total, resourceDrilldown.sumBy(this))
         val color = if (deficit) Color.RED else Color.WHITE
-        val label = name.toLabel(color, hideIcons = true)
+        val label = name.toLabel(color, fontSize = font(16), hideIcons = true)
         label.onClick {
             overviewScreen.openCivilopedia(makeLink())
         }
@@ -153,18 +137,10 @@ class ResourcesOverviewTab(
     private val fixedContent = Table()
 
     init {
-        defaults().pad(defaultPad)
+        defaults().pad(0f)
         top()
-        fixedContent.defaults().pad(defaultPad)
+        fixedContent.defaults().pad(0f)
 
-        turnImageH.onClick {
-            persistableData.vertical = true
-            update()
-        }
-        turnImageV.onClick {
-            persistableData.vertical = false
-            update()
-        }
 
         update()
     }
@@ -174,99 +150,42 @@ class ResourcesOverviewTab(
     private fun update() {
         clear()
         fixedContent.clear()
-        if (persistableData.vertical) updateVertical()
-        else updateHorizontal()
+        updateResourceList()
     }
 
-    private fun updateHorizontal() {
-        // First row of table has all the icons
-        add(turnImageH)
+    private fun updateResourceList() {
+        fixedContent.add().height(pt(8f))
         for (resource in resources) {
-            add(getResourceImage(resource.name).apply {
-                addTooltip(resource.name, tipAlign = Align.topLeft, hideIcons = true)
-            })
-        }
-        addSeparator()
-
-        // One detail row per origin
-        for (origin in origins) {
-            add(origin.removeSuffix("+").toLabel()).left()
-            for (resource in resources) {
-                add(resourceDrilldown.getLabel(resource, origin))
-            }
-            row()
-        }
-        addSeparator(Color.GRAY).pad(0f, defaultPad)
-
-        // One row for the totals
-        add(total.toLabel()).left()
-        for (resource in resources) {
-            add(resourceDrilldown.getTotalLabel(resource))
-        }
-
-        // Separate rows for origins not part of the totals
-        if (!extraOrigins.isEmpty()) {
-            addSeparator()
-            for (origin in extraOrigins) {
-                add(origin.horizontalCaption.toLabel().apply {
-                    addTooltip(origin.tooltip, tooltipSize, tipAlign = Align.left)
-                }).left()
-                for (resource in resources) {
-                    add(extraDrilldown.getLabel(resource, origin.name))
+            val entry = Table().apply {
+                background = OverviewUi.surface(OverviewUi.panel)
+                pad(pt(10f), pt(16f), pt(10f), pt(16f))
+                add(getResourceImage(resource.name)).size(pt(28f)).padRight(pt(12f))
+                val identity = Table().apply {
+                    add(resource.getLabel()).left().row()
+                    add("${resource.resourceType.name} resource".toLabel(fontColor = OverviewUi.muted, fontSize = font(13))).left().padTop(6f)
                 }
-                row()
+                add(identity).width(160f).left().padRight(20f)
+                val sources = Table().apply {
+                    for (origin in origins) {
+                        val label = resourceDrilldown.getLabel(resource, origin) ?: continue
+                        add(origin.removeSuffix("+").toLabel(fontColor = OverviewUi.muted, fontSize = font(13))).left().padRight(16f)
+                        add(label).right().row()
+                    }
+                    for (origin in extraOrigins) {
+                        val label = extraDrilldown.getLabel(resource, origin.name) ?: continue
+                        add(origin.horizontalCaption.toLabel(fontColor = OverviewUi.muted, fontSize = font(13))).left().padRight(16f)
+                        add(label).right().row()
+                    }
+                }
+                add(sources).growX().minWidth(0f).left()
+                val total = Table().apply {
+                    add(resourceDrilldown.getTotalLabel(resource)).row()
+                    add("Available".toLabel(fontColor = OverviewUi.muted, fontSize = font(13))).padTop(6f)
+                }
+                add(total).width(110f).padLeft(16f)
             }
+            add(entry).width(overviewScreen.contentWidth).minHeight(pt(66f)).padBottom(pt(1f)).row()
         }
-    }
-
-    private fun updateVertical() {
-        val groupedOrigins = origins
-            .groupBy { it.removeSuffix("+") }
-
-        // First row of table has all the origin labels
-        fixedContent.apply {
-            add(turnImageV).size(iconSize)
-            add()
-            addSeparatorVertical(Color.GRAY).pad(0f)
-            for (origin in groupedOrigins) {
-                add(origin.key.toLabel())
-            }
-            add(total.toLabel())
-            addSeparatorVertical(Color.GRAY).pad(0f)
-            for (origin in extraOrigins) {
-                add(origin.verticalCaption.toLabel().apply {
-                    addTooltip(origin.tooltip, tooltipSize, targetAlign = Align.bottom, tipAlign = Align.topRight)
-                })
-            }
-            addSeparator().pad(0f, defaultPad)
-        }
-
-        // One detail row per resource
-        for (resource in resources) {
-            add(getResourceImage(resource.name))
-            add(resource.getLabel())
-            addSeparatorVertical(Color.GRAY).pad(0f)
-            for (groupedOrigin in groupedOrigins) {
-                if (groupedOrigin.value.size == 1)
-                    add(resourceDrilldown.getLabel(resource, groupedOrigin.key))
-                else
-                    add(Table().apply {
-                        for (origin in groupedOrigin.value.withIndex())
-                            add(resourceDrilldown.getLabel(resource, origin.value))
-                                .padLeft(if (origin.index == 0) 0f else defaultPad)
-                    })
-            }
-            add(resourceDrilldown.getTotalLabel(resource))
-            addSeparatorVertical(Color.GRAY).pad(0f)
-            for (origin in extraOrigins) {
-                add(extraDrilldown.getLabel(resource, origin.name))
-            }
-            row()
-        }
-
-        if (rows == 0) return // can happen when opening overview on turn 0 before founding a city
-        equalizeColumns(fixedContent, this)
-        overviewScreen.resizePage(this)  // Without the height is miscalculated - shouldn't be
     }
 
     private fun Tile.countAsUnimproved(): Boolean {

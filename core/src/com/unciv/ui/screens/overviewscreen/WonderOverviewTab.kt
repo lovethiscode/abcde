@@ -1,8 +1,9 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
+import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
-import com.badlogic.gdx.utils.Align
 import com.unciv.UncivGame
 import com.unciv.logic.city.City
 import com.unciv.logic.civilization.Civilization
@@ -11,7 +12,6 @@ import com.unciv.models.ruleset.Building
 import com.unciv.models.ruleset.QuestName
 import com.unciv.models.ruleset.tech.Era
 import com.unciv.models.translations.tr
-import com.unciv.ui.components.extensions.equalizeColumns
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.images.ImageGetter
@@ -30,64 +30,33 @@ class WonderOverviewTab(
     override fun getFixedContent() = fixedContent
 
     init {
-        fixedContent.apply {
-            defaults().pad(10f).align(Align.center)
-            add()
-            add("Name".toLabel())
-            add("Status".toLabel())
-            add("Location".toLabel())
-            add().minWidth(30f)
-            row()
-        }
-
+        fixedContent.add().height(pt(8f))
         top()
-        defaults().pad(10f).align(Align.center)
-        repeat(5) {
-            add() // dummies so equalizeColumns can work because the first grid cell is colspan(5)
-        }
-        row()
-
-        createGrid()
-
-        equalizeColumns(fixedContent, this)
-    }
-
-    private fun createGrid() {
-        var lastGroup = ""
-
         for (wonder in wonders) {
             if (wonder.status == WonderInfo.WonderStatus.Hidden) continue
-            if (wonder.groupName != lastGroup) {
-                lastGroup = wonder.groupName
-                val groupRow = Table().apply {
-                    add(ImageGetter.getDot(wonder.groupColor)).minHeight(2f).growX()
-                    add(lastGroup.toLabel(wonder.groupColor).apply { setAlignment(Align.right) }).padLeft(1f).right()
+            val entry = Table().apply {
+                background = OverviewUi.surface(OverviewUi.panel)
+                pad(pt(10f), pt(16f), pt(10f), pt(16f))
+                val image = wonder.getImage()
+                image?.onClick { overviewScreen.openCivilopedia(wonder.makeLink()) }
+                add(image).size(pt(28f)).padRight(pt(12f))
+                val identity = Table().apply {
+                    left()
+                    add(wonder.getNameColumn().toLabel(fontSize = font(16), hideIcons = true)).left().row()
+                    val location = wonder.getLocationColumn()
+                    val context = if (location.isEmpty()) wonder.groupName else "{${wonder.groupName}} · {$location}"
+                    add(context.toLabel(fontColor = OverviewUi.muted, fontSize = font(13), hideIcons = true)).left().padTop(6f)
                 }
-                add(groupRow).fillX().colspan(5).padBottom(0f).row()
+                if (wonder.location != null) identity.onClick {
+                    UncivGame.Current.resetToWorldScreen().mapHolder.setCenterPosition(wonder.location.position)
+                }
+                add(identity).minWidth(0f).growX().left()
+                add(wonder.getStatusColumn().toLabel(fontSize = font(14))).padLeft(16f).right()
             }
-
-            val image = wonder.getImage()
-            image?.onClick {
-                overviewScreen.openCivilopedia(wonder.makeLink())
-            }
-            // Terrain image padding is a bit unpredictable, they need ~5f more. Ensure equal line spacing on name, not image:
-            add(image).pad(0f, 10f, 0f, 10f)
-
-            add(wonder.getNameColumn().toLabel(hideIcons = true)).pad(15f, 10f, 15f, 10f)
-            add(wonder.getStatusColumn().toLabel())
-            val locationText = wonder.getLocationColumn()
-            if (locationText.isNotEmpty()) {
-                val locationLabel = locationText.toLabel(hideIcons = true)
-                if (wonder.location != null)
-                    locationLabel.onClick{
-                        val worldScreen = UncivGame.Current.resetToWorldScreen()
-                        worldScreen.mapHolder.setCenterPosition(wonder.location.position)
-                    }
-                add(locationLabel).fillY()
-            }
-            row()
+            add(entry).width(overviewScreen.contentWidth).minHeight(pt(66f)).padBottom(pt(1f)).row()
         }
     }
+
 }
 
 
@@ -114,8 +83,9 @@ class WonderInfo {
     ) {
         private val viewEntireMapForDebug = DebugUtils.VISIBLE_MAP
 
-        fun getImage() = if (status == WonderStatus.Unknown && !viewEntireMapForDebug) null
-        else category.getImage?.invoke(name, if (category == CivilopediaCategories.Terrain) 50f else 45f)
+        fun getImage(size: Float = if (category == CivilopediaCategories.Terrain) 50f else 45f) =
+            if (status == WonderStatus.Unknown && !viewEntireMapForDebug) null
+            else category.getImage?.invoke(name, size)
 
         fun getNameColumn() = when {
             viewEntireMapForDebug -> name

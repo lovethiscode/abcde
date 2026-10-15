@@ -1,8 +1,8 @@
 package com.unciv.ui.screens.overviewscreen
 
-import com.badlogic.gdx.graphics.Color
+import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
+import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.scenes.scene2d.ui.Table
-import com.unciv.Constants
 import com.unciv.GUI
 import com.unciv.models.ruleset.unique.Unique
 import com.unciv.models.ruleset.unique.UniqueType
@@ -22,6 +22,10 @@ class StatsOverviewTab(
     viewingPlayer: CivView,
     overviewScreen: EmpireOverviewScreen
 ) : EmpireOverviewTab(viewingPlayer, overviewScreen) {
+    override val usesOwnScroll = true
+    private val selection = Table()
+    private val breakdown = Table()
+    private var selectedStat = "Gold"
     private val happinessTable = Table()
     private val unhappinessTable = UnhappinessTable()
     private val goldAndSliderTable = Table()
@@ -39,56 +43,61 @@ class StatsOverviewTab(
     }
 
     init {
-        val tablePadding = 30f  // Padding around each of the stat tables
-        defaults().pad(tablePadding).top()
-
-        happinessTable.defaults().pad(5f)
-        goldTable.defaults().pad(5f)
-        scienceTable.defaults().pad(5f)
-        cultureTable.defaults().pad(5f)
-        faithTable.defaults().pad(5f)
+        happinessTable.defaults().pad(0f)
+        goldTable.defaults().pad(0f)
+        scienceTable.defaults().pad(0f)
+        cultureTable.defaults().pad(0f)
+        faithTable.defaults().pad(0f)
         greatPeopleTable.defaults().pad(5f)
         scoreTable.defaults().pad(5f)
         unhappinessTable.update()
 
-        goldAndSliderTable.add(goldTable).row()
+        goldAndSliderTable.add(goldTable).growX().row()
         if (viewingPlayer.ruleset.modOptions.hasUnique(UniqueType.ConvertGoldToScience))
             goldAndSliderTable.addGoldSlider()
 
         update()
 
-        val allStatTables = sequence {
-            yield(happinessTable)
-            if (unhappinessTable.show) yield(unhappinessTable)
-            yield(goldAndSliderTable)
-            yield(scienceTable)
-            yield(cultureTable)
-            if (isReligionEnabled) yield(faithTable)
-            yield(greatPeopleTable)
-            yield(scoreTable)
+        val split = Table().apply {
+            add(OverviewUi.scroll(selection)).width(pt(170f)).growY()
+            add(OverviewUi.scroll(breakdown)).minWidth(0f).grow().padLeft(pt(14f))
         }
+        add(split).width(overviewScreen.contentWidth).height(overviewScreen.centerAreaHeight - pt(8f)).padTop(pt(8f))
+        showStat(selectedStat)
+    }
 
-        var optimumColumns = 1
-        for (numColumns in allStatTables.count() downTo 1) {
-            val totalWidth = allStatTables.withIndex()
-                .groupBy { it.index % numColumns }
-                .mapNotNull { col ->
-                    // `col` goes by column and lists the statTables in that column
-                    // as Map.Entry<Int, <List<IndexedValue<Table>>>
-                    col.value.maxOfOrNull {  // `it` is the IndexedValue<Table> from allStatTables.withIndex()
-                        it.value.prefWidth + tablePadding * 2
-                    }
-                }.sum()
-            if (totalWidth < overviewScreen.stage.width) {
-                optimumColumns = numColumns
-                break
-            }
+    private fun showStat(name: String) {
+        selectedStat = name
+        val tables = linkedMapOf("Gold" to goldAndSliderTable, "Science" to scienceTable,
+            "Culture" to cultureTable, "Happiness" to happinessTable)
+        if (unhappinessTable.show) tables["Unhappiness"] = unhappinessTable
+        if (isReligionEnabled) tables["Faith"] = faithTable
+        tables["Great person points"] = greatPeopleTable
+        tables["Score"] = scoreTable
+        val statMap = viewingPlayer.getStatMapForNextTurn()
+        val amounts = Stat.entries.associate { stat -> stat.name to statMap.values.sumOf { it[stat].toDouble() }.roundToInt() }.toMutableMap()
+        amounts["Happiness"] = viewingPlayer.getHappinessBreakdown().values.sum().roundToInt()
+        amounts["Score"] = viewingPlayer.calculateScoreBreakdown().values.sum().roundToInt()
+        selection.clear()
+        selection.top()
+        for (label in tables.keys) {
+            selection.add(OverviewUi.button(label == name) { showStat(label) }.apply {
+                val icon = when (label) {
+                    "Great person points" -> ImageGetter.getStatIcon("Specialist")
+                    "Score" -> ImageGetter.getImage("OtherIcons/Score")
+                    "Unhappiness" -> ImageGetter.getStatIcon("Malcontent")
+                    else -> ImageGetter.getStatIcon(label)
+                }
+                add(icon).size(pt(18f)).padLeft(pt(12f)).padRight(pt(8f))
+                add(OverviewUi.plainLabel(label, 15).apply { wrap = true })
+                    .minWidth(0f).growX().left().padTop(pt(10f)).padBottom(pt(10f))
+                amounts[label]?.let { add(it.toString().toLabel(fontColor = OverviewUi.accent, fontSize = font(14))).right().padRight(12f) }
+            }).growX().minHeight(pt(52f)).padBottom(pt(4f)).row()
         }
-
-        for (entry in allStatTables.withIndex()) {
-            if (entry.index % optimumColumns == 0) row()
-            add(entry.value)
-        }
+        breakdown.clear()
+        breakdown.top().left()
+        breakdown.background = OverviewUi.rounded(OverviewUi.panel, 10f)
+        breakdown.add(tables[name] ?: goldAndSliderTable).growX().minWidth(0f).pad(pt(10f), pt(16f), pt(10f), pt(16f))
     }
 
     fun update() {
@@ -102,25 +111,21 @@ class StatsOverviewTab(
         updateScoreTable()
     }
 
-    private fun Table.addHeading(label: String) {
-        clear()
-        add(label.toLabel(fontSize = Constants.headingFontSize)).colspan(2).row()
-        addSeparator()
-    }
     private fun Table.addLabeledValue(label: String, value: Float) {
         val roundedValue = value.roundToInt()
         if (roundedValue == 0) return
-        add(label.toLabel(hideIcons = true)).left()
-        add(roundedValue.toLabel()).right().row()
+        add(label.toLabel(fontColor = OverviewUi.muted, hideIcons = true, fontSize = font(14))).left().expandX().minHeight(pt(35f))
+        add(roundedValue.toString().toLabel(fontSize = font(14))).right().row()
+        add(ImageGetter.getWhiteDot().apply { color = OverviewUi.border }).colspan(2).growX().height(pt(1f)).row()
     }
     private fun Table.addTotal(value: Float) {
-        add("Total".toLabel()).left()
-        add(value.roundToInt().toLabel()).right()
+        add("Total".toLabel(fontColor = OverviewUi.accent, fontSize = font(14))).left().minHeight(pt(36f))
+        add(value.roundToInt().toString().toLabel(fontColor = OverviewUi.accent, fontSize = font(14))).right().row()
         pack()
     }
 
     private fun updateHappinessTable() = happinessTable.apply {
-        addHeading("Happiness")
+        clear()
         val happinessBreakdown = viewingPlayer.getHappinessBreakdown()
         for ((key, value) in happinessBreakdown)
             addLabeledValue(key, value)
@@ -148,12 +153,6 @@ class StatsOverviewTab(
         }
 
         fun update() {
-            add(ImageGetter.getStatIcon("Malcontent"))
-                .size(Constants.headingFontSize.toFloat())
-                .right().padRight(1f)
-            add("Unhappiness".toLabel(fontSize = Constants.headingFontSize)).left()
-            addSeparator()
-
             add(MarkupRenderer.render(
                 uniques.map { FormattedLine(it) },
                 labelWidth = (overviewScreen.stage.width * 0.25f).coerceAtLeast(greatPeopleTable.width * 0.8f),
@@ -163,7 +162,7 @@ class StatsOverviewTab(
     }
 
     private fun Table.updateStatTable(stat: Stat, statMap: StatMap) {
-        addHeading(stat.name)
+        clear()
         var total = 0f
         for ((source, stats) in statMap) {
             addLabeledValue(source, stats[stat])
@@ -193,13 +192,6 @@ class StatsOverviewTab(
 
     private fun updateGreatPeopleTable() = greatPeopleTable.apply {
         clear()
-        val greatPeopleHeader = Table()
-        val greatPeopleIcon = ImageGetter.getStatIcon("Specialist")
-        greatPeopleIcon.color = Color.ROYAL
-        greatPeopleHeader.add(greatPeopleIcon).padRight(1f).size(Constants.headingFontSize.toFloat())
-        greatPeopleHeader.add("Great person points".toLabel(fontSize = Constants.headingFontSize))
-        add(greatPeopleHeader).colspan(3).row()
-        addSeparator()
         add()
         add("Current points".toLabel())
         add("Points per turn".toLabel()).row()
@@ -226,14 +218,6 @@ class StatsOverviewTab(
 
     private fun updateScoreTable() = scoreTable.apply {
         clear()
-        val scoreHeader = Table()
-        val scoreIcon = ImageGetter.getImage("OtherIcons/Score")
-        scoreIcon.color = Color.FIREBRICK
-        scoreHeader.add(scoreIcon).padRight(1f).size(Constants.headingFontSize.toFloat())
-        scoreHeader.add("Score".toLabel(fontSize = Constants.headingFontSize))
-        add(scoreHeader).colspan(2).row()
-        addSeparator()
-
         val scoreBreakdown = viewingPlayer.calculateScoreBreakdown()
         for ((label, value) in scoreBreakdown)
             addLabeledValue(label, value.toFloat())

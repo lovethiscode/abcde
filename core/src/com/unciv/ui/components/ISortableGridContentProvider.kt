@@ -70,7 +70,7 @@ interface ISortableGridContentProvider<IT, ACT> {
      * - [actionContext] can be used to define `onClick` actions.
      */
     fun getEntryActor(item: IT, iconSize: Float, actionContext: ACT): Actor? =
-        getEntryValue(item).toCenteredLabel()
+        getEntryValue(item).toLabel().apply { setAlignment(Align.center) }
 
     /** Factory for totals cell [Actor]
      * - By default displays the sum over [getEntryValue].
@@ -80,7 +80,7 @@ interface ISortableGridContentProvider<IT, ACT> {
      *   the total empty override to return `null`.
      */
     fun getTotalsActor(items: Iterable<IT>): Actor? =
-        items.sumOf { getEntryValue(it) }.toCenteredLabel()
+        items.sumOf { getEntryValue(it) }.toLabel().apply { setAlignment(Align.center) }
 
     companion object {
         val collator by lazy {UncivGame.Current.settings.getCollatorFromLocale()}
