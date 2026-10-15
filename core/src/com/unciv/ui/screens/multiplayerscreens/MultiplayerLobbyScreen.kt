@@ -261,7 +261,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         if (UiNavigation.isIos) {
             layout.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.controlBorder)
             layout.setBounds(12f, 8f, stage.width - 24f, stage.height - 16f)
-            layout.pad(10f, 12f, 0f, 12f)
+            layout.pad(10f, 12f, 10f, 12f)
         } else {
             layout.setFillParent(true)
             layout.pad(16f)
