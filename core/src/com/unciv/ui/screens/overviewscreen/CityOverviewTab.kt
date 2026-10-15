@@ -116,7 +116,7 @@ class CityOverviewTab(
         if (!detailsOpen) table.add(totalsScroll).growX().minWidth(0f).height(pt(36f))
         content.clearChildren()
         if (detailsOpen) {
-            content.add(table).width(nameWidth).growY()
+            if (!overviewScreen.compact) content.add(table).width(nameWidth).growY()
             content.add(OverviewUi.scroll(inspector)).grow().minWidth(0f).padLeft(pt(12f))
         } else content.add(table).grow().minWidth(0f)
         bodyScroll.scrollY = scrollY
@@ -263,7 +263,7 @@ class CityOverviewTab(
             rebuildRows()
         }
         val title = Table().apply {
-            add(city.name.toLabel(fontColor = OverviewUi.accent, fontSize = font(18), hideIcons = true))
+            add(city.name.toLabel(fontColor = OverviewUi.accent, fontSize = font(18), hideIcons = true).apply { setEllipsis(true) })
                 .growX().minWidth(0f).left().height(OverviewUi.touch)
             add(close).size(OverviewUi.touch)
         }

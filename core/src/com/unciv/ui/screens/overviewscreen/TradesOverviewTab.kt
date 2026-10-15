@@ -55,7 +55,8 @@ class TradesOverviewTab(
         add(ImageGetter.getNationPortrait(otherCiv.nation, pt(28f))).size(pt(28f)).padRight(pt(12f))
         val details = Table().apply {
             add(otherCiv.civName.toLabel(fontSize = font(16), hideIcons = true)).colspan(2).left().padBottom(pt(5f)).row()
-            add(createOffersTable("Our offers", trade.ourOffers)).growX().minWidth(0f).top().left().padRight(pt(24f))
+            val ours = add(createOffersTable("Our offers", trade.ourOffers)).growX().minWidth(0f).top().left()
+            if (overviewScreen.compact) ours.colspan(2).padBottom(pt(8f)).row() else ours.padRight(pt(24f))
             add(createOffersTable("Their offers", trade.theirOffers)).growX().minWidth(0f).top().left()
         }
         add(details).growX().minWidth(0f)
@@ -65,6 +66,7 @@ class TradesOverviewTab(
     private fun createOffersTable(title: String, offers: TradeOffersList) = Table().apply {
         add(title.toLabel(fontColor = OverviewUi.muted, fontSize = font(13), hideIcons = true))
             .left().top().padRight(pt(12f)).minHeight(pt(22f))
+        if (overviewScreen.compact) row()
         val entries = Table().apply {
             top().left()
             for (offer in offers) {

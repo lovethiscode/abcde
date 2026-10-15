@@ -39,6 +39,9 @@ class OptionsPopup(
     val settings = screen.game.settings
     val tabs: TabbedPager
     internal val useSidebar = ExpeditionBlueTheme.enabled
+    private val compactNavigation = useSidebar && stageToShowOn.width < OptionsPopupStyle.points(640f)
+    private val navigationHeight get() = if (compactNavigation) OptionsPopupStyle.points(108f) else 0f
+    private val contentPadding get() = OptionsPopupStyle.points(if (compactNavigation) 12f else 20f)
     private val navigation = Table()
     private val navigationButtons = ArrayList<IconTextButton>()
     private val pageDescription = "".toLabel(OptionsPopupStyle.muted, OptionsPopupStyle.fontSize(14f)).apply { wrap = true }
@@ -79,8 +82,8 @@ class OptionsPopup(
         screen.run {
             val safe = Display.getSafeArea(com.badlogic.gdx.Gdx.graphics.width, com.badlogic.gdx.Gdx.graphics.height)
             val preferredSidebar = OptionsPopupStyle.points(if (minOf(safe.width, safe.height) >= 600) 240f else 200f)
-            sidebarWidth = preferredSidebar.coerceAtMost(stage.width * 0.4f)
-            tabMaxWidth = if (useSidebar) stage.width - sidebarWidth - 1f - OptionsPopupStyle.points(40f)
+            sidebarWidth = if (compactNavigation) 0f else preferredSidebar.coerceAtMost(stage.width * 0.4f)
+            tabMaxWidth = if (useSidebar) stage.width - sidebarWidth - 1f - contentPadding * 2
                 else if (isPortrait()) stage.width - 10f else 0.8f * stage.width
             tabMinWidth = if (useSidebar) tabMaxWidth else 0.6f * stage.width
             tabMaxHeight = if (useSidebar) stage.height - 130f else 0.8f * stage.height
@@ -130,18 +133,19 @@ class OptionsPopup(
                     down = checked
                     over = checked
                 }
-                label.wrap = true
+                label.wrap = !compactNavigation
                 labelCell.minWidth(0f).growX().left()
                 pad(OptionsPopupStyle.points(6f), OptionsPopupStyle.points(12f), OptionsPopupStyle.points(6f), OptionsPopupStyle.points(12f))
                 iconCell.size(OptionsPopupStyle.points(22f)).padLeft(0f).padRight(OptionsPopupStyle.points(12f))
                 onClick { tabs.selectPage(index); isChecked = true }
             }
             navigationButtons.add(button)
-            navigation.add(button).width(sidebarWidth - OptionsPopupStyle.points(24f))
-                .minHeight(UiNavigation.minimumTouchSize()).padBottom(OptionsPopupStyle.points(8f)).row()
+            val cell = navigation.add(button).minHeight(UiNavigation.minimumTouchSize())
+            if (compactNavigation) cell.padRight(OptionsPopupStyle.points(8f))
+            else cell.width(sidebarWidth - OptionsPopupStyle.points(24f)).padBottom(OptionsPopupStyle.points(8f)).row()
         }
         val sidebarScroll = AutoScrollPane(navigation).apply {
-            setScrollingDisabled(true, false)
+            setScrollingDisabled(!compactNavigation, compactNavigation)
             setOverscroll(false, false)
         }
         val sidebar = Table(BaseScreen.skin).apply {
@@ -157,14 +161,19 @@ class OptionsPopup(
             headingCell = add(heading).minWidth(0f).growX().left()
         }
         val content = Table().apply {
-            pad(0f, OptionsPopupStyle.points(20f), 0f, OptionsPopupStyle.points(20f))
+            pad(0f, contentPadding, 0f, contentPadding)
             add(header).growX().row()
-            add(tabs).grow()
+            add(tabs).grow().minWidth(0f).minHeight(0f)
         }
-        add(sidebar).width(sidebarWidth).growY()
-        add(com.badlogic.gdx.scenes.scene2d.ui.Image(BaseScreen.skin.newDrawable("Rectangle",
-            OptionsPopupStyle.divider.cpy().apply { a = 0.6f }))).width(OptionsPopupStyle.points(0.5f)).growY()
-        add(content).grow().row()
+        if (compactNavigation) {
+            add(sidebarHeader).growX().height(OptionsPopupStyle.points(52f)).row()
+            add(sidebarScroll).growX().minWidth(0f).height(OptionsPopupStyle.points(56f)).row()
+        } else {
+            add(sidebar).width(sidebarWidth).growY()
+            add(com.badlogic.gdx.scenes.scene2d.ui.Image(BaseScreen.skin.newDrawable("Rectangle",
+                OptionsPopupStyle.divider.cpy().apply { a = 0.6f }))).width(OptionsPopupStyle.points(0.5f)).growY()
+        }
+        add(content).grow().minWidth(0f).minHeight(0f).row()
         pageDescription.width = tabs.prefWidth
         tabs.resizePageArea(tabs.prefWidth, (stageToShowOn.height - header.prefHeight).coerceAtLeast(80f))
         tabs.onSelection { index, _, _ ->
@@ -177,7 +186,7 @@ class OptionsPopup(
             heading.invalidateHierarchy()
             header.invalidateHierarchy()
             tabs.resizePageArea(tabs.prefWidth,
-                ((visibleHeight.takeIf { it > 0f } ?: stageToShowOn.height) - header.prefHeight)
+                ((visibleHeight.takeIf { it > 0f } ?: stageToShowOn.height) - navigationHeight - header.prefHeight)
                     .coerceAtLeast(OptionsPopupStyle.points(44f)))
         }
     }
@@ -194,11 +203,11 @@ class OptionsPopup(
         visibleHeight = visibleArea.height
         val editing = visibleArea.height < stageToShowOn.height * 0.65f
         headingCell.setActor(if (editing) null else heading)
-        val contentWidth = stageToShowOn.width - sidebarWidth - OptionsPopupStyle.points(0.5f) - OptionsPopupStyle.points(40f)
+        val contentWidth = stageToShowOn.width - sidebarWidth - OptionsPopupStyle.points(0.5f) - contentPadding * 2
         pageDescription.width = contentWidth.coerceAtLeast(1f)
         heading.invalidateHierarchy()
         tabs.resizePageArea(contentWidth,
-            (visibleArea.height - header.prefHeight).coerceAtLeast(OptionsPopupStyle.points(44f)))
+            (visibleArea.height - navigationHeight - header.prefHeight).coerceAtLeast(OptionsPopupStyle.points(44f)))
         innerTable.setBounds(0f, visibleArea.y, stageToShowOn.width, visibleArea.height)
         innerTable.validate()
         tabs.validate()
@@ -210,8 +219,8 @@ class OptionsPopup(
             visibleHeight = visibleArea.height * 0.9f
             val editing = visibleArea.height < stageToShowOn.height * 0.65f
             headingCell.setActor(if (editing) null else heading)
-            tabs.resizePageArea(stageToShowOn.width * 0.9f - sidebarWidth - OptionsPopupStyle.points(40f),
-                (visibleArea.height * 0.9f - header.prefHeight).coerceAtLeast(OptionsPopupStyle.points(44f)))
+            tabs.resizePageArea(stageToShowOn.width * 0.9f - sidebarWidth - contentPadding * 2,
+                (visibleArea.height * 0.9f - navigationHeight - header.prefHeight).coerceAtLeast(OptionsPopupStyle.points(44f)))
         } else if (com.badlogic.gdx.Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
             tabs.resizePageArea(
                 if (stageToShowOn.height > stageToShowOn.width) stageToShowOn.width - 10f else stageToShowOn.width * 0.8f,

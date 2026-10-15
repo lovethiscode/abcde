@@ -59,8 +59,14 @@ class StatsOverviewTab(
         update()
 
         val split = Table().apply {
-            add(OverviewUi.scroll(selection)).width(pt(170f)).growY()
-            add(OverviewUi.scroll(breakdown)).minWidth(0f).grow().padLeft(pt(14f))
+            if (overviewScreen.compact) {
+                add(OverviewUi.scroll(selection).apply { setScrollingDisabled(false, true) })
+                    .growX().minWidth(0f).height(pt(60f)).padBottom(pt(8f)).row()
+                add(OverviewUi.scroll(breakdown)).minWidth(0f).minHeight(0f).grow()
+            } else {
+                add(OverviewUi.scroll(selection)).width(pt(170f)).growY()
+                add(OverviewUi.scroll(breakdown)).minWidth(0f).grow().padLeft(pt(14f))
+            }
         }
         add(split).width(overviewScreen.contentWidth).height(overviewScreen.centerAreaHeight - pt(8f)).padTop(pt(8f))
         showStat(selectedStat)
@@ -81,7 +87,7 @@ class StatsOverviewTab(
         selection.clear()
         selection.top()
         for (label in tables.keys) {
-            selection.add(OverviewUi.button(label == name) { showStat(label) }.apply {
+            val cell = selection.add(OverviewUi.button(label == name) { showStat(label) }.apply {
                 val icon = when (label) {
                     "Great person points" -> ImageGetter.getStatIcon("Specialist")
                     "Score" -> ImageGetter.getImage("OtherIcons/Score")
@@ -92,7 +98,9 @@ class StatsOverviewTab(
                 add(OverviewUi.plainLabel(label, 15).apply { wrap = true })
                     .minWidth(0f).growX().left().padTop(pt(10f)).padBottom(pt(10f))
                 amounts[label]?.let { add(it.toString().toLabel(fontColor = OverviewUi.accent, fontSize = font(14))).right().padRight(12f) }
-            }).growX().minHeight(pt(52f)).padBottom(pt(4f)).row()
+            }).minHeight(pt(52f))
+            if (overviewScreen.compact) cell.width(pt(170f)).padRight(pt(8f))
+            else cell.growX().padBottom(pt(4f)).row()
         }
         breakdown.clear()
         breakdown.top().left()
@@ -114,7 +122,8 @@ class StatsOverviewTab(
     private fun Table.addLabeledValue(label: String, value: Float) {
         val roundedValue = value.roundToInt()
         if (roundedValue == 0) return
-        add(label.toLabel(fontColor = OverviewUi.muted, hideIcons = true, fontSize = font(14))).left().expandX().minHeight(pt(35f))
+        add(label.toLabel(fontColor = OverviewUi.muted, hideIcons = true, fontSize = font(14)).apply { wrap = true })
+            .minWidth(0f).growX().left().minHeight(pt(35f))
         add(roundedValue.toString().toLabel(fontSize = font(14))).right().row()
         add(ImageGetter.getWhiteDot().apply { color = OverviewUi.border }).colspan(2).growX().height(pt(1f)).row()
     }

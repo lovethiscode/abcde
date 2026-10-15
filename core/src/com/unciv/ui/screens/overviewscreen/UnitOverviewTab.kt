@@ -35,7 +35,8 @@ class UnitOverviewTab(
     private val detail = Table()
     private val listScroll = OverviewUi.scroll(unitList)
     private val detailScroll = OverviewUi.scroll(detail)
-    private val listWidth = pt(190f).coerceAtMost(overviewScreen.contentWidth * .35f)
+    private val listWidth = if (overviewScreen.compact) overviewScreen.contentWidth
+        else pt(190f).coerceAtMost(overviewScreen.contentWidth * .35f)
     private val rows = linkedMapOf<Int, com.badlogic.gdx.scenes.scene2d.ui.Button>()
     private var units = viewingPlayer.getUnits()
 
@@ -58,8 +59,13 @@ class UnitOverviewTab(
             add(listScroll).grow().minHeight(0f)
         }
         val split = Table().apply {
-            add(listPanel).width(listWidth).growY()
-            add(detailScroll).padLeft(pt(16f)).minWidth(0f).grow()
+            if (overviewScreen.compact) {
+                add(listPanel).growX().minWidth(0f).height(overviewScreen.centerAreaHeight * .32f).row()
+                add(detailScroll).padTop(pt(12f)).minWidth(0f).minHeight(0f).grow()
+            } else {
+                add(listPanel).width(listWidth).growY()
+                add(detailScroll).padLeft(pt(16f)).minWidth(0f).grow()
+            }
         }
         add(split).width(overviewScreen.contentWidth).height(overviewScreen.centerAreaHeight - pt(8f)).padTop(pt(8f)).row()
         rebuildList()
@@ -152,7 +158,8 @@ class UnitOverviewTab(
                 UnitRenamePopup(overviewScreen, unit) { update() }
             }).size(OverviewUi.touch).left().row()
         detail.add(UnitSupplyTable.create(overviewScreen, this, viewingPlayer.getCiv(),
-            overviewScreen.contentWidth - listWidth - pt(48f))).colspan(2).growX().padTop(pt(12f)).row()
+            overviewScreen.contentWidth - (if (overviewScreen.compact) 0f else listWidth + pt(16f)) - pt(32f)))
+            .colspan(2).growX().padTop(pt(12f)).row()
         detail.add().expandY()
         if (resetScroll) detailScroll.scrollY = 0f
         detailScroll.updateVisualScroll()

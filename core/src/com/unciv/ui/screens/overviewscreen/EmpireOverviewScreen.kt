@@ -27,7 +27,9 @@ class EmpireOverviewScreen(
 ) : BaseScreen(), RecreateOnResize {
     // The title and category bars stay outside each page's scrolling content.
     internal val contentWidth = stage.width
-    internal val centerAreaHeight = stage.height - pt(100f)
+    internal val compact = stage.width < pt(640f)
+    private val headerHeight = pt(if (compact) 76f else 43f)
+    internal val centerAreaHeight = stage.height - headerHeight - pt(57f)
 
     private val tabbedPager: TabbedPager
     private val categoryButtons = linkedMapOf<EmpireOverviewCategories, Button>()
@@ -91,22 +93,29 @@ class EmpireOverviewScreen(
         }
         val header = Table().apply {
             add(closeButton).width(pt(74f)).height(OverviewUi.touch).padRight(pt(14f))
-            add("Empire Overview".toLabel(fontSize = font(20), hideIcons = true)).left().expandX()
-            add(ImageGetter.getNationPortrait(viewingPlayer.getCiv().nation, pt(24f))).size(pt(24f)).padRight(pt(7f))
-            add(viewingPlayer.getCiv().civName.toLabel(fontSize = font(15), hideIcons = true)).padRight(pt(14f))
+            add("Empire Overview".toLabel(fontSize = font(20), hideIcons = true).apply { setEllipsis(true) })
+                .left().growX().minWidth(0f)
             val info = viewingPlayer.getCiv().gameInfo
             val year = com.unciv.ui.components.YearTextUtil.toYearText(info.getYear(), viewingPlayer.getCiv().isLongCountDisplay())
-            add("${info.turns} {Turn} · $year".toLabel(fontColor = OverviewUi.muted, fontSize = font(14), hideIcons = true))
+            val context = Table().apply {
+                add(ImageGetter.getNationPortrait(viewingPlayer.getCiv().nation, pt(24f))).size(pt(24f)).padRight(pt(7f))
+                add(viewingPlayer.getCiv().civName.toLabel(fontSize = font(15), hideIcons = true).apply { setEllipsis(true) })
+                    .minWidth(0f).padRight(pt(14f))
+                add("${info.turns} {Turn} · $year".toLabel(fontColor = OverviewUi.muted, fontSize = font(14), hideIcons = true)
+                    .apply { setEllipsis(true) }).minWidth(0f)
+            }
+            if (compact) { row(); add(context).colspan(2).growX().minWidth(0f).left().padLeft(pt(12f)) }
+            else add(context)
         }
         val navScroll = OverviewUi.scroll(navigation).apply { setScrollingDisabled(false, true) }
         val root = Table().apply {
             background = OverviewUi.surface(OverviewUi.background)
             setFillParent(true)
             padTop(pt(8f))
-            add(header).growX().height(pt(43f)).row()
+            add(header).growX().minWidth(0f).height(headerHeight).row()
             add(ImageGetter.getWhiteDot().apply { color = OverviewUi.border }).growX().height(pt(1f)).row()
-            add(navScroll).growX().height(pt(48f)).row()
-            add(tabbedPager).grow().row()
+            add(navScroll).growX().minWidth(0f).height(pt(48f)).row()
+            add(tabbedPager).grow().minWidth(0f).minHeight(0f).row()
         }
         tabbedPager.onSelection { _, caption, _ ->
             for ((category, button) in categoryButtons) {

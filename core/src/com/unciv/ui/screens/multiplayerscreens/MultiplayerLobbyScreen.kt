@@ -81,6 +81,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private var connectionGeneration = 0
     private var job: Job? = null
     private val layout = Table()
+    private val header = Table()
     private val body = Table()
     private val content = Table()
     private val scroll = AutoScrollPane(content)
@@ -214,29 +215,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }
     }
     init {
-        val back = UiNavigation.backButton().apply {
-            onClick { if (configurationPending && connected && !busy) saveConfiguration(backAfter = true) else game.popScreen() }
-            keyShortcuts.add(KeyCharAndCode.BACK)
-        }
-        val header = Table().apply {
-            add(back).minHeight(UiNavigation.minimumTouchSize()).padRight(16f)
-            if (UiNavigation.isIos) {
-                SinglePlayerSetup.style(back, formFont)
-                add(Table().apply {
-                    add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX().padRight(18f)
-                    add(councilHeading("Multiplayer room", 28))
-                    add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX().padLeft(18f)
-                }).growX().padRight(18f)
-                add(roomRole).width(54f).padRight(10f)
-                add(inviteButton).width(126f).height(44f).padRight(8f)
-                add(copyInvitationButton).width(126f).height(44f)
-            } else {
-                add("Multiplayer room".toLabel(fontSize = 28)).left().growX()
-                if (this@MultiplayerLobbyScreen.stage.width < 850f) row()
-                add(inviteButton).height(44f).padRight(8f)
-                add(copyInvitationButton).height(44f)
-            }
-        }
+        layoutHeader()
         inviteButton.setText("Share invitation".tr())
         inviteButton.label.setWrap(true)
         copyInvitationButton.label.setWrap(true)
@@ -267,7 +246,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             layout.pad(16f)
         }
         layout.add(header).growX().padBottom(if (UiNavigation.isIos) 10f else 16f).row()
-        layout.add(body).grow().top().row()
+        layout.add(body).grow().minWidth(0f).minHeight(0f).top().row()
         layout.add(footer).growX().padTop(12f)
         stage.addActor(layout)
         drawMembers(force = true)
@@ -441,7 +420,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val landscape = r != null && !isNarrowerThan4to3()
         if (landscape || UiNavigation.isIos) {
             scroll.actor = null
-            body.add(content).grow()
+            body.add(content).grow().minWidth(0f).minHeight(0f)
         } else {
             scroll.actor = content
             body.add(scroll).grow()
@@ -541,7 +520,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 if (r == null || r.state == "CLOSED" || own == null) game.popScreen() else leaveRoom()
             }; setCouncilEnabled(this,!busy)
         }
-        footer.add(status).growX().left().padRight(12f).colspan(if (UiNavigation.isIos && stage.width < 850f) 2 else 1)
+        footer.add(status).growX().minWidth(0f).left().padRight(12f).colspan(if (UiNavigation.isIos && stage.width < 850f) 2 else 1)
         if (stage.width < 850f) footer.row()
         footer.add(leave).height(44f).apply { if (UiNavigation.isIos) width(126f) }.padRight(if (host) 10f else 0f)
         if (host) {
@@ -572,6 +551,42 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         if (keyboardFocus is TextField && keyboardFocus.stage === stage) stage.keyboardFocus = keyboardFocus
     }
 
+    private fun layoutHeader() {
+        val back = UiNavigation.backButton().apply {
+            onClick { if (configurationPending && connected && !busy) saveConfiguration(backAfter = true) else game.popScreen() }
+            keyShortcuts.add(KeyCharAndCode.BACK)
+        }
+        header.clear()
+        header.apply {
+            add(back).minHeight(UiNavigation.minimumTouchSize()).padRight(16f)
+            if (UiNavigation.isIos && stage.width < 850f) {
+                SinglePlayerSetup.style(back, formFont)
+                add(councilHeading("Multiplayer room", 26).apply { wrap = true }).growX().minWidth(0f).left()
+                add(roomRole).padLeft(8f)
+                row()
+                add(Table().apply {
+                    add(inviteButton).growX().minWidth(0f).height(44f).padRight(8f)
+                    add(copyInvitationButton).growX().minWidth(0f).height(44f)
+                }).colspan(3).growX().padTop(8f)
+            } else if (UiNavigation.isIos) {
+                SinglePlayerSetup.style(back, formFont)
+                add(Table().apply {
+                    add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX().padRight(18f)
+                    add(councilHeading("Multiplayer room", 28))
+                    add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX().padLeft(18f)
+                }).growX().padRight(18f)
+                add(roomRole).width(54f).padRight(10f)
+                add(inviteButton).width(126f).height(44f).padRight(8f)
+                add(copyInvitationButton).width(126f).height(44f)
+            } else {
+                add("Multiplayer room".toLabel(fontSize = 28)).left().growX()
+                if (this@MultiplayerLobbyScreen.stage.width < 850f) row()
+                add(inviteButton).height(44f).padRight(8f)
+                add(copyInvitationButton).height(44f)
+            }
+        }
+    }
+
     private fun drawCouncilPage(width: Float, portrait: Boolean, playersWidth: Float,
                                 playersHeading: Table, players: Table, editable: Boolean) {
         val columnWidth = if (portrait) width else (width - 24f) * .31f
@@ -597,9 +612,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val columns = Table().apply {
             top()
             val parts = listOf(
-                scrollColumn(heading("Game options","OtherIcons/Options"),gameContent,gameOptionsScroll) to columnWidth,
-                scrollColumn(heading("Map options","OtherIcons/Scenarios"),mapContent,mapOptionsScroll) to columnWidth,
-                scrollColumn(playersHeading,players,playersScroll) to playersWidth
+                Triple(heading("Game options","OtherIcons/Options"),gameContent,gameOptionsScroll),
+                Triple(heading("Map options","OtherIcons/Scenarios"),mapContent,mapOptionsScroll),
+                Triple(playersHeading,players,playersScroll)
             )
             for ((index,part) in parts.withIndex()) {
                 if (index > 0) {
@@ -607,7 +622,13 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     else add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.border })
                         .width(1f).growY().pad(0f,5.5f)
                 }
-                add(part.first).width(part.second).growY().top()
+                val section = if (portrait) Table().apply {
+                    top()
+                    add(part.first).growX().minWidth(0f).left().padBottom(12f).row()
+                    add(part.second).growX().minWidth(0f)
+                } else scrollColumn(part.first,part.second,part.third)
+                add(section).width(if (index == 2) playersWidth else columnWidth).growY().top()
+                    .padBottom(if (portrait) 16f else 0f)
             }
         }
         if (portrait) {
@@ -997,6 +1018,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     }
     override fun resize(width: Int, height: Int) {
         super.resize(width,height)
+        if (UiNavigation.isIos) layout.setBounds(12f, 8f, stage.width - 24f, stage.height - 16f)
+        layoutHeader()
         mapSettings?.cancelBackgroundJobs()
         configurationTable = null
         drawMembers(force = true)

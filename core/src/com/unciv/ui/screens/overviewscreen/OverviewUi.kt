@@ -153,7 +153,7 @@ internal object OverviewUi {
 
     fun Table.detailRow(label: String, value: Actor) {
         val entry = Table().apply {
-            add(plainLabel(label, 14, muted)).left()
+            add(plainLabel(label, 14, muted).apply { wrap = true }).minWidth(0f).growX().left()
             add(value).minWidth(0f).growX().right()
         }
         add(entry).colspan(2).growX().minHeight(pt(39f)).row()
@@ -162,5 +162,5 @@ internal object OverviewUi {
     }
 
     fun Table.detailRow(label: String, value: String) =
-        detailRow(label, value.toLabel(fontSize = font(14), alignment = Align.right, hideIcons = true))
+        detailRow(label, value.toLabel(fontSize = font(14), alignment = Align.right, hideIcons = true).apply { wrap = true })
 }

@@ -42,10 +42,12 @@ class WonderOverviewTab(
                 add(image).size(pt(28f)).padRight(pt(12f))
                 val identity = Table().apply {
                     left()
-                    add(wonder.getNameColumn().toLabel(fontSize = font(16), hideIcons = true)).left().row()
+                    add(wonder.getNameColumn().toLabel(fontSize = font(16), hideIcons = true).apply { wrap = true })
+                        .growX().minWidth(0f).left().row()
                     val location = wonder.getLocationColumn()
                     val context = if (location.isEmpty()) wonder.groupName else "{${wonder.groupName}} · {$location}"
-                    add(context.toLabel(fontColor = OverviewUi.muted, fontSize = font(13), hideIcons = true)).left().padTop(6f)
+                    add(context.toLabel(fontColor = OverviewUi.muted, fontSize = font(13), hideIcons = true).apply { wrap = true })
+                        .growX().minWidth(0f).left().padTop(6f)
                 }
                 if (wonder.location != null) identity.onClick {
                     UncivGame.Current.resetToWorldScreen().mapHolder.setCenterPosition(wonder.location.position)

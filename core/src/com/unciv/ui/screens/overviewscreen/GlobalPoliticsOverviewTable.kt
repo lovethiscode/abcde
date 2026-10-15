@@ -113,8 +113,14 @@ class GlobalPoliticsOverviewTable(
             add(OverviewUi.scroll(relations)).grow().minHeight(0f)
         }
         val height = overviewScreen.centerAreaHeight - pt(8f)
-        add(OverviewUi.scroll(identity)).width(pt(210f)).height(height).padTop(pt(8f))
-        add(relationsPanel).growX().minWidth(0f).height(height).padLeft(pt(14f)).padTop(pt(8f))
+        if (overviewScreen.compact) {
+            add(OverviewUi.scroll(identity)).width(overviewScreen.contentWidth).height(height * .3f).padTop(pt(8f)).row()
+            add(relationsPanel).width(overviewScreen.contentWidth).minWidth(0f)
+                .height(height * .7f - pt(8f)).padTop(pt(8f))
+        } else {
+            add(OverviewUi.scroll(identity)).width(pt(210f)).height(height).padTop(pt(8f))
+            add(relationsPanel).growX().minWidth(0f).height(height).padLeft(pt(14f)).padTop(pt(8f))
+        }
     }
 
     private fun getCivInfoTable(civ: Civilization): Table {
@@ -188,7 +194,7 @@ class GlobalPoliticsOverviewTable(
         for (otherCiv in civ.getKnownCivs()) {
             if (civ.isAtWarWith(otherCiv)) {
                 val warText = ColorMarkupLabel("At war with [${getCivName(otherCiv)}]", Color.RED, fontSize = font(14))
-                politicsTable.add(warText).row()
+                politicsTable.add(warText.apply { wrap = true }).colspan(2).growX().minWidth(0f).row()
             }
         }
         politicsTable.row()
@@ -198,12 +204,12 @@ class GlobalPoliticsOverviewTable(
             if (civ.getDiplomacyManager(otherCiv)?.hasFlag(DiplomacyFlags.DefensivePact) == true) {
                 val friendText = ColorMarkupLabel("Defensive pact with [${getCivName(otherCiv)}]", Color.CYAN, fontSize = font(14))
                 val turnsLeftText = " (${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.DefensivePact)} ${Fonts.turn})".toLabel()
-                politicsTable.add(friendText)
+                politicsTable.add(friendText.apply { wrap = true }).growX().minWidth(0f)
                 politicsTable.add(turnsLeftText).row()
             } else if (civ.getDiplomacyManager(otherCiv)?.hasFlag(DiplomacyFlags.DeclarationOfFriendship) == true) {
                 val friendText = ColorMarkupLabel("Friends with [${getCivName(otherCiv)}]", Color.GREEN, fontSize = font(14))
                 val turnsLeftText = " (${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.DeclarationOfFriendship)} ${Fonts.turn})".toLabel()
-                politicsTable.add(friendText)
+                politicsTable.add(friendText.apply { wrap = true }).growX().minWidth(0f)
                 politicsTable.add(turnsLeftText).row()
             }
         }
@@ -214,7 +220,7 @@ class GlobalPoliticsOverviewTable(
             if (civ.getDiplomacyManager(otherCiv)?.hasFlag(DiplomacyFlags.Denunciation) == true) {
                 val denouncedText = ColorMarkupLabel("Denounced [${getCivName(otherCiv)}]", Color.RED, fontSize = font(14))
                 val turnsLeftText = "(${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.Denunciation)} ${Fonts.turn})".toLabel()
-                politicsTable.add(denouncedText)
+                politicsTable.add(denouncedText.apply { wrap = true }).growX().minWidth(0f)
                 politicsTable.add(turnsLeftText).row()
             }
         }
@@ -224,7 +230,7 @@ class GlobalPoliticsOverviewTable(
         for (cityState in gameInfo.getAliveCityStates()) {
             if (cityState.getDiplomacyManager(civ)?.isRelationshipLevelEQ(RelationshipLevel.Ally) == true) {
                 val alliedText = ColorMarkupLabel("Allied with [${getCivName(cityState)}]", Color.CYAN, fontSize = font(14))
-                politicsTable.add(alliedText).row()
+                politicsTable.add(alliedText.apply { wrap = true }).colspan(2).growX().minWidth(0f).row()
             }
         }
 

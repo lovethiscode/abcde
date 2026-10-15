@@ -39,6 +39,7 @@ class ReligionOverviewTab(
     private val beliefsTable = Table()
 
     override val usesOwnScroll = true
+    private val detailWidth = overviewScreen.contentWidth - pt(if (overviewScreen.compact) 32f else 216f)
 
     init {
         civStatsTable.defaults().left().pad(5f)
@@ -54,21 +55,27 @@ class ReligionOverviewTab(
         val detail = Table().apply {
             background = OverviewUi.rounded(OverviewUi.panel, 10f)
             top().left().pad(pt(16f))
-            add(religionButtonLabel).left().padBottom(pt(12f)).row()
-            add(statsTable).growX().row()
-            add(civStatsTable).growX().padTop(pt(12f)).row()
+            add(religionButtonLabel.apply { wrap = true }).growX().minWidth(0f).left().padBottom(pt(12f)).row()
+            add(statsTable).growX().minWidth(0f).row()
+            add(civStatsTable).growX().minWidth(0f).padTop(pt(12f)).row()
             add(beliefsTable).growX().minWidth(0f).padTop(pt(12f))
         }
         val split = Table().apply {
-            add(OverviewUi.scroll(religionButtons)).width(pt(170f)).growY()
-            add(OverviewUi.scroll(detail)).grow().minWidth(0f).padLeft(pt(14f))
+            if (overviewScreen.compact) {
+                add(OverviewUi.scroll(religionButtons).apply { setScrollingDisabled(false, true) })
+                    .growX().minWidth(0f).height(pt(52f)).padBottom(pt(8f)).row()
+                add(OverviewUi.scroll(detail)).grow().minWidth(0f).minHeight(0f)
+            } else {
+                add(OverviewUi.scroll(religionButtons)).width(pt(170f)).growY()
+                add(OverviewUi.scroll(detail)).grow().minWidth(0f).padLeft(pt(14f))
+            }
         }
         add(split).width(overviewScreen.contentWidth).height(overviewScreen.centerAreaHeight - pt(8f)).padTop(pt(8f))
     }
 
     private fun Table.addCivSpecificStats() {
         // This is not Civ-specific, but -oh well- still fits
-        val minWidth = max(religionButtonLabel.prefWidth, overviewScreen.stage.width / 3)
+        val minWidth = minOf(detailWidth, max(religionButtonLabel.prefWidth, overviewScreen.stage.width / 3))
         val manager = viewingPlayer.getCiv().religionManager
         val headerText =
             if (viewingPlayer.getCiv().shouldHideCivCount()) "Religions to be founded: [?]"
@@ -123,7 +130,9 @@ class ReligionOverviewTab(
                 pad(12f)
             }
 
-            religionButtons.add(button).growX().minHeight(OverviewUi.touch).padBottom(1f).row()
+            val cell = religionButtons.add(button).minHeight(OverviewUi.touch)
+            if (overviewScreen.compact) cell.width(pt(160f)).padRight(pt(8f))
+            else cell.growX().padBottom(1f).row()
         }
     }
 
@@ -165,12 +174,7 @@ class ReligionOverviewTab(
             statsTable.detailRow("Followers of this religion:", manager.numberOfFollowersFollowingThisReligion("in all cities").toString())
         }
 
-        val minWidth = max(statsTable.minWidth, beliefsTable.minWidth) + 5
-
-        statsTable.width = minWidth
-        for (cell in beliefsTable.cells) {
-            cell.minWidth(minWidth)
-        }
+        for (cell in beliefsTable.cells) cell.width(detailWidth)
 
         // If we're wider than the container set our ScrollPane to center us
         (parent as? ScrollPane)?.apply {
@@ -183,7 +187,7 @@ class ReligionOverviewTab(
     private fun createBeliefDescription(belief: Belief) =
         MarkupRenderer.render(
             belief.getCivilopediaTextLines(withHeader = true),
-            labelWidth = overviewScreen.contentWidth * .65f
+            labelWidth = detailWidth
         ) {
             overviewScreen.openCivilopedia(it)
         }.apply {
