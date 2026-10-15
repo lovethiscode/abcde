@@ -21,9 +21,10 @@ abstract class EmpireOverviewTab (
     }
     open val persistableData = persistedData ?: EmpireOverviewTabPersistableData()
 
+    open val usesOwnScroll = false
+
     override fun activated(index: Int, caption: String, pager: TabbedPager) {
-        if (caption.isEmpty()) return // called from EmpireOverviewScreen.resume()
-        overviewScreen.persistState.last = EmpireOverviewCategories.entries.toTypedArray()[index]  // Change this if categories are ever reordered or filtered
+        overviewScreen.activate(this, pager)
     }
 
     /** Override if the tab can _select_ something specific.

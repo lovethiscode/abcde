@@ -1,14 +1,18 @@
 package com.unciv.ui.screens.overviewscreen
 
 import com.unciv.ui.components.input.keyShortcuts
-import com.unciv.ui.components.input.onActivation
-import com.unciv.ui.components.widgets.UiNavigation
-import com.badlogic.gdx.graphics.Color
-import com.unciv.Constants
+import com.badlogic.gdx.scenes.scene2d.ui.Button
+import com.unciv.ui.components.input.KeyCharAndCode
+import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
+import com.unciv.ui.screens.overviewscreen.OverviewUi.font
+import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.TextField
+import com.unciv.ui.components.extensions.toLabel
 import com.unciv.GUI
 import com.unciv.logic.civilization.Notification
-import com.unciv.ui.components.extensions.getCloseButton
 import com.unciv.ui.components.input.KeyboardBinding
+import com.unciv.ui.components.input.DispatcherVetoer
+import com.unciv.ui.components.input.KeyShortcutDispatcherVeto.DispatcherVetoResult
 import com.unciv.ui.components.widgets.TabbedPager
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
@@ -21,11 +25,12 @@ class EmpireOverviewScreen(
     defaultCategory: EmpireOverviewCategories? = null,
     selection: String = ""
 ) : BaseScreen(), RecreateOnResize {
-    // 50 normal button height + 2*10 topTable padding + 2 Separator + 2*5 centerTable padding
-    // Since a resize recreates this screen this should be fine as a val
-    internal val centerAreaHeight = stage.height - 82f
+    // The title and category bars stay outside each page's scrolling content.
+    internal val contentWidth = stage.width
+    internal val centerAreaHeight = stage.height - pt(100f)
 
     private val tabbedPager: TabbedPager
+    private val categoryButtons = linkedMapOf<EmpireOverviewCategories, Button>()
     private val pageObjects = HashMap<EmpireOverviewCategories, EmpireOverviewTab>()
 
     internal val persistState by game.settings::overview
@@ -37,45 +42,83 @@ class EmpireOverviewScreen(
 
     override fun getCivilopediaRuleset() = viewingPlayer.ruleset
 
+    override fun getShortcutDispatcherVetoer(): DispatcherVetoer? =
+        if (stage.keyboardFocus is TextField) ({ DispatcherVetoResult.SkipWithChildren }) else null
+
     init {
         val selectCategory = defaultCategory ?: persistState.last
-        val iconSize = Constants.defaultFontSize.toFloat()
-
         tabbedPager = TabbedPager(
-            stage.width, stage.width,
+            contentWidth, contentWidth,
             centerAreaHeight, centerAreaHeight,
-            separatorColor = Color.WHITE,
-            capacity = EmpireOverviewCategories.entries.size)
+            backgroundColor = OverviewUi.background,
+            capacity = EmpireOverviewCategories.entries.size,
+            showHeader = false).apply { background = OverviewUi.surface(OverviewUi.background) }
+        val navigation = Table().apply { left() }
 
         for (category in EmpireOverviewCategories.entries) {
             val tabState = category.testState(viewingPlayer)
             if (tabState == EmpireOverviewTabState.Hidden) continue
-            val icon = if (category.iconName.isEmpty()) null else ImageGetter.getImage(category.iconName)
+            val button = OverviewUi.button(flat = true) { tabbedPager.selectPage(category.name) }.apply {
+                style = Button.ButtonStyle(style).apply { checked = OverviewUi.rounded(OverviewUi.raised); over = checked; down = checked }
+                if (category.iconName.isNotEmpty()) add(ImageGetter.getImage(category.iconName)).size(pt(19f)).padRight(pt(6f))
+                add(category.name.toLabel(fontSize = font(15), hideIcons = true))
+                pad(0f, pt(10f), 0f, pt(10f))
+                isDisabled = tabState != EmpireOverviewTabState.Normal
+                if (isDisabled) color.a = .5f
+                name = "overview-tab-${category.name}"
+            }
+            categoryButtons[category] = button
+            navigation.add(button).height(OverviewUi.touch).padRight(pt(4f))
             val pageObject = category.createTab(viewingPlayer, this, persistState[category])
-            pageObject.pad(10f, 0f, 10f, 0f)
+            pageObject.pad(0f)
             pageObjects[category] = pageObject
-            val index = tabbedPager.addPage(
+            tabbedPager.addPage(
                 caption = category.name,
                 content = pageObject,
-                icon, iconSize,
                 disabled = tabState != EmpireOverviewTabState.Normal,
                 shortcutKey = category.shortcutKey,
                 scrollAlign = category.scrollAlign
             )
-            if (category == selectCategory) {
-                tabbedPager.selectPage(index)
-                select(pageObject, selection)
-            }
+
         }
         persistState.update(pageObjects)
 
-        val closeButton = (if (UiNavigation.isIos) UiNavigation.backButton().apply {
-            onActivation { game.popScreen() }; keyShortcuts.add(com.unciv.ui.components.input.KeyCharAndCode.BACK)
-        } else getCloseButton { game.popScreen() }).apply { name = "ui-overview-close" }
-        tabbedPager.decorateHeader(closeButton, leftSide = UiNavigation.isIos)
-
-        tabbedPager.setFillParent(true)
-        stage.addActor(tabbedPager)
+        val closeButton = OverviewUi.button(flat = true) { game.popScreen() }.apply {
+            add(ImageGetter.getImage("OtherIcons/BackArrow").apply { color = OverviewUi.accent }).size(pt(18f)).padRight(pt(7f))
+            add("Map".toLabel(fontColor = OverviewUi.accent, fontSize = font(16), hideIcons = true))
+            keyShortcuts.add(KeyCharAndCode.BACK)
+            name = "ui-overview-close"
+        }
+        val header = Table().apply {
+            add(closeButton).width(pt(74f)).height(OverviewUi.touch).padRight(pt(14f))
+            add("Empire Overview".toLabel(fontSize = font(20), hideIcons = true)).left().expandX()
+            add(ImageGetter.getNationPortrait(viewingPlayer.getCiv().nation, pt(24f))).size(pt(24f)).padRight(pt(7f))
+            add(viewingPlayer.getCiv().civName.toLabel(fontSize = font(15), hideIcons = true)).padRight(pt(14f))
+            val info = viewingPlayer.getCiv().gameInfo
+            val year = com.unciv.ui.components.YearTextUtil.toYearText(info.getYear(), viewingPlayer.getCiv().isLongCountDisplay())
+            add("${info.turns} {Turn} · $year".toLabel(fontColor = OverviewUi.muted, fontSize = font(14), hideIcons = true))
+        }
+        val navScroll = OverviewUi.scroll(navigation).apply { setScrollingDisabled(false, true) }
+        val root = Table().apply {
+            background = OverviewUi.surface(OverviewUi.background)
+            setFillParent(true)
+            padTop(pt(8f))
+            add(header).growX().height(pt(43f)).row()
+            add(ImageGetter.getWhiteDot().apply { color = OverviewUi.border }).growX().height(pt(1f)).row()
+            add(navScroll).growX().height(pt(48f)).row()
+            add(tabbedPager).grow().row()
+        }
+        tabbedPager.onSelection { _, caption, _ ->
+            for ((category, button) in categoryButtons) {
+                button.isChecked = category.name == caption
+                (button.cells.last().actor as? com.badlogic.gdx.scenes.scene2d.ui.Label)?.color =
+                    if (button.isChecked) OverviewUi.accent else com.unciv.models.skins.ExpeditionBlueTheme.text
+            }
+        }
+        stage.addActor(root)
+        val initial = pageObjects.keys.firstOrNull { it == selectCategory && it.testState(viewingPlayer) == EmpireOverviewTabState.Normal }
+            ?: EmpireOverviewCategories.entries.firstOrNull { it.testState(viewingPlayer) == EmpireOverviewTabState.Normal }
+        if (initial != null) select(initial, selection)
 
         globalShortcuts.add(KeyboardBinding.Civilopedia) { openCivilopedia() }
    }
@@ -83,6 +126,11 @@ class EmpireOverviewScreen(
     override fun recreate(): BaseScreen {
         tabbedPager.selectPage(-1)  // trigger deselect on _old_ instance so the tabs can persist their stuff
         return EmpireOverviewScreen(viewingPlayer, persistState.last)
+    }
+
+    internal fun activate(tab: EmpireOverviewTab, pager: TabbedPager) {
+        pageObjects.entries.firstOrNull { it.value === tab }?.key?.let { persistState.last = it }
+        pager.setScrollDisabled(tab.usesOwnScroll)
     }
 
     fun resizePage(tab: EmpireOverviewTab) {
@@ -115,7 +163,6 @@ class EmpireOverviewScreen(
         // This is called by UncivGame.popScreen - e.g. after City Tab opened a City and the user closes that CityScreen...
         // Notify the current tab via its IPageExtensions.activated entry point so it can refresh if needed
         val index = tabbedPager.activePage
-        val category = EmpireOverviewCategories.entries.getOrNull(index) ?: return
-        pageObjects[category]?.activated(index, "", tabbedPager) // Fake caption marks this as popScreen-triggered
+        pageObjects[persistState.last]?.activated(index, "", tabbedPager) // Fake caption marks this as popScreen-triggered
     }
 }

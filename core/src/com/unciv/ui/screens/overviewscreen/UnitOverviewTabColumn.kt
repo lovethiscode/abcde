@@ -42,7 +42,7 @@ enum class UnitOverviewTabColumn(
             )
             button.name = "unit-${item.id}"  // Marker to find a unit in select()
             button.onClick {
-                showWorldScreenAt(item)
+                actionContext.selectUnit(item)
             }
             return button
         }
