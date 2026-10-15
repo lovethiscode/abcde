@@ -3,6 +3,7 @@ package com.unciv.ui.screens.multiplayerscreens
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.utils.Align
 import com.unciv.UncivGame
 import com.unciv.logic.GameInfoPreview
@@ -22,12 +23,28 @@ import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.screens.basescreen.BaseScreen
 
-class GameList(
+internal class GameList(
     private val onSelected: (String) -> Unit,
+    private val appearance: MultiplayerScreenStyle = MultiplayerScreenStyle(1f),
 ) : Table() {
     private val gameDisplays = mutableMapOf<String, GameDisplay>()
     private val events = EventBus.EventReceiver()
     private var selectedName: String? = null
+    var filter = MultiplayerGameFilter.All
+        private set
+    val refreshingNames = mutableSetOf<String>()
+    var onContentChanged: (() -> Unit)? = null
+
+    fun models() = UncivGame.Current.onlineMultiplayer.games.map { model(it) }
+    private fun model(game: MultiplayerGamePreview) = buildMultiplayerGameUiModel(
+        game.name, game.preview, game.error != null, game.getLastUpdate(),
+        UncivGame.Current.settings.multiplayer.getUserId(), game.name in refreshingNames,
+    )
+    fun visibleNames() = models().filter(filter::matches)
+        .sortedWith(compareByDescending<MultiplayerGameUiModel> { it.isUsersTurn }.thenBy { it.name })
+        .map { it.name }
+    fun setFilter(value: MultiplayerGameFilter) { filter = value; update() }
+
 
     init {
         top()
@@ -52,12 +69,17 @@ class GameList(
                 ).isUsersTurn
             }.thenBy { it.name }
         )
-        for (game in games) {
-            val gameDisplay = GameDisplay(game, userId, onSelected)
+        for (game in games.filter { filter.matches(model(it)) }) {
+            val gameDisplay = GameDisplay(game, userId, onSelected, appearance, game.name in refreshingNames)
             gameDisplays[game.name] = gameDisplay
-            add(gameDisplay).growX().minWidth(0f).padBottom(6f).row()
+            add(gameDisplay).growX().minWidth(0f).minHeight(appearance.px(62f)).padBottom(appearance.px(4f)).row()
+        }
+        if (gameDisplays.isEmpty() && games.isNotEmpty()) {
+            add("No games in this filter".toLabel(appearance.muted, fontSize = appearance.font(13)).apply { wrap = true })
+                .growX().minWidth(0f).pad(appearance.px(16f))
         }
         select(selectedName)
+        onContentChanged?.invoke()
     }
 
     fun select(name: String?) {
@@ -77,36 +99,41 @@ private class GameDisplay(
     private val multiplayerGame: MultiplayerGamePreview,
     private val userId: String,
     private val onSelected: (String) -> Unit,
+    private val appearance: MultiplayerScreenStyle,
+    refreshing: Boolean,
 ) : Table() {
     private var preview: GameInfoPreview? = multiplayerGame.preview
     private var hasError = multiplayerGame.error != null
-    private var isRefreshing = false
+    private var isRefreshing = refreshing
 
-    private val nameLabel = "".toLabel(fontSize = multiplayerContentFontSize).apply { setEllipsis(true) }
-    private val civilizationLabel = "".toLabel(fontSize = multiplayerContentFontSize, alignment = Align.center)
+    private val nameLabel = "".toLabel(fontSize = appearance.font(14)).apply { setEllipsis(true) }
+    private val civilizationLabel = "".toLabel(fontSize = appearance.font(14), alignment = Align.center)
     private val civilizationBadge = Table().apply {
-        add(civilizationLabel).minWidth(0f).center()
+        add(appearance.image(MultiplayerIcon.Temple, appearance.gold)).size(appearance.px(21f))
     }
-    private val metadataLabel = "".toLabel(Color.LIGHT_GRAY, fontSize = multiplayerSecondaryFontSize).apply {
+    private val metadataLabel = "".toLabel(appearance.muted, fontSize = appearance.font(11)).apply {
         setEllipsis(true)
     }
-    private val statusLabel = "".toLabel(fontSize = multiplayerSecondaryFontSize, alignment = Align.center).apply {
+    private val statusLabel = "".toLabel(fontSize = appearance.font(11), alignment = Align.center).apply {
         setEllipsis(true)
     }
     private val statusBadge = Table()
     private val events = EventBus.EventReceiver()
 
     init {
-        pad(9f, 10f, 9f, 10f)
+        name = "multiplayer-game-${multiplayerGame.name}"
+        touchable = Touchable.enabled
+        pad(appearance.px(8f))
+        nameLabel.setFontColor(appearance.text)
 
         val copy = Table().apply {
             add(nameLabel).growX().minWidth(0f).left().row()
-            add(metadataLabel).growX().minWidth(0f).left().padTop(3f)
+            add(metadataLabel).growX().minWidth(0f).left().padTop(appearance.px(5f))
         }
-        statusBadge.add(statusLabel).minWidth(0f).pad(6f, 10f, 6f, 10f)
-        add(civilizationBadge).size(46f).padRight(10f)
+        statusBadge.add(statusLabel).minWidth(0f).maxWidth(appearance.px(88f)).pad(appearance.px(4f), appearance.px(7f), appearance.px(4f), appearance.px(7f))
+        add(civilizationBadge).size(appearance.px(36f)).padRight(appearance.px(10f))
         add(copy).growX().minWidth(0f).left()
-        add(statusBadge).minWidth(0f).right().padLeft(8f)
+        add(statusBadge).minWidth(0f).right().padLeft(appearance.px(8f))
 
         onClick { onSelected(multiplayerGame.name) }
 
@@ -134,12 +161,7 @@ private class GameDisplay(
     }
 
     fun setSelected(selected: Boolean) {
-        val color = if (selected) SelectedBackground else NormalBackground
-        background = BaseScreen.skinStrings.getUiBackground(
-            if (selected) "MultiplayerScreen/GameRowSelected" else "MultiplayerScreen/GameRow",
-            BaseScreen.skinStrings.roundedEdgeRectangleSmallShape,
-            color,
-        )
+        background = if (selected) appearance.surface(appearance.selected, 8f) else null
     }
 
     private fun updateContent() {
@@ -157,39 +179,31 @@ private class GameDisplay(
         )
 
         val turn = model.turn?.let { "Turn [$it]".tr() } ?: "Turn unavailable".tr()
-        val currentPlayer = model.currentPlayer?.let { "{$it}".tr() } ?: "Unknown".tr()
+        val ownCivilization = model.ownCivilization?.let { "{$it}".tr(hideIcons = true) } ?: "Unknown".tr()
         val updated = "Updated [${model.updatedAgo.formatShort()}] ago".tr()
-        metadataLabel.setText("$turn  ·  $currentPlayer  ·  $updated")
+        metadataLabel.setText("$turn  ·  $ownCivilization")
 
         val (statusText, statusColor) = when (model.status) {
-            MultiplayerGameUiStatus.Refreshing -> "Refreshing..." to Color.GOLD
-            MultiplayerGameUiStatus.YourTurn -> "Your turn" to Positive
-            MultiplayerGameUiStatus.WaitingForOpponent -> "Waiting for opponent" to Color.LIGHT_GRAY
-            MultiplayerGameUiStatus.RefreshFailed -> "Refresh failed" to Negative
-            MultiplayerGameUiStatus.Unavailable -> "Unavailable" to Color.GRAY
+            MultiplayerGameUiStatus.Refreshing -> "Refreshing game" to appearance.warning
+            MultiplayerGameUiStatus.YourTurn -> "Your turn to play" to appearance.positive
+            MultiplayerGameUiStatus.WaitingForOpponent -> "Waiting for another player" to appearance.muted
+            MultiplayerGameUiStatus.RefreshFailed -> "Refresh failed" to appearance.danger
+            MultiplayerGameUiStatus.Unavailable -> "Unavailable" to appearance.muted
         }
         statusLabel.setText(statusText.tr())
+        getCell(statusBadge).width(statusLabel.prefWidth.coerceAtMost(appearance.px(88f)) + appearance.px(14f))
         statusLabel.setFontColor(statusColor)
-        statusBadge.background = BaseScreen.skinStrings.getUiBackground(
-            "MultiplayerScreen/StatusBadge",
-            BaseScreen.skinStrings.roundedEdgeRectangleSmallShape,
-            statusColor.darken(0.68f),
-        )
-        civilizationBadge.background = BaseScreen.skinStrings.getUiBackground(
-            "MultiplayerScreen/CivilizationBadge",
-            BaseScreen.skinStrings.roundedEdgeRectangleSmallShape,
-            statusColor.darken(0.62f),
-        )
+        statusBadge.background = appearance.surface(when (model.status) {
+            MultiplayerGameUiStatus.YourTurn -> appearance.positiveSurface
+            MultiplayerGameUiStatus.Refreshing -> appearance.warningSurface
+            MultiplayerGameUiStatus.RefreshFailed -> appearance.dangerSurface
+            else -> appearance.control
+        }, 6f)
+        civilizationBadge.background = appearance.surface(appearance.control, 8f)
     }
 
     fun dispose() {
         events.stopReceiving()
     }
 
-    companion object {
-        private val NormalBackground get() = ExpeditionBlueTheme.color(Color.valueOf("102544"), ExpeditionBlueTheme.panel)
-        private val SelectedBackground get() = ExpeditionBlueTheme.color(Color.valueOf("183e70"), ExpeditionBlueTheme.raised)
-        private val Positive get() = ExpeditionBlueTheme.color(Color.valueOf("66dfbd"), ExpeditionBlueTheme.success)
-        private val Negative get() = ExpeditionBlueTheme.color(Color.valueOf("ff7c8b"), ExpeditionBlueTheme.danger)
-    }
 }

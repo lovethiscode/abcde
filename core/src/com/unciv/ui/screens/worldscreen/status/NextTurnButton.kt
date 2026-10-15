@@ -18,6 +18,10 @@ import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.AnimatedMenuPopup.Companion.addContextMenu
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.WorldScreen
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
+import com.unciv.ui.screens.worldscreen.BattlefieldGeometry
+import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.screens.worldscreen.status.NextTurnAction.Default
 import com.unciv.utils.withGLContext
 import yairm210.purity.annotations.Readonly
@@ -94,5 +98,20 @@ class NextTurnButton(
         NextTurnAction.entries.first { it.isChoice(worldScreen) }
 
     @Readonly fun isNextUnitAction(): Boolean = nextTurnAction == NextTurnAction.NextUnit
+
+    internal fun fitBattlefield(targetWidth: Float) {
+        BattlefieldGeometry.fitControl(this)
+        label.setFontSize(BattlefieldHud.font(14f))
+        unitsDueLabel.setFontSize(BattlefieldHud.font(11f))
+        label.wrap = true
+        labelCell.minWidth(0f).growX()
+        iconCell.size(BattlefieldHud.points(20f)).padRight(BattlefieldHud.points(5f))
+        pad(BattlefieldHud.points(6f))
+        width = targetWidth
+        invalidate()
+        validate()
+        height = maxOf(UiNavigation.minimumTouchSize(), prefHeight)
+        validate()
+    }
 
 }

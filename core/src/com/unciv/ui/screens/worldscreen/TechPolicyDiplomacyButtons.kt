@@ -19,6 +19,8 @@ import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.images.IconTextButton
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.diplomacyscreen.DiplomacyScreen
 import com.unciv.ui.screens.overviewscreen.EspionageOverviewScreen
@@ -114,6 +116,21 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
         val result = updateDiplomacyButton()
         if (game.gameInfo!!.isEspionageEnabled())
             updateEspionageButton()
+        if (BattlefieldHud.enabled) {
+            clearChildren()
+            val touch = UiNavigation.minimumTouchSize()
+            if (fogOfWarButtonHolder.actor != null) add(fogOfWarButtonHolder).minHeight(touch).row()
+            techButtonHolder.fill().minSize(0f).maxHeight(touch)
+            add(techButtonHolder).width(BattlefieldHud.points(140f)).height(touch)
+            for (holder in listOf(policyButtonHolder, diplomacyButtonHolder, espionageButtonHolder, undoButtonHolder))
+                if (holder.actor != null) {
+                    holder.fill().minSize(0f).maxSize(touch)
+                    BattlefieldGeometry.fitControl(holder.actor!!)
+                    holder.actor!!.pad(BattlefieldHud.points(6f))
+                    for (cell in holder.actor!!.cells) cell.size(BattlefieldHud.points(20f)).pad(0f)
+                    add(holder).size(touch).padLeft(BattlefieldHud.points(4f))
+                }
+        }
         pack()
         setPosition(10f, worldScreen.topBar.y - height - 15f)
         return result
@@ -137,6 +154,22 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
 
         val currentTech = viewingCiv.currentTechnologyName()
         if (currentTech != null) {
+            if (BattlefieldHud.enabled) {
+                val tech = worldScreen.gameInfo.ruleset.technologies[currentTech]!!
+                val icon = BattlefieldGeometry.icon(ImageGetter.getTechIconPortrait(tech.name, BattlefieldHud.points(22f)))
+                val turns = viewingCiv.turnsToTech(currentTech)
+                techButtonHolder.actor = IconTextButton("${currentTech.tr(true)} · $turns${Fonts.turn}", icon,
+                    BattlefieldHud.font(14f)).apply {
+                    name = "ui-tech-current"
+                    BattlefieldGeometry.fitControl(this)
+                    label.wrap = true
+                    labelCell.minWidth(0f).growX()
+                    iconCell.size(BattlefieldHud.points(22f)).padRight(BattlefieldHud.points(5f))
+                    pad(BattlefieldHud.points(6f))
+                    touchable = Touchable.disabled // the holder owns the existing activation binding
+                }
+                return
+            }
             val innerButton = TechButton(currentTech, viewingCiv.getCiv().tech)
             innerButton.setButtonColor(ExpeditionBlueTheme.color(colorFromRGB(7, 46, 43), ExpeditionBlueTheme.panel))
             techButtonHolder.actor = innerButton

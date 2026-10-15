@@ -1,0 +1,41 @@
+
+FacetedHudIcons.png
+size: 1024, 256
+format: RGBA8888
+filter: MipMapLinearLinear, Linear
+repeat: none
+FacetedHudIcons/Archer
+  rotate: false
+  xy: 4, 4
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Fortify
+  rotate: false
+  xy: 169, 4
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Gold
+  rotate: false
+  xy: 334, 4
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Science
+  rotate: false
+  xy: 499, 4
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Skip
+  rotate: false
+  xy: 664, 4
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1

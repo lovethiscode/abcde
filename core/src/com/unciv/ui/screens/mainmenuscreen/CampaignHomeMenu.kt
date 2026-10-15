@@ -1,14 +1,11 @@
 package com.unciv.ui.screens.mainmenuscreen
 
-import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
-import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Stack
 import com.badlogic.gdx.scenes.scene2d.ui.Table
-import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.models.translations.tr
 import com.unciv.models.skins.ExpeditionBlueTheme
@@ -20,7 +17,6 @@ import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onLongPress
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.Popup
-import com.unciv.ui.popups.options.AboutTab
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.mapeditorscreen.MapEditorScreen
 import com.unciv.ui.screens.modmanager.ModManagementScreen
@@ -35,7 +31,6 @@ import kotlin.math.roundToInt
 /** iOS home layout; game creation, loading and tools keep their existing implementations. */
 internal class CampaignHomeMenu(
     private val screen: MainMenuScreen,
-    appIcon: Texture,
     private val resumeGame: () -> Unit,
     private val quickstartNewGame: () -> Unit,
     private val stopBackground: () -> Unit
@@ -59,15 +54,17 @@ internal class CampaignHomeMenu(
         val coverWidth = if (portrait) width else width * .55f
         val actionsWidth = if (portrait) width else width - coverWidth - 22f
         val toolNames = listOfNotNull("Civilopedia", "Mods", if (game.achievementsAvailable) "Achievements" else null,
-            "Map editor", "About")
+            "Map editor")
         val toolCount = toolNames.size
-        val columns = if (portrait) 3 else toolCount
+        val columns = if (portrait && toolCount > 3) 2 else toolCount
         val toolbarHeight = ((toolCount + columns - 1) / columns) * touchSize + 12f * pointScale
         val sectionGap = 16f * pointScale
 
         val header = Table()
-        header.add(Image(appIcon)).size(42f).padRight(16f)
-        header.add("Civilization, written by you".toLabel(muted, 18)).expandX().left()
+        header.add("Build a city. Shape your world.".toLabel(muted, 18).apply {
+            name = "ui-home-tagline"
+            setEllipsis(true)
+        }).expandX().fillX().minWidth(0f).left().padRight(12f * pointScale)
         val version = game.displayBuildNumber?.let { "v${UncivGame.VERSION.text} ($it)" }
             ?: "v${UncivGame.VERSION.text}"
         header.add(version.toLabel(muted, (13f * pointScale).roundToInt()).apply {
@@ -158,7 +155,6 @@ internal class CampaignHomeMenu(
         }.apply { if (!game.platformCapabilities.onlineModManagement) { touchable = Touchable.disabled; color.a = .6f } }
         if (game.achievementsAvailable) tool("Achievements", "OtherIcons/AchievementTrophy") { game.showAchievements() }
         tool("Map editor", "OtherIcons/MapEditor", KeyboardBinding.MapEditor) { game.pushScreen { MapEditorScreen() } }
-        tool("About", "OtherIcons/MenuIcon", action = ::showAbout)
         add(tools).width(width).row()
         pack()
     }
@@ -267,13 +263,4 @@ internal class CampaignHomeMenu(
         else Popup(screen).apply { addGoodSizedLabel(ONLINE_MULTIPLAYER_UNAVAILABLE).row(); addCloseButton(); open() }
     }
 
-    private fun showAbout() {
-        Popup(screen).apply {
-            add(AboutTab.asTable()).row()
-            addButton("Discord") { Gdx.net.openURI("https://discord.gg/GGGAn4SGT") }.actor.name = "usage-community"
-            addButton("Github") { Gdx.net.openURI(Constants.uncivRepoURL) }
-            addCloseButton()
-            open()
-        }
-    }
 }

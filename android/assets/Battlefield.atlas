@@ -1,0 +1,76 @@
+
+Battlefield.png
+size: 2048, 2048
+format: RGBA8888
+filter: MipMapLinearLinear, Linear
+repeat: none
+Battlefield/Coast
+  rotate: false
+  xy: 4, 1348
+  size: 503, 440
+  orig: 503, 440
+  offset: 0, 0
+  index: -1
+Battlefield/Desert
+  rotate: false
+  xy: 4, 900
+  size: 503, 440
+  orig: 503, 440
+  offset: 0, 0
+  index: -1
+Battlefield/Forest
+  rotate: false
+  xy: 515, 1348
+  size: 503, 440
+  orig: 503, 440
+  offset: 0, 0
+  index: -1
+Battlefield/Grassland
+  rotate: false
+  xy: 4, 452
+  size: 503, 440
+  orig: 503, 440
+  offset: 0, 0
+  index: -1
+Battlefield/Hill
+  rotate: false
+  xy: 515, 900
+  size: 503, 440
+  orig: 503, 440
+  offset: 0, 0
+  index: -1
+Battlefield/Mountain
+  rotate: false
+  xy: 1026, 1348
+  size: 503, 440
+  orig: 503, 440
+  offset: 0, 0
+  index: -1
+Battlefield/Ocean
+  rotate: false
+  xy: 4, 4
+  size: 503, 440
+  orig: 503, 440
+  offset: 0, 0
+  index: -1
+Battlefield/Plains
+  rotate: false
+  xy: 515, 452
+  size: 503, 440
+  orig: 503, 440
+  offset: 0, 0
+  index: -1
+Battlefield/Snow
+  rotate: false
+  xy: 1026, 900
+  size: 503, 440
+  orig: 503, 440
+  offset: 0, 0
+  index: -1
+Battlefield/Tundra
+  rotate: false
+  xy: 1537, 1348
+  size: 503, 440
+  orig: 503, 440
+  offset: 0, 0
+  index: -1

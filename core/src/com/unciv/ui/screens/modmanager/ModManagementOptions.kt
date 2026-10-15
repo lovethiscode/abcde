@@ -10,112 +10,84 @@ import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.popups.Popup
 import kotlin.math.sign
 
-/** Filtering and sorting shared by the two Mod tabs. */
-internal class ModManagementOptions(private val modManagementScreen: ModManagementScreen) {
+/** The popup and inline picker share values, never Scene2D actors. */
+internal class ModManagementOptions(
+    private val modManagementScreen: ModManagementScreen,
+    previous: State? = null
+) {
     companion object {
-        val sortByName = Comparator { mod1, mod2: ModUIData -> mod1.name.compareTo(mod2.name, true) }
-        val sortByNameDesc = Comparator { mod1, mod2: ModUIData -> mod2.name.compareTo(mod1.name, true) }
-        // lastUpdated is compared as string, but that should be OK as it's ISO format
-        val sortByDate = Comparator { mod1, mod2: ModUIData -> mod1.lastUpdated().compareTo(mod2.lastUpdated()) }
-        val sortByDateDesc = Comparator { mod1, mod2: ModUIData -> mod2.lastUpdated().compareTo(mod1.lastUpdated()) }
-        // comparators for stars or status
-        val sortByStars = Comparator { mod1, mod2: ModUIData ->
-            10 * (mod2.stargazers() - mod1.stargazers()) + mod1.name.compareTo(mod2.name, true).sign
+        val sortByName = Comparator { a, b: ModUIData -> a.name.compareTo(b.name, true) }
+        val sortByNameDesc = Comparator { a, b: ModUIData -> b.name.compareTo(a.name, true) }
+        val sortByDate = Comparator { a, b: ModUIData -> a.lastUpdated().compareTo(b.lastUpdated()) }
+        val sortByDateDesc = Comparator { a, b: ModUIData -> b.lastUpdated().compareTo(a.lastUpdated()) }
+        val sortByStars = Comparator { a, b: ModUIData ->
+            10 * (b.stargazers() - a.stargazers()) + a.name.compareTo(b.name, true).sign
         }
-        val sortByStatus = Comparator { mod1, mod2: ModUIData ->
-            10 * (mod2.stateSortWeight() - mod1.stateSortWeight()) + mod1.name.compareTo(mod2.name, true).sign
+        val sortByStatus = Comparator { a, b: ModUIData ->
+            10 * (b.stateSortWeight() - a.stateSortWeight()) + a.name.compareTo(b.name, true).sign
         }
-
         const val installedHeaderText = "Current mods"
         const val onlineHeaderText = "Downloadable mods"
     }
 
-    enum class SortType(
-        val label: String,
-        val symbols: String,
-        val comparator: Comparator<in ModUIData>
-    ) {
+    enum class SortType(val label: String, val symbols: String, val comparator: Comparator<in ModUIData>) {
         Name("Name ${Fonts.sortUpArrow}", Fonts.sortUpArrow.toString(), sortByName),
         NameDesc("Name ${Fonts.sortDownArrow}", Fonts.sortDownArrow.toString(), sortByNameDesc),
         Date("Date ${Fonts.sortUpArrow}", "${Fonts.clock}${Fonts.sortUpArrow}", sortByDate),
         DateDesc("Date ${Fonts.sortDownArrow}", "${Fonts.clock}${Fonts.sortDownArrow}", sortByDateDesc),
         Stars("Stars ${Fonts.sortDownArrow}", "${Fonts.star}${Fonts.sortDownArrow}", sortByStars),
-        Status("Status ${Fonts.sortDownArrow}", "${Fonts.status}${Fonts.sortDownArrow}", sortByStatus)
-        ;
+        Status("Status ${Fonts.sortDownArrow}", "${Fonts.status}${Fonts.sortDownArrow}", sortByStatus);
         fun next() = entries[(ordinal + 1) % entries.size]
-
         companion object {
-            fun fromSelectBox(selectBox: TranslatedSelectBox): SortType {
-                val selected = selectBox.selected.value
-                return entries.firstOrNull { it.label == selected } ?: Name
-            }
+            fun fromSelectBox(selectBox: TranslatedSelectBox) = entries.firstOrNull { it.label == selectBox.selected.value } ?: Name
         }
     }
+    data class State(val text: String, val category: String, val installed: SortType, val online: SortType)
+    class Filter(val text: String, val topic: String)
+    val searchField = UncivTextField("Search mods").apply { text = previous?.text.orEmpty() }
+    var category = ModCategories.asSequence().firstOrNull { it.topic == previous?.category } ?: ModCategories.default()
+    var sortInstalled = previous?.installed ?: SortType.Name
+    var sortOnline = previous?.online ?: SortType.Stars
 
-    class Filter(
-        val text: String,
-        val topic: String
-    )
-
-    fun getFilter(): Filter {
-        return Filter(searchField.text, category.topic)
+    fun getFilter() = Filter(searchField.text, category.topic)
+    fun snapshot() = State(searchField.text, category.topic, sortInstalled, sortOnline)
+    fun clearFilter() {
+        category = ModCategories.default()
+        searchField.text = ""
+        modManagementScreen.refreshInstalledModTable()
+        modManagementScreen.refreshOnlineModTable()
     }
 
-    val searchField = UncivTextField("Search mods")
+    fun inlineSort(installed: Boolean): TranslatedSelectBox = sortPicker(installed)
 
-    var category = ModCategories.default()
-
-    var sortInstalled = SortType.Name
-    var sortOnline = SortType.Stars
-
-    private val categorySelect: TranslatedSelectBox
-    private val sortInstalledSelect: TranslatedSelectBox
-    private val sortOnlineSelect: TranslatedSelectBox
-
-    init {
-        sortInstalledSelect = TranslatedSelectBox(
-            SortType.entries.filter { sort -> sort != SortType.Stars }.map { sort -> sort.label },
-            sortInstalled.label
-        )
-        sortInstalledSelect.onChange {
-            sortInstalled = SortType.fromSelectBox(sortInstalledSelect)
-            modManagementScreen.refreshInstalledModTable()
-        }
-
-        sortOnlineSelect = TranslatedSelectBox(
-            SortType.entries.map { sort -> sort.label },
-            sortOnline.label
-        )
-        sortOnlineSelect.onChange {
-            sortOnline = SortType.fromSelectBox(sortOnlineSelect)
-            modManagementScreen.refreshOnlineModTable()
-        }
-
-        categorySelect = TranslatedSelectBox(
-            ModCategories.asSequence().map { it.label }.toList(),
-            category.label
-        )
-        categorySelect.onChange {
-            category = ModCategories.fromSelectBox(categorySelect)
+    private fun sortPicker(installed: Boolean) = TranslatedSelectBox(
+        SortType.entries.filter { !installed || it != SortType.Stars }.map { it.label },
+        (if (installed) sortInstalled else sortOnline).label
+    ).apply {
+        onChange {
+            if (installed) sortInstalled = SortType.fromSelectBox(this)
+            else sortOnline = SortType.fromSelectBox(this)
             modManagementScreen.refreshInstalledModTable()
             modManagementScreen.refreshOnlineModTable()
+            modManagementScreen.refreshSortPicker()
         }
-
     }
 
     fun openPopup() {
         val popup = Popup(modManagementScreen)
         val width = (modManagementScreen.stage.width - 80f).coerceAtMost(540f)
         val title = "Sort and Filter".toLabel(fontSize = 24)
-        if (UiNavigation.isIos) popup.addTitleWithCloseButton(title)
-        else popup.add(title).padBottom(16f).row()
-        for ((label, select) in listOf(
-            "Category:" to categorySelect,
-            "Sort Current:" to sortInstalledSelect,
-            "Sort Downloadable:" to sortOnlineSelect
-        )) {
+        if (UiNavigation.isIos) popup.addTitleWithCloseButton(title) else popup.add(title).padBottom(16f).row()
+        val categorySelect = TranslatedSelectBox(ModCategories.asSequence().map { it.label }.toList(), category.label)
+        categorySelect.onChange {
+            category = ModCategories.fromSelectBox(categorySelect)
+            modManagementScreen.refreshInstalledModTable()
+            modManagementScreen.refreshOnlineModTable()
+        }
+        for ((label, select) in listOf("Category:" to categorySelect,
+            "Sort Current:" to sortPicker(true), "Sort Downloadable:" to sortPicker(false))) {
             popup.add(ModManagementStyle.label(label, 20)).width(width).left().padBottom(6f).row()
-            popup.add(select).width(width).minHeight(56f).padBottom(16f).row()
+            popup.add(select).width(width).minHeight(ModManagementStyle.touchHeight).padBottom(16f).row()
         }
         if (!UiNavigation.isIos) popup.addCloseButton()
         popup.open()

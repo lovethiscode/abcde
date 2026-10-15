@@ -34,7 +34,7 @@
         </resource>
         <resource>
             <directory>build/default/generated/launch-screen</directory>
-            <includes><include>AppIconLaunchScreen.storyboardc/**</include></includes>
+            <includes><include>HexesHorizonsLaunchScreenV2.storyboardc/**</include></includes>
         </resource>
     </resources>
     <forceLinkClasses>

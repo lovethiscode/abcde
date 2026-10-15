@@ -104,6 +104,23 @@ class PendingTurnUpload private constructor(
     }
 
     internal companion object {
+        fun create(
+            originalGame: GameInfo,
+            isCreationIntent: Boolean,
+            playerAction: MultiplayerPlayerAction?,
+            initiatingPlayerId: String?,
+            createPendingGame: () -> GameInfo,
+        ): PendingTurnUpload {
+            // Automation can mutate data shared by the original and its clone, such as game parameters.
+            // Keep the server identity from before generating the next turn as the comparison baseline.
+            val originalState = originalGame.turnUploadState()
+            val originalFingerprint = if (playerAction == null) originalGame.checksum
+                else originalGame.playerActionContentFingerprint()
+            return PendingTurnUpload(
+                originalState, originalFingerprint, createPendingGame(), isCreationIntent, playerAction, initiatingPlayerId,
+            )
+        }
+
         fun fromRecord(
             record: PendingTurnUploadRecord,
             expectedGameId: String,
@@ -176,8 +193,8 @@ class PendingTurnUploadState private constructor(
             return existing
         }
 
-        val created = PendingTurnUpload(
-            originalGame, createPendingGame(), isCreationIntent, playerAction, initiatingPlayerId,
+        val created = PendingTurnUpload.create(
+            originalGame, isCreationIntent, playerAction, initiatingPlayerId, createPendingGame,
         )
         pendingTurn = created
         if (store != null && !store.save(created, unconfirmedReason)) {

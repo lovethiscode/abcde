@@ -1,9 +1,9 @@
 package com.unciv.ui.screens.savescreens
 
-import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -25,53 +25,82 @@ import com.unciv.models.translations.tr
 import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
 import com.unciv.ui.components.extensions.UncivDateFormat.formatDate
 import com.unciv.ui.components.extensions.allChildren
-import com.unciv.ui.components.extensions.darken
 import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.extensions.setFontSize
-import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onActivation
+import com.unciv.ui.components.input.onChange
+import com.unciv.ui.components.widgets.AutoScrollPane
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.popups.AnimatedMenuPopup
 import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.popups.LoadingPopup
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.popups.ToastPopup
+import com.unciv.ui.screens.basescreen.RecreateOnResize
+import com.unciv.ui.screens.pickerscreens.PickerScreen
 import com.unciv.utils.Concurrency
 import com.unciv.utils.Log
 import com.unciv.utils.ONLINE_MOD_MANAGEMENT_UNAVAILABLE
 import com.unciv.utils.launchOnGLThread
 import kotlinx.coroutines.CoroutineScope
 import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
 
-private const val loadGameTitleFontSize = 28
-private const val loadGameSecondaryFontSize = 18
-private const val loadGameContentFontSize = 22
-private const val loadGameCompactActionFontSize = 20
-
-class LoadGameScreen : LoadOrSaveScreen(saveButtonFontSize = loadGameContentFontSize) {
+class LoadGameScreen(private val initialSavePath: String? = null, initialDetails: Boolean = false) :
+    PickerScreen(disableScroll = true), RecreateOnResize {
+    private val ui = LoadGameScreenStyle(UiNavigation.minimumTouchSize() / 44f, game.settings.fontSizeMultiplier)
+    private val narrow = stage.width / ui.unit <= 700f
+    private val wide = stage.width / ui.unit >= 1150f
+    private var showingDetails = initialDetails
+    private var restoringFiles = false
+    @Volatile private var disposed = false
+    @Volatile private var listGeneration = 0
+    private var selectionGeneration = 0
+    private var loadingGame = false
+    private var selectedSave: FileHandle? = null
+    private var selectedPreview: LoadGamePreview? = null
+    private var blockedSave: LoadGameSaveKey? = null
+    private var pendingLoad: LoadGameSaveKey? = null
+    private val previews = ConcurrentHashMap<LoadGameSaveKey, LoadGamePreview>()
+    private val root = Table()
+    private val body = Table()
+    private val savesPane = Table()
+    private val detailsPane = Table()
+    private val detailContent = Table()
+    private val detailScroll = AutoScrollPane(detailContent)
+    private val statusHolder = Table()
+    private var statusSignature = ""
+    private val managementActions = Table()
+    private val listContent = Table()
+    private val savesList = LoadGameSaveList(ui)
+    private val countLabel = ui.label("Local saves", 14)
+    private val showAutosavesCheckbox = CheckBox("Show autosaves".tr(), skin)
+    private val errorLabel = ui.label("", 13, ui.danger, true)
+    private val cloudStatusLabel = ui.label("", 14, ui.muted, true)
+    private val cloudButton = ui.button("iCloud", SaveIcon.Cloud, size = 13)
+    private val importSaveButton = ui.button("Import save", SaveIcon.Import, outline = true)
     private val copySavedGameToClipboardButton = getCopyExistingSaveToClipboardButton()
-    private val importSaveButton = importSave.toTextButton()
+    private val deleteSaveButton = ui.button("Delete", SaveIcon.Delete, ghost = true, size = 13)
     private val cloudSaveSync = game.files.cloudSaveSync
-    private val cloudStatusLabel = "".toLabel()
     private var lastCloudChangeRevision = cloudSaveSync.status.localChangeRevision
     private val cloudStatusListener: (CloudSaveStatus) -> Unit = { status ->
         Concurrency.runOnGLThread {
-            cloudStatusLabel.setText(cloudStatusText(status))
-            if (status.localChangeRevision != lastCloudChangeRevision) {
-                lastCloudChangeRevision = status.localChangeRevision
-                resetWindowState()
+            if (!disposed) {
+                updateCloudStatus(status)
+                if (status.localChangeRevision != lastCloudChangeRevision) {
+                    lastCloudChangeRevision = status.localChangeRevision
+                    refreshSaves()
+                }
             }
         }
     }
-    
-    /** Inheriting here again exposes [getLoadExceptionMessage] and [loadMissingMods] to
-     *  other clients (WorldScreen, QuickSave, Multiplayer) without needing to rewrite many imports 
-     */
-    companion object : Helpers {
+
+    companion object : LoadOrSaveScreen.Helpers {
         private const val loadGame = "Load game"
         private const val loadFromCustomLocation = "Load from custom location"
         private const val loadFromClipboard = "Load copied data"
@@ -82,191 +111,338 @@ class LoadGameScreen : LoadOrSaveScreen(saveButtonFontSize = loadGameContentFont
         private const val confirmSyncSaves = "Sync local and iCloud saves now?\nA changed save may replace the same-named version\non the other side.\nConflicting versions are kept separately."
         private const val confirmRestoreSaves = "Restore saves from iCloud now?\nSaves deleted only on this device return\nif they still exist in iCloud.\nOther changes still sync both ways;\na same-named version may be replaced.\nConflicts are kept separately."
         private const val copyExistingSaveToClipboard = "Copy saved game to clipboard"
+        private const val saveToClipboardErrorMessage = "Could not save game to clipboard!"
         internal const val downloadMissingMods = "Download missing mods"
     }
 
     init {
-        errorLabel.isVisible = false
-        errorLabel.wrap = true
-
-        setDefaultCloseAction()
-        initLandscapeLayout()
+        pickerPane.remove()
+        root.name = "load-game-root"; root.setFillParent(true)
+        root.background = ui.surface(ui.background, 0f)
+        root.pad(ui.px(if (wide) 28f else 16f), ui.px(16f), ui.px(if (wide) 32f else 16f), ui.px(16f))
+        stage.addActor(root)
+        closeButton.name = "load-back"; closeButton.setText("")
+        ui.decorate(closeButton, SaveIcon.Back)
+        closeButton.onActivation {
+            if (narrow && showingDetails) { showingDetails = false; layoutBody() }
+            else game.popScreen()
+        }
+        closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
+        closeButton.addTooltip("Back")
+        importSaveButton.name = "load-import"
+        importSaveButton.onActivation { ImportSaveMenu(importSaveButton) }
+        importSaveButton.keyShortcuts.add(KeyCharAndCode.ctrl('v')) { loadFromClipboard() }
+        importSaveButton.addTooltip(KeyCharAndCode.ctrl('v'))
+        cloudButton.name = "load-cloud"
+        cloudButton.onActivation { openCloudMenu() }
+        cloudButton.add(SaveIcon.Down.image(ui.muted)).size(ui.px(14f)).padLeft(ui.px(8f))
+        updateCloudStatus(cloudSaveSync.status)
+        rightSideButton.name = "load-read"; ui.decorate(rightSideButton, SaveIcon.Play, primary = true, size = 16)
+        rightSideButton.setText(loadThisSave.tr()); rightSideButton.disable()
         rightSideButton.onActivation { onLoadGame(selectedSave) }
         rightSideButton.keyShortcuts.add(KeyCharAndCode.RETURN)
-        rightSideButton.setText(loadThisSave.tr())
-        rightSideButton.isVisible = true
+        copySavedGameToClipboardButton.name = "load-copy"
+        copySavedGameToClipboardButton.setText("Copy save".tr())
+        ui.decorate(copySavedGameToClipboardButton, SaveIcon.Copy, ghost = true, size = 13)
+        copySavedGameToClipboardButton.addTooltip(copyExistingSaveToClipboard)
+        deleteSaveButton.name = "load-delete"
+        ui.decorate(deleteSaveButton, SaveIcon.Delete, ghost = true, size = 13, tint = ui.danger)
+        deleteSaveButton.onActivation { deleteSelectedSave() }
+        deleteSaveButton.keyShortcuts.add(KeyCharAndCode.DEL)
+        deleteSaveButton.disable(); copySavedGameToClipboardButton.disable()
+        showAutosavesCheckbox.name = "load-autosaves"
+        showAutosavesCheckbox.style = ui.checkboxStyle()
+        showAutosavesCheckbox.label.setFontSize(ui.font(13)); showAutosavesCheckbox.label.color = ui.muted
+        showAutosavesCheckbox.imageCell.size(ui.px(18f)).padRight(ui.px(8f))
+        showAutosavesCheckbox.labelCell.minWidth(0f)
+        showAutosavesCheckbox.isChecked = game.settings.showAutosaves
+        showAutosavesCheckbox.onChange {
+            game.settings.showAutosaves = showAutosavesCheckbox.isChecked
+            refreshSaves()
+        }
+        showAutosavesCheckbox.keyShortcuts.add(KeyCharAndCode.ctrl('a')) { showAutosavesCheckbox.toggle() }
+        descriptionLabel.setFontSize(ui.font(14)); descriptionLabel.wrap = true; descriptionLabel.color = ui.muted
+        descriptionLabel.setText(""); errorLabel.isVisible = false
+        savesList.name = "load-save-list"
+        savesList.onSelected = ::selectSave
+        savesList.onDoubleSelected = { file ->
+            if (selectedPreview == null) pendingLoad = LoadGameSaveKey.of(file)
+            else onLoadGame(file)
+        }
+        detailScroll.setScrollingDisabled(true, false); detailScroll.setOverscroll(false, false)
+        detailContent.top(); detailContent.defaults().growX().minWidth(0f)
+        initLayout()
+        refreshSaves()
         if (cloudSaveSync.isSupported) {
             cloudSaveSync.addStatusListener(cloudStatusListener)
             cloudSaveSync.requestSync(CloudSyncTrigger.LoadScreen)
         }
     }
 
-    override fun resetWindowState() {
-        super.resetWindowState()
-        copySavedGameToClipboardButton.disable()
-        rightSideButton.setText(loadThisSave.tr())
-        rightSideButton.disable()
-    }
+    override fun recreate() = LoadGameScreen(selectedSave?.path(), showingDetails)
 
-    override fun onExistingSaveSelected(saveGameFile: FileHandle) {
-        copySavedGameToClipboardButton.enable()
-        rightSideButton.setText(loadThisSave.tr())
-        rightSideButton.enable()
-    }
-
-    override fun doubleClickAction(saveGameFile: FileHandle) {
-        onLoadGame(saveGameFile)
-    }
-
-    private fun initLandscapeLayout() {
-        topTable.clear()
-        bottomTable.clear()
-        rightSideButton.remove()
-        pickerPane.remove()
-
-        closeButton.label.setFontSize(loadGameContentFontSize)
-        importSaveButton.label.setFontSize(loadGameContentFontSize)
-        cloudStatusLabel.setFontSize(loadGameContentFontSize)
-        showAutosavesCheckbox.label.setFontSize(loadGameContentFontSize)
-        descriptionLabel.setFontSize(loadGameContentFontSize)
-        errorLabel.setFontSize(loadGameContentFontSize)
-        rightSideButton.label.setFontSize(loadGameContentFontSize)
-        copySavedGameToClipboardButton.label.setFontSize(loadGameCompactActionFontSize)
-        deleteSaveButton.label.setFontSize(loadGameCompactActionFontSize)
-        listOf(
-            closeButton,
-            importSaveButton,
-            rightSideButton,
-            copySavedGameToClipboardButton,
-            deleteSaveButton,
-        ).forEach { it.labelCell.minWidth(0f) }
-        showAutosavesCheckbox.labelCell.minWidth(0f)
-        val copyActionPrefWidth = copySavedGameToClipboardButton.prefWidth
-        copySavedGameToClipboardButton.label.setWrap(true)
-        copySavedGameToClipboardButton.label.setAlignment(Align.center)
-
-        val screenTable = Table().apply {
-            setFillParent(true)
-            background = skinStrings.getUiBackground(
-                "LoadGameScreen/Background",
-                tintColor = skinStrings.skinConfig.clearColor,
-            )
-        }
-
-        importSaveButton.onActivation { ImportSaveMenu(importSaveButton) }
-        val ctrlV = KeyCharAndCode.ctrl('v')
-        importSaveButton.keyShortcuts.add(ctrlV) { loadFromClipboard() }
-        importSaveButton.addTooltip(ctrlV)
-
+    private fun initLayout() {
         val heading = Table().apply {
-            add(loadGame.toLabel(fontSize = loadGameTitleFontSize)).growX().minWidth(0f).left().row()
-            add("Select a save to continue".toLabel(Color.LIGHT_GRAY, fontSize = loadGameSecondaryFontSize))
-                .growX().minWidth(0f).left()
+            add(ui.label("Load game", if (wide) 30 else 26)).growX().minWidth(0f).left().row()
+            add(ui.label("Select a save to continue", 13, ui.muted).apply { setEllipsis(true) })
+                .growX().minWidth(0f).left().padTop(ui.px(3f))
+        }
+        val actions = Table().apply {
+            if (cloudSaveSync.isSupported) add(cloudButton).minHeight(ui.px(44f)).padRight(ui.px(12f))
+            add(importSaveButton).minHeight(ui.px(44f))
         }
         val header = Table().apply {
-            background = skinStrings.getUiBackground(
-                "LoadGameScreen/Header",
-                skinStrings.roundedEdgeRectangleSmallShape,
-                skinStrings.skinConfig.baseColor.darken(0.35f),
-            )
-            add(closeButton).minHeight(maxOf(46f, UiNavigation.minimumTouchSize())).padLeft(8f)
-            add(heading).growX().minWidth(0f).left().padLeft(10f)
-            add().growX()
-            add(importSaveButton).height(46f).padRight(8f)
+            add(closeButton).size(ui.px(44f)).padRight(ui.px(12f))
+            add(heading).growX().minWidth(0f).left()
+            if (narrow) { row(); add(); add(actions).right().padTop(ui.px(8f)) }
+            else add(actions).padLeft(ui.px(16f))
         }
-        screenTable.add(header).growX().minHeight(maxOf(64f, UiNavigation.minimumTouchSize())).pad(8f, 10f, 4f, 10f).row()
-
-        if (cloudSaveSync.isSupported) {
-            val cloudTable = Table().apply { initCloudSaveControls() }
-            screenTable.add(cloudTable).growX().minHeight(64f).pad(0f, 10f, 4f, 10f).row()
+        root.add(header).growX().padBottom(ui.px(if (wide) 24f else 14f)).row()
+        val listHeader = Table().apply {
+            add(countLabel).growX().minWidth(0f).left().padRight(ui.px(8f))
+            add(showAutosavesCheckbox).minHeight(ui.px(44f)).right()
         }
-
-        savesScrollPane.setScrollingDisabled(true, false)
-        (savesScrollPane.actor as Table).apply {
-            top()
-            defaults().growX()
+        savesPane.top().add(listHeader).growX().minWidth(0f).padBottom(ui.px(4f)).row()
+        savesPane.add(listContent).grow().minWidth(0f).minHeight(0f)
+        detailsPane.background = ui.surface(ui.panel, 16f)
+        val inset = ui.px(if (wide) 28f else 20f)
+        detailsPane.add(detailScroll).grow().minWidth(0f).minHeight(0f).pad(ui.px(16f), inset, 0f, inset).row()
+        val footer = Table().apply {
+            add(rightSideButton).growX().minWidth(0f).minHeight(ui.px(44f)).row()
+            add(managementActions).padTop(ui.px(4f)).center()
         }
-        val savesPanel = Table().apply {
-            background = skinStrings.getUiBackground(
-                "LoadGameScreen/SavesPanel",
-                skinStrings.roundedEdgeRectangleSmallShape,
-                skinStrings.skinConfig.baseColor.darken(0.2f),
-            )
-            add("Current saves".toLabel(fontSize = loadGameContentFontSize))
-                .growX().minWidth(0f).left().pad(8f, 12f, 6f, 12f).row()
-            add(savesScrollPane).grow().minWidth(0f).minHeight(0f).row()
-            add(showAutosavesCheckbox).growX().minWidth(0f).left().pad(6f, 12f, 8f, 12f)
-        }
-
-        descriptionScroll.setScrollingDisabled(true, false)
-        descriptionScroll.setOverscroll(false, false)
-        descriptionLabel.setAlignment(Align.topLeft)
-        val secondaryActions = Table().apply {
-            add(copySavedGameToClipboardButton).growX().minWidth(0f).height(52f).row()
-            add(deleteSaveButton).growX().minWidth(0f).height(44f).padTop(6f)
-        }
-        val detailsPanel = Table().apply {
-            background = skinStrings.getUiBackground(
-                "LoadGameScreen/DetailsPanel",
-                skinStrings.roundedEdgeRectangleSmallShape,
-                skinStrings.skinConfig.baseColor.darken(0.2f),
-            )
-            add("Selected save".toLabel(Color.LIGHT_GRAY, fontSize = loadGameSecondaryFontSize))
-                .growX().minWidth(0f).left().pad(10f, 12f, 0f, 12f).row()
-            add(descriptionScroll).grow().minWidth(0f).minHeight(0f).pad(0f, 4f, 0f, 4f).row()
-            add(errorLabel).growX().minWidth(0f).center().pad(0f, 8f, 4f, 8f).row()
-            add(rightSideButton).growX().minWidth(0f).height(48f).pad(0f, 10f, 6f, 10f).row()
-            add(secondaryActions).growX().minWidth(0f).pad(0f, 10f, 10f, 10f)
-        }
-
-        val bodyContentWidth = stage.width - 30f // outer padding plus the gap between panels
-        val detailsWidth = maxOf(
-            stage.width * 0.40f,
-            copyActionPrefWidth + 20f,
-            deleteSaveButton.prefWidth + 20f,
-            rightSideButton.prefWidth + 20f,
-        ).coerceAtMost(bodyContentWidth * 0.48f)
-        val savesWidth = bodyContentWidth - detailsWidth
-        val body = Table().apply {
-            add(savesPanel).grow().width(savesWidth).minWidth(0f)
-            add(detailsPanel).grow().width(detailsWidth).minWidth(0f).padLeft(10f)
-        }
-        screenTable.add(body).grow().minWidth(0f).minHeight(0f).pad(0f, 10f, 10f, 10f)
-        stage.addActor(screenTable)
+        detailsPane.add(footer).growX().minWidth(0f).pad(ui.px(10f), inset, ui.px(14f), inset)
+        root.add(body).grow().minWidth(0f).minHeight(0f)
+        layoutBody(); showDetails()
     }
 
-    private fun Table.initCloudSaveControls() {
-        background = skinStrings.getUiBackground(
-            "LoadGameScreen/CloudPanel",
-            skinStrings.roundedEdgeRectangleSmallShape,
-            skinStrings.skinConfig.baseColor.darken(0.15f),
-        )
-        cloudStatusLabel.wrap = true
+    private fun layoutBody() {
+        body.clear()
+        if (narrow) body.add(if (showingDetails) detailsPane else savesPane).grow().minWidth(0f).minHeight(0f)
+        else {
+            val contentWidth = stage.width - root.padLeft - root.padRight - ui.px(20f)
+            val left = contentWidth * if (wide) .545f else .495f
+            body.add(savesPane).width(left).growY().minWidth(0f).minHeight(0f)
+            body.add(detailsPane).width(contentWidth-left).growY().minWidth(0f).minHeight(0f).padLeft(ui.px(20f))
+        }
+        body.invalidateHierarchy()
+    }
+
+    private fun refreshSaves() {
+        val generation = ++listGeneration
+        val previous = selectedSave ?: initialSavePath?.let(::FileHandle)
+        val autosaves = showAutosavesCheckbox.isChecked
+        pendingLoad = null; rightSideButton.disable()
+        countLabel.setText("Loading...".tr())
+        Concurrency.run("LoadGameSaveList") {
+            val result = runCatching { game.files.getSaves(autosaves).sortedByDescending { it.lastModified() }.toList() }
+            launchOnGLThread {
+                if (disposed || generation != listGeneration) return@launchOnGLThread
+                val files = result.getOrElse { error ->
+                    errorLabel.setText("Could not load game!".tr()); errorLabel.isVisible = true
+                    Log.error("Could not list saves", error); emptyList()
+                }
+                countLabel.setText("Local saves [${files.size}]".tr())
+                listContent.clear()
+                restoringFiles = true; savesList.setFiles(files, previous); restoringFiles = false
+                if (files.isEmpty()) {
+                    selectedSave = null; selectedPreview = null; ++selectionGeneration
+                    copySavedGameToClipboardButton.disable(); deleteSaveButton.disable(); updateReadButton()
+                    listContent.add(emptySaves()).grow().minWidth(0f).minHeight(0f)
+                    showDetails()
+                } else listContent.add(savesList).grow().minWidth(0f).minHeight(0f)
+                Concurrency.run("LoadGameRowPreviews") {
+                    for (file in files) {
+                        if (disposed || generation != listGeneration) break
+                        val key = LoadGameSaveKey.of(file)
+                        val preview = previews.getOrPut(key) { LoadGamePreview.read(game.files, file) }
+                        launchOnGLThread {
+                            if (!disposed && generation == listGeneration && key == LoadGameSaveKey.of(file))
+                                savesList.updatePreview(file, preview)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun selectSave(file: FileHandle) {
+        selectedSave = file; selectedPreview = null; pendingLoad = null
+        descriptionLabel.setText(""); errorLabel.setText(""); errorLabel.isVisible = false
+        copySavedGameToClipboardButton.enable(); deleteSaveButton.enable()
+        if (narrow && !restoringFiles) { showingDetails = true; layoutBody() }
+        val key = LoadGameSaveKey.of(file)
+        val generation = ++selectionGeneration
+        val cached = previews[key]
+        if (cached != null) { selectedPreview = cached; updateReadButton(); showDetails(); return }
+        updateReadButton(); showDetails()
+        Concurrency.run("LoadSelectedSavePreview") {
+            val preview = LoadGamePreview.read(game.files, file)
+            previews[key] = preview
+            launchOnGLThread {
+                if (disposed || !acceptsLoadGamePreview(key, selectedSave?.let(LoadGameSaveKey::of), generation, selectionGeneration)) return@launchOnGLThread
+                selectedPreview = preview
+                savesList.updatePreview(file, preview)
+                updateReadButton(); showDetails()
+                if (pendingLoad == key && preview.info != null) { pendingLoad = null; onLoadGame(file) }
+            }
+        }
+    }
+
+    private fun updateReadButton() {
+        val blocked = selectedSave?.let(LoadGameSaveKey::of) == blockedSave && blockedSave != null
+        val unreadable = selectedPreview?.error != null || blocked
+        rightSideButton.setText((if (loadingGame) Constants.loading else if (unreadable) "Cannot load this save" else loadThisSave).tr())
+        rightSideButton.isDisabled = selectedPreview?.info == null || unreadable || loadingGame
+        rightSideButton.children.filterIsInstance<com.badlogic.gdx.scenes.scene2d.ui.Image>().forEach {
+            it.color = if (rightSideButton.isDisabled) ui.muted else ui.ink
+        }
+    }
+
+    private fun showDetails() {
+        detailContent.clear()
+        val file = selectedSave
+        managementActions.clear()
+        if (file != null) {
+            managementActions.add(copySavedGameToClipboardButton).minHeight(ui.px(44f)).minWidth(0f)
+            managementActions.add(Table().apply { background = ui.surface(ui.border, 0f) })
+                .size(ui.px(1f), ui.px(14f)).pad(0f, ui.px(6f), 0f, ui.px(6f))
+            managementActions.add(deleteSaveButton).minHeight(ui.px(44f)).minWidth(0f)
+        }
+        if (file == null) {
+            val blank = Table().apply {
+                add(SaveIcon.File.image(ui.muted)).size(ui.px(30f)).padBottom(ui.px(12f)).row()
+                add(ui.label("View save details", 17)).padBottom(ui.px(8f)).row()
+                add(ui.label("Select a save from the list", 14, ui.muted, true)).growX().minWidth(0f)
+            }
+            detailContent.add(blank).grow().minWidth(0f).row()
+            detailContent.add(statusHolder).growX().minWidth(0f)
+            return
+        }
+        val info = selectedPreview?.info
+        val title = Table().apply {
+            val icon = Table().apply { background = ui.surface(ui.raised); add(SaveIcon.Flag.image(ui.gold)).size(ui.px(25f)) }
+            add(icon).size(ui.px(44f)).padRight(ui.px(12f)).top()
+            val text = Table().apply {
+                add(ui.label(if (info == null) file.name() else civilizationAndTurn(info), if (wide) 28 else 23, wrap = true).apply {
+                    if (info == null) setText(file.name())
+                }).growX().minWidth(0f).left().row()
+                if (info != null) add(ui.label("", 13, ui.muted, true).apply { setText(file.name()) }).growX().minWidth(0f).padTop(ui.px(3f))
+            }
+            add(text).growX().minWidth(0f)
+        }
+        detailContent.add(title).growX().minWidth(0f).left().padBottom(ui.px(if (wide) 24f else 12f)).row()
+        if (info == null) {
+            detailContent.add(ui.label(if (selectedPreview?.error != null) "Could not load game!" else "Loading...", 14,
+                if (selectedPreview?.error != null) ui.danger else ui.muted, true)).growX().minWidth(0f).left().row()
+            if (selectedPreview?.error != null) detailContent.add(ui.label("Copy the save or import another file to recover.", 14, ui.muted, true))
+                .growX().minWidth(0f).left().padTop(ui.px(12f)).row()
+        } else {
+            val grid = Table().apply { defaults().growX().minWidth(0f).top() }
+            fun field(label: String, value: String): Table = Table().apply {
+                add(ui.label(label, if (wide) 14 else 12, ui.muted)).growX().minWidth(0f).left().row()
+                add(ui.label("", if (wide) 17 else 14, wrap = true).apply { setText(value) }).growX().minWidth(0f).left().padTop(ui.px(1f))
+            }
+            grid.add(field("Saved at", Date(info.key.modified).formatDate())).expandX().fillX().padRight(ui.px(16f))
+            grid.add(field("Save type", (if (file.name().startsWith("Autosave")) "Automatic save" else "Manual save").tr())).expandX().fillX().row()
+            grid.add(field("Difficulty", info.difficulty.tr())).padTop(ui.px(if (wide) 20f else 8f)).padRight(ui.px(16f))
+            grid.add(field("Mods", if (info.mods.isEmpty()) "None".tr() else info.mods.joinToString())).padTop(ui.px(if (wide) 20f else 8f)).row()
+            grid.add(field("Base ruleset", info.ruleset)).colspan(2).padTop(ui.px(if (wide) 20f else 8f)).growX().row()
+            if (info.online) grid.add(ui.label("Online Multiplayer", 13, ui.muted, true)).colspan(2).padTop(ui.px(8f)).growX().row()
+            detailContent.add(grid).growX().minWidth(0f).left().row()
+        }
+        detailContent.add(statusHolder).growX().minWidth(0f).row()
+        detailContent.add().growY()
+        detailScroll.scrollY = 0f
+    }
+
+    private fun emptySaves(): Table = Table().apply {
+        name = "load-empty"
+        val symbol = Table().apply { background = ui.surface(ui.panel, 16f); add(SaveIcon.Archive.image(ui.muted)).size(ui.px(28f)) }
+        add(symbol).size(ui.px(56f)).padBottom(ui.px(16f)).row()
+        add(ui.label("No saves yet", 22)).padBottom(ui.px(12f)).row()
+        add(ui.label("Import a save file or restore from iCloud.", 14, ui.muted, true)).growX().minWidth(0f).padBottom(ui.px(16f)).row()
+        val actions = Table().apply {
+            add(ui.button("Import save", SaveIcon.Import, primary = true).apply {
+                name = "load-empty-import"; onActivation { ImportSaveMenu(this) }
+            }).minHeight(ui.px(44f))
+            if (cloudSaveSync.isSupported) add(ui.button("Restore from iCloud", SaveIcon.Cloud, outline = true).apply {
+                name = "load-empty-restore"; onActivation { openCloudSyncConfirmation(confirmRestoreSaves, "Restore saves from iCloud", CloudSyncTrigger.Restore) }
+            }).minHeight(ui.px(44f)).padLeft(ui.px(12f))
+        }
+        add(actions)
+    }
+
+    private fun openCloudMenu() {
+        val popup = Popup(this)
         cloudStatusLabel.setText(cloudStatusText(cloudSaveSync.status))
-        add(cloudStatusLabel).growX().minWidth(0f).left().pad(4f, 12f, 4f, 12f)
-
-        val syncNowButton = "Sync saves now".toTextButton()
-        syncNowButton.label.setFontSize(loadGameContentFontSize)
-        syncNowButton.labelCell.minWidth(0f)
-        syncNowButton.onActivation {
-            openCloudSyncConfirmation(confirmSyncSaves, "Sync saves now", CloudSyncTrigger.Manual)
+        popup.add(cloudStatusLabel).width(minOf(ui.px(360f), stage.width-ui.px(64f))).pad(ui.px(12f)).row()
+        fun action(caption: String, name: String, trigger: CloudSyncTrigger, question: String) {
+            popup.add(ui.button(caption, SaveIcon.Cloud, ghost = true).apply {
+                this.name = name
+                onActivation { popup.close(); openCloudSyncConfirmation(question, caption, trigger) }
+            }).growX().minHeight(ui.px(44f)).row()
         }
-        add(syncNowButton).height(46f).padRight(6f)
+        action("Sync saves now", "load-cloud-sync", CloudSyncTrigger.Manual, confirmSyncSaves)
+        action("Restore saves from iCloud", "load-cloud-restore", CloudSyncTrigger.Restore, confirmRestoreSaves)
+        popup.addCloseButton(); popup.open()
+    }
 
-        val restoreButton = "Restore saves from iCloud".toTextButton()
-        restoreButton.label.setFontSize(loadGameContentFontSize)
-        restoreButton.labelCell.minWidth(0f)
-        restoreButton.onActivation {
-            openCloudSyncConfirmation(confirmRestoreSaves, "Restore saves from iCloud", CloudSyncTrigger.Restore)
+    private fun updateCloudStatus(status: CloudSaveStatus) {
+        cloudStatusLabel.setText(cloudStatusText(status))
+        val caption = when (status.state) {
+            CloudSaveState.NoAccount -> "Not signed in"
+            CloudSaveState.Syncing, CloudSaveState.Checking -> "Syncing..."
+            CloudSaveState.Synced -> "Synced"
+            CloudSaveState.Failed -> "Sync failed"
+            CloudSaveState.WaitingForNetwork -> "Offline"
+            CloudSaveState.Restricted -> "Restricted"
+            CloudSaveState.AccountChanged -> "Account changed"
+            else -> "Available"
         }
-        add(restoreButton).height(46f).padRight(8f)
+        cloudButton.setText("iCloud ${caption.tr()}")
+    }
+
+    private fun deleteSelectedSave() {
+        val file = selectedSave ?: return
+        val localOnly = cloudSaveSync.isSupported
+        val question = if (localOnly) "Are you sure you want to delete this save from this device? It will remain in iCloud."
+            else "Are you sure you want to delete this save?"
+        ConfirmPopup(this, question, "Delete save") {
+            val message = try {
+                if (game.files.deleteSave(file)) {
+                    previews.keys.removeAll { it.path == file.path() }
+                    refreshSaves()
+                    if (localOnly) "[${file.name()}] deleted from this device." else "[${file.name()}] deleted successfully."
+                } else "Failed to delete [${file.name()}]."
+            } catch (_: SecurityException) { "Insufficient permissions to delete [${file.name()}]." }
+            catch (_: Exception) { "Failed to delete [${file.name()}]." }
+            ToastPopup(message, this)
+        }.open()
+    }
+
+    private fun handleException(ex: Exception, primaryText: String): Boolean {
+        val (message, fixable) = getLoadExceptionMessage(ex, primaryText)
+        if (!fixable) Log.error(primaryText, ex)
+        errorLabel.setText(message); errorLabel.isVisible = true
+        return fixable
+    }
+
+    override fun render(delta: Float) {
+        val signature = "${descriptionLabel.text}|${errorLabel.isVisible}|${errorLabel.text}"
+        if (signature != statusSignature) {
+            statusSignature = signature; statusHolder.clear()
+            if (descriptionLabel.text.isNotEmpty()) statusHolder.add(descriptionLabel).growX().minWidth(0f).row()
+            if (errorLabel.isVisible) statusHolder.add(errorLabel).growX().minWidth(0f).padTop(ui.px(4f)).row()
+        }
+        super.render(delta)
     }
 
     private fun openCloudSyncConfirmation(question: String, confirmText: String, trigger: CloudSyncTrigger) {
         ConfirmPopup(this, question, confirmText) {
             cloudSaveSync.requestSync(trigger)
         }.apply {
-            allChildren().filterIsInstance<Label>().forEach { it.setFontSize(loadGameContentFontSize) }
+            allChildren().filterIsInstance<Label>().forEach { it.setFontSize(ui.font(16)) }
         }.open()
     }
 
@@ -274,10 +450,10 @@ class LoadGameScreen : LoadOrSaveScreen(saveButtonFontSize = loadGameContentFont
         override fun createContentTable() = super.createContentTable()!!.apply {
             add(getButton(loadFromClipboardMenu, KeyboardBinding.None) {
                 Concurrency.runOnGLThread { loadFromClipboard() }
-            }.apply { label.setFontSize(loadGameCompactActionFontSize) }).row()
+            }.apply { label.setFontSize(ui.font(14)) }).row()
             add(getButton(importFromFile, KeyboardBinding.None) {
                 Concurrency.runOnGLThread { loadFromCustomLocation() }
-            }.apply { label.setFontSize(loadGameCompactActionFontSize) }).row()
+            }.apply { label.setFontSize(ui.font(14)) }).row()
         }
     }
 
@@ -299,12 +475,15 @@ class LoadGameScreen : LoadOrSaveScreen(saveButtonFontSize = loadGameContentFont
     }
 
     override fun dispose() {
+        disposed = true
+        ++listGeneration; ++selectionGeneration
         if (cloudSaveSync.isSupported) cloudSaveSync.removeStatusListener(cloudStatusListener)
         super.dispose()
     }
 
     private fun onLoadGame(saveGameFile: FileHandle?) {
-        if (saveGameFile == null) return
+        if (saveGameFile == null || selectedPreview?.info == null || loadingGame || blockedSave == LoadGameSaveKey.of(saveGameFile)) return
+        loadingGame = true; updateReadButton()
         val loadingPopup = LoadingPopup(this)
         Concurrency.run(loadGame) {
             try {
@@ -315,13 +494,17 @@ class LoadGameScreen : LoadOrSaveScreen(saveButtonFontSize = loadGameContentFont
                 launchOnGLThread {
                     val (message) = getLoadExceptionMessage(notAPlayer)
                     loadingPopup.reuseWith(message, true)
+                    blockedSave = LoadGameSaveKey.of(saveGameFile); updateReadButton()
                     handleLoadGameException(notAPlayer)
                 }
             } catch (ex: Exception) {
                 launchOnGLThread {
                     loadingPopup.close()
+                    blockedSave = LoadGameSaveKey.of(saveGameFile); updateReadButton()
                     handleLoadGameException(ex)
                 }
+            } finally {
+                launchOnGLThread { loadingGame = false; if (!disposed) updateReadButton() }
             }
         }
     }
@@ -490,7 +673,7 @@ class LoadGameScreen : LoadOrSaveScreen(saveButtonFontSize = loadGameContentFont
                         launchOnGLThread {
                             RulesetCache.loadRulesets()
                             errorLabel.isVisible = false
-                            rightSideTable.pack()
+                            blockedSave = null; updateReadButton()
                             ToastPopup("Missing mods are downloaded successfully.", this@LoadGameScreen)
                         }
                     }

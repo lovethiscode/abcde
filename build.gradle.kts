@@ -232,3 +232,26 @@ project(":core") {
         }
     }
 }
+tasks.register("packBattlefieldTerrain") {
+    group = "assets"
+    description = "Pack the generated battlefield terrain without changing unit or resource atlases"
+    val source = layout.projectDirectory.dir("android/Images.Battlefield")
+    inputs.dir(source)
+    outputs.files("android/assets/Battlefield.atlas", "android/assets/Battlefield.png")
+    doLast {
+        com.unciv.build.AndroidImagePacker.packBattlefield(source.asFile.absolutePath,
+            layout.projectDirectory.dir("android/assets").asFile.absolutePath)
+    }
+}
+
+// Rebuild only the approved HUD artwork; map and shared monochrome atlases stay independent.
+tasks.register("packFacetedHudIcons") {
+    group = "assets"
+    inputs.dir("android/Images.FacetedHudIcons")
+    outputs.files("android/assets/FacetedHudIcons.atlas", "android/assets/FacetedHudIcons.png")
+    doLast {
+        com.unciv.build.FacetedHudIconPacker.pack(
+            layout.projectDirectory.dir("android/Images.FacetedHudIcons").asFile.absolutePath,
+            layout.projectDirectory.dir("android/assets").asFile.absolutePath)
+    }
+}

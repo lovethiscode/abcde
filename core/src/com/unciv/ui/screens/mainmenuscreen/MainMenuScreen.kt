@@ -2,7 +2,6 @@
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
-import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.actions.Actions
 import com.badlogic.gdx.scenes.scene2d.ui.Stack
@@ -73,7 +72,6 @@ import kotlin.math.ceil
 
 class MainMenuScreen: BaseScreen(), RecreateOnResize {
     private val backgroundStack = Stack()
-    private var appIcon: Texture? = null
     private val singleColumn = isCrampedPortrait()
 
     private val backgroundMapRuleset: Ruleset
@@ -161,11 +159,7 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
 
     private fun createMenu() {
         if (Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
-            val icon = Texture(Gdx.files.internal("ExtraImages/Icons/AppIcon.png")).apply {
-                setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear)
-            }
-            appIcon = icon
-            val menu = CampaignHomeMenu(this, icon, ::resumeGame, ::quickstartNewGame, ::stopBackgroundMapGeneration)
+            val menu = CampaignHomeMenu(this, ::resumeGame, ::quickstartNewGame, ::stopBackgroundMapGeneration)
             val scrollPane = AutoScrollPane(menu).apply {
                 setFillParent(true)
                 setScrollingDisabled(true, false)
@@ -473,11 +467,6 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
 
     override fun resume() {
         startBackgroundMapGeneration()
-    }
-
-    override fun dispose() {
-        super.dispose()
-        appIcon?.dispose()
     }
 
     // We contain a map...

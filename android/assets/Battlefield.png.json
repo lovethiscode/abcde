@@ -1,0 +1,14 @@
+{
+  "role": "packed terrain atlas",
+  "tool": "libGDX TexturePacker",
+  "source_manifest": "../Images.Battlefield/PROVENANCE.json",
+  "source_images": 10,
+  "packing": {
+    "scale": 0.375,
+    "stripWhitespaceX": false,
+    "stripWhitespaceY": false,
+    "rotation": false
+  },
+  "sha256": "e348698711fd70e085a4e377f487046610a000cbe902a401d6e2d2c78047216d",
+  "note": "Source prompts and image hashes are recorded in source_manifest; no unit, resource or app icons replaced."
+}

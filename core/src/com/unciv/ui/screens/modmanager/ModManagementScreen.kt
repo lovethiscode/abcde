@@ -69,7 +69,8 @@ class ModManagementScreen private constructor(
     previousOnlineMods: HashMap<String, ModUIData>?,
     private var showingInstalled: Boolean = false,
     private var selectedModName: String? = null,
-    private var showingDetails: Boolean = false
+    private var showingDetails: Boolean = false,
+    previousOptions: ModManagementOptions.State? = null
 ): BaseScreen(), RecreateOnResize {
     /** The Mod Management Screen - called only from [MainMenuScreen] */
     constructor() : this(null, null)
@@ -104,19 +105,28 @@ class ModManagementScreen private constructor(
     private val detailsBackButton = ModManagementStyle.button("Back to mod list")
     private val modDescriptionLabel = ModManagementStyle.label("", 20, ModManagementStyle.muted)
     private val actionHint = ModManagementStyle.label("", 18, ModManagementStyle.muted)
-    private val detailWidth = if (singleColumn) stage.width - 32f else (stage.width - 48f) * 0.57f
+    private val detailWidth = if (singleColumn) stage.width - 32f else (stage.width - 48f) * 0.54f
+    private val listWidth = if (singleColumn) stage.width - 32f else stage.width - 48f - detailWidth
+    private val countLabel = ModManagementStyle.label("", 18, ModManagementStyle.muted)
+    private val sourceLabel = ModManagementStyle.label("", 18, ModManagementStyle.muted)
+    private val sortHolder = Table()
+    private val queryStatus = Table()
+    private var onlineLoading = false
+    private var onlineFailed = false
 
     private val installedModsTable = Table().apply { top(); defaults().growX().padBottom(6f) }
     private val scrollInstalledMods = ModsScrollPane(installedModsTable)
     private val onlineModsTable = Table().apply { top(); defaults().growX().padBottom(6f) }
     private val scrollOnlineMods = ModsScrollPane(onlineModsTable)
-    private val modActionTable = ModInfoAndActionPane(modDescriptionLabel)
+    private val modActionTable = ModInfoAndActionPane(modDescriptionLabel, detailWidth - 40f)
     private val scrollActionTable = ModsScrollPane(modActionTable)
-    private val optionsManager = ModManagementOptions(this)
+    private val optionsManager = ModManagementOptions(this, previousOptions)
 
     private var lastSelectedButton: ModDecoratedButton? = null
     private var lastSyncMarkedButton: ModDecoratedButton? = null
+    private var restoringSelection = false
     private var selectedMod: GithubAPI.Repo? = null
+    private val downloadsInProgress = HashMap<String, String>()
 
     // Enable re-sorting and syncing entries in 'installed' and 'repo search' ScrollPanes
     // Keep metadata and buttons in separate pools
@@ -188,46 +198,27 @@ class ModManagementScreen private constructor(
     private fun initLayout() {
         val header = Table()
         val title = "Mods".toLabel(ModManagementStyle.text, fontSize = 28)
-        val linkButton = getDownloadFromUrlButton().also {
-            it.isEnabled = game.platformCapabilities.onlineModManagement
-            ModManagementStyle.styleButton(it)
-        }
-        val headerActions = Table()
-        headerActions.add(linkButton).growX().minWidth(0f).minHeight(58f).row()
-        if (game.platformCapabilities.localModTransfer) {
-            val receiveButton = "Receive Mod".toTextButton()
-            receiveButton.onClick { openLocalModReceiver() }
-            ModManagementStyle.styleButton(receiveButton)
-            headerActions.add(receiveButton).growX().minWidth(0f).minHeight(58f).padTop(6f)
-        }
+        val addButton = ModManagementStyle.button("Add mods")
+        addButton.label.wrap = false
+        addButton.add(ModIcon.Plus.image(ModManagementStyle.text)).size(24f).padLeft(8f)
+        addButton.onClick { openAddMods() }
+        val addButtonWidth = maxOf(160f, addButton.prefWidth)
+        val headerControlHeight = maxOf(ModManagementStyle.touchHeight, addButton.prefHeight, closeButton.prefHeight)
         val tabs = Table().apply {
             background = ModManagementStyle.rounded(ModManagementStyle.surface)
             pad(4f)
-            add(discoverButton).minWidth(0f).width(if (singleColumn) 180f else 200f).minHeight(58f).padRight(4f)
-            add(installedButton).minWidth(0f).width(if (singleColumn) 180f else 200f).minHeight(58f)
+            add(discoverButton).width(if (singleColumn) 180f else 192f).minHeight(ModManagementStyle.touchHeight).padRight(8f)
+            add(installedButton).width(if (singleColumn) 180f else 192f).minHeight(ModManagementStyle.touchHeight)
         }
-        header.add(closeButton).minWidth(110f).minHeight(maxOf(58f, UiNavigation.minimumTouchSize())).padRight(16f)
+        header.add(closeButton).minWidth(100f).height(headerControlHeight).padRight(16f)
         header.add(title).left().expandX().padRight(16f)
         if (singleColumn) {
+            header.add(addButton).width(addButtonWidth).height(headerControlHeight)
             header.row()
-            header.add(tabs).colspan(2).growX().minWidth(0f).padTop(10f)
-            header.row()
-            header.add(headerActions).colspan(2).growX().minWidth(0f).padTop(10f)
+            header.add(tabs).colspan(3).growX().padTop(12f)
         } else {
-            // Measure translated content before choosing a header row; buttons can also wrap.
-            val maxLinkWidth = stage.width * 0.3f
-            val linkWidth = ("Download mod from URL".toLabel(fontSize = 22).prefWidth + 40f)
-                .coerceIn(minOf(180f, maxLinkWidth), maxLinkWidth)
-            if (stage.width < 1100f * game.settings.fontSizeMultiplier) {
-                header.row()
-                val navigation = Table()
-                navigation.add(tabs).minWidth(0f).growX().padRight(12f)
-                navigation.add(headerActions).width(linkWidth)
-                header.add(navigation).colspan(2).growX().padTop(10f)
-            } else {
-                header.add(tabs).padRight(16f)
-                header.add(headerActions).width(linkWidth)
-            }
+            header.add(tabs).padRight(16f)
+            header.add(addButton).width(addButtonWidth).height(headerControlHeight)
         }
         root.add(header).growX().padBottom(12f).row()
         root.add(body).grow().minHeight(0f)
@@ -244,11 +235,21 @@ class ModManagementScreen private constructor(
             refreshOnlineModTable()
         }
         val filterButton = ModManagementStyle.button("Sort and Filter")
+        // The visible glyph is compact; its full translated action remains available to accessibility/tooltips.
+        filterButton.name = "mod-filter"
+        filterButton.labelCell.clearActor()
+        filterButton.add(ModIcon.Filter.image()).size(28f)
         filterButton.onClick { optionsManager.openPopup() }
         val searchRow = Table()
-        searchRow.add(search).growX().minWidth(0f).height(60f).padRight(8f)
-        searchRow.add(filterButton).width(160f).minHeight(60f)
+        searchRow.add(search).growX().minWidth(0f).height(ModManagementStyle.touchHeight).padRight(8f)
+        searchRow.add(filterButton).size(ModManagementStyle.touchHeight).padRight(8f)
+        searchRow.add(sortHolder).width(if (singleColumn) 180f else 160f).minWidth(0f).minHeight(ModManagementStyle.touchHeight)
         listPane.add(searchRow).growX().padBottom(12f).row()
+        val summary = Table()
+        summary.add(countLabel).growX().minWidth(0f).left().padRight(12f)
+        summary.add(sourceLabel).width(minOf(180f * game.settings.fontSizeMultiplier, listWidth * .4f)).minWidth(0f).right()
+        listPane.add(summary).growX().padBottom(8f).row()
+        listPane.add(queryStatus).growX().row()
         listPane.add(listHolder).grow().minHeight(0f)
 
         for (scroll in listOf(scrollInstalledMods, scrollOnlineMods, scrollActionTable)) {
@@ -259,7 +260,7 @@ class ModManagementScreen private constructor(
         detailPane.pad(16f, 20f, 14f, 20f)
         if (singleColumn && !UiNavigation.isIos) detailPane.add(detailsBackButton).left().minHeight(58f).padBottom(8f).row()
         detailPane.add(scrollActionTable).grow().minHeight(0f).row()
-        actionFooter.add(rightSideButton).growX().minWidth(0f).minHeight(64f).row()
+        actionFooter.add(rightSideButton).growX().minWidth(0f).minHeight(ModManagementStyle.touchHeight).row()
         actionFooter.add(actionHint).growX().minWidth(0f).padTop(8f)
         detailPane.add(actionFooter).growX().padTop(12f)
         modActionTable.add(ModManagementStyle.label("Select a mod to view its details", 22, ModManagementStyle.muted))
@@ -272,6 +273,8 @@ class ModManagementScreen private constructor(
         listHolder.clear()
         listHolder.add(if (showingInstalled) scrollInstalledMods else scrollOnlineMods).grow().minWidth(0f).minHeight(0f)
         discoverButton.style.up = ModManagementStyle.control(if (showingInstalled) ModManagementStyle.surface else ModManagementStyle.raised)
+        refreshSortPicker()
+        refreshListSummary()
         installedButton.style.up = ModManagementStyle.control(if (showingInstalled) ModManagementStyle.raised else ModManagementStyle.surface)
         if (ExpeditionBlueTheme.enabled) {
             discoverButton.isChecked = !showingInstalled
@@ -280,7 +283,7 @@ class ModManagementScreen private constructor(
         if (singleColumn) {
             body.add(if (showingDetails) detailPane else listPane).grow().minWidth(0f).minHeight(0f)
         } else {
-            body.add(listPane).width(stage.width - 48f - detailWidth).growY().minHeight(0f).padRight(16f)
+            body.add(listPane).width(listWidth).growY().minHeight(0f).padRight(16f)
             body.add(detailPane).width(detailWidth).growY().minHeight(0f)
         }
     }
@@ -299,27 +302,103 @@ class ModManagementScreen private constructor(
     private fun selectInitialMod() {
         val info = if (showingInstalled) installedModInfo else onlineModInfo
         val table = if (showingInstalled) installedModsTable else onlineModsTable
-        val selection = selectedModName?.let { info[it] }
+        val visible = info.values.filter { it.matchesFilter(optionsManager.getFilter()) &&
+            (showingInstalled || it.author() !in excludedModAuthors) }
+        val selection = visible.firstOrNull { it.name == selectedModName }
             ?: table.children.filterIsInstance<ModDecoratedButton>().firstOrNull()?.let { button ->
-                info.values.firstOrNull { modButtons[it] === button }
+                visible.firstOrNull { modButtons[it] === button }
             }
-            ?: return
+        if (selection == null) {
+            selectedModName = null
+            selectedMod = null
+            rightSideButton.isVisible = false
+            actionHint.setText("")
+            modActionTable.clear()
+            modActionTable.add(ModManagementStyle.label("Select a mod to view its details", 22, ModManagementStyle.muted))
+                .width(detailWidth - 40f).padTop(30f)
+            return
+        }
         val previousDetails = showingDetails
+        val previousScroll = scrollActionTable.scrollY
+        val sameSelection = selectedModName == selection.name
         val button = getCachedModButton(selection)
-        if (showingInstalled) installedButtonAction(selection, button)
-        else onlineButtonAction(selection.repo!!, button)
+        restoringSelection = true
+        try {
+            if (showingInstalled) installedButtonAction(selection, button)
+            else onlineButtonAction(selection.repo!!, button)
+        } finally { restoringSelection = false }
         showingDetails = previousDetails
-        refreshBody()
+        if (sameSelection) scrollActionTable.scrollY = previousScroll
+        refreshListSummary()
+    }
+
+    internal fun refreshSortPicker() {
+        sortHolder.clear()
+        sortHolder.add(optionsManager.inlineSort(showingInstalled)).growX().minWidth(0f).minHeight(ModManagementStyle.touchHeight)
+    }
+
+    private fun refreshListSummary() {
+        val info = if (showingInstalled) installedModInfo else onlineModInfo
+        val count = info.values.count { it.matchesFilter(optionsManager.getFilter()) &&
+            (showingInstalled || it.author() !in excludedModAuthors) }
+        countLabel.setText(optionsManager.category.label.tr() + " · " + "[${count}] mods".tr())
+        sourceLabel.setText((if (showingInstalled) "Current mods" else "Downloadable mods").tr())
+        queryStatus.clear()
+        if (!showingInstalled && (onlineLoading || onlineFailed)) {
+            queryStatus.add(ModManagementStyle.label(if (onlineFailed) "Could not download mod list" else "Loading...", 18,
+                if (onlineFailed) ModManagementStyle.danger else ModManagementStyle.muted)).growX().minWidth(0f)
+            if (onlineFailed) {
+                val retry = ModManagementStyle.button("Retry")
+                retry.onClick { reloadOnlineMods() }
+                queryStatus.add(retry).width(minOf(132f * game.settings.fontSizeMultiplier, listWidth * .32f))
+                    .minHeight(ModManagementStyle.touchHeight).padLeft(8f)
+            }
+        }
+    }
+
+    private fun addEmptyState(table: Table) {
+        if (onlineLoading && table === onlineModsTable) return
+        val empty = Table().apply {
+            add(ModManagementStyle.label("No mods found", 24)).growX().minWidth(0f).padTop(32f).padBottom(16f).row()
+            val clear = ModManagementStyle.button("Clear filters")
+            clear.onClick { optionsManager.clearFilter() }
+            add(clear).width(minOf(220f * game.settings.fontSizeMultiplier, listWidth))
+                .minHeight(ModManagementStyle.touchHeight)
+        }
+        table.add(empty).growX().minWidth(0f).row()
+    }
+
+    private fun openAddMods() {
+        val popup = Popup(this)
+        popup.addTitleWithCloseButton("Add mods".toLabel(fontSize = 24))
+        val link = getDownloadFromUrlButton { popup.close() }.also {
+            it.isEnabled = game.platformCapabilities.onlineModManagement
+            ModManagementStyle.styleButton(it)
+        }
+        popup.add(link).width(minOf(stage.width - 80f, 520f)).minHeight(ModManagementStyle.touchHeight).padBottom(12f).row()
+        if (game.platformCapabilities.localModTransfer) {
+            val receive = ModManagementStyle.button("Receive Mod")
+            receive.onClick { popup.close(); openLocalModReceiver() }
+            popup.add(receive).growX().minHeight(ModManagementStyle.touchHeight).row()
+        }
+        popup.open()
     }
 
     private fun revealDetails(name: String) {
         selectedModName = name
-        showingDetails = true
         scrollActionTable.scrollY = 0f
-        if (singleColumn) refreshBody()
+        if (!restoringSelection) {
+            showingDetails = true
+            if (singleColumn) refreshBody()
+        }
     }
 
-    private fun reloadOnlineMods() = tryDownloadPage(1)
+    private fun reloadOnlineMods() {
+        onlineFailed = false
+        onlineLoading = true
+        refreshOnlineModTable()
+        tryDownloadPage(1)
+    }
 
     /** background worker: querying GitHub for Mods (repos with 'unciv-mod' in its topics)
      *
@@ -332,11 +411,18 @@ class ModManagementScreen private constructor(
                 repoSearch = Github.tryGetGithubReposWithTopic(pageNum, amountPerPage)
             } catch (ex: Exception) {
                 Log.error("Could not download mod list", ex)
+                launchOnGLThread {
+                    if (!screenDisposed) { onlineLoading = false; onlineFailed = true; refreshOnlineModTable() }
+                }
                 runningSearchJob = null
                 return@run
             }
 
-            if (!isActive || repoSearch == null) {
+            if (!isActive) return@run
+            if (repoSearch == null) {
+                launchOnGLThread {
+                    if (!screenDisposed) { onlineLoading = false; onlineFailed = true; refreshOnlineModTable() }
+                }
                 return@run
             }
 
@@ -393,20 +479,24 @@ class ModManagementScreen private constructor(
 
         // Now the tasks after the 'page' of search results has been fully processed
         // The search has reached the last page!
-        if (repoSearch.items.size < amountPerPage) {
+        val hasMorePages = GithubAPI.hasMoreSearchPages(pageNum, amountPerPage, repoSearch)
+        if (!hasMorePages) {
             // Check: It is also not impossible we missed a mod - just inform user
             if (repoSearch.incomplete_results) {
                 markOnlineQueryIncomplete()
             }
         }
 
+        onlineLoading = hasMorePages
+        refreshOnlineModTable()
+        if (!showingInstalled && selectedModName == null) selectInitialMod()
         onlineModsTable.pack()
         // Shouldn't actor.parent.actor = actor be a no-op? No, it has side effects we need.
         // See [commit for #3317](https://github.com/yairm210/Unciv/commit/315a55f972b8defe22e76d4a2d811c6e6b607e57)
         scrollOnlineMods.actor = onlineModsTable
 
         // continue search unless last page was reached
-        if (repoSearch.items.size >= amountPerPage && !stopBackgroundTasks)
+        if (hasMorePages && !stopBackgroundTasks)
             tryDownloadPage(pageNum + 1)
     }
 
@@ -444,9 +534,10 @@ class ModManagementScreen private constructor(
 
 
     /** Create the special "Download from URL" button */
-    private fun getDownloadFromUrlButton(): TextButton {
+    private fun getDownloadFromUrlButton(beforeOpen: () -> Unit = {}): TextButton {
         val downloadButton = "Download mod from URL".toTextButton()
         downloadButton.onClick {
+            beforeOpen()
             val popup = Popup(this)
             val columns = if (UiNavigation.isIos) 2 else 1
             popup.addGoodSizedLabel("Please enter the mod repository -or- archive zip -or- branch -or- release -or- commit url:").colspan(columns).row()
@@ -471,7 +562,10 @@ class ModManagementScreen private constructor(
                     } else {
                         downloadMod(repo, { state, progress ->
                             actualDownloadButton.setText(state.message(progress).tr())
-                        }) { popup.close() }
+                        }) { success ->
+                            if (success) popup.close()
+                            else { actualDownloadButton.setText("Download".tr()); actualDownloadButton.enable() }
+                        }
                     }
                 }
             }
@@ -577,8 +671,10 @@ class ModManagementScreen private constructor(
                     if (repoSize > -1) {
                         launchOnGLThread {
                             repo.size = repoSize
-                            if (selectedMod == repo)
-                                modActionTable.updateSize(repoSize)
+                            if (selectedMod == repo) modActionTable.updateSize(repoSize)
+                            onlineModInfo[repo.name]?.takeIf { it.repo === repo }?.let { info ->
+                                modButtons[info]?.updateUIData(info)
+                            }
                         }
                     }
                 } catch (_: IOException) {
@@ -588,20 +684,14 @@ class ModManagementScreen private constructor(
         }
 
         rightSideButton.isVisible = true
-        rightSideButton.enable()
-        val label = if (installedModInfo[repo.name]?.hasUpdate == true) "Update mod" else "Download"
-        ModManagementStyle.styleButton(rightSideButton, primary = true)
         actionHint.setText("Choose this mod in the new game settings.".tr())
-        rightSideButton.setText(label.tr())
-        rightSideButton.clearActivationActions(ActivationTypes.Tap)
-        rightSideButton.onClick {
-            rightSideButton.setStartingDownload()
-            downloadMod(repo, { state, progress ->
-                rightSideButton.setText(state.message(progress).tr())
-            }) {
-                rightSideButton.setFinishedDownload()
-            }
-        }
+        val installed = installedModInfo[repo.name]
+        if (installed != null && !installed.hasUpdate) {
+            ModManagementStyle.styleButton(rightSideButton)
+            rightSideButton.setText("Installed".tr())
+            rightSideButton.isDisabled = true
+            rightSideButton.clearActivationActions(ActivationTypes.Tap)
+        } else configureDownloadAction(repo, if (installed?.hasUpdate == true) "Update mod" else "Download")
 
         selectedMod = repo
         modActionTable.update(repo)
@@ -612,15 +702,8 @@ class ModManagementScreen private constructor(
         isDisabled = true
         touchable = Touchable.disabled
     }
-    private fun TextButton.setFinishedDownload() {
-        // Note while setStartingDownload is called from three places, this one is only used once.
-        // This serves as reminder that the other uses will close or clear and repopulate the button's container.
-        setText("Downloaded!".tr())
-        // Not re-enabling it here: Changing selection does
-    }
-
     /** Download and install a mod in the background, called both from the right-bottom button and the URL entry popup */
-    private fun downloadMod(repo: GithubAPI.Repo, updateProgressPercent: ((DownloadAndExtractState, Int?)->Unit)? = null, postAction: () -> Unit = {}) {
+    private fun downloadMod(repo: GithubAPI.Repo, updateProgressPercent: ((DownloadAndExtractState, Int?)->Unit)? = null, postAction: (Boolean) -> Unit = {}) {
         Concurrency.run("DownloadMod") { // to avoid ANRs - we've learnt our lesson from previous download-related actions
             try {
                 val modFolder =
@@ -640,22 +723,24 @@ class ModManagementScreen private constructor(
                         game.settings.visualMods.add(repoName)
                     updateInstalledModUIData(repoName)
                     refreshInstalledModTable()
-                    lastSelectedButton?.let { syncOnlineSelected(repoName, it) }
-                    showModDescription(repoName)
+                    if (selectedModName == repoName) {
+                        lastSelectedButton?.let { syncOnlineSelected(repoName, it) }
+                        showModDescription(repoName)
+                    }
                     unMarkUpdatedMod(repoName)
-                    postAction()
+                    postAction(true)
                 }
             } catch (ex: UncivShowableException) {
                 Log.error("Could not download $repo", ex)
                 launchOnGLThread {
                     ToastPopup(ex.message, this@ModManagementScreen)
-                    postAction()
+                    postAction(false)
                 }
             } catch (ex: Exception) {
                 Log.error("Could not download $repo", ex)
                 launchOnGLThread {
                     ToastPopup("Could not download [${repo.name}]", this@ModManagementScreen)
-                    postAction()
+                    postAction(false)
                 }
             }
         }
@@ -676,7 +761,7 @@ class ModManagementScreen private constructor(
             // The listeners have also captured a now outdated ModUIData
             setModButtonOnClick(this, newModUIData)
             // Simulate click to update the ModInfoAndActionPane
-            installedButtonAction(newModUIData, this)
+            if (showingInstalled && selectedModName == modName) installedButtonAction(newModUIData, this)
         }
     }
 
@@ -737,16 +822,48 @@ class ModManagementScreen private constructor(
                 game.pushScreen { OptionsScreen(this, OptionsPopupPages.ModCheck, subSelect = mod.name) }
             else OptionsPopup(this, OptionsPopupPages.ModCheck, subSelect = mod.name).open()
         }
-        modActionTable.add(checkModButton).growX().minWidth(0f).minHeight(58f).row()
+        modActionTable.addSecondaryAction(checkModButton)
 
-        val updateModButton = modActionTable.addUpdateModButton(modInfo) ?: return
-        updateModButton.onClick {
-            updateModButton.setStartingDownload()
-            val repo = onlineModInfo[mod.name]!!.repo!!
+        if (mod.folderLocation != null) {
+            val delete = ModManagementStyle.button("Delete")
+            delete.style.fontColor = ModManagementStyle.danger
+            delete.onClick {
+                ConfirmPopup(this, "Are you SURE you want to delete this mod?", "Delete [${cleanModName(mod.name)}]") {
+                    deleteMod(mod)
+                    selectInitialMod()
+                }.open()
+            }
+            modActionTable.addSecondaryAction(delete)
+        }
+    }
+
+    /** A completion belongs to the downloaded mod, never whichever row was selected later. */
+    private fun configureDownloadAction(repo: GithubAPI.Repo, caption: String) {
+        ModManagementStyle.styleButton(rightSideButton, primary = true)
+        rightSideButton.setText(caption.tr())
+        rightSideButton.enable()
+        rightSideButton.clearActivationActions(ActivationTypes.Tap)
+        val activeProgress = downloadsInProgress[repo.name]
+        if (activeProgress != null) {
+            rightSideButton.setStartingDownload()
+            rightSideButton.setText(activeProgress)
+            return
+        }
+        rightSideButton.onClick {
+            downloadsInProgress[repo.name] = "Downloading...".tr()
+            rightSideButton.setStartingDownload()
             downloadMod(repo, { state, progress ->
-                updateModButton.setText(state.message(progress).tr())
-            }) {
-                refreshInstalledModActions(mod)
+                Concurrency.runOnGLThread {
+                    val text = state.message(progress).tr()
+                    downloadsInProgress[repo.name] = text
+                    if (selectedModName == repo.name && !screenDisposed) rightSideButton.setText(text)
+                }
+            }) { success ->
+                downloadsInProgress.remove(repo.name)
+                if (!screenDisposed && selectedModName == repo.name) {
+                    if (success) selectInitialMod()
+                    else configureDownloadAction(repo, caption)
+                }
             }
         }
     }
@@ -778,6 +895,9 @@ class ModManagementScreen private constructor(
             if (!mod.matchesFilter(filter)) continue
             installedModsTable.add(getCachedModButton(mod)).growX().minWidth(0f).row()
         }
+        if (installedModsTable.children.isEmpty) addEmptyState(installedModsTable)
+        refreshListSummary()
+        if (showingInstalled) selectInitialMod()
     }
 
     private fun installedButtonAction(mod: ModUIData, button: ModDecoratedButton) {
@@ -787,26 +907,14 @@ class ModManagementScreen private constructor(
 
         syncInstalledSelected(mod.name, button)
         refreshInstalledModActions(mod.ruleset!!)
-        val deleteText = "Delete [${cleanModName(mod.name)}]"
-        rightSideButton.setText((if (mod.ruleset.folderLocation == null) "Installed" else "Delete").tr())
-        // Don't let the player think he can delete Vanilla and G&K rulesets
-        rightSideButton.isEnabled = mod.ruleset.folderLocation!=null
-        ModManagementStyle.styleButton(rightSideButton)
-        rightSideButton.style.fontColor = ModManagementStyle.danger
         showModDescription(mod.name)
-        rightSideButton.clearActivationActions(ActivationTypes.Tap)  // clearListeners would also kill mouseover styling
-        rightSideButton.onClick {
-            rightSideButton.isEnabled = false
-            ConfirmPopup(
-                screen = this,
-                question = "Are you SURE you want to delete this mod?",
-                confirmText = deleteText,
-                restoreDefault = { rightSideButton.isEnabled = true }
-            ) {
-                deleteMod(mod.ruleset)
-                modActionTable.clear()
-                rightSideButton.setText("[${cleanModName(mod.name)}] was deleted.".tr())
-            }.open()
+        val repo = onlineModInfo[mod.name]?.repo
+        if (mod.hasUpdate && repo != null) configureDownloadAction(repo, "Update mod")
+        else {
+            ModManagementStyle.styleButton(rightSideButton)
+            rightSideButton.setText("Installed".tr())
+            rightSideButton.isDisabled = true
+            rightSideButton.clearActivationActions(ActivationTypes.Tap)
         }
     }
 
@@ -857,6 +965,9 @@ class ModManagementScreen private constructor(
 
         onlineModsTable.pack()
         scrollOnlineMods.actor = onlineModsTable
+        if (onlineModsTable.children.isEmpty) addEmptyState(onlineModsTable)
+        refreshListSummary()
+        if (!showingInstalled) selectInitialMod()
     }
 
     /** Updates the wrapped description inside the selected Mod detail pane. */
@@ -864,11 +975,13 @@ class ModManagementScreen private constructor(
         val onlineModDescription = onlineModInfo[modName]?.description ?: "" // shows github info
         val installedModDescription = installedModInfo[modName]?.description ?: "" // shows ruleset info
         val separator = if (onlineModDescription.isEmpty() || installedModDescription.isEmpty()) "" else "\n"
-        modDescriptionLabel.setText(onlineModDescription + separator + installedModDescription)
+        val starsSuffix = onlineModInfo[modName]?.repo?.let { "\n[${it.stargazers_count}]${Fonts.star}".tr() }.orEmpty()
+        val description = if (starsSuffix.isEmpty()) onlineModDescription else onlineModDescription.removeSuffix(starsSuffix)
+        modDescriptionLabel.setText(description + separator + installedModDescription)
     }
 
     override fun recreate(): BaseScreen = ModManagementScreen(
-        installedModInfo, onlineModInfo, showingInstalled, selectedModName, showingDetails
+        installedModInfo, onlineModInfo, showingInstalled, selectedModName, showingDetails, optionsManager.snapshot()
     )
 
 }

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.UncivGame
@@ -32,6 +33,12 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
 
     /** Identifies the content currently built, so an [update] that changes nothing keeps it */
     private var contentHash = 0
+    private var battlefieldBounds: Rectangle? = null
+
+    fun fitBattlefield(bounds: Rectangle) {
+        battlefieldBounds = bounds
+        update()
+    }
 
     init {
         background = BaseScreen.skinStrings.getUiBackground("WorldScreen/TutorialTaskTable",
@@ -43,6 +50,7 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
         onClick {
             UncivGame.Current.isTutorialTaskCollapsed = !UncivGame.Current.isTutorialTaskCollapsed
             update()
+            worldScreen.shouldUpdate = true
         }
     }
 
@@ -59,8 +67,14 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
         // Only claim the mouse wheel when there actually is something to scroll
         (children.firstOrNull() as? ScrollPane)
             ?.apply { setScrollingDisabled(true, prefHeight <= height) }
-        centerX(worldScreen.stage)
-        y = worldScreen.topBar.getYForTutorialTask() - height
+        val bounds = battlefieldBounds
+        if (BattlefieldHud.enabled && bounds != null) {
+            x = bounds.x
+            y = bounds.y + bounds.height - height
+        } else {
+            centerX(worldScreen.stage)
+            y = worldScreen.topBar.getYForTutorialTask() - height
+        }
         isVisible = true
     }
 
@@ -118,6 +132,13 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
 
     private fun buildCollapsedIcon() {
         clearChildren()
+        if (BattlefieldHud.enabled) {
+            val icon = BattlefieldHud.points(20f)
+            add(ImageGetter.getImage("OtherIcons/HiddenTutorialTask"))
+                .size(icon).pad((com.unciv.ui.components.widgets.UiNavigation.minimumTouchSize() - icon) / 2f)
+            contentHash = 0
+            return
+        }
         add(ImageGetter.getImage("OtherIcons/HiddenTutorialTask")
             .apply { setSize(collapsedIconSize, collapsedIconSize) }).pad(collapsedPad)
         contentHash = 0
@@ -131,6 +152,9 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
      *  threshold the card keeps its full width and lets the buttons cover a corner as they always
      *  did: an overlap we can read beats a fit we cannot. */
     private fun getTaskWidth(): Float {
+        battlefieldBounds?.takeIf { BattlefieldHud.enabled }?.let {
+            return (it.width - contentPad * 2).coerceAtLeast(collapsedIconSize)
+        }
         val stageWidth = worldScreen.stage.width
         val fullWidth = stageWidth * 0.5f  // what the card always was, and RenderEvent's own default
         val techPolicyAndDiplomacy = worldScreen.techPolicyAndDiplomacy
@@ -151,6 +175,9 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
      *  All of them are packed and positioned earlier in [WorldScreen.update], so their geometry is
      *  final here. */
     private fun getTaskHeight(taskWidth: Float): Float {
+        battlefieldBounds?.takeIf { BattlefieldHud.enabled }?.let {
+            return (it.height - contentPad * 2).coerceAtLeast(collapsedIconSize)
+        }
         val cardLeft = (worldScreen.stage.width - taskWidth) / 2 - contentPad
         val cardRight = worldScreen.stage.width - cardLeft
         // battleTable is always centered on the stage, so it always overlaps the card's span

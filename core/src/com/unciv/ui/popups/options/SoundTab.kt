@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.models.UncivSound
 import com.unciv.ui.components.widgets.UncivSlider
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.audio.MusicTrackChooserFlags
 import com.unciv.ui.components.extensions.MusicControls
 import com.unciv.ui.components.extensions.disable
@@ -47,13 +48,25 @@ internal class SoundTab(
     }
 
     override fun Table.addVolumeSlider(text: String, initial: Float, silent: Boolean, onChange: (Float) -> Unit) {
-        val label = add(text.toLabel()).left()
-        if (optionsPopup.useSidebar) label.colspan(2).pad(8f, 12f, 0f, 12f).row()
+        val valueLabel = if (optionsPopup.useSidebar)
+            UncivSlider.formatPercent(initial).toLabel(OptionsPopupStyle.accent, OptionsPopupStyle.fontSize(17f)) else null
+        if (valueLabel != null) {
+            val heading = Table().apply {
+                add(text.toLabel()).minWidth(0f).growX().left()
+                add(valueLabel).right().padLeft(OptionsPopupStyle.points(12f))
+            }
+            add(heading).colspan(2).growX().pad(OptionsPopupStyle.points(8f), OptionsPopupStyle.points(12f), 0f, OptionsPopupStyle.points(12f)).row()
+        } else add(text.toLabel()).left()
         val slider = UncivSlider(0f, 1f, 0.05f, initial = initial,
             sound = if (silent) UncivSound.Silent else UncivSound.Slider,
-            getTipText = UncivSlider::formatPercent, onChange = onChange)
+            tipType = if (optionsPopup.useSidebar) UncivSlider.TipType.None else UncivSlider.TipType.Permanent,
+            getTipText = UncivSlider::formatPercent, onChange = {
+                onChange(it)
+                valueLabel?.setText(UncivSlider.formatPercent(it))
+            })
         val cell = add(slider).pad(5f)
-        if (optionsPopup.useSidebar) cell.colspan(2).growX().pad(22f, 12f, 12f, 12f)
+        if (optionsPopup.useSidebar) cell.colspan(2).growX().minHeight(UiNavigation.minimumTouchSize())
+            .pad(OptionsPopupStyle.points(4f), OptionsPopupStyle.points(12f), OptionsPopupStyle.points(4f), OptionsPopupStyle.points(12f))
         cell.row()
     }
 

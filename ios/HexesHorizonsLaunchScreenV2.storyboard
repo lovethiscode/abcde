@@ -14,10 +14,10 @@
                         <rect key="frame" x="0.0" y="0.0" width="852" height="393"/>
                         <subviews>
                             <imageView userInteractionEnabled="NO" contentMode="scaleToFill" image="ExtraImages/LaunchBackground" translatesAutoresizingMaskIntoConstraints="NO" id="launch-background"/>
-                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" image="ExtraImages/LaunchMark" translatesAutoresizingMaskIntoConstraints="NO" id="launch-mark">
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" image="ExtraImages/LaunchMarkTransparent" translatesAutoresizingMaskIntoConstraints="NO" id="launch-mark">
                                 <constraints>
                                     <constraint firstAttribute="width" priority="750" constant="252" id="mark-width"/>
-                                    <constraint firstAttribute="width" secondItem="launch-mark" secondAttribute="height" multiplier="126:107" id="mark-aspect"/>
+                                    <constraint firstAttribute="width" secondItem="launch-mark" secondAttribute="height" multiplier="1:1" id="mark-aspect"/>
                                 </constraints>
                             </imageView>
                         </subviews>
@@ -41,6 +41,6 @@
     </scenes>
     <resources>
         <image name="ExtraImages/LaunchBackground" width="1024" height="512"/>
-        <image name="ExtraImages/LaunchMark" width="252" height="214"/>
+        <image name="ExtraImages/LaunchMarkTransparent" width="252" height="252"/>
     </resources>
 </document>

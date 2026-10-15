@@ -20,7 +20,7 @@ class GameStartScreen : BaseScreen() {
             // Branding uses UIKit points, independent of the player's game UI scale and cutout setting.
             stage.viewport = ScreenViewport()
             background = startupImage("LaunchBackground@3x.png")
-            mark = startupImage("LaunchMark@3x.png")
+            mark = startupImage("LaunchMarkTransparent@3x.png")
             resize(Gdx.graphics.width, Gdx.graphics.height)
         } else {
             val logoImage = ImageGetter.getExternalImage("banner.png")
@@ -41,8 +41,8 @@ class GameStartScreen : BaseScreen() {
         if (width <= 0 || height <= 0) return
         stage.viewport.update(width, height, true)
         background?.setBounds(0f, 0f, stage.width, stage.height)
-        val markWidth = minOf(252f, stage.width * .8f, stage.height * .72f * 252f / 214f)
-        mark?.setSize(markWidth, markWidth * 214f / 252f)
+        val markWidth = minOf(252f, stage.width * .8f, stage.height * .72f)
+        mark?.setSize(markWidth, markWidth)
         mark?.center(stage)
     }
 

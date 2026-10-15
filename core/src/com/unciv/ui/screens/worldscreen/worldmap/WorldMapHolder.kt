@@ -216,6 +216,7 @@ class WorldMapHolder(
                 unitTable.citySelected(previousSelectedCity)
             }
         }
+        worldScreen.noteBattlefieldMapTap()
         worldScreen.shouldUpdate = true
     }
 

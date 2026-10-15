@@ -7,6 +7,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
 import com.unciv.models.metadata.ModCategories
 import com.unciv.models.translations.tr
+import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.images.ImageGetter
 
 /** A mod button on the Mod Manager Screen...
@@ -18,27 +19,29 @@ import com.unciv.ui.images.ImageGetter
 internal class ModDecoratedButton(private var modInfo: ModUIData) : Table() {
     private val stateImages: ModStateImages?
     private val title = ModManagementStyle.label(modInfo.buttonText(), 24)
+    private val trailing = ModManagementStyle.label("", 18, ModManagementStyle.muted)
     private val categoriesLabel = ModManagementStyle.label("", 18, ModManagementStyle.muted)
 
     init {
         touchable = Touchable.enabled
         background = ModManagementStyle.rounded(ModManagementStyle.background)
-        pad(14f)
-        val icon = Table().apply {
-            background = ModManagementStyle.rounded(ModManagementStyle.raised)
-            add(ImageGetter.getImage("OtherIcons/Mods", ModManagementStyle.accent)).size(28f)
-        }
-        add(icon).size(54f, 62f).padRight(14f)
+        pad(10f, 12f, 10f, 12f)
+        add(ModIcon.Box.image()).size(32f).padRight(14f)
         val text = Table().apply {
             add(title).growX().minWidth(0f).left().row()
-            add(categoriesLabel).growX().minWidth(0f).left().padTop(7f)
+            add(categoriesLabel).growX().minWidth(0f).left().padTop(4f)
         }
         add(text).growX().minWidth(0f)
         stateImages = if (modInfo.ruleset == null) null else ModStateImages()
         if (stateImages != null) add(stateImages).padLeft(8f)
+        add(trailing).width(70f * com.unciv.UncivGame.Current.settings.fontSizeMultiplier).padLeft(10f)
+        defaults().minHeight(0f)
         updateText()
         updateIndicators()
     }
+
+    override fun getMinHeight() = maxOf(super.getMinHeight(), ModManagementStyle.touchHeight)
+    override fun getPrefHeight() = maxOf(super.getPrefHeight(), ModManagementStyle.touchHeight)
 
     private fun updateText() {
         title.setText(modInfo.buttonText().tr())
@@ -46,9 +49,13 @@ internal class ModDecoratedButton(private var modInfo: ModUIData) : Table() {
         val categories = ModCategories.asSequence()
             .filter { it != ModCategories.default() && it.topic in topics }
             .joinToString(" · ") { it.label.tr() }
-        categoriesLabel.setText(categories.ifEmpty {
+        val categoryText = categories.ifEmpty {
             if (modInfo.isInstalled) "Installed".tr() else "Mods".tr()
-        })
+        }
+        val size = modInfo.ruleset?.modOptions?.modSize ?: modInfo.repo?.size ?: 0
+        val sizeText = ModInfoAndActionPane.formatSize(size)
+        categoriesLabel.setText(listOf(categoryText, sizeText).filter { it.isNotEmpty() }.joinToString(" · "))
+        trailing.setText(if (modInfo.repo != null) "${modInfo.stargazers()}${Fonts.star}" else "")
     }
 
     fun updateIndicators() = stateImages?.update(modInfo)

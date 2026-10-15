@@ -2,6 +2,8 @@ package com.unciv.ui.screens.worldscreen.topbar
 
 import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.ui.Label
+import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.unciv.Constants
 import com.unciv.logic.civilization.Civilization
 import com.unciv.models.stats.Stats
@@ -10,6 +12,9 @@ import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.colorFromRGB
 import com.unciv.ui.components.extensions.setFontColor
 import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
 import com.unciv.ui.components.extensions.toStringSigned
 import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.input.onClick
@@ -46,6 +51,8 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
     private val happinessImage = ImageGetter.getStatIcon("Happiness")
 
     private val worldScreen = topbar.worldScreen
+    private val nativeStats = ArrayList<Table>()
+    private var lastStat: Table? = null
 
 
     companion object {
@@ -68,7 +75,8 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
             noPad: Boolean = false,
             screenFactory: () -> BaseScreen?
         ) {
-            val image = ImageGetter.getStatIcon(icon)
+            val image = com.unciv.ui.screens.worldscreen.FacetedHudIcons.image(icon)
+                ?: ImageGetter.getStatIcon(icon)
             val action = {
                 val screen = screenFactory()
                 // I don't like that it's ANR-able but to not do so we'd need to get rid of the nullable option
@@ -76,6 +84,19 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
             }
             label.onClick(action)
             image.onClick(action)
+            if (BattlefieldHud.enabled) {
+                val stat = Table().apply {
+                    touchable = Touchable.enabled
+                    onClick(action)
+                    image.touchable = Touchable.disabled
+                    label.touchable = Touchable.disabled
+                    add(image).size(BattlefieldHud.points(16f)).padRight(BattlefieldHud.points(3f))
+                    add(label)
+                }
+                nativeStats.add(stat)
+                lastStat = stat
+                return
+            }
             add(image).padBottom(defaultImageBottomPad).size(defaultImageSize)
             add(label).padRight(if (noPad) 0f else padRightBetweenStats)
         }
@@ -90,6 +111,11 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
         }
 
         fun addPerTurnLabel(label: Label) {
+            if (BattlefieldHud.enabled) {
+                lastStat!!.add(label).padLeft(BattlefieldHud.points(2f))
+                label.touchable = Touchable.disabled
+                return
+            }
             add(label).padRight(padRightBetweenStats)
                 .height(Constants.defaultFontSize.toFloat()).top()
         }
@@ -105,8 +131,20 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
         }
         happinessContainer.onClick(invokeResourcesPage)
         happinessLabel.onClick(invokeResourcesPage)
-        add(happinessContainer).padBottom(defaultImageBottomPad).size(defaultImageSize)
-        add(happinessLabel).padRight(padRightBetweenStats)
+        if (BattlefieldHud.enabled) {
+            val stat = Table().apply {
+                touchable = Touchable.enabled
+                onClick(invokeResourcesPage)
+                happinessContainer.touchable = Touchable.disabled
+                happinessLabel.touchable = Touchable.disabled
+                add(happinessContainer).size(BattlefieldHud.points(16f)).padRight(BattlefieldHud.points(3f))
+                add(happinessLabel)
+            }
+            nativeStats.add(stat)
+        } else {
+            add(happinessContainer).padBottom(defaultImageBottomPad).size(defaultImageSize)
+            add(happinessLabel).padRight(padRightBetweenStats)
+        }
 
         addStat("Culture", cultureLabel) {
             if (worldScreen.gameInfo.ruleset.policyBranches.isEmpty()) null
@@ -132,7 +170,7 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
 
         scienceLabel.setText(rateLabel(nextTurnStats.science))
 
-        happinessLabel.setText(getHappinessText(civInfo))
+        happinessLabel.setText(if (BattlefieldHud.enabled) civInfo.getHappiness().tr() else getHappinessText(civInfo))
 
         if (civInfo.getHappiness() < 0) {
             happinessLabel.setFontColor(malcontentColor)
@@ -144,12 +182,25 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
             happinessContainer.addActor(happinessImage)
         }
 
-        cultureLabel.setText(getCultureText(civInfo, nextTurnStats))
+        cultureLabel.setText(if (BattlefieldHud.enabled) rateLabel(nextTurnStats.culture) else getCultureText(civInfo, nextTurnStats))
 
         faithLabel.setText(civInfo.religionManager.storedFaith.tr())
         faithPerTurnLabel.setText(rateLabel(nextTurnStats.faith))
 
-        scaleTo(worldScreen.stage.width)
+        if (BattlefieldHud.enabled) {
+            for (label in listOf(goldLabel, scienceLabel, happinessLabel, cultureLabel, faithLabel))
+                label.setFontSize(BattlefieldHud.font(14f))
+            goldPerTurnLabel.setFontSize(BattlefieldHud.font(11f))
+            faithPerTurnLabel.setFontSize(BattlefieldHud.font(11f))
+            happinessContainer.children.firstOrNull()?.setSize(BattlefieldHud.points(16f), BattlefieldHud.points(16f))
+            clearContent()
+            val perTurnCell = nativeStats.first().getCell(goldPerTurnLabel)
+            goldPerTurnLabel.isVisible = true
+            perTurnCell.width(goldPerTurnLabel.prefWidth).padLeft(BattlefieldHud.points(2f))
+            for (stat in nativeStats) {
+                add(stat).pad(0f).minWidth(0f).minHeight(UiNavigation.minimumTouchSize()).padRight(BattlefieldHud.points(4f)).growX()
+            }
+        } else scaleTo(worldScreen.stage.width)
     }
 
     private fun getCultureText(civInfo: Civilization, nextTurnStats: Stats): String {

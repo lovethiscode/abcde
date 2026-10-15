@@ -3,6 +3,10 @@ package com.unciv.ui.screens.worldscreen.unit.actions
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Interpolation
+import com.badlogic.gdx.math.Vector2
+import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.InputEvent
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.actions.Actions
 import com.badlogic.gdx.scenes.scene2d.ui.Button
@@ -13,21 +17,36 @@ import com.unciv.models.UpgradeUnitAction
 import com.unciv.ui.components.extensions.brighten
 import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.input.keyShortcuts
+import com.unciv.ui.components.input.KeyCharAndCode
+import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.popups.AnimatedMenuPopup.Companion.addContextMenu
 import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.popups.UnitUpgradeMenu
+import com.unciv.ui.popups.Popup
+import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.worldscreen.WorldScreen
+import com.unciv.ui.screens.basescreen.BaseScreen
+import com.unciv.ui.screens.cityscreen.CityScreen
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
+import com.unciv.ui.screens.worldscreen.BattlefieldGeometry
+import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.components.extensions.setFontSize
 import yairm210.purity.annotations.Readonly
 
 class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
+    internal var battlefieldWidth = 0f
+    internal var battlefieldColumns = 1
+    internal var battlefieldAvailableHeight = 0f
     /** Distribute UnitActions on "pages" */
     private var currentPage = 0
     private var buttonsPerPage = Int.MAX_VALUE
     private var numPages = 2
     private var shownForUnitHash = 0
     private var animationNotFinished = false
+    private var battlefieldMenu: Popup? = null
+    private val battlefieldSlotAppearance = arrayOfNulls<UiUnitAction>(3)
 
     companion object {
         /** Maximum for how many pages there can be. ([minButtonsPerPage]-1)*[maxAllowedPages]
@@ -60,8 +79,11 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         val newUnitHash = unit?.hashCode() ?: 0
         var unitChanged = false
         if (shownForUnitHash != newUnitHash) {
+            battlefieldMenu?.close()
+            battlefieldMenu = null
             unitChanged = true
             currentPage = 0
+            battlefieldSlotAppearance.fill(null)
             shownForUnitHash = newUnitHash
         }
 
@@ -69,6 +91,10 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         keyShortcuts.clear()
         if (unit == null) return
         if (!worldScreen.canChangeState) return // No actions when it's not your turn or spectator!
+        if (BattlefieldHud.enabled) {
+            updateBattlefield(unit)
+            return
+        }
 
         numPages = 0
         val pageActionBuckets = Array<ArrayDeque<UiUnitAction>>(maxAllowedPages) { ArrayDeque() }
@@ -111,6 +137,19 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         // clamp currentPage
         if (currentPage !in 0 until numPages) currentPage = 0
         // actually show the buttons of the currentPage
+        var visibleButtons = 0
+        fun place(button: Button) {
+            if (!BattlefieldHud.enabled) {
+                add(button).colspan(2).row()
+                return
+            }
+            val gap = BattlefieldHud.points(4f)
+            val cellWidth = (battlefieldWidth - gap * (battlefieldColumns - 1)) / battlefieldColumns
+            val lastColumn = (visibleButtons + 1) % battlefieldColumns == 0
+            add(button).width(cellWidth).minHeight(UiNavigation.minimumTouchSize()).pad(0f, 0f, gap, if (lastColumn) 0f else gap)
+            visibleButtons++
+            if (visibleButtons % battlefieldColumns == 0) row()
+        }
         for (unitAction in pageActionBuckets[currentPage]) {
             val button = getUnitActionButton(unit, unitAction)
             val upgradeAction = unitAction.unitAction as? UpgradeUnitAction
@@ -126,17 +165,19 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
                     }
                 }
             }
-            add(button).colspan(2).row()
+            place(button)
         }
 
         // show page navigation
-        if (currentPage > 0)
-            add(previousPageButton)
-        if (currentPage < numPages - 1)
-            add(nextPageButton)
+        if (currentPage > 0) {
+            if (BattlefieldHud.enabled) place(previousPageButton) else add(previousPageButton)
+        }
+        if (currentPage < numPages - 1) {
+            if (BattlefieldHud.enabled) place(nextPageButton) else add(nextPageButton)
+        }
         
         // Animate buttons
-        if (UncivGame.Current.settings.unitActionsTableAnimation) {
+        if (!BattlefieldHud.enabled && UncivGame.Current.settings.unitActionsTableAnimation) {
             if (unitChanged || animationNotFinished) {
                 val buttons = children.filterIsInstance<Button>()
                 var delay = 0f
@@ -161,7 +202,141 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         }
     }
 
+    /** Three stable common-command slots and one expansion; disabled actions keep their place. */
+    private fun updateBattlefield(unit: MapUnit) {
+        val actions = UiUnitActions.getUnitActions(unit).toList()
+        fun first(vararg types: UiUnitActionType) = types.firstNotNullOfOrNull { type -> actions.firstOrNull { it.uiType == type } }
+        val role = first(UiUnitActionType.ConstructImprovement, UiUnitActionType.FoundCity,
+            UiUnitActionType.CreateImprovement, UiUnitActionType.SpreadReligion, UiUnitActionType.FoundReligion,
+            UiUnitActionType.HurryResearch, UiUnitActionType.HurryWonder, UiUnitActionType.ConductTradeMission,
+            UiUnitActionType.SetUp, UiUnitActionType.FortifyUntilHealed, UiUnitActionType.Fortify,
+            UiUnitActionType.SleepUntilHealed, UiUnitActionType.Sleep)
+        val context = if (unit.cache.hasUniqueToBuildImprovements)
+            first(UiUnitActionType.StopAutomation, UiUnitActionType.Automate, UiUnitActionType.Repair)
+        else first(UiUnitActionType.Promote, UiUnitActionType.StopMovement,
+            UiUnitActionType.StopExploration, UiUnitActionType.Explore, UiUnitActionType.Upgrade)
+        val primary = listOf(role, context?.takeUnless { it === role }, first(UiUnitActionType.Skip))
+        val secondary = actions.filter { it !in primary }.sortedByDescending { it.useFrequency }
+        val touch = UiNavigation.minimumTouchSize()
+        val gap = BattlefieldHud.points(4f)
+        val columns = battlefieldColumns.coerceAtLeast(1)
+        val commandWidth = (battlefieldWidth - gap * (columns - 1)) / columns
+        var count = 0
+        fun place(button: Button) {
+            val lastColumn = (count + 1) % columns == 0
+            add(button).width(commandWidth).minHeight(touch)
+                .pad(0f, 0f, gap, if (lastColumn) 0f else gap)
+            count++
+            if (lastColumn) row()
+        }
+        primary.forEachIndexed { index, action ->
+            // Some rules remove an unavailable command entirely. Keep its visual slot without
+            // retaining a callback from an earlier unit state.
+            if (action != null) battlefieldSlotAppearance[index] = UiUnitAction(action.uiType, title = action.title)
+            val displayed = action ?: battlefieldSlotAppearance[index]
+            if (displayed != null) place(getUnitActionButton(unit, displayed))
+            else place(Button(BaseScreen.skin).apply {
+                BattlefieldGeometry.fitControl(this, flat = true)
+                isDisabled = true
+                touchable = Touchable.enabled
+            })
+        }
+        if (secondary.isNotEmpty()) {
+            val more = IconTextButton("Show more",
+                BattlefieldGeometry.icon(ImageGetter.getUnitActionPortrait("ShowMore")), BattlefieldHud.font(12f)).apply {
+                name = "ui-unit-more"
+                BattlefieldGeometry.fitControl(this, flat = true)
+                pad(BattlefieldHud.points(6f))
+                iconCell.size(BattlefieldHud.points(18f)).padRight(BattlefieldHud.points(5f))
+                label.wrap = true
+                labelCell.minWidth(0f).growX()
+                onActivation {
+                    battlefieldMenu?.let { it.close(); return@onActivation }
+                    openBattlefieldMenu(this, unit, secondary)
+                }
+            }
+            place(more)
+        }
+        for (action in secondary) if (action.action != null)
+            keyShortcuts.add(action.uiType.binding) { activateAction(action, unit) }
+        pack()
+    }
+
+    /** An undimmed, button-anchored menu; its transparent input shield consumes dismissal taps. */
+    private fun openBattlefieldMenu(anchor: Actor, unit: MapUnit, actions: List<UiUnitAction>) {
+        val gap = BattlefieldHud.points(4f)
+        val touch = UiNavigation.minimumTouchSize()
+        val safe = worldScreen.safeAreaBoundsInWorld()
+        val menuWidth = minOf(BattlefieldHud.points(220f), safe.width - gap * 2f)
+        val position = anchor.localToStageCoordinates(Vector2())
+        val roomAbove = (safe.y + safe.height - position.y - anchor.height - gap).coerceAtLeast(touch)
+        val roomBelow = (position.y - safe.y - gap).coerceAtLeast(touch)
+        val showAbove = roomAbove >= roomBelow
+        val content = Table().apply {
+            defaults().growX().minHeight(touch).padBottom(gap)
+            for (action in actions) add(getUnitActionButton(unit, action)).width(menuWidth - gap * 2f).row()
+        }
+        val availableHeight = if (showAbove) roomAbove else roomBelow
+        val menuHeight = minOf(content.prefHeight, availableHeight - gap * 2f)
+        val popup = object : Popup(worldScreen, Scrollability.None) {
+            init {
+                name = "ui-unit-more-menu"
+                background = null
+                innerTable.pad(gap)
+                innerTable.defaults().pad(0f)
+                add(AutoScrollPane(content).apply {
+                    setScrollingDisabled(true, false)
+                    setOverscroll(false, false)
+                    fadeScrollBars = false
+                }).width(menuWidth - gap * 2f).height(menuHeight)
+                keyShortcuts.add(KeyCharAndCode.BACK) { close() }
+                val menu = this
+                addListener(object : ClickListener() {
+                    override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                        if (event?.target === menu) close()
+                    }
+                })
+            }
+
+            override fun layout() {
+                super.layout()
+                val point = anchor.localToStageCoordinates(Vector2())
+                val x = (point.x + anchor.width - innerTable.width)
+                    .coerceIn(safe.x, safe.x + safe.width - innerTable.width)
+                val y = if (showAbove) point.y + anchor.height + gap else point.y - innerTable.height - gap
+                innerTable.setPosition(x, y.coerceIn(safe.y, safe.y + safe.height - innerTable.height))
+            }
+
+            override fun act(delta: Float) {
+                super.act(delta)
+                if (anchor.stage !== stageToShowOn || !worldScreen.canChangeState) close()
+            }
+        }
+        battlefieldMenu = popup
+        popup.closeListeners.add { if (battlefieldMenu === popup) battlefieldMenu = null }
+        popup.open()
+    }
+
+    internal fun updateBattlefieldCity() {
+        clear()
+        val city = worldScreen.bottomUnitTable.selectedCity?.tryGetCityView() ?: return
+        val button = IconTextButton("City", ImageGetter.getImage("OtherIcons/Cities"), BattlefieldHud.font(13f)).apply {
+            name = "ui-context-city-open"
+            BattlefieldGeometry.fitControl(this, flat = true)
+            iconCell.size(BattlefieldHud.points(18f))
+            onActivation { worldScreen.game.pushScreen { CityScreen(city) } }
+        }
+        add(button).width(battlefieldWidth).minHeight(UiNavigation.minimumTouchSize())
+        pack()
+    }
+
     private fun updateButtonsPerPage(button: Button) {
+        if (BattlefieldHud.enabled) {
+            buttonsPerPage = if (battlefieldColumns > 1) 6 else
+                (battlefieldAvailableHeight / (UiNavigation.minimumTouchSize() + BattlefieldHud.points(4f)))
+                    .toInt().coerceIn(minButtonsPerPage, maxButtonsPerPage)
+            return
+        }
         val upperLimit = worldScreen.techPolicyAndDiplomacy.y
         val lowerLimit = this.y
         val availableHeight = upperLimit - lowerLimit - padBetweenButtons
@@ -170,7 +345,9 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
     }
 
     private fun getUnitActionButton(unit: MapUnit, unitAction: UiUnitAction): Button {
-        val icon = unitAction.getIcon()
+        val artwork = com.unciv.ui.screens.worldscreen.FacetedHudIcons.image(unitAction.uiType.name)
+            ?: unitAction.getIcon()
+        val icon = if (BattlefieldHud.enabled) BattlefieldGeometry.icon(artwork) else artwork
         // If peripheral keyboard not detected, hotkeys will not be displayed
         val binding = unitAction.uiType.binding
 
@@ -181,25 +358,52 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         if (upgradeAction != null) actionButton.name += ":${upgradeAction.unitToUpgradeTo.name}"
         if (unitAction.uiType == UiUnitActionType.CreateImprovement) actionButton.name += ":${unitAction.unitAction?.actionKey}"
         actionButton.labelCell.padTop(0f) // aligned with icon 
+        if (BattlefieldHud.enabled) {
+            BattlefieldGeometry.fitControl(actionButton, flat = true)
+            actionButton.label.setFontSize(BattlefieldHud.font(12f))
+            actionButton.label.wrap = true
+            actionButton.labelCell.minWidth(0f).growX()
+            actionButton.iconCell.size(BattlefieldHud.points(18f)).padRight(BattlefieldHud.points(5f))
+            actionButton.pad(BattlefieldHud.points(6f))
+        }
 
         if (unitAction.uiType == UiUnitActionType.Promote && unitAction.action != null)
             if (ExpeditionBlueTheme.enabled) actionButton.label.color = ExpeditionBlueTheme.gold
             else actionButton.color = Color.GREEN.brighten(0.5f)
 
-        actionButton.pack()
+        if (BattlefieldHud.enabled && battlefieldWidth > 0f) {
+            val gap = BattlefieldHud.points(4f)
+            actionButton.setSize((battlefieldWidth - gap * battlefieldColumns) / battlefieldColumns,
+                UiNavigation.minimumTouchSize())
+            actionButton.validate()
+        } else actionButton.pack()
 
         if (unitAction.action == null) {
             actionButton.disable()
+            // A disabled command must absorb taps instead of targeting the map beneath it.
+            if (BattlefieldHud.enabled) actionButton.touchable = Touchable.enabled
         } else {
             actionButton.onActivation(unitAction.uncivSound, binding) {
                 activateAction(unitAction, unit)
             }
         }
 
+        if (BattlefieldHud.enabled && upgradeAction != null) {
+            actionButton.isDisabled = false
+            actionButton.touchable = Touchable.enabled
+            actionButton.addContextMenu {
+                UnitUpgradeMenu(worldScreen.stage, actionButton, worldScreen.selectedGameView.getMapUnitView(unit),
+                    upgradeAction, enable = unitAction.action != null, callbackAfterAnimation = true) {
+                    worldScreen.shouldUpdate = true
+                }
+            }
+        }
         return actionButton
     }
 
     private fun activateAction(unitAction: UiUnitAction, unit: MapUnit) {
+        battlefieldMenu?.close()
+        battlefieldMenu = null
         val confirmation = unitAction.confirmation
         if (confirmation == null) {
             invokeAction(unitAction, unit)

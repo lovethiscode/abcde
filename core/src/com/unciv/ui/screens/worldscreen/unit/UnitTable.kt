@@ -17,10 +17,22 @@ import com.unciv.ui.components.extensions.isShiftKeyPressed
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.keyShortcuts
+import com.unciv.ui.components.input.activate
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.images.padTopDescent
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.WorldScreen
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
+import com.unciv.ui.screens.worldscreen.BattlefieldGeometry
+import com.unciv.ui.components.extensions.setFontSize
+import com.badlogic.gdx.scenes.scene2d.ui.Label
+import com.badlogic.gdx.scenes.scene2d.ui.Button
+import com.badlogic.gdx.scenes.scene2d.ui.Stack
+import com.unciv.ui.components.input.onActivation
+import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.popups.Popup
+import com.unciv.ui.components.fonts.Fonts
+import com.unciv.models.translations.tr
 import com.unciv.ui.screens.worldscreen.unit.presenter.CityPresenter
 import com.unciv.ui.screens.worldscreen.unit.presenter.SpyPresenter
 import com.unciv.ui.screens.worldscreen.unit.presenter.SummaryPresenter
@@ -37,6 +49,9 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
         IdleUnitButton(this, worldScreen.mapHolder, true, KeyboardBinding.PrevIdleButton)
     private val nextIdleUnitButton =
         IdleUnitButton(this, worldScreen.mapHolder, false, KeyboardBinding.NextIdleButton)
+    internal val battlefieldPreviousUnitButton get() = prevIdleUnitButton
+    internal val hasBattlefieldSelection get() = selectedUnit != null || selectedCity != null || selectedSpy != null
+    private val battlefieldSummary = "".toLabel()
     internal val unitIconHolder = Table()
     internal val unitNameLabel = "".toLabel(fontSize = 24).apply { setAlignment(Align.center) }
     internal val unitIconNameGroup = Table()
@@ -112,7 +127,24 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
         closeButton.name = "ui-unit-clear"
         closeButton.keyShortcuts.clear() // This is the only place we don't want the BACK keyshortcut getCloseButton assigns
 
-        add(Table().apply {
+        if (BattlefieldHud.enabled) {
+            background = null
+            bg.isVisible = false
+            separator = Table()
+            val nameAndSummary = Stack(unitNameLabel, battlefieldSummary)
+            unitIconHolder.touchable = Touchable.enabled
+            unitNameLabel.touchable = Touchable.disabled
+            battlefieldSummary.touchable = Touchable.disabled
+            battlefieldSummary.setAlignment(Align.bottomLeft)
+            unitIconNameGroup.add(unitIconHolder).size(UiNavigation.minimumTouchSize())
+            unitIconNameGroup.add(nameAndSummary).minWidth(0f).height(UiNavigation.minimumTouchSize()).growX().padLeft(BattlefieldHud.points(4f))
+            // The name/summary is the details target; a separate button would squeeze the
+            // readable identity out of B's narrow command dock. Unit portraits keep their callbacks.
+            nameAndSummary.name = "ui-unit-details"
+            nameAndSummary.touchable = Touchable.enabled
+            nameAndSummary.onActivation { openBattlefieldDetails() }
+            add(unitIconNameGroup).minWidth(0f).growX()
+        } else add(Table().apply {
             val moveBetweenUnitsTable = Table().apply {
                 add(prevIdleUnitButton)
                 unitIconNameGroup.add(unitIconHolder)
@@ -144,6 +176,7 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
 
     /** Sending no unit clears the selected units entirely */
     fun selectUnit(unitView: MapUnitView? = null, append: Boolean = false) {
+        worldScreen.dismissBattlefieldTileDetails()
         presenter = if (unitView != null) unitPresenter else summaryPresenter
         unitPresenter.selectUnit(unitView, append)
         resetUnitTable()
@@ -156,6 +189,7 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
     }
 
     fun citySelected(city: ForeignCityView): Boolean {
+        worldScreen.dismissBattlefieldTileDetails()
         presenter = cityPresenter
         return cityPresenter.selectCity(city).also {
             resetUnitTable()
@@ -198,6 +232,63 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
         bg.setSize(width - 3f, height - 3f)
         bg.center(this)
         shouldUpdate = false
+    }
+
+    /** Keep the existing presenters and callbacks, including rename, XP and promotion icons. */
+    internal fun fitBattlefield(targetWidth: Float) {
+        if (!BattlefieldHud.enabled) return
+        val touch = UiNavigation.minimumTouchSize()
+        unitNameLabel.setAlignment(Align.topLeft)
+        unitNameLabel.setFontSize(BattlefieldHud.font(15f))
+        unitNameLabel.setEllipsis(true)
+        battlefieldSummary.setFontSize(BattlefieldHud.font(11f))
+        battlefieldSummary.color = com.unciv.models.skins.ExpeditionBlueTheme.muted
+        battlefieldSummary.setEllipsis(true)
+        val unit = selectedUnit
+        battlefieldSummary.setText(when {
+            unit != null -> Fonts.movement + unit.getMovementString() +
+                if (unit.isCivilian()) "" else "   XP ${unit.xp.tr()}/${unit.xpForNextPromotion().tr()}"
+            selectedCity != null -> "${"Strength".tr()} ${selectedCity!!.getDefendingStrength().tr()}"
+            else -> ""
+        })
+        for (cell in unitIconHolder.cells) {
+            cell.actor?.let { cell.setActor(BattlefieldGeometry.icon(it)) }
+            cell.size(BattlefieldHud.points(22f)).pad(0f)
+        }
+        getCell(unitIconNameGroup).minWidth(0f).growX()
+        pad(BattlefieldHud.points(4f))
+        padRight(touch + BattlefieldHud.points(4f))
+        width = targetWidth
+        invalidateHierarchy()
+        validate()
+        height = maxOf(prefHeight, touch + BattlefieldHud.points(8f))
+        validate()
+        BattlefieldGeometry.fitClose(closeButton, touch)
+        closeButton.setPosition(width - touch - BattlefieldHud.points(4f), height - touch - BattlefieldHud.points(4f))
+        closeButton.toFront()
+    }
+
+    /** Full presenter-owned details retain the original XP, promotion and Civilopedia callbacks. */
+    private fun openBattlefieldDetails() {
+        val details = Popup(worldScreen)
+        val detailWidth = minOf(BattlefieldHud.points(340f), worldScreen.safeAreaBoundsInWorld().width - BattlefieldHud.points(32f))
+        details.add(nameLabelText.toLabel(fontSize = BattlefieldHud.font(16f))).width(detailWidth).row()
+        for (label in descriptionTable.children.filterIsInstance<Label>())
+            label.setFontSize(BattlefieldHud.font(13f))
+        details.add(descriptionTable).minWidth(0f).width(detailWidth).pad(BattlefieldHud.points(8f)).row()
+        details.add(promotionsTable).width(detailWidth).row()
+        if (worldScreen.canChangeState && (selectedUnit != null || selectedCity != null)) {
+            details.addButton("Rename") {
+                details.close()
+                unitNameLabel.activate() // Reuse the presenter-owned rename handler.
+            }.minHeight(UiNavigation.minimumTouchSize()).growX().row()
+        }
+        details.addCloseButton()
+        details.closeListeners.add {
+            descriptionTable.remove()
+            promotionsTable.remove()
+        }
+        details.open()
     }
 
     private fun resetUnitTable() {

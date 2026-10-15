@@ -122,7 +122,7 @@ else
 
 val expectedIosVersion = "4.21.14"
 val expectedIosBundleId = "com.aishuati.unciv"
-val expectedIosAppName = "Unciv4iOS"
+val expectedIosAppName = "Hexes & Horizons"
 val expectedIosMinimumVersion = "15.0"
 val verifyIosConfiguration by tasks.registering {
     group = "verification"
@@ -279,17 +279,17 @@ val compiledIosLaunchScreenDirectory = layout.buildDirectory.dir("generated/laun
 val compileIosLaunchScreen by tasks.registering(Exec::class) {
     group = "build"
     description = "Compiles the adaptive expedition launch storyboard for iPhone and iPad."
-    inputs.file("AppIconLaunchScreen.storyboard")
+    inputs.file("HexesHorizonsLaunchScreenV2.storyboard")
     outputs.dir(compiledIosLaunchScreenDirectory)
     doFirst {
         compiledIosLaunchScreenDirectory.get().asFile.mkdirs()
     }
     commandLine(
         "xcrun", "ibtool",
-        "--compile", compiledIosLaunchScreenDirectory.get().file("AppIconLaunchScreen.storyboardc").asFile.absolutePath,
+        "--compile", compiledIosLaunchScreenDirectory.get().file("HexesHorizonsLaunchScreenV2.storyboardc").asFile.absolutePath,
         "--minimum-deployment-target", expectedIosMinimumVersion,
         "--target-device", "iphone", "--target-device", "ipad",
-        file("AppIconLaunchScreen.storyboard").absolutePath,
+        file("HexesHorizonsLaunchScreenV2.storyboard").absolutePath,
     )
 }
 

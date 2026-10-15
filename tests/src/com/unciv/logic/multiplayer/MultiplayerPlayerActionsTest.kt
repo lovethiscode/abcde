@@ -8,6 +8,11 @@ import com.unciv.UncivGame
 import com.unciv.logic.CompatibilityVersion
 import com.unciv.logic.GameInfo
 import com.unciv.logic.GameInfoPreview
+import com.unciv.logic.GameStarter
+import com.unciv.logic.map.MapSize
+import com.unciv.logic.map.MapType
+import com.unciv.models.metadata.GameSetupInfo
+import com.unciv.models.metadata.Player
 import com.unciv.logic.UncivShowableException
 import com.unciv.logic.civilization.PlayerType
 import com.unciv.logic.files.UncivFiles
@@ -15,6 +20,7 @@ import com.unciv.logic.multiplayer.storage.*
 import com.unciv.models.metadata.GameSettings
 import com.unciv.testing.BaseTestRunner
 import com.unciv.testing.TestGame
+import com.unciv.ui.audio.SoundPlayer
 import com.unciv.utils.MultiplayerBackgroundTask
 import kotlinx.coroutines.*
 import org.junit.After
@@ -323,6 +329,43 @@ class MultiplayerPlayerActionsTest {
         transport.full = UncivFiles.gameInfoToString(changed, forceZip = true)
         act(MultiplayerPlayerAction.SkipTurn)
         assertFalse(pending().requiresRecovery())
+    }
+
+    @Test fun skipFreshGameWithStartingUnitsKeepsTheServerSnapshotStable() = runBlocking {
+        multiplayer.pause()
+        save = GameStarter.startNewGame(GameSetupInfo().apply {
+            gameParameters.baseRuleset = "Civ V - Gods & Kings"
+            gameParameters.isOnlineMultiplayer = true
+            gameParameters.numberOfCityStates = 0
+            gameParameters.players = arrayListOf(
+                Player("Germany", PlayerType.Human, "germany-player"),
+                Player("Greece", PlayerType.Human, "greece-player"),
+            )
+            mapParameters.mapSize = MapSize.Tiny
+            mapParameters.type = MapType.pangaea
+            mapParameters.seed = 1017L
+        }, reservedGameId = "fresh-multiplayer-skip").apply {
+            gameParameters.multiplayerServerUrl = SERVER
+            currentPlayer = "Greece"
+            currentTurnStartTime = System.currentTimeMillis() - 3 * 86_400_000L
+            setTransients()
+        }
+        UncivGame.Current.settings.multiplayer.setUserId("germany-player")
+        transport = MemoryTransport(save)
+        multiplayer = Multiplayer(transport, Dispatchers.Unconfined)
+        game = MultiplayerGamePreview(FileHandle(directory.resolve("fresh-preview").toFile()), save.asPreview())
+
+        try {
+            act(MultiplayerPlayerAction.SkipTurn)
+
+            val uploaded = transport.storedGame()
+            assertEquals("Germany", uploaded.currentPlayer)
+            assertEquals(PlayerType.Human, uploaded.civilizations.first { it.civName == "Greece" }.playerType)
+            assertEquals(2, transport.puts.size)
+            assertFalse(pending().requiresRecovery())
+        } finally {
+            SoundPlayer.clearCache()
+        }
     }
 
     private suspend fun act(action: MultiplayerPlayerAction) = multiplayer.performPlayerAction(game, game.preview!!, action)

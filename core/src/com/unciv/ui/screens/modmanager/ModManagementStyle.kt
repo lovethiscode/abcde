@@ -1,6 +1,12 @@
 package com.unciv.ui.screens.modmanager
 
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.g2d.Batch
+import com.badlogic.gdx.scenes.scene2d.ui.Image
+import com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable
+import com.unciv.ui.components.widgets.UiNavigation
+import kotlin.math.atan2
+import kotlin.math.sqrt
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -21,6 +27,8 @@ internal object ModManagementStyle {
     val accent get() = ExpeditionBlueTheme.color(Color.valueOf("e1bd78"), ExpeditionBlueTheme.gold)
     val line get() = ExpeditionBlueTheme.color(Color.valueOf("33465b"), ExpeditionBlueTheme.border)
     val danger get() = ExpeditionBlueTheme.color(Color.valueOf("f1a8a2"), ExpeditionBlueTheme.danger)
+
+    val touchHeight get() = maxOf(64f, UiNavigation.minimumTouchSize())
 
     fun fill(color: Color) = ImageGetter.getWhiteDotDrawable().tint(color)
 
@@ -56,4 +64,32 @@ internal object ModManagementStyle {
         button.labelCell.minWidth(0f).growX()
         button.pad(13f, 18f, 13f, 18f)
     }
+}
+
+
+/** Small, countable line icons, rendered through the game's existing white-dot texture. */
+internal enum class ModIcon(vararg val lines: FloatArray) {
+    Plus(floatArrayOf(12f,5f,12f,19f), floatArrayOf(5f,12f,19f,12f)),
+    Filter(floatArrayOf(4f,7f,20f,7f), floatArrayOf(4f,17f,20f,17f),
+        floatArrayOf(9f,4f,9f,10f), floatArrayOf(15f,14f,15f,20f)),
+    Chevron(floatArrayOf(9f,6f,15f,12f), floatArrayOf(15f,12f,9f,18f)),
+    Box(floatArrayOf(12f,3f,21f,8f), floatArrayOf(21f,8f,21f,17f), floatArrayOf(21f,17f,12f,22f),
+        floatArrayOf(12f,22f,3f,17f), floatArrayOf(3f,17f,3f,8f), floatArrayOf(3f,8f,12f,3f),
+        floatArrayOf(3f,8f,12f,13f), floatArrayOf(12f,13f,21f,8f), floatArrayOf(12f,13f,12f,22f));
+
+    fun image(tint: Color = ModManagementStyle.accent) = Image(object : BaseDrawable() {
+        override fun draw(batch: Batch, x: Float, y: Float, width: Float, height: Float) {
+            val old = batch.packedColor
+            batch.setColor(tint.r, tint.g, tint.b, batch.color.a)
+            val region = ImageGetter.getWhiteDotDrawable().region
+            val stroke = width * 1.7f / 24f
+            for (line in lines) {
+                val dx = (line[2] - line[0]) * width / 24f
+                val dy = (line[1] - line[3]) * height / 24f
+                batch.draw(region, x + line[0] * width / 24f, y + (24f-line[1]) * height / 24f-stroke/2,
+                    0f, stroke/2, sqrt(dx*dx+dy*dy), stroke, 1f, 1f, atan2(dy,dx)*180f/Math.PI.toFloat())
+            }
+            batch.packedColor = old
+        }
+    })
 }
