@@ -3,6 +3,16 @@ package com.unciv.ui.screens.multiplayerscreens
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.Touchable
+import com.badlogic.gdx.scenes.scene2d.ui.Container
+import com.badlogic.gdx.scenes.scene2d.ui.Image
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
+import com.unciv.ui.components.input.activate
+import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.popups.AnimatedMenuPopup
+import com.unciv.ui.screens.basescreen.RecreateOnResize
+import com.unciv.ui.screens.basescreen.SafeAreaViewport
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -56,7 +66,24 @@ internal const val multiplayerContentFontSize = 22
 internal const val multiplayerSecondaryFontSize = 18
 internal const val multiplayerDenseFontSize = 16
 
-class MultiplayerScreen : PickerScreen(disableScroll = true) {
+class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
+    private val appearance = MultiplayerScreenStyle(UiNavigation.minimumTouchSize() / 44f)
+    override val screenClearColor: Color get() = appearance.background
+    private val layout = MultiplayerScreenLayout(stage.width / appearance.unit, stage.height / appearance.unit,
+        UiNavigation.isIos && stage.height / appearance.unit < 600f)
+    private val filterButtons = linkedMapOf<MultiplayerGameFilter, TextButton>()
+    private val detailsPanel = Table()
+    private val gamesPanelContent = Table()
+    private val gameActionsButton = appearance.button("", MultiplayerIcon.More, outlined = true).apply {
+        name = "multiplayer-game-actions"
+        onClick { showGameActions() }
+    }
+    private val playerMenuButton = appearance.button("", MultiplayerIcon.More, ghost = true).apply {
+        name = "multiplayer-player-menu"
+        onClick { showMenu(this, listOf(copyUserIdButton, helpButton) +
+            if (game.platformCapabilities.multiplayerFriends) listOf(friendsListButton) else emptyList()) }
+    }
+
     private var selectedGame: MultiplayerGamePreview? = null
     private val events = EventBus.EventReceiver()
     private val refreshingGames = mutableSetOf<String>()
@@ -92,6 +119,10 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     private val helpButton = createHelpButton()
 
     private val gameCountLabel = "".toLabel(Color.LIGHT_GRAY, fontSize = multiplayerSecondaryFontSize)
+    private val gamesHeader = Table()
+    private val gamesHeadingLabel = "My multiplayer games".toLabel(appearance.text, fontSize = appearance.font(16)).apply {
+        setEllipsis(true)
+    }
     private val serverStatusDot = "●".toLabel(Color.LIGHT_GRAY, fontSize = multiplayerSecondaryFontSize)
     private val serverUrlLabel = "".toLabel(fontSize = multiplayerSecondaryFontSize).apply { setEllipsis(true) }
     private val serverStateLabel = "".toLabel(Color.LIGHT_GRAY, fontSize = multiplayerSecondaryFontSize).apply {
@@ -118,11 +149,12 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     private val advancedActionsTable = Table()
     private var detailsActionWidth = 0f
 
-    val gameList = GameList(::selectGame)
+    internal val gameList = GameList(::selectGame, appearance)
 
     init {
         setDefaultCloseAction()
         initLandscapeLayout()
+        gameList.onContentChanged = ::updateGameCount
         setupRightSideButton()
         setupRefreshEvents()
         unselectGame()
@@ -164,8 +196,8 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     }
 
     private fun setupRightSideButton() {
-        rightSideButton.style = skin.get("positive", TextButton.TextButtonStyle::class.java)
         rightSideButton.setText("Download latest save and enter".tr())
+        appearance.decorate(rightSideButton, MultiplayerIcon.Download, primary = true, fontSize = 14)
         rightSideButton.onClick {
             if (isDownloadingMods) return@onClick
             val targetGame = selectedGame ?: return@onClick
@@ -249,208 +281,290 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         topTable.clear()
         bottomTable.clear()
         pickerPane.remove()
-
-        closeButton.setText(UiNavigation.backCaption)
-        closeButton.label.setFontSize(multiplayerSecondaryFontSize)
-        listOf(createRoomButton, helpButton, copyUserIdButton, addGameButton, refreshButton).forEach {
-            it.label.setFontSize(multiplayerSecondaryFontSize)
-            it.labelCell.minWidth(0f)
+        val u = appearance::px
+        closeButton.setText("")
+        appearance.decorate(closeButton, MultiplayerIcon.Back, ghost = true)
+        closeButton.name = "multiplayer-back"
+        appearance.decorate(createRoomButton, MultiplayerIcon.Plus, outlined = true)
+        createRoomButton.name = "multiplayer-create"
+        appearance.decorate(addGameButton, MultiplayerIcon.Link, primary = true)
+        addGameButton.name = "multiplayer-join"
+        appearance.decorate(refreshButton, MultiplayerIcon.Refresh, ghost = true, fontSize = 12)
+        refreshButton.name = "multiplayer-refresh"
+        appearance.decorate(shareGameButton, MultiplayerIcon.Share, outlined = true, fontSize = 12)
+        shareGameButton.name = "multiplayer-share"
+        copyInviteButton.setText("Copy invite".tr())
+        appearance.decorate(copyInviteButton, MultiplayerIcon.Link, outlined = true, fontSize = 12)
+        copyInviteButton.name = "multiplayer-copy-invite"
+        rightSideButton.name = "multiplayer-enter"
+        listOf(gameCountLabel, serverUrlLabel, serverStateLabel).forEach {
+            it.setFontSize(appearance.font(12)); it.setFontColor(appearance.muted)
         }
-        closeButton.labelCell.minWidth(0f)
-        updateServerStatus()
-
-        val screenTable = Table().apply {
+        serverStatusDot.setFontSize(appearance.font(10))
+        detailTitleLabel.setFontSize(appearance.font(20)); detailTitleLabel.setFontColor(appearance.text)
+        detailRulesetLabel.setFontSize(appearance.font(12)); detailRulesetLabel.setFontColor(appearance.muted)
+        detailStatusLabel.setFontSize(appearance.font(12))
+        detailStatusBadge.clearChildren()
+        detailStatusBadge.add(detailStatusLabel).minWidth(0f).maxWidth(u(120f)).pad(u(4f), u(9f), u(4f), u(9f))
+        listOf(currentTurnValue, turnDurationValue, ownCivilizationValue, timeRemainingValue).forEach {
+            it.setFontSize(appearance.font(16)); it.setFontColor(appearance.text)
+        }
+        timeRemainingValue.setFontColor(appearance.positive)
+        detailNoteLabel.setFontSize(appearance.font(11)); detailNoteLabel.setFontColor(appearance.muted)
+        detailsActionWidth = u(layout.detailsWidth - 32f)
+        val drawingBounds = (stage.viewport as SafeAreaViewport).drawingBounds
+        stage.addActor(Image(ImageGetter.getWhiteDotDrawable()).apply {
+            color = appearance.background
+            setBounds(drawingBounds.x, drawingBounds.y, drawingBounds.width, drawingBounds.height)
+            touchable = Touchable.disabled
+        })
+        val root = Table().apply {
+            name = "multiplayer-screen"
             setFillParent(true)
-            background = skinStrings.getUiBackground(
-                "MultiplayerScreen/Background",
-                tintColor = skinStrings.skinConfig.clearColor,
-            )
+            pad(u(layout.topPadding), u(layout.horizontalPadding), u(layout.bottomPadding), u(layout.horizontalPadding))
+            add(createHeader()).growX().minWidth(0f).minHeight(u(if (layout.twoColumns) 50f else 102f)).padBottom(u(10f)).row()
+            val body = Table()
+            body.add(createGamesPanel()).grow().minWidth(0f).minHeight(0f).width(u(layout.gamesWidth))
+            if (layout.twoColumns) body.add(createDetailsPanel()).grow().minWidth(0f).minHeight(0f)
+                .width(u(layout.detailsWidth)).padLeft(u(layout.columnGap))
+            else {
+                body.row()
+                body.add(createDetailsPanel()).grow().minWidth(0f).minHeight(0f).padTop(u(16f))
+            }
+            add(body).grow().minWidth(0f).minHeight(0f).row()
+            add(createServerBar()).growX().minWidth(0f).height(u(if (layout.phone && layout.twoColumns) 28f else 44f))
+                .padTop(u(10f))
         }
-        screenTable.add(createHeader()).growX().minWidth(0f).minHeight(64f).pad(8f, 10f, 4f, 10f).row()
-        screenTable.add(createServerBar()).growX().minWidth(0f).minHeight(50f).pad(0f, 10f, 6f, 10f).row()
-
-        val bodyContentWidth = stage.width - 30f // outer padding plus the gap between panels
-        val gamesWidth = bodyContentWidth * 0.53f
-        val detailsWidth = bodyContentWidth - gamesWidth
-        detailsActionWidth = detailsWidth - 20f
-        val body = Table().apply {
-            add(createGamesPanel()).grow().width(gamesWidth).minWidth(0f)
-            add(createDetailsPanel()).grow().width(detailsWidth).minWidth(0f).minHeight(0f).padLeft(10f)
-        }
-        screenTable.add(body).grow().minWidth(0f).minHeight(0f).pad(0f, 10f, 10f, 10f)
-        stage.addActor(screenTable)
-
+        stage.addActor(root)
+        updateServerStatus()
         updateGameCount()
     }
 
     private fun createHeader(): Table {
-        val subtitle = "Asynchronous turn-based · Download the latest save when it's your turn to continue playing"
-            .toLabel(Color.LIGHT_GRAY, fontSize = multiplayerSecondaryFontSize)
-            .apply { setEllipsis(true) }
-        val title = "Multiplayer".toLabel(fontSize = multiplayerTitleFontSize)
+        val u = appearance::px
+        val title = "Multiplayer".toLabel(appearance.text, fontSize = appearance.font(24))
+        val subtitle = "Take your turn when you are ready".toLabel(appearance.muted, fontSize = appearance.font(12)).apply {
+            setEllipsis(true)
+        }
         val heading = Table().apply {
             add(title).growX().minWidth(0f).left().row()
-            add(subtitle).growX().minWidth(0f).left()
+            add(subtitle).growX().minWidth(0f).left().padTop(u(4f))
         }
-        val actions = listOf(createRoomButton, addGameButton, copyUserIdButton, helpButton)
-        val actionsWidth = stage.width - 52f - closeButton.prefWidth - title.prefWidth
-        val actionGrid = Table()
-        val actionGridWidth = actionGrid.addResponsiveActions(actions, actionsWidth, 44f)
+        val actions = Table().apply {
+            val widths = listOf(createRoomButton.prefWidth / appearance.unit, addGameButton.prefWidth / appearance.unit)
+            if (layout.twoColumns || fitsInOneRow(layout.contentWidth, widths, 8f)) {
+                add(createRoomButton).height(u(44f)).minWidth(u(112f))
+                add(addGameButton).height(u(44f)).minWidth(u(140f)).padLeft(u(8f))
+            } else {
+                add(createRoomButton).growX().minWidth(0f).height(u(44f)).row()
+                add(addGameButton).growX().minWidth(0f).height(u(44f)).padTop(u(8f))
+            }
+        }
         return Table().apply {
-            background = skinStrings.getUiBackground(
-                "MultiplayerScreen/Header",
-                skinStrings.roundedEdgeRectangleSmallShape,
-                skinStrings.skinConfig.baseColor.darken(0.35f),
-            )
-            add(closeButton).minHeight(maxOf(46f, UiNavigation.minimumTouchSize())).padLeft(8f)
-            add(heading).growX().minWidth(0f).left().padLeft(10f)
-            add(actionGrid).width(actionGridWidth).padRight(8f)
+            add(closeButton).size(u(44f))
+            add(heading).growX().minWidth(0f).left().padLeft(u(12f))
+            if (layout.twoColumns) add(actions).padLeft(u(12f))
+            add(playerMenuButton).size(u(44f)).padLeft(u(8f))
+            if (!layout.twoColumns) {
+                row(); add(actions).colspan(3).growX().minWidth(0f).padTop(u(8f))
+            }
         }
     }
 
     private fun createServerBar(): Table {
-        val currentServerLabel = "Current server:"
-            .toLabel(Color.LIGHT_GRAY, fontSize = multiplayerSecondaryFontSize)
-            .apply { setEllipsis(true) }
+        val u = appearance::px
         val identity = Table().apply {
-            add(serverStatusDot).padLeft(12f).padRight(7f)
-            add(currentServerLabel).minWidth(0f).left()
-            add(serverUrlLabel).growX().minWidth(0f).left().padLeft(5f)
-                .maxWidth(this@MultiplayerScreen.stage.width * 0.34f)
+            add(serverStatusDot).padRight(u(6f))
+            add(serverStateLabel).minWidth(0f).maxWidth(u(layout.contentWidth * .23f)).left()
+            add(serverUrlLabel).growX().minWidth(0f).left().padLeft(u(10f))
         }
-        val activity = Table().apply {
-            add(serverStateLabel).growX().minWidth(0f).left()
-                .maxWidth(this@MultiplayerScreen.stage.width * 0.20f)
-            add(refreshButton).height(42f).padLeft(8f)
-        }
-        val singleRow = fitsInOneRow(
-            stage.width - 40f,
-            listOf(identity.prefWidth, activity.prefWidth),
-            10f,
-        )
         return Table().apply {
-            background = skinStrings.getUiBackground(
-                "MultiplayerScreen/ServerBar",
-                skinStrings.roundedEdgeRectangleSmallShape,
-                Color.valueOf("0b2b3a"),
-            )
-            if (singleRow) {
-                add(identity).growX().minWidth(0f)
-                add(activity).minWidth(0f).pad(3f, 10f, 3f, 10f)
-            } else {
-                add(identity).growX().minWidth(0f).padRight(10f).row()
-                add(activity).growX().minWidth(0f).pad(0f, 10f, 3f, 12f)
-            }
+            val identityContainer = Container(identity).fillX()
+            if (layout.phone && layout.twoColumns) identityContainer.padTop(-u(16f))
+            add(identityContainer).growX().minWidth(0f)
+            add(Container(refreshButton).height(u(44f)).bottom()).height(u(if (layout.phone && layout.twoColumns) 28f else 44f))
+                .padLeft(u(12f))
+            refreshButton.setSize(refreshButton.prefWidth, u(44f))
         }
     }
 
     private fun createGamesPanel(): Table {
-        val gameScroll = ScrollPane(gameList).apply {
-            setScrollingDisabled(true, false)
-            setOverscroll(false, false)
-        }
-        val footer = "Create a room here, then invite players to join"
-            .toLabel(Color.LIGHT_GRAY, fontSize = multiplayerDenseFontSize)
-            .apply { setEllipsis(true) }
-        return Table().apply {
-            background = skinStrings.getUiBackground(
-                "MultiplayerScreen/GamesPanel",
-                skinStrings.roundedEdgeRectangleSmallShape,
-                PanelBackground,
-            )
-            val header = Table().apply {
-                add("My multiplayer games".toLabel(fontSize = multiplayerContentFontSize))
-                    .growX().minWidth(0f).left()
-                add(gameCountLabel).minWidth(0f).right()
+        val u = appearance::px
+        val filters = Table().apply {
+            for (filter in MultiplayerGameFilter.entries) {
+                val button = appearance.button("", fontSize = 12).apply {
+                    name = "multiplayer-filter-${filter.name}"
+                    onClick { changeFilter(filter) }
+                }
+                filterButtons[filter] = button
+                add(button).height(u(44f)).minWidth(0f).padRight(u(4f))
             }
-            add(header).growX().minWidth(0f).pad(9f, 12f, 7f, 12f).row()
-            add(gameScroll).grow().minWidth(0f).minHeight(0f).pad(0f, 8f, 0f, 8f).row()
-            add(footer).growX().minWidth(0f).left().pad(6f, 12f, 8f, 12f)
+            add().growX()
+        }
+        gameList.name = "multiplayer-list"
+        val listScroll = ScrollPane(gameList).apply {
+            setScrollingDisabled(true, false); setOverscroll(false, false)
+        }
+        gamesPanelContent.name = "multiplayer-games-content"
+        gamesPanelContent.add(filters).growX().minWidth(0f).row()
+        gamesPanelContent.add(listScroll).grow().minWidth(0f).minHeight(0f).padTop(u(4f))
+        return Table().apply {
+            name = "multiplayer-games-panel"
+            background = appearance.surface(appearance.panel, 12f)
+            pad(u(16f))
+            add(gamesHeader).growX().minWidth(0f).padBottom(u(10f)).row()
+            add(gamesPanelContent).grow().minWidth(0f).minHeight(0f)
         }
     }
 
     private fun createDetailsPanel(): Table {
-        val titleCopy = Table().apply {
-            add("Current selection".toLabel(Color.LIGHT_GRAY, fontSize = multiplayerSecondaryFontSize))
-                .growX().minWidth(0f).left().row()
-            add(detailTitleLabel).growX().minWidth(0f).left().padTop(2f).row()
-            add(detailRulesetLabel).growX().minWidth(0f).left().padTop(2f)
+        detailsPanel.name = "multiplayer-details-content"
+        detailsPanel.top()
+        detailsPanel.pad(appearance.px(16f))
+        val scroll = ScrollPane(detailsPanel).apply {
+            setScrollingDisabled(true, false); setOverscroll(false, false)
         }
-        val detailHeader = Table().apply {
-            add(titleCopy).growX().minWidth(0f).left()
-            add(detailStatusBadge).minWidth(0f).right().padLeft(8f)
-        }
-        val infoGrid = Table().apply {
-            add(createInfoItem("Current turn", currentTurnValue)).growX().minWidth(0f).padRight(3f).padBottom(3f)
-            add(createInfoItem("This turn has lasted", turnDurationValue)).growX().minWidth(0f).padLeft(3f).padBottom(3f).row()
-            add(createInfoItem("My civilization", ownCivilizationValue)).growX().minWidth(0f).padRight(3f).padTop(3f)
-            add(createInfoItem("Time remaining", timeRemainingValue)).growX().minWidth(0f).padLeft(3f).padTop(3f)
-        }
-
-        copyGameIdButton.label.setFontSize(multiplayerSecondaryFontSize)
-        renameButton.label.setFontSize(multiplayerSecondaryFontSize)
-        deleteButton.label.setFontSize(multiplayerSecondaryFontSize)
-        copyInviteButton.label.setFontSize(multiplayerSecondaryFontSize)
-        shareGameButton.label.setFontSize(multiplayerSecondaryFontSize)
-        listOf(copyGameIdButton, copyInviteButton, shareGameButton, renameButton, deleteButton).forEach {
-            it.label.setEllipsis(false)
-            it.labelCell.minWidth(0f)
-        }
-        rightSideButton.label.setFontSize(multiplayerContentFontSize)
-        rightSideButton.label.setWrap(true)
-        rightSideButton.labelCell.minWidth(0f)
-        val secondaryActions = Table().apply {
-            addResponsiveActions(
-                listOf(copyGameIdButton, renameButton, deleteButton),
-                detailsActionWidth,
-                44f,
-            )
-        }
-
         return Table().apply {
-            background = skinStrings.getUiBackground(
-                "MultiplayerScreen/DetailsPanel",
-                skinStrings.roundedEdgeRectangleSmallShape,
-                PanelBackground,
-            )
-            add(detailHeader).growX().minWidth(0f).pad(10f, 12f, 6f, 12f).row()
-            add(infoGrid).growX().minWidth(0f).pad(0f, 9f, 4f, 9f).row()
-            add(detailNoteLabel).growX().minWidth(0f).left().pad(2f, 12f, 5f, 12f).row()
-            add(rightSideButton).growX().minWidth(0f).height(56f).pad(0f, 10f, 5f, 10f).row()
-            if (game.platformCapabilities.multiplayerInviteLinks) {
-                val invitations = Table().apply {
-                    addResponsiveActions(listOf(shareGameButton, copyInviteButton), detailsActionWidth, 44f)
-                }
-                add(invitations).growX().minWidth(0f).pad(0f, 10f, 5f, 10f).row()
-            }
-            add(secondaryActions).growX().minWidth(0f).pad(0f, 10f, 8f, 10f).row()
-            if (game.platformCapabilities.multiplayerAdvancedActions) {
-                add(advancedActionsTable).growX().minWidth(0f).pad(0f, 10f, 8f, 10f)
-            }
+            name = "multiplayer-details-panel"
+            background = appearance.surface(appearance.panel, 12f)
+            add(scroll).grow().minWidth(0f).minHeight(0f)
         }
     }
 
-    private fun createInfoItem(title: String, value: Label): Table = Table().apply {
-        background = skinStrings.getUiBackground(
-            "MultiplayerScreen/InfoItem",
-            skinStrings.roundedEdgeRectangleSmallShape,
-            Color.valueOf("0b1d38"),
-        )
-        val titleLabel = title.toLabel(Color.LIGHT_GRAY, fontSize = multiplayerDenseFontSize).apply {
-            setEllipsis(true)
+    private fun showSelectedDetails() {
+        val u = appearance::px
+        detailsPanel.clearChildren()
+        detailsPanel.pad(u(16f))
+        val header = Table().apply {
+            val titleCopy = Table().apply {
+                add(detailTitleLabel).growX().minWidth(0f).left().row()
+                add(detailRulesetLabel).growX().minWidth(0f).left().padTop(u(5f))
+            }
+            add(titleCopy).growX().minWidth(0f)
+            add(detailStatusBadge).minWidth(0f).top().padLeft(u(8f))
         }
-        add(titleLabel).growX().minWidth(0f).left().pad(6f, 8f, 1f, 8f).row()
-        add(value).growX().minWidth(0f).left().pad(1f, 8f, 6f, 8f)
+        val grid = Table().apply {
+            defaults().growX().minWidth(0f)
+            add(createInfoItem("Current turn", currentTurnValue)).padRight(u(12f))
+            add(createInfoItem("Time remaining", timeRemainingValue)).row()
+            add(createInfoItem("My civilization", ownCivilizationValue)).padRight(u(12f)).padTop(u(8f))
+            add(createInfoItem("This turn has lasted", turnDurationValue)).padTop(u(8f))
+        }
+        detailsPanel.add(header).growX().minWidth(0f).padBottom(u(8f)).row()
+        detailsPanel.add(grid).growX().minWidth(0f).padBottom(u(8f)).row()
+        detailsPanel.add(detailNoteLabel).growX().minWidth(0f).left().padBottom(u(6f)).row()
+        rightSideButton.label.setWrap(false)
+        rightSideButton.labelCell.maxWidth(appearance.px(layout.detailsWidth - 88f))
+        detailsPanel.add(rightSideButton).growX().minWidth(0f).height(u(44f)).padBottom(u(6f)).row()
+        val actions = Table().apply {
+            if (game.platformCapabilities.multiplayerInviteLinks) {
+                add(shareGameButton).growX().minWidth(0f).height(u(44f)).padRight(u(8f))
+                add(copyInviteButton).growX().minWidth(0f).height(u(44f)).padRight(u(8f))
+            }
+            add(gameActionsButton).size(u(44f))
+        }
+        detailsPanel.add(actions).growX().minWidth(0f)
+    }
+
+    private fun createInfoItem(title: String, value: Label): Table = Table().apply {
+        add(title.toLabel(appearance.muted, fontSize = appearance.font(11))).growX().minWidth(0f).left().row()
+        add(value).growX().minWidth(0f).left().padTop(appearance.px(4f))
+    }
+
+    private fun showEmptyDetails(noGames: Boolean) {
+        val u = appearance::px
+        detailsPanel.clearChildren()
+        detailsPanel.pad(u(24f))
+        detailsPanel.center()
+        if (noGames) {
+            detailsPanel.add(appearance.image(MultiplayerIcon.Users, appearance.gold)).size(u(36f)).left().padBottom(u(12f)).row()
+            detailsPanel.add("Start a civilization with friends".toLabel(appearance.text, fontSize = appearance.font(25)).apply {
+                wrap = true
+            }).growX().minWidth(0f).left().padBottom(u(8f)).row()
+            detailsPanel.add("Create a room and share its invitation, or join a friend's game.".toLabel(
+                appearance.muted, fontSize = appearance.font(13)).apply { wrap = true })
+                .growX().minWidth(0f).maxWidth(u(330f)).left().padBottom(u(16f)).row()
+            val actions = Table().apply {
+                val create = appearance.button("Create room", MultiplayerIcon.Plus, primary = true).apply {
+                    name = "multiplayer-empty-create"; isEnabled = createRoomButton.isEnabled
+                    onClick { createRoomButton.activate() }
+                }
+                val join = appearance.button("Join by invitation", MultiplayerIcon.Link, outlined = true).apply {
+                    name = "multiplayer-empty-join"; onClick { addGameButton.activate() }
+                }
+                if (fitsInOneRow(layout.detailsWidth - 32f, listOf(create.prefWidth / appearance.unit, join.prefWidth / appearance.unit), 8f)) {
+                    add(create).height(u(44f)); add(join).height(u(44f)).padLeft(u(8f))
+                } else {
+                    add(create).growX().height(u(44f)).row(); add(join).growX().height(u(44f)).padTop(u(8f))
+                }
+            }
+            detailsPanel.add(actions).left().row()
+            detailsPanel.add("Asynchronous turns, no need to be online together".toLabel(appearance.muted,
+                fontSize = appearance.font(11))).growX().minWidth(0f).left().padTop(u(10f))
+        } else {
+            detailsPanel.add("No game selected".toLabel(appearance.text, fontSize = appearance.font(20))).left().row()
+            detailsPanel.add("Select a game from the list to see its details.".toLabel(appearance.muted,
+                fontSize = appearance.font(13)).apply { wrap = true }).growX().minWidth(0f).left().padTop(u(8f))
+        }
+    }
+
+    private fun changeFilter(filter: MultiplayerGameFilter) {
+        gameList.setFilter(filter)
+        val visible = gameList.visibleNames()
+        if (selectedGame?.name !in visible) {
+            visible.firstOrNull()?.let(::selectGame) ?: unselectGame()
+        }
+        updateGameCount()
+    }
+
+    private fun showGameActions() {
+        if (selectedGame == null) return
+        val actions = mutableListOf(copyGameIdButton, renameButton, deleteButton)
+        if (game.platformCapabilities.multiplayerAdvancedActions) {
+            actions += resignButton
+            if (skipTurnButton.isVisible) actions += skipTurnButton
+            if (forceResignButton.isVisible) actions += forceResignButton
+            if (retryPlayerActionButton.isVisible) actions += retryPlayerActionButton
+        }
+        showMenu(gameActionsButton, actions)
+    }
+
+    private fun showMenu(anchor: Actor, actions: List<TextButton>) {
+        object : AnimatedMenuPopup(stage, anchor) {
+            override fun createContentTable(): Table = Table().apply {
+                name = "multiplayer-action-menu"
+                background = appearance.surface(appearance.control)
+                pad(appearance.px(8f))
+                for (source in actions) {
+                    val destructive = source in listOf(deleteButton, resignButton, forceResignButton)
+                    val item = appearance.button(source.text.toString(), ghost = true, fontSize = 14).apply {
+                        name = "multiplayer-menu-${source.text}"
+                        isEnabled = source.isEnabled
+                        if (destructive) {
+                            style.fontColor = appearance.danger
+                            style.downFontColor = appearance.danger
+                            style.overFontColor = appearance.danger
+                        }
+                        onClick { close(); source.activate() }
+                    }
+                    add(item).growX().minWidth(appearance.px(180f)).minHeight(appearance.px(44f)).row()
+                }
+            }
+        }
     }
 
     private fun setupRefreshEvents() {
         events.receive(MultiplayerGameUpdateStarted::class) {
             refreshingGames += it.name
+            gameList.refreshingNames += it.name
             updateServerStatus()
             onGameChanged(it.name)
         }
         events.receive(MultiplayerGameUpdateEnded::class) {
             refreshingGames -= it.name
+            gameList.refreshingNames -= it.name
+            gameList.update()
+            if (selectedGame?.name !in gameList.visibleNames()) changeFilter(gameList.filter)
             if (refreshingGames.isEmpty() && !refreshBatchInProgress) {
                 hasCompletedRefresh = true
                 lastRefreshHadFailures = game.onlineMultiplayer.games.any { game -> game.error != null }
@@ -480,11 +594,13 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
                     if (isDisposed) return@launchOnGLThread
                     refreshBatchInProgress = false
                     refreshingGames.clear()
+                    gameList.refreshingNames.clear()
                     hasCompletedRefresh = true
                     lastRefreshHadFailures = requestFailed ||
                         game.onlineMultiplayer.games.any { it.error != null }
                     refreshButton.enable()
                     gameList.update()
+                    changeFilter(gameList.filter)
                     updateGameCount()
                     refreshSelectedGame()
                     updateServerStatus()
@@ -504,17 +620,63 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         }
         serverStateLabel.setText(state.tr())
         val stateColor = when {
-            isRefreshing -> Color.GOLD
-            lastRefreshHadFailures -> Negative
-            hasCompletedRefresh -> Positive
-            else -> Color.LIGHT_GRAY
+            isRefreshing -> appearance.warning
+            lastRefreshHadFailures -> appearance.danger
+            hasCompletedRefresh -> appearance.positive
+            else -> appearance.muted
         }
         serverStateLabel.setFontColor(stateColor)
         serverStatusDot.setFontColor(stateColor)
     }
 
     private fun updateGameCount() {
-        gameCountLabel.setText("[${game.onlineMultiplayer.games.size}] games".tr())
+        val models = gameList.models()
+        gameCountLabel.setText("[${models.size}] multiplayer matches".tr())
+        updateGamesHeader()
+        for ((filter, button) in filterButtons) {
+            val count = models.count(filter::matches)
+            val caption = when (filter) {
+                MultiplayerGameFilter.All -> "All [$count]"
+                MultiplayerGameFilter.YourTurn -> "Your turn [$count]"
+                MultiplayerGameFilter.Waiting -> "Waiting [$count]"
+            }
+            button.setText(caption.tr())
+            button.style = appearance.buttonStyle(ghost = gameList.filter != filter)
+        }
+        val noGames = models.isEmpty()
+        val showsEmpty = gamesPanelContent.name == "multiplayer-empty-list"
+        if (noGames != showsEmpty) {
+            gamesPanelContent.clearChildren()
+            if (noGames) {
+                gamesPanelContent.name = "multiplayer-empty-list"
+                gamesPanelContent.add(appearance.image(MultiplayerIcon.Games, appearance.muted)).size(appearance.px(38f)).padBottom(appearance.px(12f)).row()
+                gamesPanelContent.add("No multiplayer games yet".toLabel(appearance.text, fontSize = appearance.font(15))).padBottom(appearance.px(8f)).row()
+                gamesPanelContent.add("Your games will appear here".toLabel(appearance.muted, fontSize = appearance.font(12)))
+            } else {
+                gamesPanelContent.name = "multiplayer-games-content"
+                val filters = Table()
+                filterButtons.values.forEach { filters.add(it).height(appearance.px(44f)).minWidth(0f).padRight(appearance.px(4f)) }
+                filters.add().growX()
+                gamesPanelContent.add(filters).growX().minWidth(0f).row()
+                gamesPanelContent.add(ScrollPane(gameList).apply {
+                    setScrollingDisabled(true, false); setOverscroll(false, false)
+                }).grow().minWidth(0f).minHeight(0f).padTop(appearance.px(4f))
+            }
+        }
+        if (selectedGame == null) showEmptyDetails(noGames)
+    }
+
+    private fun updateGamesHeader() {
+        val availableWidth = appearance.px(layout.gamesWidth - 32f).coerceAtLeast(1f)
+        val gap = appearance.px(8f)
+        gamesHeader.clearChildren()
+        if (gamesHeadingLabel.prefWidth + gameCountLabel.prefWidth + gap <= availableWidth) {
+            gamesHeader.add(gamesHeadingLabel).growX().minWidth(0f).left()
+            gamesHeader.add(gameCountLabel).minWidth(0f).right().padLeft(gap)
+        } else {
+            gamesHeader.add(gamesHeadingLabel).growX().minWidth(0f).left().row()
+            gamesHeader.add(gameCountLabel).maxWidth(availableWidth).right().padTop(appearance.px(4f))
+        }
     }
 
     internal fun onMultiplayerGameAdded() {
@@ -527,6 +689,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
 
     private fun onGameChanged(name: String) {
         if (selectedGame?.name == name) refreshSelectedGame()
+        updateGameCount()
     }
 
     private fun createPlayerActionButton(action: MultiplayerPlayerAction): TextButton {
@@ -611,14 +774,15 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         val negativeButtonStyle = skin.get("negative", TextButton.TextButtonStyle::class.java)
         val deleteButton = "Delete local record".toTextButton(negativeButtonStyle).apply { disable() }
         deleteButton.onClick {
+            val targetGame = selectedGame ?: return@onClick
             val askPopup = ConfirmPopup(
                     this,
                     "Are you sure you want to delete this local multiplayer record?",
                     "Delete local record",
             ) {
                 try {
-                    game.onlineMultiplayer.multiplayerFiles.deleteGame(selectedGame!!)
-                    onGameDeleted(selectedGame!!.name)
+                    game.onlineMultiplayer.multiplayerFiles.deleteGame(targetGame)
+                    onGameDeleted(targetGame.name)
                 } catch (ex: Exception) {
                     Log.error("Could not delete game!", ex)
                     ToastPopup("Could not delete game!", this)
@@ -632,16 +796,24 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
     private fun createRenameButton(): TextButton {
         val btn = "Rename".toTextButton().apply { disable() }
         btn.onClick {
+            val targetGame = selectedGame ?: return@onClick
             Popup(this).apply {
-                val textField = UncivTextField("Game name", selectedGame!!.name)
+                val textField = UncivTextField("Game name", targetGame.name)
                 // slashes in mp names are interpreted as directory separators, so we don't allow them
                 textField.textFieldFilter = UncivFiles.fileNameTextFieldFilter()
                 add(textField).width(stageToShowOn.width / 2).row()
                 val saveButton = "Save".toTextButton()
+                fun validName(): Boolean = textField.text.trim().let {
+                    it.isNotEmpty() && it != "." && it != ".." && '/' !in it && '\\' !in it
+                }
+                textField.addListener(object : ChangeListener() {
+                    override fun changed(event: ChangeEvent?, actor: Actor?) { saveButton.isEnabled = validName() }
+                })
 
-                val saveNewNameFunction = {
+                val saveNewNameFunction = save@{
+                    if (!validName()) return@save
                     val newName = textField.text.trim()
-                    val renamed = game.onlineMultiplayer.multiplayerFiles.changeGameName(selectedGame!!, newName) {
+                    val renamed = game.onlineMultiplayer.multiplayerFiles.changeGameName(targetGame, newName) {
                         if (it != null) reuseWith("Could not save game!", true)
                     }
                     if (renamed) {
@@ -796,6 +968,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         skipTurnButton.isVisible = false
         forceResignButton.isVisible = false
         updateAdvancedActions()
+        showEmptyDetails(game.onlineMultiplayer.games.isEmpty())
 
         detailTitleLabel.setText("No game selected".tr())
         detailRulesetLabel.setText("Select a game from the list to see its details.".tr())
@@ -848,6 +1021,8 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         retryPlayerActionButton.isEnabled = !actionsBlocked
 
         updateAdvancedActions()
+        detailsPanel.top()
+        showSelectedDetails()
         updateSelectedGameDetails()
     }
 
@@ -870,7 +1045,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
             multiplayerGame.error != null,
             multiplayerGame.getLastUpdate(),
             game.settings.multiplayer.getUserId(),
-            multiplayerGame.name in refreshingGames,
+            refreshBatchInProgress || multiplayerGame.name in refreshingGames,
         )
 
         detailTitleLabel.setText(model.name)
@@ -881,30 +1056,33 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
 
         detailStatusBadge.isVisible = true
         val (statusText, statusColor) = when (model.status) {
-            MultiplayerGameUiStatus.Refreshing -> "Refreshing..." to Color.GOLD
-            MultiplayerGameUiStatus.YourTurn -> "Your turn" to Positive
-            MultiplayerGameUiStatus.WaitingForOpponent -> "Waiting for opponent" to Color.LIGHT_GRAY
-            MultiplayerGameUiStatus.RefreshFailed -> "Refresh failed" to Negative
-            MultiplayerGameUiStatus.Unavailable -> "Unavailable" to Color.GRAY
+            MultiplayerGameUiStatus.Refreshing -> "Refreshing game" to appearance.warning
+            MultiplayerGameUiStatus.YourTurn -> "Your turn to play" to appearance.positive
+            MultiplayerGameUiStatus.WaitingForOpponent -> "Waiting for another player" to appearance.muted
+            MultiplayerGameUiStatus.RefreshFailed -> "Refresh failed" to appearance.danger
+            MultiplayerGameUiStatus.Unavailable -> "Unavailable" to appearance.muted
         }
         detailStatusLabel.setText(statusText.tr())
+        (detailStatusBadge.parent as? Table)?.getCell(detailStatusBadge)?.width(
+            (detailStatusLabel.prefWidth + appearance.px(18f)).coerceAtMost(appearance.px(120f)))
         detailStatusLabel.setFontColor(statusColor)
-        detailStatusBadge.background = skinStrings.getUiBackground(
-            "MultiplayerScreen/StatusBadge",
-            skinStrings.roundedEdgeRectangleSmallShape,
-            statusColor.darken(0.68f),
-        )
+        detailStatusBadge.background = appearance.surface(when (model.status) {
+            MultiplayerGameUiStatus.YourTurn -> appearance.positiveSurface
+            MultiplayerGameUiStatus.Refreshing -> appearance.warningSurface
+            MultiplayerGameUiStatus.RefreshFailed -> appearance.dangerSurface
+            else -> appearance.control
+        })
 
-        val currentPlayer = model.currentPlayer?.let { "{$it}".tr() } ?: "Unknown".tr()
+        val currentPlayer = model.currentPlayer?.let { "{$it}".tr(hideIcons = true) } ?: "Unknown".tr()
         currentTurnValue.setText(
             model.turn?.let { "$currentPlayer  ·  ${"Turn [$it]".tr()}" } ?: currentPlayer
         )
-        turnDurationValue.setText(model.currentTurnDuration?.formatShort() ?: "Unknown".tr())
-        val ourCivilization = model.ownCivilization?.let { "{$it}".tr() } ?: "Unknown".tr()
+        turnDurationValue.setText(model.currentTurnDuration?.let(::formatDuration) ?: "Unknown".tr())
+        val ourCivilization = model.ownCivilization?.let { "{$it}".tr(hideIcons = true) } ?: "Unknown".tr()
         val difficulty = model.difficulty?.tr() ?: "Unknown".tr()
         ownCivilizationValue.setText("$ourCivilization  ·  $difficulty")
         timeRemainingValue.setText(
-            model.turnTimeRemaining?.let { "Remaining [${it.formatShort()}]".tr() }
+            model.turnTimeRemaining?.let(::formatDuration)
                 ?: "Unknown".tr()
         )
         detailNoteLabel.setText(
@@ -919,6 +1097,19 @@ class MultiplayerScreen : PickerScreen(disableScroll = true) {
         rightSideButton.setText(
             (if (model.isUsersTurn) "Download latest save and enter" else "View latest game state").tr()
         )
+    }
+
+    override fun recreate(): MultiplayerScreen = MultiplayerScreen().also { replacement ->
+        replacement.changeFilter(gameList.filter)
+        selectedGame?.name?.takeIf { it in replacement.gameList.visibleNames() }?.let(replacement::selectGame)
+    }
+
+    private fun formatDuration(duration: Duration): String {
+        val seconds = duration.seconds.coerceAtLeast(0)
+        return listOf(Duration.ofDays(seconds / 86400), Duration.ofHours(seconds % 86400 / 3600),
+            Duration.ofMinutes(seconds % 3600 / 60), Duration.ofSeconds(seconds % 60))
+            .filter { !it.isZero }.take(2).joinToString(" ") { it.formatShort() }
+            .ifEmpty { Duration.ZERO.formatShort() }
     }
 
     override fun dispose() {

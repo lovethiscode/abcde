@@ -21,6 +21,8 @@ import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.worldscreen.worldmap.WorldMapHolder
 
 class MinimapHolder(val mapHolder: WorldMapHolder) : Table() {
@@ -28,6 +30,11 @@ class MinimapHolder(val mapHolder: WorldMapHolder) : Table() {
     private var minimapSize = Int.MIN_VALUE
     private var maximized = false
     private var lastCutoutSetting = false
+    private var battlefieldMaxWidth = Float.MAX_VALUE
+    private var battlefieldMaxHeight = Float.MAX_VALUE
+    private var battlefieldExpandedWidth = Float.MAX_VALUE
+    private var battlefieldExpandedHeight = Float.MAX_VALUE
+    internal val battlefieldExpanded get() = BattlefieldHud.enabled && maximized
     lateinit var minimap: Minimap
 
     /** Button, next to the minimap, to toggle the unit movement map overlay. */
@@ -72,26 +79,34 @@ class MinimapHolder(val mapHolder: WorldMapHolder) : Table() {
     private fun rebuildIfSizeChanged(civInfo: Civilization) {
         // For Spectator should not restrict minimap
         val civ: Civilization? = civInfo.takeUnless { GUI.getWorldScreen().selectedGameView.spectatorMode }
-        val newMinimapSize = worldScreen.game.settings.minimapSize
+        val newMinimapSize = if (battlefieldExpanded && ::minimap.isInitialized)
+            minimap.getClosestMinimapSize(Vector2(battlefieldExpandedWidth, battlefieldExpandedHeight), touchInside = true)
+        else worldScreen.game.settings.minimapSize
         val cutoutSetting = worldScreen.game.settings.androidCutout
         if (newMinimapSize == minimapSize && civ?.exploredRegion?.shouldUpdateMinimap() != true && cutoutSetting == lastCutoutSetting) return
         lastCutoutSetting = cutoutSetting
         minimapSize = newMinimapSize
-        maximized = false
+        if (!BattlefieldHud.enabled) maximized = false
         rebuild(civ)
     }
 
     private fun rebuild(civInfo: Civilization?) {
         this.clear()
         minimap = Minimap(mapHolder, minimapSize, civInfo)
+        if (BattlefieldHud.enabled && !maximized &&
+            (minimap.width > battlefieldMaxWidth || minimap.height > battlefieldMaxHeight)) {
+            val size = minimap.getClosestMinimapSize(Vector2(battlefieldMaxWidth, battlefieldMaxHeight), touchInside = true)
+            minimap = Minimap(mapHolder, size, civInfo)
+        }
         val wrappedMinimap = getWrappedMinimap()
-        add(getToggleIcons(wrappedMinimap.height)).bottom().padRight(5f)
+        if (!BattlefieldHud.enabled) add(getToggleIcons(wrappedMinimap.height)).bottom().padRight(5f)
 
         val stack = Stack()
         stack.add(wrappedMinimap)
         stack.addInTable(getCornerHandleIcon()).size(20f).pad(8f).top().left()
         val alignment = if (worldScreen.game.settings.androidCutout) Align.topRight else Align.bottomRight
-        stack.addInTable(getMaximizeToggleButton(civInfo, alignment)).size(40f).align(alignment) // more click area
+        stack.addInTable(getMaximizeToggleButton(civInfo, alignment))
+            .size(if (BattlefieldHud.enabled) UiNavigation.minimumTouchSize() else 40f).align(alignment)
         add(stack).bottom()
 
         pack()
@@ -119,12 +134,16 @@ class MinimapHolder(val mapHolder: WorldMapHolder) : Table() {
 
         val toggle = fun() {
             maximized = !maximized
+            if (battlefieldExpanded) worldScreen.battleTable.isVisible = false
             minimapSize = if (maximized && stage!=null) {
-                minimap.getClosestMinimapSize(Vector2(stage.width, stage.height), touchInside = true)
+                val available = if (BattlefieldHud.enabled) Vector2(battlefieldExpandedWidth, battlefieldExpandedHeight)
+                    else Vector2(stage.width, stage.height)
+                minimap.getClosestMinimapSize(available, touchInside = true)
             } else {
                 worldScreen.game.settings.minimapSize
             }
             rebuildAndUpdateMap(civInfo)
+            if (BattlefieldHud.enabled) worldScreen.layoutBattlefieldHud()
         }
 
         val table = Table()
@@ -199,6 +218,16 @@ class MinimapHolder(val mapHolder: WorldMapHolder) : Table() {
             minimap.update(civInfo)
             for (button in buttons) button.update()
         }
+    }
+
+    internal fun fitBattlefield(maxWidth: Float, maxHeight: Float, expandedWidth: Float, expandedHeight: Float) {
+        if (battlefieldMaxWidth == maxWidth && battlefieldMaxHeight == maxHeight &&
+            battlefieldExpandedWidth == expandedWidth && battlefieldExpandedHeight == expandedHeight) return
+        battlefieldMaxWidth = maxWidth
+        battlefieldMaxHeight = maxHeight
+        battlefieldExpandedWidth = expandedWidth
+        battlefieldExpandedHeight = expandedHeight
+        minimapSize = Int.MIN_VALUE
     }
 
     // For debugging purposes

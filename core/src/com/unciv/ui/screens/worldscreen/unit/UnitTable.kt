@@ -21,6 +21,9 @@ import com.unciv.ui.components.input.onClick
 import com.unciv.ui.images.padTopDescent
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.WorldScreen
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
+import com.unciv.ui.components.extensions.setFontSize
+import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.unciv.ui.screens.worldscreen.unit.presenter.CityPresenter
 import com.unciv.ui.screens.worldscreen.unit.presenter.SpyPresenter
 import com.unciv.ui.screens.worldscreen.unit.presenter.SummaryPresenter
@@ -198,6 +201,41 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
         bg.setSize(width - 3f, height - 3f)
         bg.center(this)
         shouldUpdate = false
+    }
+
+    /** Keep the existing presenters and callbacks, including rename, XP and promotion icons. */
+    internal fun fitBattlefield(targetWidth: Float) {
+        if (!BattlefieldHud.enabled) return
+        val touch = UiNavigation.minimumTouchSize()
+        unitNameLabel.setFontSize(BattlefieldHud.font(16f))
+        unitNameLabel.wrap = true
+        unitIconNameGroup.getCell(unitNameLabel).minWidth(0f).minHeight(touch).grow()
+        unitIconNameGroup.getCell(unitIconHolder).size(touch)
+        for (cell in unitIconHolder.cells) cell.size(BattlefieldHud.points(20f)).pad(0f)
+        if (promotionsTable.hasChildren()) {
+            for (cell in promotionsTable.cells) cell.minHeight(touch)
+        }
+        val navigation = prevIdleUnitButton.parent as Table
+        navigation.getCell(prevIdleUnitButton).size(touch)
+        navigation.getCell(nextIdleUnitButton).size(touch)
+        navigation.getCell(unitIconNameGroup).minWidth(0f).growX()
+        val content = navigation.parent as Table
+        content.getCell(navigation).minWidth(0f).growX()
+        getCell(content).minWidth(0f).growX()
+        for (label in descriptionTable.children.filterIsInstance<Label>())
+            label.setFontSize(BattlefieldHud.font(12f))
+        pad(BattlefieldHud.points(4f))
+        padRight(touch + BattlefieldHud.points(4f))
+        width = targetWidth
+        invalidateHierarchy()
+        validate()
+        height = prefHeight
+        validate()
+        closeButton.setSize(touch, touch)
+        closeButton.setPosition(width - touch - BattlefieldHud.points(4f), height - touch - BattlefieldHud.points(4f))
+        closeButton.toFront()
+        bg.setSize(width - 3f, height - 3f)
+        bg.center(this)
     }
 
     private fun resetUnitTable() {

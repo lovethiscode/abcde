@@ -156,6 +156,11 @@ object GithubAPI {
             parameter("q", "$search topic:unciv-mod fork:true")
         }
 
+    /** Search exposes at most 1,000 results, even when total_count is larger. */
+    fun hasMoreSearchPages(page: Int, amountPerPage: Int, result: RepoSearch): Boolean =
+        result.items.size >= amountPerPage &&
+            page.toLong() * amountPerPage < minOf(result.total_count, 1000)
+
     suspend fun fetchGithubTopics() = request {
         url("/search/topics")
         parameter("sort", "name")

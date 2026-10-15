@@ -232,3 +232,14 @@ project(":core") {
         }
     }
 }
+tasks.register("packBattlefieldTerrain") {
+    group = "assets"
+    description = "Pack the generated battlefield terrain without changing unit or resource atlases"
+    val source = layout.projectDirectory.dir("android/Images.Battlefield")
+    inputs.dir(source)
+    outputs.files("android/assets/Battlefield.atlas", "android/assets/Battlefield.png")
+    doLast {
+        com.unciv.build.AndroidImagePacker.packBattlefield(source.asFile.absolutePath,
+            layout.projectDirectory.dir("android/assets").asFile.absolutePath)
+    }
+}

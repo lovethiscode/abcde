@@ -1,5 +1,7 @@
 package com.unciv.ui.popups.options
 
+import com.badlogic.gdx.Application.ApplicationType
+import com.badlogic.gdx.Gdx
 import com.unciv.logic.event.EventBus
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.screens.basescreen.BaseScreen
@@ -45,6 +47,19 @@ class OptionsScreen(
 
     override fun pause() {
         game.settings.save()
+    }
+
+    override fun show() {
+        super.show()
+        if (Gdx.app.type != ApplicationType.iOS) return
+        // Keep editing, glyph uploads and expander animations drawing while this screen is visible.
+        Gdx.graphics.isContinuousRendering = true
+    }
+
+    override fun hide() {
+        if (Gdx.app.type == ApplicationType.iOS)
+            Gdx.graphics.isContinuousRendering = game.settings.continuousRendering
+        super.hide()
     }
 
     override fun dispose() {

@@ -168,7 +168,9 @@ class TileLayerTerrain(tileGroup: TileGroup, size: Float) : TileLayer(tileGroup,
     }
 
     private fun updateTileImage(viewingCiv: CivView?) {
-        val tileBaseImageLocations = getTileBaseImageLocations(viewingCiv)
+        val originalLocations = getTileBaseImageLocations(viewingCiv)
+        val tileBaseImageLocations = if (BattlefieldTerrain.enabled(tileGroup)) BattlefieldTerrain.locations(originalLocations)
+            else originalLocations
 
         if (tileBaseImageLocations.size == tileImageIdentifiers.size) {
             if (tileBaseImageLocations.withIndex().all { (i, imageLocation) -> tileImageIdentifiers[i] == imageLocation })
@@ -256,8 +258,20 @@ class TileLayerTerrain(tileGroup: TileGroup, size: Float) : TileLayer(tileGroup,
             else -> Color.WHITE.cpy()
         }
 
-        for ((index, image) in tileBaseImages.withIndex())
+        for ((index, image) in tileBaseImages.withIndex()) {
             image.color = if (index == 0) baseTerrainColor else color
+            if (image.name == "Battlefield/Hill") {
+                val tint = when (tileView.baseTerrain) {
+                    "Grassland" -> Color.valueOf("B3BE78")
+                    "Plains" -> Color.valueOf("C1B66E")
+                    "Desert" -> Color.valueOf("E0B064")
+                    "Tundra" -> Color.valueOf("A69E86")
+                    "Snow" -> Color.valueOf("E7F1F3")
+                    else -> Color.WHITE.cpy()
+                }
+                image.color = tint.mul(color)
+            }
+        }
     }
 
     private fun updateRivers(displayBottomRight: Boolean, displayBottom: Boolean, displayBottomLeft: Boolean) {

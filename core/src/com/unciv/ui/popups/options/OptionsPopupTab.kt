@@ -30,8 +30,8 @@ internal abstract class OptionsPopupTab(
     private var isInitialized = false
 
     init {
-        pad(10f)
-        defaults().pad(5f)
+        pad(if (optionsPopup.useSidebar) 0f else 10f)
+        defaults().pad(if (optionsPopup.useSidebar) 0f else 5f)
         top()
     }
 
@@ -41,15 +41,19 @@ internal abstract class OptionsPopupTab(
             block()
             return
         }
-        val card = ExpanderTab(title, fontSize = 24, startsOutOpened = opened,
-            defaultPad = 8f, headerPad = 12f, expanderWidth = 1f) {
-            it.defaults().pad(4f).expand(0, 0).fill(false, false)
+        val card = ExpanderTab(title, fontSize = OptionsPopupStyle.fontSize(18f), startsOutOpened = opened,
+            defaultPad = OptionsPopupStyle.points(4f), topPad = 0f,
+            headerPad = OptionsPopupStyle.points(12f), expanderWidth = 1f) {
+            it.defaults().pad(OptionsPopupStyle.points(4f)).expand(0, 0).fill(false, false)
             it.block()
             OptionsPopupStyle.enlargeText(it, optionsPopup.contentFont)
         }
-        card.background = skin.newDrawable("RoundedEdgeRectangle", OptionsPopupStyle.sectionBackground)
+        card.background = OptionsPopupStyle.surface(OptionsPopupStyle.sectionBackground)
         card.header.background = null
-        add(card).colspan(2).growX().padBottom(8f).row()
+        card.getCell(card.header).minHeight(OptionsPopupStyle.points(48f))
+        card.headerIcon.color = OptionsPopupStyle.muted
+        card.header.getCell(card.headerIcon).size(OptionsPopupStyle.points(14f))
+        add(card).colspan(2).growX().padBottom(OptionsPopupStyle.points(16f)).row()
     }
 
     open fun lateInitialize() {

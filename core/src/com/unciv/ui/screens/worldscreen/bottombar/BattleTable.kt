@@ -30,6 +30,8 @@ import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.UndoHandler.Companion.clearUndoCheckpoints
 import com.unciv.ui.screens.worldscreen.WorldScreen
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.screens.worldscreen.bottombar.BattleTableHelpers.battleAnimationDeferred
 import com.unciv.ui.screens.worldscreen.bottombar.BattleTableHelpers.getHealthBar
 import com.unciv.view.AttackableTileView
@@ -64,6 +66,10 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
     }
 
     fun update() {
+        if (BattlefieldHud.enabled) {
+            defaults().width(quarterScreen).pad(BattlefieldHud.points(2f))
+            pad(BattlefieldHud.points(4f))
+        }
         val attackerUnitView = tryGetAttackerUnit()
         val attackerCityView = if (attackerUnitView == null) worldScreen.bottomUnitTable.selectedCity else null
         if (attackerUnitView == null && attackerCityView == null) return hide()
@@ -105,11 +111,23 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
             validate()
         }
 
-        addBorderAllowOpacity(2f, Color.WHITE)
+        if (BattlefieldHud.enabled) {
+            constrainBattlefieldCells(this)
+            width = battlefieldWidth()
+            invalidateHierarchy()
+            validate()
+            height = minOf(prefHeight, BattlefieldHud.points(190f))
+            validate()
+        } else addBorderAllowOpacity(2f, Color.WHITE)
         val closeButton = addRoundCloseButton(this) {
             isVisible = false
+            if (BattlefieldHud.enabled) worldScreen.layoutBattlefieldHud()
         }.apply { name = "ui-battle-close" }
-        if (UiNavigation.isIos) {
+        if (BattlefieldHud.enabled) {
+            val touch = UiNavigation.minimumTouchSize()
+            closeButton.setSize(touch, touch)
+            closeButton.setPosition(width - touch - BattlefieldHud.points(4f), height - touch - BattlefieldHud.points(4f))
+        } else if (UiNavigation.isIos) {
             pack()
             height = height.coerceAtMost(stage.height - 15f)
             validate()
@@ -150,7 +168,30 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         (combatantView as? MapUnitCombatantView)?.let { UnitIconGroup(it.getUnitView(), 25f) }
             ?: ImageGetter.getNationPortrait(combatantView.getCivInfo().getNation(), 25f)
 
-    private val quarterScreen get() = worldScreen.stage.width / 4
+    private fun battlefieldWidth(): Float {
+        val safe = worldScreen.safeAreaBoundsInWorld()
+        val gap = BattlefieldHud.points(6f)
+        val width = safe.width - gap * 2f
+        return if (safe.height > safe.width) width
+        else width - minOf(BattlefieldHud.points(224f), width * .28f) * 2f - gap * 2f
+    }
+
+    /** Wrapped labels must not impose the old desktop column minimum on the native preview. */
+    private fun constrainBattlefieldCells(table: Table) {
+        for (cell in table.cells) {
+            when (val actor = cell.actor) {
+                is Label -> { actor.wrap = true; cell.minWidth(0f) }
+                is Table -> { constrainBattlefieldCells(actor); cell.minWidth(0f) }
+                is ScrollPane -> {
+                    (actor.actor as? Table)?.let { constrainBattlefieldCells(it) }
+                    cell.minWidth(0f)
+                }
+            }
+        }
+    }
+
+    private val quarterScreen get() = if (BattlefieldHud.enabled)
+        (battlefieldWidth() - BattlefieldHud.points(16f)) / 2f else worldScreen.stage.width / 4
 
     private fun getModifierTable(key: String, value: Int) = Table().apply {
         val description = if (key.startsWith("vs "))
@@ -187,16 +228,30 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
 
         val attackerNameWrapper = Table()
         val attackerLabel = attacker.getCombatantName().toLabel(hideIcons = true)
+        if (BattlefieldHud.enabled) {
+            attackerLabel.wrap = true
+            attackerLabel.setFontSize(BattlefieldHud.font(13f))
+        }
         attackerNameWrapper.add(getIcon(attacker)).padRight(5f)
-        attackerNameWrapper.add(attackerLabel)
-        add(attackerNameWrapper)
+        val attackerLabelCell = attackerNameWrapper.add(attackerLabel)
+        if (BattlefieldHud.enabled) attackerLabelCell.minWidth(0f).growX()
+        val attackerNameCell = add(attackerNameWrapper)
+        if (BattlefieldHud.enabled) attackerNameCell.minHeight(UiNavigation.minimumTouchSize()).growX()
 
         val defenderNameWrapper = Table()
         val defenderLabel = Label(defender.getCombatantName().tr(hideIcons = true), skin)
+        if (BattlefieldHud.enabled) {
+            defenderLabel.wrap = true
+            defenderLabel.setFontSize(BattlefieldHud.font(13f))
+            defenderNameWrapper.padRight(UiNavigation.minimumTouchSize())
+        }
         defenderNameWrapper.add(getIcon(defender)).padRight(5f)
 
-        defenderNameWrapper.add(defenderLabel)
-        add(defenderNameWrapper).row()
+        val defenderLabelCell = defenderNameWrapper.add(defenderLabel)
+        if (BattlefieldHud.enabled) defenderLabelCell.minWidth(0f).growX()
+        val defenderNameCell = add(defenderNameWrapper)
+        if (BattlefieldHud.enabled) defenderNameCell.minHeight(UiNavigation.minimumTouchSize()).growX()
+        row()
 
         addSeparator().pad(0f)
 
@@ -325,6 +380,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
 
             if (!worldScreen.isPlayersTurn || attackableTileView == null) {
                 attackButton.disable()
+                if (BattlefieldHud.enabled) attackButton.touchable = Touchable.enabled
                 attackButton.label.color = Color.GRAY
             } else {
                 attackButton.onClick(UncivSound.Silent) {  // onAttackButtonClicked will do the sound
@@ -332,7 +388,8 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
                 }
             }
 
-            add(attackButton).colspan(2)
+            val attackCell = add(attackButton).colspan(2)
+            if (BattlefieldHud.enabled) attackCell.minHeight(UiNavigation.minimumTouchSize())
         }
     }
 

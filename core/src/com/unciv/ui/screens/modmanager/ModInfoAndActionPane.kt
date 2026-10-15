@@ -14,8 +14,6 @@ import com.unciv.models.metadata.BaseRuleset
 import com.unciv.models.ruleset.Ruleset
 import com.unciv.models.ruleset.validation.ModCompatibility
 import com.unciv.models.translations.tr
-import com.unciv.ui.components.extensions.UncivDateFormat.formatDate
-import com.unciv.ui.components.extensions.UncivDateFormat.parseDate
 import com.unciv.ui.components.extensions.toCheckBox
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onRightClick
@@ -25,13 +23,23 @@ import com.unciv.utils.Concurrency
 import com.unciv.utils.Log
 import java.io.IOException
 import kotlin.math.max
+import com.unciv.ui.components.fonts.Fonts
 
 internal class ModInfoAndActionPane(
-    private val description: Label
+    private val description: Label,
+    private val availableWidth: Float
 ) : Table() {
     private val repoUrlToPreviewImage = HashMap<String, Texture?>()
     private val imageHolder = Table()
+    private val secondaryActions = Table()
     private val sizeLabel = ModManagementStyle.label("", 18, ModManagementStyle.muted)
+    companion object {
+        fun formatSize(size: Int) = when {
+            size <= 0 -> ""
+            size < 2048 -> "$size kB"
+            else -> "${(size + 512) / 1024} MB"
+        }
+    }
     private var isBuiltin = false
     private var currentRepoName = ""
 
@@ -53,7 +61,7 @@ internal class ModInfoAndActionPane(
             isLocal = false,
             repo.name, repo.html_url, repo.default_branch,
             repo.pushed_at, repo.owner.login, repo.size,
-            repo.owner.avatar_url
+            repo.owner.avatar_url, repo.stargazers_count
         )
     }
 
@@ -80,13 +88,15 @@ internal class ModInfoAndActionPane(
         updatedAt: String,
         author: String,
         modSize: Int,
-        avatarUrl: String? = null
+        avatarUrl: String? = null,
+        stars: Int? = null
     ) {
         // Display metadata
         clear()
         currentRepoName = modName
 
         imageHolder.clear()
+        secondaryActions.clear()
         when {
             isBuiltin -> addUncivLogo(modName)
             isLocal -> addLocalPreviewImage(modName)
@@ -99,17 +109,35 @@ internal class ModInfoAndActionPane(
                 add(ModManagementStyle.label("Author: [$author]", 18, ModManagementStyle.muted))
                     .growX().minWidth(0f).padTop(8f)
         }
-        heading.add(imageHolder).size(64f).top().padRight(16f)
+        heading.add(imageHolder).size(48f).top().padRight(14f)
         heading.add(title).growX().minWidth(0f)
         add(heading).growX().minWidth(0f).padBottom(16f).row()
 
-        updateSize(modSize)
-        add(sizeLabel).padBottom(15f).row()
-
-        if (updatedAt.isNotEmpty()) {
-            val updateString = "{Updated}: " + updatedAt.parseDate().formatDate()
-            add(ModManagementStyle.label(updateString, 18, ModManagementStyle.muted)).growX().minWidth(0f).row()
+        val facts = Table().apply { defaults().growX().minWidth(0f).top().padRight(18f) }
+        fun metric(value: Label, caption: String): Table = Table().apply {
+            add(value).growX().minWidth(0f).left().row()
+            add(ModManagementStyle.label(caption, 18, ModManagementStyle.muted))
+                .growX().minWidth(0f).padTop(4f)
         }
+        val factValues = ArrayList<Pair<Label, String>>()
+        updateSize(modSize)
+        sizeLabel.wrap = false
+        // Keep the size actor attached even when unknown: the asynchronous query may fill it later.
+        if (!isBuiltin) factValues.add(sizeLabel to "Size")
+        if (updatedAt.isNotEmpty())
+            factValues.add(ModManagementStyle.label("", 20).apply {
+                wrap = false
+                setText(updatedAt.take(10))
+            } to "Updated")
+        if (stars != null)
+            factValues.add(ModManagementStyle.label("$stars${Fonts.star}", 20).apply { wrap = false } to "Stars")
+        val stackedFacts = factValues.sumOf { (value, _) -> value.prefWidth.toDouble() + 18f } > availableWidth
+        for ((value, caption) in factValues) {
+            facts.add(metric(value, caption)).minWidth(value.prefWidth + 18f)
+            if (stackedFacts) facts.row()
+        }
+        if (facts.cells.size > 0) add(facts).growX().minWidth(0f).padBottom(16f).row()
+
         add(com.unciv.ui.images.ImageGetter.getWhiteDot().apply { color = ModManagementStyle.line })
             .height(1f).pad(4f, 0f, 16f, 0f).row()
         add(ModManagementStyle.label("About this mod", 22)).growX().minWidth(0f).row()
@@ -122,17 +150,19 @@ internal class ModInfoAndActionPane(
                 Gdx.app.clipboard.contents = repoUrl
                 ToastPopup("Link copied to clipboard", stage)
             }
-            add(githubButton).growX().minWidth(0f).minHeight(58f).row()
+            addSecondaryAction(githubButton)
         }
     }
 
+    fun addSecondaryAction(button: TextButton) {
+        // Two secondary actions per row; labels wrap at larger text sizes.
+        if (secondaryActions.cells.size > 0 && secondaryActions.cells.size % 2 == 0) secondaryActions.row()
+        secondaryActions.add(button).growX().minWidth(0f).minHeight(ModManagementStyle.touchHeight).pad(4f)
+        if (secondaryActions.parent == null) add(secondaryActions).growX().minWidth(0f).row()
+    }
+
     fun updateSize(size: Int) {
-        val text = when {
-            size <= 0 -> ""
-            size < 2048 -> "Size: [$size] kB"
-            else -> "Size: [${(size + 512) / 1024}] MB"
-        }
-        sizeLabel.setText(text.tr())
+        sizeLabel.setText(formatSize(size).ifEmpty { "—" })
     }
 
     fun addVisualCheckBox(startsOutChecked: Boolean = false, changeAction: ((Boolean)->Unit)? = null) {
@@ -140,14 +170,7 @@ internal class ModInfoAndActionPane(
             add("Permanent audiovisual mod".toCheckBox(startsOutChecked, changeAction).apply {
                 label.wrap = true
                 labelCell.minWidth(0f).growX()
-            }).growX().minWidth(0f).minHeight(58f).row()
-    }
-
-    fun addUpdateModButton(modInfo: ModUIData): TextButton? {
-        if (!modInfo.hasUpdate) return null
-        val updateModTextbutton = ModManagementStyle.button("Update mod", primary = true)
-        add(updateModTextbutton).growX().minWidth(0f).minHeight(58f).row()
-        return updateModTextbutton
+            }).growX().minWidth(0f).minHeight(ModManagementStyle.touchHeight).row()
     }
 
     private fun addPreviewImage(modName: String, repoUrl: String, defaultBranch: String, avatarUrl: String?) {

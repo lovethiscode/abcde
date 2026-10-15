@@ -83,7 +83,8 @@ internal class DisplayTab(
         }
         section("Performance", opened = false) {
             addCheckbox("Continuous rendering", settings::continuousRendering) {
-                Gdx.graphics.isContinuousRendering = it
+                Gdx.graphics.isContinuousRendering = it ||
+                    (Gdx.app.type == Application.ApplicationType.iOS && game.screen is OptionsScreen)
             }
 
             val continuousRenderingDescription = "When disabled, saves battery life but certain animations will be suspended"
@@ -141,7 +142,7 @@ internal class DisplayTab(
     }
 
     private fun Table.addPediaUnitArtSizeSlider() {
-        addSlider("Size of Unitset art in Civilopedia", settings::pediaUnitArtSize, 0f, 360f) {
+        addSlider("Size of Unitset art in Civilopedia", settings::pediaUnitArtSize, 0f, 360f, keepValueTip = true) {
             GUI.setUpdateWorldOnNextRender() // TODO: I doubt that helps, the setting has only influence on CivilopediaScreen
         }.actor.apply {
             setSnapToValues(threshold = 60f,

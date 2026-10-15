@@ -19,6 +19,16 @@ import java.nio.file.attribute.BasicFileAttributes
  * [TexturePacker] documentation is [here](https://github.com/libgdx/libgdx/wiki/Texture-packer)
  */
 object AndroidImagePacker {
+    /** Independent iOS battlefield art; never repack or replace the shared unit/resource atlas. */
+    fun packBattlefield(input: String, output: String) {
+        val settings = getDefaultSettings().apply {
+            scale = floatArrayOf(.375f)
+            stripWhitespaceX = false
+            stripWhitespaceY = false
+            rotation = false
+        }
+        TexturePacker.process(settings, input, output, "Battlefield")
+    }
     private fun getDefaultSettings() = TexturePacker.Settings().apply {
         // Apparently some chipsets, like NVIDIA Tegra 3 graphics chipset (used in Asus TF700T tablet),
         // don't support non-power-of-two texture sizes - kudos @yuroller!

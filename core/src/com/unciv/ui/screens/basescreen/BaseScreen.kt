@@ -120,13 +120,16 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
 
     override fun show() {}
 
+    /** A screen-local surface may also fill the area outside the safe layout viewport. */
+    protected open val screenClearColor: Color get() = clearColor
+
     override fun render(delta: Float) {
         if (recreateAfterPopup && activePopup == null && this is RecreateOnResize) {
             recreateAfterPopup = false
             game.replaceCurrentScreen { recreate() }
             return
         }
-        val renderColor = if (this is WorldScreen && skinStrings.usesExpeditionBlue) ExpeditionBlueTheme.unexplored else clearColor
+        val renderColor = if (this is WorldScreen && skinStrings.usesExpeditionBlue) ExpeditionBlueTheme.unexplored else screenClearColor
         Gdx.gl.glClearColor(renderColor.r, renderColor.g, renderColor.b, renderColor.a)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 

@@ -18,6 +18,7 @@ import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.onChange
 import com.unciv.ui.components.widgets.TranslatedSelectBox
 import com.unciv.ui.components.widgets.UncivSlider
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.popups.activePopup
 import com.unciv.ui.popups.hasOpenPopups
 import com.unciv.ui.screens.basescreen.BaseScreen
@@ -100,7 +101,8 @@ internal interface OptionsPopupHelpers {
             if (updateWorld && worldScreen != null) worldScreen.shouldUpdate = true
         }
         if (ExpeditionBlueTheme.enabled) OptionsPopupStyle.styleSwitch(checkbox)
-        if (newRow) add(checkbox).colspan(2).growX().minHeight(48f).left().row()
+        if (newRow) add(checkbox).colspan(2).growX()
+            .minHeight(if (ExpeditionBlueTheme.enabled) UiNavigation.minimumTouchSize() else 48f).left().row()
         else add(checkbox).left()
     }
 
@@ -136,7 +138,8 @@ internal interface OptionsPopupHelpers {
         val select = SelectBox<T>(BaseScreen.skin)
         select.setItems(items.toGdxArray())
         select.selected = property.get()
-        add(select).pad(10f).minWidth(rightWidgetMinWidth)
+        add(select).pad(if (ExpeditionBlueTheme.enabled) OptionsPopupStyle.points(6f) else 10f)
+            .minHeight(if (ExpeditionBlueTheme.enabled) UiNavigation.minimumTouchSize() else 0f).minWidth(rightWidgetMinWidth)
             .maxWidth(if (ExpeditionBlueTheme.enabled) rightWidgetMinWidth else Float.MAX_VALUE).right().row()
 
         select.onChange {
@@ -160,7 +163,8 @@ internal interface OptionsPopupHelpers {
     fun Table.addTranslatedSelectBox(text: String, property: KMutableProperty0<String>, items: Iterable<String>, action: ((String) -> Unit)? = null) {
         add(text.toLabel().apply { wrap = true }).minWidth(0f).left().growX()
         val select = TranslatedSelectBox(items as? Collection ?: items.toList(), property.get())
-        add(select).pad(10f).minWidth(rightWidgetMinWidth)
+        add(select).pad(if (ExpeditionBlueTheme.enabled) OptionsPopupStyle.points(6f) else 10f)
+            .minHeight(if (ExpeditionBlueTheme.enabled) UiNavigation.minimumTouchSize() else 0f).minWidth(rightWidgetMinWidth)
             .maxWidth(if (ExpeditionBlueTheme.enabled) rightWidgetMinWidth else Float.MAX_VALUE).right().row()
 
         select.onChange {
@@ -208,7 +212,8 @@ internal interface OptionsPopupHelpers {
         add(label).minWidth(0f).left().growX()
         val select = SelectBox<T>(BaseScreen.skin)
         select.isDisabled = true
-        add(select).pad(10f).minWidth(rightWidgetMinWidth)
+        add(select).pad(if (ExpeditionBlueTheme.enabled) OptionsPopupStyle.points(6f) else 10f)
+            .minHeight(if (ExpeditionBlueTheme.enabled) UiNavigation.minimumTouchSize() else 0f).minWidth(rightWidgetMinWidth)
             .maxWidth(if (ExpeditionBlueTheme.enabled) rightWidgetMinWidth else Float.MAX_VALUE).right().row()
 
         Concurrency.run("Async SelectBox", CoroutineScope(dispatcher)) {
@@ -244,22 +249,35 @@ internal interface OptionsPopupHelpers {
     fun <T: Number> Table.addSlider(
         text: String, initial: T, min: T, max: T, step: T,
         getTipText: ((Float) -> String)? = null,
+        keepValueTip: Boolean = false,
         action: ((Float, Boolean) -> Unit)
     ): Cell<UncivSlider> {
-        val labelCell = add(text.toLabel().apply { wrap = true }).minWidth(0f).left().growX().padTop(8f)
-        if (ExpeditionBlueTheme.enabled) labelCell.colspan(2).padLeft(12f).row()
+        fun formatValue(value: Float) = getTipText?.invoke(value)
+            ?: if (step.toFloat() >= 1f) value.toInt().toString() else "%.2f".format(value).trimEnd('0').trimEnd('.')
+        val valueLabel = if (ExpeditionBlueTheme.enabled && !keepValueTip)
+            formatValue(initial.toFloat()).toLabel(OptionsPopupStyle.accent, OptionsPopupStyle.fontSize(17f)) else null
+        if (valueLabel != null) {
+            val labelRow = Table().apply {
+                add(text.toLabel().apply { wrap = true }).minWidth(0f).growX().left()
+                add(valueLabel).right().padLeft(OptionsPopupStyle.points(12f))
+            }
+            add(labelRow).colspan(2).growX().pad(OptionsPopupStyle.points(8f), OptionsPopupStyle.points(12f), 0f, OptionsPopupStyle.points(12f)).row()
+        } else add(text.toLabel().apply { wrap = true }).minWidth(0f).left().growX().padTop(8f)
 
         // lateinit, otherwise the callback can't capture it, and by the time the callback fires this will be initialized
         lateinit var slider: UncivSlider
         slider = UncivSlider(
             min.toFloat(), max.toFloat(), step.toFloat(),
             initial = initial.toFloat(),
+            tipType = if (ExpeditionBlueTheme.enabled && !keepValueTip) UncivSlider.TipType.None else UncivSlider.TipType.Permanent,
             getTipText = getTipText
         ) {
             action(it, slider.isDragging)
+            valueLabel?.setText(formatValue(it))
         }
         val cell = add(slider).minWidth(rightWidgetMinWidth).right().pad(5f).padTop(10f)
-        if (ExpeditionBlueTheme.enabled) cell.colspan(2).growX().pad(22f, 12f, 12f, 12f)
+        if (ExpeditionBlueTheme.enabled) cell.colspan(2).growX().minHeight(UiNavigation.minimumTouchSize())
+            .pad(OptionsPopupStyle.points(4f), OptionsPopupStyle.points(12f), OptionsPopupStyle.points(4f), OptionsPopupStyle.points(12f))
         cell.row()
         return cell
     }
@@ -277,9 +295,10 @@ internal interface OptionsPopupHelpers {
         text: String, property: KMutableProperty0<Float>,
         min: Float, max: Float, step: Float = 1f,
         getTipText: ((Float) -> String)? = null,
+        keepValueTip: Boolean = false,
         action: (Float) -> Unit = {}
     ): Cell<UncivSlider> {
-        return addSlider(text, property.get(), min, max, step, getTipText) { value, dragging ->
+        return addSlider(text, property.get(), min, max, step, getTipText, keepValueTip) { value, dragging ->
             if (!dragging)
                 action(value)
             property.set(value)

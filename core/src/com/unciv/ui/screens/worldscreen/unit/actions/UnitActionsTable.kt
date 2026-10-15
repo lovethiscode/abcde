@@ -19,9 +19,15 @@ import com.unciv.ui.popups.AnimatedMenuPopup.Companion.addContextMenu
 import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.popups.UnitUpgradeMenu
 import com.unciv.ui.screens.worldscreen.WorldScreen
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
+import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.components.extensions.setFontSize
 import yairm210.purity.annotations.Readonly
 
 class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
+    internal var battlefieldWidth = 0f
+    internal var battlefieldColumns = 1
+    internal var battlefieldAvailableHeight = 0f
     /** Distribute UnitActions on "pages" */
     private var currentPage = 0
     private var buttonsPerPage = Int.MAX_VALUE
@@ -111,6 +117,19 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         // clamp currentPage
         if (currentPage !in 0 until numPages) currentPage = 0
         // actually show the buttons of the currentPage
+        var visibleButtons = 0
+        fun place(button: Button) {
+            if (!BattlefieldHud.enabled) {
+                add(button).colspan(2).row()
+                return
+            }
+            val gap = BattlefieldHud.points(4f)
+            val cellWidth = (battlefieldWidth - gap * (battlefieldColumns - 1)) / battlefieldColumns
+            val lastColumn = (visibleButtons + 1) % battlefieldColumns == 0
+            add(button).width(cellWidth).minHeight(UiNavigation.minimumTouchSize()).pad(0f, 0f, gap, if (lastColumn) 0f else gap)
+            visibleButtons++
+            if (visibleButtons % battlefieldColumns == 0) row()
+        }
         for (unitAction in pageActionBuckets[currentPage]) {
             val button = getUnitActionButton(unit, unitAction)
             val upgradeAction = unitAction.unitAction as? UpgradeUnitAction
@@ -126,17 +145,19 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
                     }
                 }
             }
-            add(button).colspan(2).row()
+            place(button)
         }
 
         // show page navigation
-        if (currentPage > 0)
-            add(previousPageButton)
-        if (currentPage < numPages - 1)
-            add(nextPageButton)
+        if (currentPage > 0) {
+            if (BattlefieldHud.enabled) place(previousPageButton) else add(previousPageButton)
+        }
+        if (currentPage < numPages - 1) {
+            if (BattlefieldHud.enabled) place(nextPageButton) else add(nextPageButton)
+        }
         
         // Animate buttons
-        if (UncivGame.Current.settings.unitActionsTableAnimation) {
+        if (!BattlefieldHud.enabled && UncivGame.Current.settings.unitActionsTableAnimation) {
             if (unitChanged || animationNotFinished) {
                 val buttons = children.filterIsInstance<Button>()
                 var delay = 0f
@@ -162,6 +183,12 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
     }
 
     private fun updateButtonsPerPage(button: Button) {
+        if (BattlefieldHud.enabled) {
+            buttonsPerPage = if (battlefieldColumns > 1) 6 else
+                (battlefieldAvailableHeight / (UiNavigation.minimumTouchSize() + BattlefieldHud.points(4f)))
+                    .toInt().coerceIn(minButtonsPerPage, maxButtonsPerPage)
+            return
+        }
         val upperLimit = worldScreen.techPolicyAndDiplomacy.y
         val lowerLimit = this.y
         val availableHeight = upperLimit - lowerLimit - padBetweenButtons
@@ -181,15 +208,29 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         if (upgradeAction != null) actionButton.name += ":${upgradeAction.unitToUpgradeTo.name}"
         if (unitAction.uiType == UiUnitActionType.CreateImprovement) actionButton.name += ":${unitAction.unitAction?.actionKey}"
         actionButton.labelCell.padTop(0f) // aligned with icon 
+        if (BattlefieldHud.enabled) {
+            actionButton.label.setFontSize(BattlefieldHud.font(14f))
+            actionButton.label.wrap = true
+            actionButton.labelCell.minWidth(0f).growX()
+            actionButton.iconCell.size(BattlefieldHud.points(18f)).padRight(BattlefieldHud.points(5f))
+            actionButton.pad(BattlefieldHud.points(6f))
+        }
 
         if (unitAction.uiType == UiUnitActionType.Promote && unitAction.action != null)
             if (ExpeditionBlueTheme.enabled) actionButton.label.color = ExpeditionBlueTheme.gold
             else actionButton.color = Color.GREEN.brighten(0.5f)
 
-        actionButton.pack()
+        if (BattlefieldHud.enabled && battlefieldWidth > 0f) {
+            val gap = BattlefieldHud.points(4f)
+            actionButton.setSize((battlefieldWidth - gap * battlefieldColumns) / battlefieldColumns,
+                UiNavigation.minimumTouchSize())
+            actionButton.validate()
+        } else actionButton.pack()
 
         if (unitAction.action == null) {
             actionButton.disable()
+            // A disabled command must absorb taps instead of targeting the map beneath it.
+            if (BattlefieldHud.enabled) actionButton.touchable = Touchable.enabled
         } else {
             actionButton.onActivation(unitAction.uncivSound, binding) {
                 activateAction(unitAction, unit)

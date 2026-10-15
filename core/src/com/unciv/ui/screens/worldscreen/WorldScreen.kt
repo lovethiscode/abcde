@@ -157,7 +157,7 @@ class WorldScreen(
     /** Bottom left widget holding information about a selected unit or city */
     internal val bottomUnitTable = UnitTable(this)
     internal val battleTable = BattleTable(this)
-    private val zoomController = ZoomButtonPair(mapHolder)
+    internal val zoomController = ZoomButtonPair(mapHolder)
     internal val minimapWrapper = MinimapHolder(mapHolder)
     internal val bottomTileInfoTable = TileInfoTable(this)
     internal val notificationsScroll = NotificationsScroll(this)
@@ -183,6 +183,8 @@ class WorldScreen(
     private val events = EventBus.EventReceiver()
 
     private var uiEnabled = true
+    private var battlefieldHud: BattlefieldHud? = null
+    internal fun layoutBattlefieldHud() { battlefieldHud?.layout() }
 
     internal val undoHandler = UndoHandler(this)
 
@@ -223,6 +225,7 @@ class WorldScreen(
         battleTable.width = stage.width / 3
         battleTable.x = stage.width / 3
         stage.addActor(battleTable)
+        if (BattlefieldHud.enabled) battlefieldHud = BattlefieldHud(this)
 
         val tileToCenterOn: HexCoord =
                 when {
@@ -386,6 +389,7 @@ class WorldScreen(
         minimapWrapper.isVisible = uiEnabled
         bottomUnitTable.isVisible = uiEnabled
         if (uiEnabled) battleTable.update() else battleTable.isVisible = false
+        battlefieldHud?.setVisible(uiEnabled)
     }
 
     private fun addKeyboardListener() {
@@ -473,8 +477,10 @@ class WorldScreen(
             minimapWrapper.x = stage.width - minimapWrapper.width
             bottomTileInfoTable.civView = getGameViewConsideringForOfWar().civView
             bottomTileInfoTable.updateTileTable(mapHolder.selectedTile)
-            bottomTileInfoTable.x = stage.width - bottomTileInfoTable.width
-            bottomTileInfoTable.y = if (game.settings.showMinimap) minimapWrapper.height + 5f else 0f
+            if (battlefieldHud == null) {
+                bottomTileInfoTable.x = stage.width - bottomTileInfoTable.width
+                bottomTileInfoTable.y = if (game.settings.showMinimap) minimapWrapper.height + 5f else 0f
+            }
 
             battleTable.update()
         }
@@ -531,8 +537,10 @@ class WorldScreen(
 
         if (uiEnabled) {
             // UnitActionsTable measures geometry (its own y, techPolicyAndDiplomacy and fogOfWarButton), so call update this late
-            unitActionsTable.y = bottomUnitTable.height
-            unitActionsTable.update(bottomUnitTable.selectedUnit?.getUnit())
+            if (battlefieldHud == null) {
+                unitActionsTable.y = bottomUnitTable.height
+                unitActionsTable.update(bottomUnitTable.selectedUnit?.getUnit())
+            }
         }
 
         // If the game has ended, lets stop AutoPlay
@@ -602,6 +610,10 @@ class WorldScreen(
         if (uiEnabled && gameInfo.campaign == null && gameInfo.endless == null) tutorialTaskTable.update()
         else tutorialTaskTable.isVisible = false
 
+        if (battlefieldHud != null && uiEnabled) {
+            battlefieldHud!!.layout()
+            return
+        }
         val coveredNotificationsTop = stage.height - statusButtons.y
         val coveredNotificationsBottom = (bottomTileInfoTable.height + bottomTileInfoTable.y)
 //                (if (game.settings.showMinimap) minimapWrapper.height else 0f)

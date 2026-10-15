@@ -51,6 +51,7 @@ open class ScalingTableWrapper(
     fun add(actor: Actor): Cell<Actor> = innerTable.add(actor)
     fun add(): Cell<Actor?> = innerTable.add()
     fun row(): Cell<Actor> = innerTable.row()
+    fun clearContent() = innerTable.clearChildren()
     //endregion
 
     fun resetScale() {

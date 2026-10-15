@@ -110,8 +110,9 @@ internal class AdvancedTab(
         autoSaveTurnsTextField.maxLength = 8
         autoSaveTurnsTextField.setTextFieldFilter { _, c -> c in "1234567890" }
 
-        val autoSaveTurnsTextFieldButton = "Enter".toTextButton()
-        autoSaveTurnsTextFieldButton.isEnabled = false
+        val autoSaveTurnsTextFieldButton = "Apply".toTextButton()
+        if (optionsPopup.useSidebar) autoSaveTurnsTextFieldButton.isDisabled = true
+        else autoSaveTurnsTextFieldButton.isEnabled = false
         autoSaveTurnsTextFieldButton.onClick {
             autosaveFieldEnterClicked(autoSaveTurnsTextField.text)
             setAutosaveButtonState(autoSaveTurnsTextFieldButton, autoSaveTurnsTextField.text)
@@ -119,14 +120,20 @@ internal class AdvancedTab(
         autoSaveTurnsTextField.onChange { setAutosaveButtonState(autoSaveTurnsTextFieldButton, autoSaveTurnsTextField.text) }
 
         val cell = addWrapped(newRow = false) {
-            add(autoSaveTurnsTextField).minWidth(70f).width(100f).growX()
-            add(autoSaveTurnsTextFieldButton).padLeft(5f)
+            add(autoSaveTurnsTextField).minWidth(70f).width(100f).growX().apply {
+                if (optionsPopup.useSidebar) minHeight(OptionsPopupStyle.points(44f)).fillY()
+            }
+            add(autoSaveTurnsTextFieldButton).padLeft(5f).apply {
+                if (optionsPopup.useSidebar) minSize(OptionsPopupStyle.points(44f)).fillY()
+            }
         }
         cell.minWidth(rightWidgetMinWidth).right().row()
     }
 
     private fun setAutosaveButtonState(button: TextButton, text: String) {
-        button.isEnabled = text.toIntOrNull() != settings.maxAutosavesStored
+        val enabled = text.toIntOrNull() != settings.maxAutosavesStored
+        if (optionsPopup.useSidebar) button.isDisabled = !enabled
+        else button.isEnabled = enabled
     }
 
     private fun autosaveFieldEnterClicked(text: String) {

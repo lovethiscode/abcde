@@ -45,6 +45,8 @@ object ImageGetter {
     // We use texture atlases to minimize texture swapping - see https://yairm210.medium.com/the-libgdx-performance-guide-1d068a84e181
     lateinit var atlas: TextureAtlas
     private val atlases = HashMap<String, TextureAtlas>()
+    private val modTerrainTileSets = HashSet<String>()
+    fun hasModTerrainImages(tileSet: String) = tileSet in modTerrainTileSets
     var ruleset = Ruleset()
 
     // We then shove all the drawables into a hashmap, because the atlas specifically tells us
@@ -68,6 +70,7 @@ object ImageGetter {
             
         ImageGetter.ruleset = ruleset
         textureRegionDrawables.clear()
+        modTerrainTileSets.clear()
 
         val setFontFamilyJob = Concurrency.run {
             // Loading available fonts can take a long time
@@ -120,6 +123,10 @@ object ImageGetter {
                 }
             }
             for (region in tempAtlas.regions) {
+                if (mod.isNotEmpty() && region.name.startsWith("TileSets/")) {
+                    val path = region.name.split('/', limit = 4)
+                    if (path.size == 4 && path[2] in setOf("Tiles", "Edges")) modTerrainTileSets.add(path[1])
+                }
                 if (region.name.startsWith("Skins")) {
                     // TODO: give user a mod warning that the image names has to be [name].9.png
                     //      if this throws an exception

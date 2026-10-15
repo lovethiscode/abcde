@@ -28,6 +28,8 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.overviewscreen.EmpireOverviewCategories
 import com.unciv.ui.screens.worldscreen.BackgroundActor
 import com.unciv.ui.screens.worldscreen.WorldScreen
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.worldscreen.mainmenu.WorldScreenMenuPopup
 import kotlin.math.max
 
@@ -111,6 +113,30 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
 
     /** Performs the layout tricks mentioned in the class Kdoc */
     private fun updateLayout() {
+        if (BattlefieldHud.enabled) {
+            val safe = worldScreen.safeAreaBoundsInWorld()
+            val gap = BattlefieldHud.points(6f)
+            val availableWidth = safe.width - gap * 2f
+            val portrait = safe.height > safe.width
+            val touch = UiNavigation.minimumTouchSize()
+            clear()
+            add(selectedCivTable).minHeight(touch).left()
+            if (portrait) {
+                add(resourceTable).minWidth(0f).growX().padLeft(gap)
+                add(overviewButton).minHeight(touch).right()
+                row()
+                add(statsTable).colspan(3).minWidth(0f).growX()
+            } else {
+                add(statsTable).minWidth(0f).growX().padLeft(gap)
+                add(resourceTable).minWidth(0f).padLeft(gap)
+                add(overviewButton).minHeight(touch).right()
+            }
+            background = BaseScreen.skinStrings.getUiBackground("WorldScreen/TopBar/StatsTable")
+            setSize(availableWidth, prefHeight)
+            setPosition(safe.x + gap, safe.y + safe.height - height - gap)
+            baseHeight = height
+            return
+        }
         val targetWidth = stage.width
         val statsWidth = statsTable.prefWidth
         val resourceWidth = resourceTable.prefWidth
@@ -178,12 +204,14 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
             }
 
             val overviewButton = "Overview".toTextButton().apply { name = "ui-overview" }
+            if (BattlefieldHud.enabled) overviewButton.label.setFontSize(BattlefieldHud.font(14f))
             overviewButton.onActivation(binding = KeyboardBinding.EmpireOverview) {
                 worldScreen.openEmpireOverview()
             }
 
             unitSupplyCell = add()
-            add(overviewButton).pad(10f)
+            val cell = add(overviewButton).pad(if (BattlefieldHud.enabled) BattlefieldHud.points(3f) else 10f)
+            if (BattlefieldHud.enabled) cell.minHeight(UiNavigation.minimumTouchSize()).minWidth(BattlefieldHud.points(58f))
             pack()
         }
 
@@ -207,11 +235,11 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
 
         private val menuButton = ImageGetter.getImage("OtherIcons/MenuIcon")
         private val menuButtonWrapper = Container(menuButton)
-        private val menuButtonHitArea = ClickableCircle(Constants.headingFontSize * 2.25f)
+        private val menuButtonHitArea = ClickableCircle(if (BattlefieldHud.enabled) UiNavigation.minimumTouchSize() else Constants.headingFontSize * 2.25f)
 
         init {
             left()
-            pad(10f)
+            pad(if (BattlefieldHud.enabled) BattlefieldHud.points(3f) else 10f)
 
             menuButton.touchable = Touchable.disabled
             menuButtonWrapper.size(Constants.headingFontSize * 1.5f)
@@ -222,14 +250,23 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
             val onNationClick = {
                 worldScreen.openCivilopedia(worldScreen.selectedCiv.nation.makeLink())
             }
-            selectedCivLabel.setFontSize(Constants.headingFontSize)
-            selectedCivLabel.onClick(onNationClick)
-            selectedCivIcon.onClick(onNationClick)
+            selectedCivLabel.setFontSize(if (BattlefieldHud.enabled) BattlefieldHud.font(16f) else Constants.headingFontSize)
+            if (!BattlefieldHud.enabled) {
+                selectedCivLabel.onClick(onNationClick)
+                selectedCivIcon.onClick(onNationClick)
+            }
 
-            add(menuButtonWrapper)
+            val menuCell = add(menuButtonWrapper)
+            if (BattlefieldHud.enabled) menuCell.size(UiNavigation.minimumTouchSize())
             addActor(menuButtonHitArea) // Will be positioned over menuButtonWrapper in [update]
-            selectedCivIconCell = add(selectedCivIcon).padLeft(Constants.defaultFontSize / 1.5f)
-            add(selectedCivLabel).padTop(10f - Fonts.getDescenderHeight(Constants.headingFontSize))
+            val nation = if (BattlefieldHud.enabled) Table().apply {
+                touchable = Touchable.enabled
+                onActivation { onNationClick() }
+                this@SelectedCivilizationTable.add(this).minHeight(UiNavigation.minimumTouchSize()).fillY()
+                selectedCivLabel.touchable = Touchable.disabled
+            } else this
+            selectedCivIconCell = nation.add(selectedCivIcon).padLeft(Constants.defaultFontSize / 1.5f)
+            nation.add(selectedCivLabel).padTop(10f - Fonts.getDescenderHeight(Constants.headingFontSize))
                 .padLeft(Constants.defaultFontSize / 2.0f)
             pack()
         }
@@ -239,8 +276,10 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
             if (this.selectedCiv == newCiv) return
             this.selectedCiv = newCiv
 
-            selectedCivIcon = ImageGetter.getNationPortrait(worldScreen.selectedCiv.nation, 25f)
+            selectedCivIcon = ImageGetter.getNationPortrait(worldScreen.selectedCiv.nation,
+                if (BattlefieldHud.enabled) BattlefieldHud.points(20f) else 25f)
             selectedCivIconCell.setActor(selectedCivIcon)
+            if (BattlefieldHud.enabled) selectedCivIcon.touchable = Touchable.disabled
             val displayName = if (worldScreen.gameInfo.endless != null || com.unciv.logic.campaign.CivilWarCampaign.isActive(worldScreen.gameInfo)) worldScreen.selectedCiv.civName else newCiv
             selectedCivLabel.setText(displayName.tr(hideIcons = true))
             invalidate()

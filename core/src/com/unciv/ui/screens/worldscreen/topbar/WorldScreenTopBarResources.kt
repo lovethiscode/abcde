@@ -12,6 +12,9 @@ import com.unciv.models.translations.tr
 import com.unciv.ui.components.MayaCalendar
 import com.unciv.ui.components.YearTextUtil
 import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.extensions.toStringSigned
 import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.input.onClick
@@ -80,6 +83,10 @@ internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTa
 
     fun update(civInfo: Civilization) {
         resetScale()
+        if (BattlefieldHud.enabled) {
+            turnsLabel.setFontSize(BattlefieldHud.font(12f))
+            defaults().space(BattlefieldHud.points(4f)).pad(0f).minHeight(UiNavigation.minimumTouchSize())
+        }
 
         val civilWar = com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo)
         val yearText = if (civilWar) "[1861] AD".tr() else YearTextUtil.toYearText(
@@ -107,7 +114,11 @@ internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTa
             if (!civInfo.canSeeResource(resource) && amount == 0) // You cannot trade for resources you cannot process yourself yet
                 continue
 
-            resourcesWrapper.add(icon).padLeft(if (index == 0) 0f else extraPadBetweenResources)
+            val iconCell = resourcesWrapper.add(icon).padLeft(if (index == 0) 0f else extraPadBetweenResources)
+            if (BattlefieldHud.enabled) {
+                iconCell.size(BattlefieldHud.points(16f))
+                label.setFontSize(BattlefieldHud.font(12f))
+            }
 
             if (!resource.isStockpiled)
                 label.setText(amount.tr())
