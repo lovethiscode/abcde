@@ -381,7 +381,11 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         if (unitAction.action == null) {
             actionButton.disable()
             // A disabled command must absorb taps instead of targeting the map beneath it.
-            if (BattlefieldHud.enabled) actionButton.touchable = Touchable.enabled
+            if (BattlefieldHud.enabled) {
+                // disable() replaces the style; retain the native command's flat geometry.
+                BattlefieldGeometry.fitControl(actionButton, flat = true)
+                actionButton.touchable = Touchable.enabled
+            }
         } else {
             actionButton.onActivation(unitAction.uncivSound, binding) {
                 activateAction(unitAction, unit)

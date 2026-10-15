@@ -42,10 +42,10 @@ internal object BattlefieldGeometry {
         }
     }
 
-    fun fitControl(button: Button, flat: Boolean = false) {
+    fun fitControl(button: Button, flat: Boolean = false, negative: Boolean = false) {
         val style = if (button is TextButton) TextButton.TextButtonStyle(button.style)
             else Button.ButtonStyle(button.style)
-        style.up = if (flat) null else outlined(ExpeditionBlueTheme.panel)
+        style.up = if (flat) null else outlined(if (negative) ExpeditionBlueTheme.dangerSurface else ExpeditionBlueTheme.panel)
         style.down = outlined(ExpeditionBlueTheme.raised)
         style.over = style.down
         style.checked = style.up

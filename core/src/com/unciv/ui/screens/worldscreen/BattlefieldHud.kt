@@ -381,6 +381,7 @@ private class BattlefieldEvents(private val world: WorldScreen) : ScrollPane(Tab
         list.top().left()
         for ((index, notification) in entries.withIndex()) {
             val row = Button(BaseScreen.skin)
+            BattlefieldGeometry.fitControl(row)
             row.name = "ui-notification:${notification.category.name}:$index"
             row.isChecked = selected === notification
             row.pad(BattlefieldHud.points(5f))

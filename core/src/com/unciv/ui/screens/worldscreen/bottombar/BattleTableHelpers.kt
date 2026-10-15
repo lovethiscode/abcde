@@ -226,12 +226,12 @@ object BattleTableHelpers {
         container.addAction(DamageLabelAnimation(container))
     }
 
-    fun getHealthBar(maxHealth: Int, currentHealth: Int, maxRemainingHealth: Int, minRemainingHealth: Int, forDefender: Boolean = false): Table {
+    fun getHealthBar(maxHealth: Int, currentHealth: Int, maxRemainingHealth: Int, minRemainingHealth: Int,
+                     forDefender: Boolean = false, totalWidth: Float = 120f, barHeight: Float = 4f): Table {
         val healthBar = Table()
-        val totalWidth = 120f
         fun addHealthToBar(image: Image, amount: Int) {
             val width = totalWidth * amount / maxHealth
-            healthBar.add(image).size(width.coerceIn(0f, totalWidth),4f)
+            healthBar.add(image).size(width.coerceIn(0f, totalWidth), barHeight)
         }
 
         fun animateHealth(health: Image, healthDecreaseWidth: Float, move: Float) {

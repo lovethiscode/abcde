@@ -10,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.actions.Actions
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.utils.Align
 import com.unciv.models.UncivSound
 import com.unciv.models.ruleset.unique.UniqueType
@@ -120,6 +121,8 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         }
 
         if (BattlefieldHud.enabled) {
+            // The compact HUD uses point-based metrics even when the game's desktop UI scale changes.
+            constrainBattlefieldCells(this)
             // Reserve the top-right touch target in every preview, including air sweeps/nukes.
             cells.firstOrNull { it.row == 0 && it.column == 1 }?.let {
                 it.padRight(UiNavigation.minimumTouchSize()).minHeight(UiNavigation.minimumTouchSize())
@@ -137,7 +140,6 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         }
 
         if (BattlefieldHud.enabled) {
-            constrainBattlefieldCells(this)
             width = battlefieldWidth()
             invalidateHierarchy()
             validate()
@@ -197,9 +199,11 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         return defenderView
     }
 
-    private fun getIcon(combatantView: CombatantView) =
-        (combatantView as? MapUnitCombatantView)?.let { UnitIconGroup(it.getUnitView(), 25f) }
-            ?: ImageGetter.getNationPortrait(combatantView.getCivInfo().getNation(), 25f)
+    private fun getIcon(combatantView: CombatantView): com.badlogic.gdx.scenes.scene2d.Actor {
+        val size = if (BattlefieldHud.enabled) BattlefieldHud.points(18f) else 25f
+        return (combatantView as? MapUnitCombatantView)?.let { UnitIconGroup(it.getUnitView(), size) }
+            ?: ImageGetter.getNationPortrait(combatantView.getCivInfo().getNation(), size)
+    }
 
     private fun battlefieldWidth(): Float {
         if (battlefieldTargetWidth > 0f) return battlefieldTargetWidth
@@ -210,14 +214,31 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
     }
 
     /** Wrapped labels must not impose the old desktop column minimum on the native preview. */
-    private fun constrainBattlefieldCells(table: Table) {
+    private fun constrainBattlefieldCells(table: Table, fontSize: Float = 12f) {
+        val gap = BattlefieldHud.points(2f)
         for (cell in table.cells) {
+            cell.pad(cell.padTop.coerceAtMost(gap), cell.padLeft.coerceAtMost(gap),
+                cell.padBottom.coerceAtMost(gap), cell.padRight.coerceAtMost(gap))
             when (val actor = cell.actor) {
-                is Label -> { actor.wrap = true; cell.minWidth(0f) }
-                is Table -> { constrainBattlefieldCells(actor); cell.minWidth(0f) }
-                is ScrollPane -> {
-                    (actor.actor as? Table)?.let { constrainBattlefieldCells(it) }
+                is TextButton -> {
+                    BattlefieldGeometry.fitControl(actor, negative = actor.name == "ui-attack")
+                    actor.label.setFontSize(BattlefieldHud.font(14f))
+                    if (actor.isDisabled) actor.label.color = Color.WHITE
+                    actor.pad(BattlefieldHud.points(6f))
+                    cell.minHeight(UiNavigation.minimumTouchSize())
+                }
+                is Label -> {
+                    actor.setFontSize(BattlefieldHud.font(fontSize))
+                    actor.wrap = true
                     cell.minWidth(0f)
+                }
+                is Table -> {
+                    constrainBattlefieldCells(actor, if (table === this && cell.row == 0) 13f else fontSize)
+                    cell.minWidth(0f)
+                }
+                is ScrollPane -> {
+                    (actor.actor as? Table)?.let { constrainBattlefieldCells(it, 11f) }
+                    cell.minWidth(0f).minHeight(0f)
                 }
             }
         }
@@ -226,6 +247,12 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
     private val quarterScreen get() = if (BattlefieldHud.enabled)
         (battlefieldWidth() - BattlefieldHud.points(16f)) / 2f else worldScreen.stage.width / 4
 
+    private fun healthBar(maxHealth: Int, currentHealth: Int, maxRemainingHealth: Int,
+                          minRemainingHealth: Int, forDefender: Boolean = false) =
+        getHealthBar(maxHealth, currentHealth, maxRemainingHealth, minRemainingHealth, forDefender,
+            if (BattlefieldHud.enabled) quarterScreen - BattlefieldHud.points(8f) else 120f,
+            if (BattlefieldHud.enabled) BattlefieldHud.points(4f) else 4f)
+
     private fun getModifierTable(key: String, value: Int) = Table().apply {
         val description = if (key.startsWith("vs "))
             ("vs [" + key.drop(3) + "]").tr()
@@ -233,6 +260,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         val percentage = (if (value > 0) "+" else "") + value + "%"
         val upOrDownLabel = if (value > 0f) "⬆".toLabel(Color.GREEN) // U+2B06 UPWARDS BLACK ARROW
         else "⬇".toLabel(Color.RED) // U+2B07 DOWNWARDS BLACK ARROW
+        if (BattlefieldHud.enabled) upOrDownLabel.setFontSize(BattlefieldHud.font(11f))
 
         add(upOrDownLabel)
         val modifierLabel = "$percentage $description".toLabel(fontSize = 14).apply { wrap = true }
@@ -358,8 +386,8 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
             val minRemainingLifeDefender = max(defenderHealth-maxDamageToDefender, 0)
             val maxRemainingLifeDefender = max(defenderHealth-minDamageToDefender, 0)
 
-            add(getHealthBar(attacker.getMaxHealth(), attacker.getHealth(), maxRemainingLifeAttacker, minRemainingLifeAttacker))
-            add(getHealthBar(defender.getMaxHealth(), defender.getHealth(), maxRemainingLifeDefender, minRemainingLifeDefender, true)).row()
+            add(healthBar(attacker.getMaxHealth(), attacker.getHealth(), maxRemainingLifeAttacker, minRemainingLifeAttacker))
+            add(healthBar(defender.getMaxHealth(), defender.getHealth(), maxRemainingLifeDefender, minRemainingLifeDefender, true)).row()
 
             fun avg(vararg values: Int) = values.average().roundToInt()
             // Don't use original damage estimates - they're raw, before clamping to 0..max
@@ -550,8 +578,8 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         add(createModifiersScroll(attackerModifiers)).pad(0f).uniformX().fillY()
         add().uniformX().row()
 
-        add(getHealthBar(attacker.getMaxHealth(), attacker.getHealth(), attacker.getHealth(), attacker.getHealth()))
-        add(getHealthBar(attacker.getMaxHealth(), attacker.getMaxHealth(), attacker.getMaxHealth(), attacker.getMaxHealth()))
+        add(healthBar(attacker.getMaxHealth(), attacker.getHealth(), attacker.getHealth(), attacker.getHealth()))
+        add(healthBar(attacker.getMaxHealth(), attacker.getMaxHealth(), attacker.getMaxHealth(), attacker.getMaxHealth()))
         row().pad(5f)
 
         val attackButton = "Air Sweep".toTextButton().apply {
