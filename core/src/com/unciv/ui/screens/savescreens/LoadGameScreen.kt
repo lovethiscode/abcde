@@ -188,16 +188,24 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
                 .growX().minWidth(0f).left().padTop(ui.px(3f))
         }
         val actions = Table().apply {
+            val available = this@LoadGameScreen.stage.width - root.padLeft - root.padRight
+            val actionWidth = if (cloudSaveSync.isSupported) (available - ui.px(12f)) / 2 else available
+            if (narrow) for (button in listOf(cloudButton, importSaveButton)) {
+                button.label.setEllipsis(false)
+                button.label.wrap = true
+                button.labelCell.growX().minWidth(0f)
+            }
             if (cloudSaveSync.isSupported) add(cloudButton).minHeight(ui.px(44f)).padRight(ui.px(12f))
-            add(importSaveButton).minHeight(ui.px(44f))
+                .apply { if (narrow) width(actionWidth).minWidth(0f) }
+            add(importSaveButton).minHeight(ui.px(44f)).apply { if (narrow) width(actionWidth).minWidth(0f) }
         }
         val header = Table().apply {
             add(closeButton).size(ui.px(44f)).padRight(ui.px(12f))
             add(heading).growX().minWidth(0f).left()
-            if (narrow) { row(); add(); add(actions).right().padTop(ui.px(8f)) }
+            if (narrow) { row(); add(actions).colspan(2).growX().minWidth(0f).padTop(ui.px(8f)) }
             else add(actions).padLeft(ui.px(16f))
         }
-        root.add(header).growX().padBottom(ui.px(if (wide) 24f else 14f)).row()
+        root.add(header).growX().minWidth(0f).padBottom(ui.px(if (wide) 24f else 14f)).row()
         val listHeader = Table().apply {
             add(countLabel).growX().minWidth(0f).left().padRight(ui.px(8f))
             add(showAutosavesCheckbox).minHeight(ui.px(44f)).right()

@@ -12,6 +12,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextField
 import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable
 import kotlin.math.roundToInt
 import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -152,6 +153,10 @@ internal object OverviewUi {
     }
 
     fun Table.detailRow(label: String, value: Actor) {
+        if (value is Label) {
+            value.wrap = true
+            value.setAlignment(Align.right)
+        }
         val entry = Table().apply {
             add(plainLabel(label, 14, muted).apply { wrap = true }).minWidth(0f).growX().left()
             add(value).minWidth(0f).growX().right()

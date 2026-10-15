@@ -559,7 +559,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         header.clear()
         header.apply {
             add(back).minHeight(UiNavigation.minimumTouchSize()).padRight(16f)
-            if (UiNavigation.isIos && stage.width < 850f) {
+            if (UiNavigation.isIos && this@MultiplayerLobbyScreen.stage.width < 850f) {
                 SinglePlayerSetup.style(back, formFont)
                 add(councilHeading("Multiplayer room", 26).apply { wrap = true }).growX().minWidth(0f).left()
                 add(roomRole).padLeft(8f)

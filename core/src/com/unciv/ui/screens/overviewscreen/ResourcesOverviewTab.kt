@@ -161,28 +161,36 @@ class ResourcesOverviewTab(
                 pad(pt(10f), pt(16f), pt(10f), pt(16f))
                 add(getResourceImage(resource.name)).size(pt(28f)).padRight(pt(12f))
                 val identity = Table().apply {
-                    add(resource.getLabel()).left().row()
-                    add("${resource.resourceType.name} resource".toLabel(fontColor = OverviewUi.muted, fontSize = font(13))).left().padTop(6f)
+                    add(resource.getLabel().apply { wrap = true }).growX().minWidth(0f).left().row()
+                    add("${resource.resourceType.name} resource".toLabel(fontColor = OverviewUi.muted, fontSize = font(13))
+                        .apply { wrap = true }).growX().minWidth(0f).left().padTop(6f)
                 }
-                add(identity).width(160f).left().padRight(20f)
+                val identityCell = add(identity).left().padRight(20f)
+                if (overviewScreen.compact) identityCell.growX().minWidth(0f) else identityCell.width(160f)
                 val sources = Table().apply {
                     for (origin in origins) {
                         val label = resourceDrilldown.getLabel(resource, origin) ?: continue
-                        add(origin.removeSuffix("+").toLabel(fontColor = OverviewUi.muted, fontSize = font(13))).left().padRight(16f)
+                        add(origin.removeSuffix("+").toLabel(fontColor = OverviewUi.muted, fontSize = font(13))
+                            .apply { wrap = true }).growX().minWidth(0f).left().padRight(16f)
                         add(label).right().row()
                     }
                     for (origin in extraOrigins) {
                         val label = extraDrilldown.getLabel(resource, origin.name) ?: continue
-                        add(origin.horizontalCaption.toLabel(fontColor = OverviewUi.muted, fontSize = font(13))).left().padRight(16f)
+                        add(origin.horizontalCaption.toLabel(fontColor = OverviewUi.muted, fontSize = font(13))
+                            .apply { wrap = true }).growX().minWidth(0f).left().padRight(16f)
                         add(label).right().row()
                     }
                 }
-                add(sources).growX().minWidth(0f).left()
+                if (!overviewScreen.compact) add(sources).growX().minWidth(0f).left()
                 val total = Table().apply {
                     add(resourceDrilldown.getTotalLabel(resource)).row()
                     add("Available".toLabel(fontColor = OverviewUi.muted, fontSize = font(13))).padTop(6f)
                 }
-                add(total).width(110f).padLeft(16f)
+                add(total).width(if (overviewScreen.compact) pt(90f) else 110f).padLeft(16f)
+                if (overviewScreen.compact) {
+                    row()
+                    add(sources).colspan(3).growX().minWidth(0f).padTop(pt(10f))
+                }
             }
             add(entry).width(overviewScreen.contentWidth).minHeight(pt(66f)).padBottom(pt(1f)).row()
         }

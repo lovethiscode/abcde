@@ -92,6 +92,7 @@ class EmpireOverviewScreen(
             name = "ui-overview-close"
         }
         val header = Table().apply {
+            padRight(pt(12f))
             add(closeButton).width(pt(74f)).height(OverviewUi.touch).padRight(pt(14f))
             add("Empire Overview".toLabel(fontSize = font(20), hideIcons = true).apply { setEllipsis(true) })
                 .left().growX().minWidth(0f)
@@ -122,6 +123,12 @@ class EmpireOverviewScreen(
                 button.isChecked = category.name == caption
                 (button.cells.last().actor as? com.badlogic.gdx.scenes.scene2d.ui.Label)?.color =
                     if (button.isChecked) OverviewUi.accent else com.unciv.models.skins.ExpeditionBlueTheme.text
+            }
+            categoryButtons.entries.firstOrNull { it.key.name == caption }?.value?.let { selected ->
+                root.validate()
+                navScroll.validate()
+                navScroll.scrollTo(selected.x, selected.y, selected.width, selected.height, false, false)
+                navScroll.updateVisualScroll()
             }
         }
         stage.addActor(root)
