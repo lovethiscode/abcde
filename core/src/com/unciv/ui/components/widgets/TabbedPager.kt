@@ -183,9 +183,12 @@ open class TabbedPager(
 
         companion object {
             fun from(min: Float, max: Float, limit: Float): DimensionMeasurement {
+                // During screen recreation the current screen can still have the old orientation.
+                // Its bounds must not shrink the new page below its requested minimum.
+                val effectiveLimit = limit.coerceAtLeast(min)
                 if (max == Float.MAX_VALUE)
-                    return DimensionMeasurement(min, min, 0f, limit, true)
-                val fixedMax = max.coerceAtMost(limit)
+                    return DimensionMeasurement(min, min, 0f, effectiveLimit, true)
+                val fixedMax = max.coerceIn(min, effectiveLimit)
                 return DimensionMeasurement(min, min, fixedMax, fixedMax, false)
             }
         }
