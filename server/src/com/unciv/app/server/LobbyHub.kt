@@ -134,17 +134,23 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
                     }
                 }
                 else -> inRoom(id) { state ->
-                    val room = if (request.action == "create") service.create(c)
-                        else {
-                            if (peer.gameId.isNotEmpty() && !active(state,peer))
-                                throw LobbyFailure(410,"You have left this room or were removed. Open the invitation to rejoin.")
-                            if (request.action !in setOf("join", "recoverJoin", "resume")) requireActive(state,peer,request)
-                            service.command(id,request.action,c,presence = presence(state))
-                        }
-                    val bound = if (request.action in setOf("create", "join", "recoverJoin", "resume") && room.state != "CLOSED") bind(state,peer,room,c) else room
-                    peer.lastSignal = clock()
-                    result(peer,request,bound)
-                    publish(state,bound)
+                    try {
+                        val room = if (request.action == "create") service.create(c)
+                            else {
+                                if (peer.gameId.isNotEmpty() && !active(state,peer))
+                                    throw LobbyFailure(410,"You have left this room or were removed. Open the invitation to rejoin.")
+                                if (request.action !in setOf("join", "recoverJoin", "resume")) requireActive(state,peer,request)
+                                service.command(id,request.action,c,presence = presence(state))
+                            }
+                        val bound = if (request.action in setOf("create", "join", "recoverJoin", "resume") && room.state != "CLOSED") bind(state,peer,room,c) else room
+                        peer.lastSignal = clock()
+                        result(peer,request,bound)
+                        publish(state,bound)
+                    } catch (e: LobbyFailure) {
+                        // Expiry may already have committed before the command was rejected.
+                        service.find(id)?.let { publish(state,it) }
+                        throw e
+                    }
                 }
             }
         } catch (e: CancellationException) { throw e }

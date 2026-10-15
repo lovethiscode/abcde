@@ -2,6 +2,11 @@ package com.unciv.ui.screens.multiplayerscreens
 
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
+import com.unciv.logic.multiplayer.lobby.LobbySession
+import com.unciv.logic.multiplayer.lobby.protocol.LobbyRoom
+import com.unciv.logic.multiplayer.lobby.protocol.LobbySeat
+import com.unciv.models.metadata.GameSetupInfo
+import com.unciv.models.metadata.Player
 import kotlinx.coroutines.Job
 import org.junit.After
 import org.junit.Before
@@ -51,6 +56,85 @@ class MultiplayerLobbySchedulingTest {
         mark(immediate = true)
         assertEquals(0L, sent.count)
     }
+
+    @Test fun configurationAcknowledgementReindexesSeatsWithoutReplacingTheForm() {
+        val setup = GameSetupInfo().apply { mapParameters.seed = 424242L }
+        set("setup", setup)
+        set("session", LobbySession())
+        set("userId", "host")
+        set("seatSources", arrayListOf(0, 1, 3))
+        val latest = LobbyRoom().apply {
+            state = "WAITING"
+            seats = ArrayList((0..2).map { LobbySeat().apply { seatId = it } })
+        }
+
+        MultiplayerLobbyScreen::class.java.getDeclaredMethod("accept", LobbyRoom::class.java, Boolean::class.javaPrimitiveType)
+            .apply { isAccessible = true }.invoke(screen, latest, true)
+
+        assertEquals(listOf(0, 1, 2), MultiplayerLobbyScreen::class.java.getDeclaredField("seatSources")
+            .apply { isAccessible = true }.get(screen))
+        assertSame(setup, screen.gameSetupInfo)
+        assertEquals(424242L, screen.gameSetupInfo.mapParameters.seed)
+    }
+
+    @Test fun repeatedLastSeatRemovalDoesNotUseItsOldIndex() {
+        val room = removalRoom()
+        val seat = room.seats[2]
+        assertTrue(removeSeat(room, seat))
+        assertFalse(removeSeat(room, seat))
+        assertEquals(2, screen.gameSetupInfo.gameParameters.players.size)
+    }
+
+    @Test fun acknowledgedMiddleSeatRemovalCannotRemoveTheReindexedSeat() {
+        val room = removalRoom()
+        val seat = room.seats[1]
+        assertTrue(removeSeat(room, seat))
+        val latest = LobbyRoom().apply {
+            state = "WAITING"
+            configurationVersion = room.configurationVersion + 1
+            seats = arrayListOf(room.seats[0], LobbySeat().apply {
+                seatId = 1; civilization = "Denmark"
+            })
+        }
+        MultiplayerLobbyScreen::class.java.getDeclaredMethod("accept", LobbyRoom::class.java, Boolean::class.javaPrimitiveType)
+            .apply { isAccessible = true }.invoke(screen, latest, true)
+
+        assertFalse(removeSeat(room, seat))
+        assertEquals(listOf("Rome", "Denmark"), screen.gameSetupInfo.gameParameters.players.map { it.chosenCiv })
+    }
+
+    @Test fun seatRemovalWaitsForTheCurrentConfigurationRequest() {
+        val room = removalRoom()
+        for (field in listOf("busy", "configurationPending")) {
+            set(field, true)
+            assertFalse(removeSeat(room, room.seats[2]))
+            set(field, false)
+        }
+        set("connected", false)
+        assertFalse(removeSeat(room, room.seats[2]))
+        assertEquals(3, screen.gameSetupInfo.gameParameters.players.size)
+    }
+
+    private fun removalRoom(): LobbyRoom {
+        val room = LobbyRoom().apply {
+            state = "WAITING"
+            configurationVersion = 8
+            seats = ArrayList(listOf("Rome", "Random", "Denmark").mapIndexed { index, civ ->
+                LobbySeat().apply { seatId = index; civilization = civ }
+            })
+        }
+        set("room", room)
+        set("session", LobbySession())
+        set("setup", GameSetupInfo().apply {
+            gameParameters.players = ArrayList(room.seats.map { Player(it.civilization) })
+        })
+        set("seatSources", arrayListOf(0, 1, 2))
+        return room
+    }
+
+    private fun removeSeat(room: LobbyRoom, seat: LobbySeat): Boolean =
+        MultiplayerLobbyScreen::class.java.getDeclaredMethod("removeSeat", LobbyRoom::class.java, LobbySeat::class.java)
+            .apply { isAccessible = true }.invoke(screen, room, seat) as Boolean
 
     @Test fun newDeadlineCancelsThePreviousScheduledCallback() {
         val callbacks = ArrayDeque<Runnable>()

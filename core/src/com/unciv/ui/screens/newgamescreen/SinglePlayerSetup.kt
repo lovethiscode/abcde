@@ -22,7 +22,7 @@ import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.screens.basescreen.BaseScreen
 
-/** Compact forms used only by the iOS single-player setup. */
+/** Compact forms for the iOS game setup screens. */
 internal object SinglePlayerSetup {
     fun surface(color: Color = ExpeditionBlueTheme.raised, outline: Color = ExpeditionBlueTheme.border): BaseDrawable {
         val fill = BaseScreen.skinStrings.getUiBackground("SinglePlayerSetup/Surface", BaseScreen.skinStrings.roundedEdgeRectangleSmallShape, color)

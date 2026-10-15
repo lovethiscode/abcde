@@ -75,6 +75,17 @@ class LobbyHubTest {
         val result = issue(peer,message(room,peer.socket.playerId,"ready").apply { command!!.ready = true })
         assertEquals("",result.code)
     }
+    @Test fun removedMemberResumeReturnsTerminalMembershipFailure() = runBlocking {
+        val room = create()
+        val guest = UUID.randomUUID().toString()
+        val joined = service.command(room.gameId,"join",command(room,guest))
+        service.command(room.gameId,"leave",command(joined,guest))
+        val peer = Peer()
+        val result = issue(peer,message(joined,guest,"resume"))
+        assertEquals("MEMBERSHIP_EXPIRED",result.code)
+        assertEquals("",peer.socket.gameId)
+        assertEquals("",service.find(room.gameId)!!.seats[1].playerId)
+    }
     private suspend fun reply(peer: Peer) {
         val check = next(peer) { it.type == "check" }
         hub.handle(peer.socket,LobbyMessage().apply { type = "checkReply"; gameId = peer.socket.gameId; checkId = check.checkId })
@@ -221,6 +232,29 @@ class LobbyHubTest {
         assertEquals(guest,service.maintain(room.gameId).seats[1].playerId)
         now++
         assertEquals("",service.maintain(room.gameId).seats[1].playerId)
+    }
+    @Test fun rejectedCommandStillBroadcastsCommittedMemberExpiry() = runBlocking {
+        val room = create(3); val h = connect(room,host)
+        val stale = connect(room,UUID.randomUUID().toString(),true)
+        val live = connect(room,UUID.randomUUID().toString(),true)
+        val joined = service.find(room.gameId)!!
+        hub.detach(stale.socket)
+        now += 5 * 60_000L - 1
+        for (peer in listOf(h,live)) hub.handle(peer.socket,message(joined,peer.socket.playerId,"heartbeat"))
+        hub.maintain()
+        now += 2
+        for (peer in listOf(h,live)) hub.handle(peer.socket,message(joined,peer.socket.playerId,"heartbeat"))
+        val offsets = listOf(h,live).associateWith { it.history.size }
+        val request = message(service.find(room.gameId)!!,live.socket.playerId,"ready").apply {
+            command!!.seatRevision += 99; command!!.ready = true
+        }
+        assertEquals("COMMAND_FAILED",issue(live,request).code)
+        assertEquals("",service.find(room.gameId)!!.seats[1].playerId)
+        for (peer in listOf(h,live)) {
+            val snapshot = peer.history.drop(offsets.getValue(peer)).last { it.type == "snapshot" }.room!!
+            assertEquals("",snapshot.seats[1].playerId)
+            assertEquals("Random",snapshot.seats[1].civilization)
+        }
     }
     @Test fun connectionTimeoutUsesLastSignalInsteadOfExtendingRetentionToDetectionTime() = runBlocking {
         val room = create(); connect(room,host)

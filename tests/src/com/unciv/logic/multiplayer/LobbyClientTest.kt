@@ -129,7 +129,8 @@ class LobbyClientTest {
         withTimeout(2_000) { ended.await() }
         delay(100); assertEquals(1,socket.urls.size); assertNull(LobbySession.current())
         assertEquals(0,socket.requests.count { it.action == "join" })
-        session.occupancy = ""; session.save()
+        assertEquals("",session.occupancy)
+        session.save()
         socket.reply = { request ->
             assertEquals("join",request.action)
             assertEquals("",request.command!!.occupancy)

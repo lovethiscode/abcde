@@ -69,16 +69,21 @@ internal class NationPickerPopup(
     }
 
     private val councilScreen = (playerPicker?.previousScreen as? NewGameScreen)?.takeIf { UiNavigation.isIos }
+    private val councilLobby = (screen as? com.unciv.ui.screens.multiplayerscreens.MultiplayerLobbyScreen)?.takeIf { UiNavigation.isIos }
+    private val councilStyle = councilScreen != null || councilLobby != null
+    private val councilFont get() = councilScreen?.formFont ?: councilLobby!!.formFont
+    private fun councilHeading(text: String, size: Int) =
+        councilScreen?.councilHeading(text,size) ?: councilLobby!!.councilHeading(text,size)
     private val councilWidth = (stageToShowOn.width * .76f - 50f).coerceAtMost(1000f)
     private val settings = GUI.getSettings()
 
     // This Popup's body has two halves of same size, either side by side or arranged vertically
     // depending on screen proportions - determine height for one of those
-    private val partHeight = if (councilScreen != null) (stageToShowOn.height * .84f - 140f).coerceAtLeast(140f)
+    private val partHeight = if (councilStyle) (stageToShowOn.height * .84f - 140f).coerceAtLeast(140f)
         else stageToShowOn.height * (if (stageToShowOn.isNarrowerThan4to3()) 0.45f else 0.8f)
-    private val civBlocksWidth = if (councilScreen != null) councilWidth * .34f
+    private val civBlocksWidth = if (councilStyle) councilWidth * .34f
         else playerPicker?.civBlocksWidth ?: minOf(300f, stageToShowOn.width * 0.43f)
-    private val detailsWidth = if (councilScreen != null) councilWidth * .66f else civBlocksWidth
+    private val detailsWidth = if (councilStyle) councilWidth * .66f else civBlocksWidth
 
     private val nationListTable = Table()
     private val nationListScroll = AutoScrollPane(nationListTable)
@@ -91,7 +96,7 @@ internal class NationPickerPopup(
         val widget: Container<Portrait>? = null,  // null = unused in List mode
         val row: Table? = null
     )
-    private var listMode: NationPickerListMode = if (councilScreen != null) NationPickerListMode.List else settings.nationPickerListMode
+    private var listMode: NationPickerListMode = if (councilStyle) NationPickerListMode.List else settings.nationPickerListMode
     private var selection: SelectInfo? = null
     private val keySelectMap = mutableMapOf<Char, MutableList<SelectInfo>>()
     private var lastKeyPressed = Char.MIN_VALUE
@@ -99,14 +104,14 @@ internal class NationPickerPopup(
 
     init {
         nationListScroll.setOverscroll(false, false)
-        if (councilScreen != null) {
+        if (councilStyle) {
             innerTable.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel, ExpeditionBlueTheme.controlBorder)
             addTitleWithCloseButton(Table().apply {
                 add(ImageGetter.getImage("OtherIcons/Cities", ExpeditionBlueTheme.gold)).size(24f).padRight(10f)
-                add(councilScreen.councilHeading("Choose civilization", 26))
+                add(councilHeading("Choose civilization", 26))
             })
         }
-        add(nationListScroll).size(civBlocksWidth + 10f, partHeight).padRight(if (councilScreen != null) 12f else 0f)
+        add(nationListScroll).size(civBlocksWidth + 10f, partHeight).padRight(if (councilStyle) 12f else 0f)
         // +10, because the nation table has a 5f pad, for a total of +10f
         if (stageToShowOn.isNarrowerThan4to3()) row()
         nationDetailsScroll.setOverscroll(false, false)
@@ -118,7 +123,7 @@ internal class NationPickerPopup(
         addActionIcons()
 
         nationDetailsTable.touchable = Touchable.enabled
-        if (councilScreen == null) nationDetailsTable.onClick { returnSelected() }
+        if (!councilStyle) nationDetailsTable.onClick { returnSelected() }
     }
 
     /** Note - [newMode]==null toggles, but this is prepared for key shortcuts _setting_ a mode.
@@ -139,15 +144,15 @@ internal class NationPickerPopup(
         toImageButton(buttonsIconSize, buttonsCircleSize, buttonsBackColor, overColor)
 
     private fun addActionIcons() {
-        if (councilScreen != null) {
+        if (councilStyle) {
             bottomTable.add().growX()
             val cancel = addCloseButton("Cancel").width(140f).minHeight(44f).actor
             cancel.name = "setup-civ-cancel"
-            SinglePlayerSetup.style(cancel, councilScreen.formFont)
+            SinglePlayerSetup.style(cancel, councilFont)
             val confirm = addButton("Confirm selection", KeyCharAndCode.RETURN) { returnSelected() }
                 .width(160f).minHeight(44f).actor
             confirm.name = "setup-civ-confirm"
-            SinglePlayerSetup.style(confirm, councilScreen.formFont)
+            SinglePlayerSetup.style(confirm, councilFont)
             confirm.style = TextButton.TextButtonStyle(confirm.style).apply {
                 up = SinglePlayerSetup.surface(ExpeditionBlueTheme.gold, ExpeditionBlueTheme.gold)
                 fontColor = ExpeditionBlueTheme.primaryInk
@@ -231,7 +236,7 @@ internal class NationPickerPopup(
         // Decide by listMode how each block is built -
         // for each a factory producing an Actor and info on how to select it
         fun getListModeNationActor(element: NationIterationElement): Pair<WidgetGroup, SelectInfo> {
-            val nationTable = if (councilScreen == null) NationTable(element.nation, civBlocksWidth, 0f)
+            val nationTable = if (!councilStyle) NationTable(element.nation, civBlocksWidth, 0f)
                 else Table().apply {
                     background = SinglePlayerSetup.surface()
                     pad(8f, 10f, 8f, 10f)
@@ -243,9 +248,9 @@ internal class NationPickerPopup(
                     }).size(20f)
                 }
             nationTable.name = "setup-nation-${element.nation.name}"
-            val currentSelectInfo = SelectInfo(element.nation, currentY, row = if (councilScreen == null) null else nationTable)
+            val currentSelectInfo = SelectInfo(element.nation, currentY, row = if (!councilStyle) null else nationTable)
             val cell = nationListTable.add(nationTable).width(civBlocksWidth)
-            if (councilScreen != null) cell.minHeight(54f).padBottom(8f)
+            if (councilStyle) cell.minHeight(54f).padBottom(8f)
             currentY += cell.padBottom + cell.prefHeight + cell.padTop
             cell.row()
             return nationTable to currentSelectInfo
@@ -287,7 +292,7 @@ internal class NationPickerPopup(
                     highlightNation(currentSelectInfo)
                 }
             }
-            if (councilScreen == null) nationActor.onDoubleClick {
+            if (!councilStyle) nationActor.onDoubleClick {
                 selection = currentSelectInfo
                 returnSelected()
             }
@@ -326,7 +331,7 @@ internal class NationPickerPopup(
                 yield(NationIterationElement(random))
             }
             val spectator = ruleset.nations[Constants.spectator]
-            if (councilScreen == null && submit == null && spectator != null && player.playerType != PlayerType.AI)  // only humans can spectate, sorry robots
+            if (!councilStyle && submit == null && spectator != null && player.playerType != PlayerType.AI)  // only humans can spectate, sorry robots
                 yield(NationIterationElement(spectator))
         }
         // Then what PlayerPickerTable says we should display - see its doc
@@ -334,10 +339,10 @@ internal class NationPickerPopup(
             .map { NationIterationElement(it) }
         // Combine and Sort
         val sorted = part2.sortedWith(compareBy<NationIterationElement> {
-            if (councilScreen != null && it.nation.name == initialCiv) 0 else 1
+            if (councilStyle && it.nation.name == initialCiv) 0 else 1
         }.thenBy(UncivGame.Current.settings.getCollatorFromLocale()) { it.translatedName })
         val spectator = ruleset.nations[Constants.spectator]
-        return part1 + sorted + if (councilScreen != null && submit == null && spectator != null && player.playerType != PlayerType.AI)
+        return part1 + sorted + if (councilStyle && submit == null && spectator != null && player.playerType != PlayerType.AI)
             sequenceOf(NationIterationElement(spectator)) else emptySequence()
     }
 
@@ -357,7 +362,7 @@ internal class NationPickerPopup(
         }
 
         nationDetailsTable.clearChildren()  // .clear() also clears listeners!
-        if (councilScreen == null) nationDetailsTable.add(NationTable(selectInfo.nation, civBlocksWidth, partHeight, ruleset))
+        if (!councilStyle) nationDetailsTable.add(NationTable(selectInfo.nation, civBlocksWidth, partHeight, ruleset))
         else {
             selection?.row?.apply {
                 background = SinglePlayerSetup.surface()
@@ -403,7 +408,7 @@ internal class NationPickerPopup(
             add(banner).size(128f, 104f).top().padRight(18f)
             add(Table().apply {
                 val introWidth = textWidth - 146f
-                add(councilScreen!!.councilHeading(nation.name, 28).apply { color = ExpeditionBlueTheme.gold }).left().growX().row()
+                add(councilHeading(nation.name, 28).apply { color = ExpeditionBlueTheme.gold }).left().growX().row()
                 if (nation.leaderName.isNotEmpty())
                     add(text("{Leader}: {${nation.leaderName}}", introWidth)).width(introWidth).left().padTop(4f).row()
                 if (nation.startIntroPart1.isNotEmpty()) {

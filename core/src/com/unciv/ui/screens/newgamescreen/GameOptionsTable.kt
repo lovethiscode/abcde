@@ -52,7 +52,8 @@ class GameOptionsTable(
     private val forInviteRoom: Boolean = false,
     private val onConfigurationChanged: (() -> Unit)? = null,
     private val roomLayoutWidth: Float? = null,
-    private val directLayoutWidth: Float? = null
+    private val directLayoutWidth: Float? = null,
+    private val directLayoutFont: com.badlogic.gdx.graphics.g2d.BitmapFont? = null
 ) : Table(BaseScreen.skin) {
     private var gameParameters = previousScreen.gameSetupInfo.gameParameters
     private var ruleset = previousScreen.ruleset
@@ -83,7 +84,7 @@ class GameOptionsTable(
     }
 
     fun update() {
-        clear()
+        clearChildren()
 
         // Mods may have changed (e.g. custom map selection)
         modCheckboxes.updateSelection()
@@ -167,6 +168,7 @@ class GameOptionsTable(
     }
 
     private fun buildDirectLayout(width: Float) {
+        val font = directLayoutFont ?: (previousScreen as NewGameScreen).formFont
         background = null
         defaults().pad(0f)
         val fields = createOverviewFields().toMutableList()
@@ -189,10 +191,13 @@ class GameOptionsTable(
             add(SinglePlayerSetup.group(title, width, "Rules.$id", opened) { table ->
                 table.defaults().left().growX().minHeight(44f).padBottom(8f)
                 table.build()
-                SinglePlayerSetup.style(table, (previousScreen as NewGameScreen).formFont)
+                SinglePlayerSetup.style(table, font)
             }).width(width).padTop(8f).row()
         }
         group("Advanced Settings", "Advanced", gameParameters.enableRandomNationsPool) {
+            if (forInviteRoom) createBaseRulesetSelector()?.let {
+                add(SinglePlayerSetup.field("Base Ruleset",it,width - 24f)).colspan(2).growX().row()
+            }
             for (victory in ruleset.selectableVictories().filter { it.enablesMaxTurns() })
                 add(victory.name.toCheckBox(victory.name in gameParameters.victoryTypes) {
                     if (it) gameParameters.victoryTypes.add(victory.name) else gameParameters.victoryTypes.remove(victory.name)
@@ -201,11 +206,21 @@ class GameOptionsTable(
             addMaxTurnsSlider()?.let { add(it).colspan(2).minWidth(0f).growX().row() }
             addAdvancedSettings(this)
             if (gameParameters.randomNumberOfPlayers) addMinMaxPlayersSliders()
+            if (forInviteRoom) add(Table().apply {
+                defaults().left().growX().minHeight(44f).padBottom(8f)
+                addAnyoneCanSpectateCheckbox()
+                addDurationSelectBox("Time until skip turn:", GameParameters::minutesUntilSkipTurn, 1, 0, 0)
+                addDurationSelectBox("Total time to play:", GameParameters::minutesUntilForceResign, 3, 0, 0)
+                addDurationSelectBox("Time recovered per turn:", GameParameters::minutesRecoveredPerTurn, 3, 0, 0)
+            }).colspan(2).minWidth(0f).growX().row()
         }
-        if (modCheckboxes.children.size == 0)
-            group("Extension mods", "Mods") { add("No mods installed".toLabel().apply { wrap = true }).growX().row() }
+        if (forInviteRoom || modCheckboxes.children.size == 0)
+            group("Extension mods", "Mods") {
+                add((if (forInviteRoom) "Rooms require generated maps without mods" else "No mods installed")
+                    .toLabel().apply { wrap = true }).growX().row()
+            }
         else add(modCheckboxes).width(width).padTop(8f).row()
-        SinglePlayerSetup.style(this, (previousScreen as NewGameScreen).formFont)
+        SinglePlayerSetup.style(this, font)
     }
 
     private fun addAdvancedSettings(it: Table) {
@@ -649,9 +664,9 @@ class GameOptionsTable(
         defaultMinuteValue: Int
     ) {
         add(title.toLabel(hideIcons = true)).left()
-        if (roomLayoutWidth != null) getCell(children.peek()).colspan(3).row()
+        if (roomLayoutWidth != null || directLayoutWidth != null) getCell(children.peek()).colspan(3).row()
         val minutes = param.get(gameParameters)
-        val selector = if (roomLayoutWidth == null)
+        val selector = if (roomLayoutWidth == null && directLayoutWidth == null)
             DurationSelector(gameParameters, param, defaultDayValue, defaultHourValue, defaultMinuteValue)
         else DurationSelector(gameParameters, param, minutes / 1440, minutes % 1440 / 60, minutes % 60)
 
