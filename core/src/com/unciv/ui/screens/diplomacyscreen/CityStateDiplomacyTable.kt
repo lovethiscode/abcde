@@ -43,10 +43,28 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
 
         diplomacyTable.addSeparator()
 
+        for (button in getDiplomacyActions(otherCiv)) diplomacyTable.add(button).row()
+
+        for (assignedQuest in otherCiv.questManager.getAssignedQuestsFor(viewingCiv)) {
+            diplomacyTable.addSeparator()
+            diplomacyTable.add(getQuestTable(assignedQuest)).row()
+        }
+
+        for (target in otherCiv.getKnownCivs().filter { otherCiv.questManager.isWarWithMajorActive(it) && viewingCiv != it }) {
+            diplomacyTable.addSeparator()
+            diplomacyTable.add(getWarWithMajorTable(target, otherCiv)).row()
+        }
+
+        return diplomacyTable
+    }
+
+
+    internal fun getDiplomacyActions(otherCiv: Civilization): List<TextButton> {
+        val otherCivDiplomacyManager = otherCiv.getDiplomacyManager(viewingCiv)!!
+        val diplomacyTable = Table()
         val giveGiftButton = "Give a Gift".toTextButton()
         giveGiftButton.onClick {
-            diplomacyScreen.rightSideTable.clear()
-            diplomacyScreen.rightSideTable.add(ScrollPane(getGoldGiftTable(otherCiv)))
+            diplomacyScreen.showSubPage(otherCiv, getGoldGiftTable(otherCiv), "gift")
         }
         diplomacyTable.add(giveGiftButton).row()
         if (diplomacyScreen.isNotPlayersTurn() || viewingCiv.isAtWarWith(otherCiv)) giveGiftButton.disable()
@@ -61,8 +79,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
 
         val demandTributeButton = "Demand Tribute".toTextButton()
         demandTributeButton.onClick {
-            diplomacyScreen.rightSideTable.clear()
-            diplomacyScreen.rightSideTable.add(ScrollPane(getDemandTributeTable(otherCiv)))
+            diplomacyScreen.showSubPage(otherCiv, getDemandTributeTable(otherCiv), "tribute")
         }
         diplomacyTable.add(demandTributeButton).row()
         if (diplomacyScreen.isNotPlayersTurn() || viewingCiv.isAtWarWith(otherCiv)) demandTributeButton.disable()
@@ -80,19 +97,13 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         val diplomaticMarriageButton = getDiplomaticMarriageButton(otherCiv)
         if (diplomaticMarriageButton != null) diplomacyTable.add(diplomaticMarriageButton).row()
 
-        for (assignedQuest in otherCiv.questManager.getAssignedQuestsFor(viewingCiv)) {
-            diplomacyTable.addSeparator()
-            diplomacyTable.add(getQuestTable(assignedQuest)).row()
-        }
-
-        for (target in otherCiv.getKnownCivs().filter { otherCiv.questManager.isWarWithMajorActive(it) && viewingCiv != it }) {
-            diplomacyTable.addSeparator()
-            diplomacyTable.add(getWarWithMajorTable(target, otherCiv)).row()
-        }
-
-        return diplomacyTable
+        return diplomacyTable.children.filterIsInstance<TextButton>().toList()
     }
 
+    internal fun getQuests(otherCiv: Civilization): List<Table> =
+        otherCiv.questManager.getAssignedQuestsFor(viewingCiv).map { getQuestTable(it) }.toList() +
+        otherCiv.getKnownCivs().filter { otherCiv.questManager.isWarWithMajorActive(it) && viewingCiv != it }
+            .map { getWarWithMajorTable(it, otherCiv) }.toList()
 
     private fun getCityStateDiplomacyTableHeader(otherCiv: Civilization): Table {
         val otherCivDiplomacyManager = otherCiv.getDiplomacyManager(viewingCiv)!!
@@ -304,8 +315,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
 
         val improveTileButton = "Gift Improvement".toTextButton()
         improveTileButton.onClick {
-            diplomacyScreen.rightSideTable.clear()
-            diplomacyScreen.rightSideTable.add(ScrollPane(getImprovementGiftTable(otherCiv)))
+            diplomacyScreen.showSubPage(otherCiv, getImprovementGiftTable(otherCiv), "improvement")
         }
 
 
@@ -332,9 +342,9 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         return diplomaticMarriageButton
     }
 
-    private fun getGoldGiftTable(otherCiv: Civilization): Table {
+    internal fun getGoldGiftTable(otherCiv: Civilization): Table {
         diplomacyScreen.subPageCiv = otherCiv
-        val diplomacyTable = getCityStateDiplomacyTableHeader(otherCiv)
+        val diplomacyTable = if (diplomacyScreen.usesAdaptiveLayout) Table() else getCityStateDiplomacyTableHeader(otherCiv)
         diplomacyTable.addSeparator()
 
         for (giftAmount in listOf(250, 500, 1000)) {
@@ -342,9 +352,15 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             val giftButton =
                 "Gift [$giftAmount] gold (+[$influenceAmount] influence)".toTextButton()
             giftButton.onClick {
-                otherCiv.cityStateFunctions.receiveGoldGift(viewingCiv, giftAmount)
-                diplomacyScreen.updateLeftSideTable(otherCiv)
-                diplomacyScreen.updateRightSide(otherCiv)
+                fun give() {
+                    if (diplomacyScreen.isNotPlayersTurn() || viewingCiv.gold < giftAmount) return
+                    otherCiv.cityStateFunctions.receiveGoldGift(viewingCiv, giftAmount)
+                    diplomacyScreen.updateLeftSideTable(otherCiv)
+                    diplomacyScreen.updateRightSide(otherCiv)
+                }
+                if (diplomacyScreen.usesAdaptiveLayout)
+                    ConfirmPopup(diplomacyScreen, "{${otherCiv.civName}}\n{Gift [$giftAmount] gold (+[$influenceAmount] influence)}", "Give a Gift") { give() }.open()
+                else give()
             }
             diplomacyTable.add(giftButton).row()
             if (viewingCiv.gold < giftAmount || diplomacyScreen.isNotPlayersTurn()) giftButton.disable()
@@ -352,8 +368,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
 
         val backButton = "Back".toTextButton()
         backButton.onClick {
-            diplomacyScreen.rightSideTable.clear()
-            diplomacyScreen.rightSideTable.add(ScrollPane(getCityStateDiplomacyTable(otherCiv)))
+            diplomacyScreen.updateRightSide(otherCiv)
         }
         if (!UiNavigation.isIos) diplomacyTable.add(backButton)
         return diplomacyTable
@@ -366,9 +381,9 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             (it.improvement == null || !resource.isImprovedBy(it.improvement!!))
     }
 
-    private fun getImprovementGiftTable(otherCiv: Civilization): Table {
+    internal fun getImprovementGiftTable(otherCiv: Civilization): Table {
         diplomacyScreen.subPageCiv = otherCiv
-        val improvementGiftTable = getCityStateDiplomacyTableHeader(otherCiv)
+        val improvementGiftTable = if (diplomacyScreen.usesAdaptiveLayout) Table() else getCityStateDiplomacyTableHeader(otherCiv)
         improvementGiftTable.addSeparator()
 
         val improvableResourceTiles = getImprovableResourceTiles(otherCiv)
@@ -387,8 +402,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
                         improvableTile.stopWorkingOnImprovement()
                         improvableTile.setImprovement(tileImprovement, otherCiv)
                         otherCiv.cache.updateCivResources()
-                        diplomacyScreen.rightSideTable.clear()
-                        diplomacyScreen.rightSideTable.add(ScrollPane(getCityStateDiplomacyTable(otherCiv)))
+                        diplomacyScreen.updateRightSide(otherCiv)
                     }
                     if (viewingCiv.gold < 200)
                         improveTileButton.disable()
@@ -399,17 +413,16 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
 
         val backButton = "Back".toTextButton()
         backButton.onClick {
-            diplomacyScreen.rightSideTable.clear()
-            diplomacyScreen.rightSideTable.add(ScrollPane(getCityStateDiplomacyTable(otherCiv)))
+            diplomacyScreen.updateRightSide(otherCiv)
         }
         if (!UiNavigation.isIos) improvementGiftTable.add(backButton)
         return improvementGiftTable
 
     }
 
-    private fun getDemandTributeTable(otherCiv: Civilization): Table {
+    internal fun getDemandTributeTable(otherCiv: Civilization): Table {
         diplomacyScreen.subPageCiv = otherCiv
-        val diplomacyTable = getCityStateDiplomacyTableHeader(otherCiv)
+        val diplomacyTable = if (diplomacyScreen.usesAdaptiveLayout) Table() else getCityStateDiplomacyTableHeader(otherCiv)
         diplomacyTable.addSeparator()
         diplomacyTable.add("Tribute Willingness".toLabel()).row()
         val modifierTable = Table()
@@ -428,8 +441,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         val demandGoldButton = "Take [${otherCiv.cityStateFunctions.goldGainedByTribute()}] gold (-15 Influence)".toTextButton()
         demandGoldButton.onClick {
             otherCiv.cityStateFunctions.tributeGold(viewingCiv)
-            diplomacyScreen.rightSideTable.clear()
-            diplomacyScreen.rightSideTable.add(ScrollPane(getCityStateDiplomacyTable(otherCiv)))
+            diplomacyScreen.updateRightSide(otherCiv)
         }
         diplomacyTable.add(demandGoldButton).row()
         if (otherCiv.cityStateFunctions.getTributeWillingness(viewingCiv, demandingWorker = false) < 0)   demandGoldButton.disable()
@@ -437,16 +449,14 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         val demandWorkerButton = "Take worker (-50 Influence)".toTextButton()
         demandWorkerButton.onClick {
             otherCiv.cityStateFunctions.tributeWorker(viewingCiv)
-            diplomacyScreen.rightSideTable.clear()
-            diplomacyScreen.rightSideTable.add(ScrollPane(getCityStateDiplomacyTable(otherCiv)))
+            diplomacyScreen.updateRightSide(otherCiv)
         }
         diplomacyTable.add(demandWorkerButton).row()
         if (otherCiv.cityStateFunctions.getTributeWillingness(viewingCiv, demandingWorker = true) < 0)    demandWorkerButton.disable()
 
         val backButton = "Back".toTextButton()
         backButton.onClick {
-            diplomacyScreen.rightSideTable.clear()
-            diplomacyScreen.rightSideTable.add(ScrollPane(getCityStateDiplomacyTable(otherCiv)))
+            diplomacyScreen.updateRightSide(otherCiv)
         }
         if (!UiNavigation.isIos) diplomacyTable.add(backButton)
         return diplomacyTable
