@@ -243,8 +243,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         }
         if (secondary.isNotEmpty()) {
             val more = IconTextButton("Show more",
-                BattlefieldGeometry.icon(com.unciv.ui.screens.worldscreen.FacetedHudIcons.action("ShowMore")
-                    ?: ImageGetter.getUnitActionPortrait("ShowMore")), BattlefieldHud.font(12f)).apply {
+                BattlefieldGeometry.icon(ImageGetter.getUnitActionPortrait("ShowMore")), BattlefieldHud.font(12f)).apply {
                 name = "ui-unit-more"
                 BattlefieldGeometry.fitControl(this, flat = true)
                 pad(BattlefieldHud.points(6f))
@@ -346,8 +345,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
     }
 
     private fun getUnitActionButton(unit: MapUnit, unitAction: UiUnitAction): Button {
-        val artwork = com.unciv.ui.screens.worldscreen.FacetedHudIcons.action(unitAction.uiType.name)
-            ?: unitAction.getIcon()
+        val artwork = unitAction.getIcon()
         val icon = if (BattlefieldHud.enabled) BattlefieldGeometry.icon(artwork) else artwork
         // If peripheral keyboard not detected, hotkeys will not be displayed
         val binding = unitAction.uiType.binding

@@ -24,14 +24,7 @@ class MapOverlayToggleButton(
     private val setter: (Boolean) -> Unit
 ) : IconCircleGroup(
     size = iconSize + 2f,
-    actor = ImageGetter.getImage(if (ExpeditionBlueTheme.enabled) when (iconPath) {
-        "TileIcons/MapOverlayToggleMovement" -> "OtherIcons/ArrowRight"
-        "TileIcons/MapOverlayToggleYields" -> "OtherIcons/Score"
-        "TileIcons/MapOverlayToggleWorkedTiles" -> "OtherIcons/Nations"
-        "TileIcons/MapOverlayToggleResources" -> "OtherIcons/Resources"
-        "TileIcons/MapOverlayToggleImprovements" -> "OtherIcons/Improvements"
-        else -> iconPath
-    } else iconPath).apply {
+    actor = ImageGetter.getImage(iconPath).apply {
         setSize(iconSize)
     },
     resizeActor = false
