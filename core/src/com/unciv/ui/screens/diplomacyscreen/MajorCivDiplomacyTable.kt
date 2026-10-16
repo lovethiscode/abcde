@@ -128,6 +128,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         otherCivDiplomacyManager: DiplomacyManager
     ): TextButton {
         val negotiatePeaceButton = "Negotiate Peace".toTextButton()
+        negotiatePeaceButton.name = "ui-negotiate-peace:${otherCiv.civID}"
         negotiatePeaceButton.onClick {
             val tradeTable = diplomacyScreen.setTrade(otherCiv)
             val peaceTreaty = TradeOffer(Constants.peaceTreaty, TradeOfferType.Treaty, speed = viewingCiv.gameInfo.speed)

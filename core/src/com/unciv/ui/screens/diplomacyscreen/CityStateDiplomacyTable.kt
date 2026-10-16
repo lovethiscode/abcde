@@ -260,6 +260,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         otherCivDiplomacyManager: DiplomacyManager
     ): TextButton {
         val peaceButton = "Negotiate Peace".toTextButton()
+        peaceButton.name = "ui-negotiate-peace:${otherCiv.civID}"
         peaceButton.onClick {
             ConfirmPopup(
                 diplomacyScreen,

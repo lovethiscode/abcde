@@ -152,7 +152,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
             else "{Civilization} · {${civ.nation.leaderName}}"
         text.add(ui.label(subtitle, 12, ui.muted, true)).growX().left().padTop(ui.px(5f))
         header.add(text).growX().minWidth(0f)
-        if (!layout.narrow) header.add(ui.label(if (civ.isAtWarWith(player)) "War" else "Peace", 12,
+        header.add(ui.label(if (civ.isAtWarWith(player)) "War" else "Peace", 12,
             if (civ.isAtWarWith(player)) ui.danger else ui.positive)).padLeft(ui.px(8f))
         detail.add(header).growX().pad(ui.px(18f), ui.px(layout.contentPadding), ui.px(14f), ui.px(layout.contentPadding)).row()
     }
@@ -274,13 +274,15 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         val actions = if(civ.isCityState) CityStateDiplomacyTable(screen).getDiplomacyActions(civ)
             else MajorCivDiplomacyTable(screen).getDiplomacyActions(civ)
         if (actions.isEmpty()) return
-        val primary = actions.first()
+        val primary = if (civ.isAtWarWith(player))
+            actions.firstOrNull { it.name?.startsWith("ui-negotiate-peace:") == true } ?: actions.first()
+        else actions.first()
         val secondary = actions.drop(1).firstOrNull { button ->
             listOf("Pledge to protect","Revoke Protection","Demands").any { button.text.toString() == it.tr() }
         }
         val map = actions.firstOrNull { it.name == "ui-diplomacy-map" }
         val bar = Table()
-        bar.add(ui.decorate(primary,true,icon=if(civ.isCityState)DiplomacyIcon.Gift else DiplomacyIcon.Trade)).width(ui.px(if(layout.wide)160f else 116f)).height(ui.px(44f)).padRight(ui.px(8f))
+        bar.add(ui.decorate(primary,true,icon=if(civ.isCityState && !civ.isAtWarWith(player))DiplomacyIcon.Gift else DiplomacyIcon.Trade)).width(ui.px(if(layout.wide)160f else 116f)).height(ui.px(44f)).padRight(ui.px(8f))
         if (secondary != null) bar.add(ui.decorate(secondary)).minWidth(0f).maxWidth(ui.px(130f)).height(ui.px(44f)).padRight(ui.px(8f))
         if (!layout.narrow && layout.detailWidth > 550f && map != null)
             bar.add(ui.decorate(map,ghost=true,icon=DiplomacyIcon.Map)).height(ui.px(44f)).padRight(ui.px(8f))
@@ -305,7 +307,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
     fun showSubPage(civ: Civilization, content: Actor, route: String, scroll: Boolean = true) {
         selected=civ; detail.clearChildren(); shell(); identity(civ)
         val title=when(route){"gift"->"Give a Gift";"tribute"->"Demand Tribute";"improvement"->"Gift Improvement";"demands"->"Demands";"trade"->"Trade";else->"Diplomacy"}
-        detail.add(ui.label(title,18)).left().pad(ui.px(8f),ui.px(18f),ui.px(12f),ui.px(18f)).row()
+        if (route != "trade") detail.add(ui.label(title,18)).left().pad(ui.px(8f),ui.px(18f),ui.px(12f),ui.px(18f)).row()
         if(route!="trade")fitContent(content,detailWidth-ui.px(40f))
         val actor = if(scroll) AutoScrollPane(content).apply { setScrollingDisabled(true,false) } else content
         detail.add(actor).grow().minSize(0f).pad(ui.px(8f),ui.px(18f),ui.px(18f),ui.px(18f)).row()

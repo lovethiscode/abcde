@@ -5,12 +5,14 @@ import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
+import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.screens.basescreen.BaseScreen
 import kotlin.math.roundToInt
 import kotlin.math.atan2
@@ -69,6 +71,27 @@ internal class DiplomacyScreenStyle(private val textScale: Float = 1f) {
             button.add(icon.image(if(primary) ExpeditionBlueTheme.primaryInk else text)).size(px(18f)).padRight(px(8f))
             button.add(button.label).minWidth(0f)
         }
+        button.isDisabled = disabled
+        return button
+    }
+
+    fun decorate(button: IconTextButton): IconTextButton {
+        val disabled = button.isDisabled
+        button.style = Button.ButtonStyle(button.style).apply {
+            up = surface(raised, 8f)
+            down = surface(ExpeditionBlueTheme.hero, 8f)
+            over = down
+            checked = up
+            this.disabled = up
+        }
+        button.label.setFontSize(font(14))
+        button.label.wrap = true
+        button.label.setEllipsis(false)
+        if (disabled) button.label.color = muted
+        else if (button.label.color == Color.WHITE) button.label.color = text
+        button.labelCell.pad(0f).growX().minWidth(0f)
+        button.iconCell.size(if (button.icon == null) 0f else px(18f)).padRight(if (button.icon == null) 0f else px(8f))
+        button.pad(px(8f), px(12f), px(8f), px(12f))
         button.isDisabled = disabled
         return button
     }

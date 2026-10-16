@@ -11,6 +11,7 @@ import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.addSeparator
 import com.unciv.ui.components.extensions.surroundWithCircle
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.popups.AskNumberPopup
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.view.ForeignCivView
@@ -73,17 +74,17 @@ class OfferColumnsTable(
             }
             if (isPortraitMode) {
                 heading("Our items", 2); row()
-                add(ourAvailableOffersTable).grow().colspan(2).row()
+                add(ourAvailableOffersTable).grow().minHeight(ui.px(52f)).colspan(2).row()
                 heading("[${theirCiv.civName}]'s items", 2); row()
-                add(theirAvailableOffersTable).grow().colspan(2).row()
+                add(theirAvailableOffersTable).grow().minHeight(ui.px(52f)).colspan(2).row()
             } else {
                 heading("Our items"); heading("[${theirCiv.civName}]'s items"); row()
-                add(ourAvailableOffersTable).grow()
-                add(theirAvailableOffersTable).grow().row()
+                add(ourAvailableOffersTable).grow().minHeight(ui.px(52f))
+                add(theirAvailableOffersTable).grow().minHeight(ui.px(52f)).row()
             }
             heading("Our trade offer"); heading("[${theirCiv.civName}]'s trade offer"); row()
-            add(ourOffersTable).grow()
-            add(theirOffersTable).grow()
+            add(ourOffersTable).grow().minHeight(ui.px(52f))
+            add(theirOffersTable).grow().minHeight(ui.px(52f))
         } else if (!isPortraitMode) {
             // In landscape, arrange in 4 panels: ours left / theirs right ; items top / offers bottom.
             add("Our items".tr())
@@ -134,11 +135,14 @@ class OfferColumnsTable(
         if (ui != null) {
             fun style(group: Group) {
                 if (group is Table) for (cell in group.cells) {
-                    val button = cell.actor as? TextButton ?: continue
-                    ui.decorate(button)
-                    button.label.setEllipsis(false)
-                    button.label.wrap = true
-                    cell.minHeight(ui.px(44f)).growX().minWidth(0f)
+                    when (val button = cell.actor) {
+                        is IconTextButton -> ui.decorate(button)
+                        is TextButton -> ui.decorate(button).also {
+                            it.label.setEllipsis(false); it.label.wrap = true
+                        }
+                        else -> continue
+                    }
+                    cell.minSize(ui.px(44f)).growX()
                 }
                 for (child in group.children) if (child is Group) style(child)
             }

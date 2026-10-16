@@ -26,7 +26,14 @@ class TradeTable(
 
     private fun retractOffer() {
         tradeView.tryRetractOffer()
-        offerButton.setText(offerTradeText.tr())
+        refreshOfferState()
+    }
+
+    /** Refresh restored drafts without retracting a trade that has already been sent. */
+    internal fun refreshOfferState() {
+        val pending = tradeView.hasPendingOfferFromUs()
+        offerButton.setText(if (pending) "Retract offer".tr() else offerTradeText.tr())
+        offerButton.isEnabled = pending || tradeView.theirStagedOffers().isNotEmpty() || tradeView.ourStagedOffers().isNotEmpty()
     }
 
     init {
@@ -45,8 +52,7 @@ class TradeTable(
         if (tradeView.tryLoadOurPendingOffer())
             offerColumnsTable.update()
 
-        if (tradeView.hasPendingOfferFromUs()) offerButton.setText("Retract offer".tr())
-        else offerButton.apply { isEnabled = false }.setText(offerTradeText.tr())
+        refreshOfferState()
 
         offerButton.onClick {
             if (tradeView.hasPendingOfferFromUs()) {
@@ -83,8 +89,8 @@ class TradeTable(
             ui.decorate(offerButton, primary = true)
             offerButton.label.setEllipsis(false)
             offerButton.label.wrap = true
-            lowerTable.defaults().pad(ui.px(8f))
-            lowerTable.add(offerButton).growX().minWidth(0f).minHeight(ui.px(52f))
+            lowerTable.defaults().pad(ui.px(4f))
+            lowerTable.add(offerButton).growX().minWidth(0f).minHeight(ui.px(44f))
         } else lowerTable.add(offerButton)
 
         lowerTable.pack()

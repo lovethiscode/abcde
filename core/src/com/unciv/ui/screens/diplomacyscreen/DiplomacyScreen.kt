@@ -127,6 +127,7 @@ class DiplomacyScreen(
                 if (selectTrade != null)
                     tradeTable.tradeView.setStagedTrade(selectTrade)
                 tradeTable.offerColumnsTable.update()
+                tradeTable.refreshOfferState()
             } else
                 updateRightSide(initialCiv)
             if (usesAdaptiveLayout && restoredPage != null && restoredPage != "trade") {
