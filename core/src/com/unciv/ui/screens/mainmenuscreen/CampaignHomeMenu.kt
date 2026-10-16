@@ -267,7 +267,8 @@ internal class CampaignHomeMenu(
         val columns = if (width / unit / game.settings.fontSizeMultiplier >= 560f) 2 else 1
         val gap = px(12f)
         val choiceWidth = (width - gap * (columns - 1)) / columns
-        Popup(screen).apply {
+        object : Popup(screen) {
+          init {
             name = "ui-free-play-popup"
             innerTable.background = BaseScreen.skinStrings.getUiBackground("",
                 BaseScreen.skinStrings.roundedEdgeRectangleShape,
@@ -313,8 +314,8 @@ internal class CampaignHomeMenu(
                 KeyboardBinding.StartNewGame, true) { game.pushScreen { NewGameScreen() } })
                 .width(choiceWidth).minHeight(px(104f)).fillY().padTop(if (columns == 1) gap else 0f)
             add(choices).width(width).row()
-            open()
-        }
+          }
+        }.open()
     }
 
     private fun showMultiplayer() {
