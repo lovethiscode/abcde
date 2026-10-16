@@ -224,8 +224,12 @@ class NewGameScreen(
                 add("Game settings summary".toLabel(fontSize = 18))
             }
             bottomTable.clear()
-            if (!stackedLayout) bottomTable.add(summaryTitle).pad(12f)
-            bottomTable.add(pickerPane.descriptionScroll).minWidth(0f).grow()
+            if (stackedLayout) {
+                bottomTable.add(pickerPane.descriptionScroll).minWidth(0f).grow().row()
+            } else {
+                bottomTable.add(summaryTitle).pad(12f)
+                bottomTable.add(pickerPane.descriptionScroll).minWidth(0f).grow()
+            }
             bottomTable.add(rightSideGroup).pad(10f).right()
         } else {
             horizontalGroup.addActor(startGameButton)
