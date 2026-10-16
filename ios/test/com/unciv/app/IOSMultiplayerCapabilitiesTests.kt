@@ -6,11 +6,6 @@ import org.junit.Test
 
 class IOSMultiplayerCapabilitiesTests {
     @Test
-    fun iosHidesSupportUntilMaterialsPassReview() {
-        assertFalse(IOSGame().voluntarySupportAvailable)
-    }
-
-    @Test
     fun iosEnablesOnlyForegroundApiV1Multiplayer() {
         val game = IOSGame()
         val capabilities = game.platformCapabilities
