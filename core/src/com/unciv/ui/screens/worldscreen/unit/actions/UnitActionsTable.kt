@@ -375,6 +375,9 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
             if (ExpeditionBlueTheme.enabled) actionButton.label.color = ExpeditionBlueTheme.gold
             else actionButton.color = Color.GREEN.brighten(0.5f)
 
+        if (BattlefieldHud.enabled && unitAction.uiType == UiUnitActionType.DisbandUnit && unitAction.action != null)
+            actionButton.label.color = ExpeditionBlueTheme.danger
+
         if (BattlefieldHud.enabled && battlefieldWidth > 0f) {
             val gap = BattlefieldHud.points(4f)
             actionButton.setSize((battlefieldWidth - gap * battlefieldColumns) / battlefieldColumns,
