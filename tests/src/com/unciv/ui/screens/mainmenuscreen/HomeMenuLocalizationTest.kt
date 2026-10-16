@@ -39,6 +39,9 @@ class HomeMenuLocalizationTest {
                 assertFalse("$language blank $key", entry!!.value.isBlank())
                 assertEquals("$language duplicate $key", 1, counts[key.getPlaceholderText()])
                 assertFalse("$language unresolved $key", key.tr(hideIcons = true).any { it in "[]{}" })
+                if (language !in listOf("English", "Navajo") && key in listOf(
+                        "Every step opens a new world.", "Build a city. Shape your world.", "Achievements"))
+                    assertNotEquals("$language English placeholder for $key", key, entry.value)
             }
             val turn = "Turn [113]".tr(hideIcons = true).filter { Character.isDigit(it) }
                 .map { Character.digit(it, 10) }.joinToString("")
