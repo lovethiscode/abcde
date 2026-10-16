@@ -14,9 +14,8 @@ import com.unciv.testing.BaseTestRunner
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.text.DateFormat
-import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 @RunWith(BaseTestRunner::class)
 class RefactoredPageLocalizationTest {
@@ -70,19 +69,21 @@ class RefactoredPageLocalizationTest {
         }
     }
 
-    @Test fun chineseSettingsDoNotFallBackToEnglishAndSaveDatesUseTheGameLanguage() {
+    @Test fun chineseSettingsDoNotFallBackToEnglishAndHistoricalSaveDatesStayUnambiguous() {
         useLanguage("Simplified_Chinese")
         assertEquals("按距离循环选择空闲单位", "Cycle idle units by distance".tr(hideIcons = true))
         assertEquals("自动为新城市分配专家", "Auto-assign specialists in new cities".tr(hideIcons = true))
         val previousLocale = Locale.getDefault()
+        val previousTimeZone = TimeZone.getDefault()
         try {
             Locale.setDefault(Locale.US)
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
             useLanguage("German")
             val timestamp = 1_593_561_600_000L
-            assertEquals(DateFormat.getDateInstance(DateFormat.SHORT, Locale.GERMANY).format(Date(timestamp)),
-                compactSaveDate(timestamp))
+            assertEquals("2020-07-01", compactSaveDate(timestamp))
         } finally {
             Locale.setDefault(previousLocale)
+            TimeZone.setDefault(previousTimeZone)
         }
     }
 

@@ -7,15 +7,12 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.utils.Align
-import com.unciv.UncivGame
-import com.unciv.models.metadata.LocaleCode
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.setFontColor
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onDoubleClick
 import com.unciv.ui.components.widgets.AutoScrollPane
-import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -142,7 +139,6 @@ internal fun compactSaveDate(timestamp: Long): String {
     return when {
         sameDay(today) -> "Today [load-game-time]".tr().replace("load-game-time", time)
         sameDay(yesterday) -> "Yesterday [load-game-time]".tr().replace("load-game-time", time)
-        else -> DateFormat.getDateInstance(DateFormat.SHORT,
-            LocaleCode.getLocale(UncivGame.Current.settings.language)).format(Date(timestamp))
+        else -> SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date(timestamp))
     }
 }
