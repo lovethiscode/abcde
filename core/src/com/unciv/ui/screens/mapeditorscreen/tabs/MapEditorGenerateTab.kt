@@ -38,7 +38,7 @@ import com.unciv.utils.Log
 class MapEditorGenerateTab(
     private val editorScreen: MapEditorScreen,
     headerHeight: Float
-): TabbedPager(capacity = 2, maximumHeight = headerHeight) {
+): TabbedPager(capacity = 2, maximumHeight = editorScreen.getToolsHeight() - headerHeight) {
     private val newTab = MapEditorNewMapTab(this)
     private val partialTab = MapEditorGenerateStepsTab(this)
 
@@ -95,13 +95,14 @@ class MapEditorGenerateTab(
         fun freshMapCompleted(generatedMap: TileMap, mapParameters: MapParameters, newRuleset: Ruleset, selectPage: Int) {
             MapEditorScreen.saveDefaultParameters(mapParameters)
             editorScreen.loadMap(generatedMap, newRuleset, selectPage) // also reactivates inputProcessor
-            editorScreen.isDirty = true
+            editorScreen.markUnsaved()
             setButtonsEnabled(true)
         }
         fun stepCompleted(step: MapGeneratorSteps) {
             if (step == MapGeneratorSteps.NaturalWonders) editorScreen.naturalWondersNeedRefresh = true
+            editorScreen.history.reset(editorScreen.tileMap)
             editorScreen.mapHolder.updateTileGroups()
-            editorScreen.isDirty = true
+            editorScreen.markUnsaved()
             setButtonsEnabled(true)
             Gdx.input.inputProcessor = editorScreen.stage
         }

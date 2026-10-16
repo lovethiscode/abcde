@@ -19,6 +19,7 @@ import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.popups
 import com.unciv.ui.screens.basescreen.BaseScreen
+import com.unciv.ui.screens.worldscreen.status.MultiplayerStatusButton
 import kotlin.math.roundToInt
 
 /** B: commands at the left, turn navigation at the right, and an independent combat preview. */
@@ -182,7 +183,6 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         else world.techPolicyAndDiplomacy.setPosition(left, world.topBar.y - gap - world.techPolicyAndDiplomacy.height)
         val leftTop = if (inlineTech == null) world.techPolicyAndDiplomacy.y - gap else world.topBar.y - gap
         val top = if (portrait) leftTop else world.topBar.y - gap
-        world.chatButton.updatePosition()
 
         val status = world.statusButtons
         status.update(false)
@@ -193,6 +193,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
                 BattlefieldGeometry.fitControl(actor)
                 actor.pad(points(6f))
                 for (cell in actor.cells) cell.size(points(20f)).pad(0f)
+                if (actor is MultiplayerStatusButton) actor.fitBattlefield()
                 if (actor is IconTextButton) {
                     actor.label.isVisible = false
                     actor.labelCell.size(0f).pad(0f)
@@ -236,7 +237,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         val rightWidth = minOf(width, points(236f))
         val map = world.minimapWrapper
         map.fitBattlefield(points(76f), points(76f), minOf(width, points(560f)) - gap * 2f,
-            maxOf(touch, top - bottom - status.height - gap * 3f))
+            maxOf(touch, top - bottom - status.height - gap * 3f - if (world.chatButton.isVisible) touch + gap else 0f))
         map.update(world.getGameViewConsideringForOfWar().civView.getCiv())
         layoutTools()
         tools.isVisible = !map.battlefieldExpanded
@@ -244,9 +245,15 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         map.setPosition(if (map.battlefieldExpanded) right - map.width else tools.x - points(4f) - map.width,
             top - map.height)
         allEvents.setBounds(map.x - gap - touch, map.y + (map.height - points(64f)) / 2f, touch, points(64f))
+        world.chatButton.apply {
+            fitBattlefield()
+            setPosition(if (map.battlefieldExpanded) right - touch else allEvents.x - gap - touch,
+                if (map.battlefieldExpanded) map.y - gap - touch else map.y + (map.height - touch) / 2f)
+        }
         tools.toFront()
         map.toFront()
         allEvents.toFront()
+        world.chatButton.toFront()
 
         val battle = world.battleTable
         val battleX = if (portrait) left else contextX + contextWidth + gap

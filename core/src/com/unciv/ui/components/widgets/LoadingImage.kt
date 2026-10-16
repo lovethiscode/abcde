@@ -172,6 +172,24 @@ class LoadingImage(
     override fun getPrefHeight() = size
     override fun getMaxWidth() = size
     override fun getMaxHeight() = size
+
+    // A cell may allocate less than the preferred size (for example the compact map HUD).
+    // Resize the children too; changing only the outer group leaves the original 40-unit icon.
+    override fun layout() {
+        val extent = minOf(width, height)
+        val factor = when {
+            !style.innerSizeFactor.isNaN() -> style.innerSizeFactor
+            style.circleColor == Color.CLEAR -> 1f
+            else -> 0.785f
+        }
+        circle?.apply { setSize(extent); center(this@LoadingImage) }
+        idleIcon?.apply { setSize(extent * factor); center(this@LoadingImage) }
+        loadingIcon.apply {
+            setSize(extent * factor)
+            setOrigin(Align.center)
+            center(this@LoadingImage)
+        }
+    }
     //endregion
 
     override fun dispose() {

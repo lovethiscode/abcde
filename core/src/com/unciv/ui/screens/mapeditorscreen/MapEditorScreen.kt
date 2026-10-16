@@ -68,11 +68,16 @@ import kotlin.time.Duration.Companion.seconds
 //todo See #6694 - allow adding tiles to a map (1 cell all around on hex? world-wrapped hex?? all around on rectangular? top bottom only on world-wrapped??)
 //todo move map copy&paste to save/load??
 
-class MapEditorScreen(map: TileMap? = null) : BaseScreen(), RecreateOnResize {
+class MapEditorScreen(map: TileMap? = null, val history: MapEditorHistory = MapEditorHistory(), private val resumed: Boolean = false) : BaseScreen(), RecreateOnResize {
     /** The map being edited, with mod list for that map */
     var tileMap: TileMap
     /** Flag indicating the map should be saved */
+    @Volatile private var editRevision = 0L
     var isDirty = false
+        set(value) { field = value; if (value) editRevision++ }
+    lateinit var chrome: MapEditorChrome
+        private set
+    val canDraw get() = ::chrome.isInitialized && chrome.mode == MapEditorChrome.Mode.Draw && tabs.activePage == 2
 
     /** The parameters to use for new maps, and the UI-shown mod list (which can be applied to the active map) */
     val newMapParameters = getDefaultParameters()
@@ -118,11 +123,14 @@ class MapEditorScreen(map: TileMap? = null) : BaseScreen(), RecreateOnResize {
         descriptionTextField.onChange { isDirty = true }
 
         tabs = MapEditorMainTabs(this)
-        MapEditorToolsDrawer(tabs, stage, mapHolder)
-        if (UiNavigation.isIos) stage.addActor(UiNavigation.backButton().apply {
-            onActivation { closeEditor() }
-            setPosition(10f, this@MapEditorScreen.stage.height - 10f, Align.topLeft)
-        })
+        chrome = MapEditorChrome(this)
+        stage.addActor(chrome)
+        installCanvasGestures()
+        if (!resumed) history.reset(tileMap)
+        globalShortcuts.add(KeyCharAndCode.ctrl('z')) { undo() }
+        globalShortcuts.add(KeyCharAndCode.ctrl('y')) { redo() }
+        for ((key, page) in listOf('s' to 4, 'l' to 3, 'e' to 2, 'o' to 6, 'd' to 5, 'i' to 0))
+            globalShortcuts.add(KeyCharAndCode.ctrl(key)) { tabs.selectPage(page) }
 
         // The top level pager assigns its own key bindings, but making nested TabbedPagers bind keys
         // so all levels select to show the tab in question is too complex. Sub-Tabs need to maintain
@@ -135,21 +143,90 @@ class MapEditorScreen(map: TileMap? = null) : BaseScreen(), RecreateOnResize {
         startMapAutosaveLoop()
     }
 
+    /** Own the canvas gesture at stage capture level; palette scroll gestures keep their own focus. */
+    private fun installCanvasGestures() {
+        stage.addCaptureListener(object : com.badlogic.gdx.scenes.scene2d.InputListener() {
+            private val pointers = mutableSetOf<Int>()
+            private var primary: Int? = null
+            private var startX = 0f
+            private var startY = 0f
+            private var lastX = 0f
+            private var lastY = 0f
+            private var dragging = false
+            private var multiTouch = false
+            override fun touchDown(event: com.badlogic.gdx.scenes.scene2d.InputEvent, x: Float, y: Float, pointer: Int, button: Int): Boolean {
+                if (!event.target.isDescendantOf(mapHolder)) return false
+                pointers.add(pointer)
+                if (primary == null) {
+                    multiTouch = false
+                    primary = pointer; startX = x; startY = y; lastX = x; lastY = y; dragging = false
+                }
+                if (pointers.size > 1) multiTouch = true
+                return true
+            }
+            override fun touchDragged(event: com.badlogic.gdx.scenes.scene2d.InputEvent, x: Float, y: Float, pointer: Int) {
+                if (pointer != primary || multiTouch || mapHolder.isZooming()) return
+                if (!dragging && kotlin.math.abs(x-startX) + kotlin.math.abs(y-startY) <= 8f) return
+                if (!dragging) startDrag()
+                applyDrag(x, y)
+                event.stop()
+            }
+            private fun startDrag() {
+                dragging = true
+                if (canDraw) { beginEdit(); tabs.edit.beginStroke() }
+                stage.cancelTouchFocusExcept(this, stage.root)
+            }
+            private fun applyDrag(x: Float, y: Float) {
+                if (canDraw) {
+                    // Coalesced iOS input can skip intermediate move events. Fill the segment
+                    // and apply each tile once, including overlapping wide brushes.
+                    val dx = x-lastX; val dy = y-lastY
+                    val steps = (maxOf(kotlin.math.abs(dx), kotlin.math.abs(dy)) / (6f*mapHolder.scaleX)).toInt().coerceIn(1, 4096)
+                    for (step in 0..steps) {
+                        val position = mapHolder.actor?.stageToLocalCoordinates(com.badlogic.gdx.math.Vector2(lastX+dx*step/steps, lastY+dy*step/steps))
+                        val tile = position?.let { mapHolder.getClosestTileTo(it) }
+                        if (tile != null) tabs.edit.paintTilesWithBrush(tile)
+                    }
+                } else {
+                    mapHolder.scrollX -= (x-lastX) / mapHolder.scaleX
+                    mapHolder.scrollY += (y-lastY) / mapHolder.scaleY
+                    mapHolder.updateVisualScroll()
+                }
+                lastX = x; lastY = y
+            }
+            override fun touchUp(event: com.badlogic.gdx.scenes.scene2d.InputEvent, x: Float, y: Float, pointer: Int, button: Int) {
+                pointers.remove(pointer)
+                if (pointer != primary) return
+                Log.debug("Map editor gesture release: moved=%s dragging=%s multi=%s", kotlin.math.abs(x-startX)+kotlin.math.abs(y-startY), dragging, multiTouch)
+                if (!multiTouch && !event.isTouchFocusCancel && kotlin.math.abs(x-startX)+kotlin.math.abs(y-startY) > 8f) {
+                    if (!dragging) startDrag()
+                    applyDrag(x, y)
+                }
+                if (dragging && canDraw) {
+                    mapHolder.setTransients(); mapHolder.updateTileGroups(); tabs.edit.endStroke(); commitEdit()
+                }
+                primary = null; dragging = false
+            }
+        })
+    }
+
     private fun startMapAutosaveLoop() {
         startBackgroundJob("MapEditorAutosaveLoop", true) {
+            var lastAutosavedRevision = -1L
             while (true) {
                 delay(10.seconds)
 
                 if (!isActive) return@startBackgroundJob
-                if (!isDirty) continue
+                if (!isDirty || editRevision == lastAutosavedRevision) continue
 
                 try {
+                    val revision = editRevision
                     val mapToSave = getMapCloneForSave()
                     if (!isActive) return@startBackgroundJob
                     mapToSave.assignContinents(TileMap.AssignContinentsMode.Reassign)
                     if (!isActive) return@startBackgroundJob
                     MapSaver.saveMap("Autosave", mapToSave)
-                    isDirty = false
+                    lastAutosavedRevision = revision
                 } catch (ex: Exception) {
                     Log.error("Failed to autosave map", ex)
                 }
@@ -176,10 +253,46 @@ class MapEditorScreen(map: TileMap? = null) : BaseScreen(), RecreateOnResize {
         }
     }
 
-    fun getToolsWidth() = stage.width * 0.4f
+    fun hasChrome() = ::chrome.isInitialized
+    fun getToolsWidth() = if (stage.height > stage.width) stage.width else minOf(stage.width, maxOf(360f * MapEditorStyle.unit, stage.width * .42f))
+    fun getToolsHeight() = (stage.height - 112f * MapEditorStyle.unit).coerceAtLeast(100f)
+
+    fun beginEdit() = history.begin(tileMap)
+    fun commitEdit() {
+        val editing = history.hasPending
+        history.commit(tileMap)
+        if (editing) isDirty = !history.isSaved(tileMap) || descriptionTextField.text != tileMap.description
+    }
+    fun performEdit(action: ()->Unit) {
+        beginEdit()
+        try { action() } finally { commitEdit() }
+    }
+    fun undo() { commitEdit(); history.undo(tileMap)?.let { restoreEdit(it) } }
+    fun redo() { commitEdit(); history.redo(tileMap)?.let { restoreEdit(it) } }
+    private fun restoreEdit(map: TileMap) {
+        hideSelection()
+        tabs.edit.clearRiverSelection()
+        val scale = mapHolder.scaleX
+        val scrollX = mapHolder.scrollPercentX
+        val scrollY = mapHolder.scrollPercentY
+        clearOverlayImages(); mapHolder.remove()
+        tileMap = map
+        mapHolder = newMapHolder()
+        mapHolder.zoom(scale)
+        chrome.layoutChrome()
+        mapHolder.scrollPercentX = scrollX; mapHolder.scrollPercentY = scrollY
+        mapHolder.updateVisualScroll()
+        // Undo changes map content, not the current brush or ruleset.
+        editTabsNeedRefresh = false
+        isDirty = !history.isSaved(tileMap) || descriptionTextField.text != tileMap.description
+    }
+    fun markSaved(savedMap: TileMap = tileMap) { history.markSaved(savedMap); isDirty = !history.isSaved(tileMap) }
+    fun markUnsaved() { history.markUnsaved(); isDirty = true }
 
     fun setWorldWrap(newValue: Boolean) {
         if (newValue == tileMap.mapParameters.worldWrap) return
+        history.reset(tileMap)
+        markUnsaved()
         setWorldWrapFixOddWidth(newValue)
         if (newValue && overlayFile != null) {
             overlayFile = null
@@ -205,6 +318,7 @@ class MapEditorScreen(map: TileMap? = null) : BaseScreen(), RecreateOnResize {
             actionWhileRemoved()
             mapHolder = newMapHolder()
             mapHolder.zoom(savedScale)
+            if (::chrome.isInitialized) chrome.layoutChrome()
         }
     }
 
@@ -239,11 +353,6 @@ class MapEditorScreen(map: TileMap? = null) : BaseScreen(), RecreateOnResize {
         editTabsNeedRefresh = true
         naturalWondersNeedRefresh = true
 
-        if (UncivGame.Current.settings.showZoomButtons) {
-            zoomController = ZoomButtonPair(newHolder)
-            zoomController!!.setPosition(10f, 10f)
-            stage.addActor(zoomController)
-        }
 
         return newHolder
     }
@@ -269,6 +378,8 @@ class MapEditorScreen(map: TileMap? = null) : BaseScreen(), RecreateOnResize {
         removeUnitsWithMissingNations(ruleset)
         mapHolder = newMapHolder()
         isDirty = false
+        history.reset(tileMap)
+        if (::chrome.isInitialized) chrome.layoutChrome()
         Gdx.input.inputProcessor = stage
         tabs.selectPage(selectPage)  // must be done _after_ resetting inputProcessor!
     }
@@ -287,6 +398,8 @@ class MapEditorScreen(map: TileMap? = null) : BaseScreen(), RecreateOnResize {
         }
         
         removeUnitsWithMissingNations(newRuleset)
+        history.reset(tileMap)
+        markUnsaved()
         modsTabNeedsRefresh = false
     }
 
@@ -334,7 +447,14 @@ class MapEditorScreen(map: TileMap? = null) : BaseScreen(), RecreateOnResize {
 
     override fun recreate(): BaseScreen {
         cancelJobs()
-        return MapEditorScreen(tileMap)
+        val paletteState = tabs.edit.saveState()
+        tileMap.description = descriptionTextField.text
+        return MapEditorScreen(tileMap, history, resumed = true).also { recreated ->
+            recreated.tabs.edit.restoreState(paletteState)
+            recreated.isDirty = isDirty
+            recreated.chrome.setMode(chrome.mode)
+            recreated.chrome.layoutChrome()
+        }
     }
 
     override fun dispose() {

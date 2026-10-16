@@ -6,6 +6,9 @@ import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.HorizontalGroup
 import com.badlogic.gdx.scenes.scene2d.ui.Label
+import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.Touchable
+import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.Disposable
 import com.unciv.UncivGame
 import com.unciv.logic.AlternatingStateManager
@@ -19,10 +22,13 @@ import com.unciv.logic.multiplayer.MultiplayerGameUpdated
 import com.unciv.logic.multiplayer.isUsersTurn
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.setSize
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.LoadingImage
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
 import com.unciv.utils.Concurrency
 import kotlin.time.Duration.Companion.seconds
 
@@ -43,6 +49,13 @@ class MultiplayerStatusButton(
     private val gameNamesWithCurrentTurn = getInitialGamesWithCurrentTurn()
 
     private val events = EventBus.EventReceiver()
+    private var compact = false
+    private val compactLabel = "".toLabel(alignment = Align.center)
+    private val compactBadge = Table().apply {
+        touchable = Touchable.disabled
+        background = ImageGetter.getCircleDrawable().tint(Color.FIREBRICK)
+        add(compactLabel).grow()
+    }
 
     init {
         turnIndicatorCell = add().padTop(10f).padBottom(10f)
@@ -96,6 +109,10 @@ class MultiplayerStatusButton(
     }
 
     private fun updateTurnIndicator(flash: Boolean = true) {
+        if (compact) {
+            updateCompactBadge()
+            return
+        }
         if (gameNamesWithCurrentTurn.isEmpty()) {
             turnIndicatorCell.clearActor()
         } else {
@@ -107,6 +124,33 @@ class MultiplayerStatusButton(
         if (flash) {
             turnIndicator.flash.start(3.seconds)
         }
+    }
+
+    /** Keep a single centered icon; other games needing a turn get a bounded corner badge. */
+    internal fun fitBattlefield() {
+        if (!compact) {
+            compact = true
+            turnIndicator.flash.stop()
+            clearChildren()
+            add(loadingImage)
+            addActor(compactBadge)
+        }
+        getCell(loadingImage).size(BattlefieldHud.points(20f)).pad(0f)
+        compactLabel.setFontSize(BattlefieldHud.font(10f))
+        updateCompactBadge()
+    }
+
+    private fun updateCompactBadge() {
+        compactBadge.isVisible = gameNamesWithCurrentTurn.isNotEmpty()
+        compactLabel.setText(if (gameNamesWithCurrentTurn.size > 9) "9+" else gameNamesWithCurrentTurn.size.toString())
+    }
+
+    override fun layout() {
+        super.layout()
+        if (!compact) return
+        val size = BattlefieldHud.points(16f)
+        compactBadge.setBounds(width - size, height - size, size, size)
+        compactBadge.validate()
     }
 
     override fun dispose() {

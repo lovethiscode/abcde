@@ -43,9 +43,9 @@ class MapEditorEditTerrainTab(
 ): Table(BaseScreen.skin), IMapEditorEditSubTabs {
     init {
         top()
-        defaults().pad(10f).fillX().left()
+        defaults().pad(4f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).left()
         add(
-            MarkupRenderer.render(
+            editTab.renderPalette(
             getTerrains(),
             iconDisplay = FormattedLine.IconDisplay.NoLink
         ) {
@@ -53,7 +53,7 @@ class MapEditorEditTerrainTab(
                 tile.baseTerrain = it
                 tile.naturalWonder = null
             }
-        }).row()
+        })
     }
 
     private fun allTerrains() = ruleset.terrains.values.asSequence()
@@ -74,20 +74,20 @@ class MapEditorEditFeaturesTab(
 ): Table(BaseScreen.skin), IMapEditorEditSubTabs {
     init {
         top()
-        defaults().pad(10f).fillX().left()
+        defaults().pad(4f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).left()
         allowedFeatures().firstOrNull()?.let { addFeatures(it) }
     }
 
     private fun addFeatures(firstFeature: Terrain) {
         val eraserIcon = "Terrain/${firstFeature.name}"
         val eraser = FormattedLine("Remove features", icon = eraserIcon, size = 32, iconCrossed = true)
-        add(eraser.render(0f).apply { onClick {
+        add(editTab.brushCard(eraser).apply { onClick {
             editTab.setBrush("Remove features", eraserIcon, pediaLink = "", isRemove = true) { tile ->
                 tile.removeTerrainFeatures()
             }
-        } }).padBottom(0f).row()
+        } }).padBottom(0f)
         add(
-            MarkupRenderer.render(
+            editTab.renderPalette(
             getFeatures(),
             iconDisplay = FormattedLine.IconDisplay.NoLink
         ) {
@@ -95,7 +95,7 @@ class MapEditorEditFeaturesTab(
                 if (it !in tile.terrainFeatures)
                     tile.addTerrainFeature(it)
             }
-        }).padTop(0f).row()
+        }).padTop(0f)
     }
 
     private fun allowedFeatures() = ruleset.terrains.values.asSequence()
@@ -116,9 +116,9 @@ class MapEditorEditWondersTab(
 ): Table(BaseScreen.skin), IMapEditorEditSubTabs {
     init {
         top()
-        defaults().pad(10f).fillX().left()
+        defaults().pad(4f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).left()
         add(
-            MarkupRenderer.render(
+            editTab.renderPalette(
             getWonders(),
             iconDisplay = FormattedLine.IconDisplay.NoLink
         ) {
@@ -129,7 +129,7 @@ class MapEditorEditWondersTab(
                 tile.removeTerrainFeatures()
                 tile.naturalWonder = it
             }
-        }).row()
+        })
     }
 
     private fun allowedWonders() = ruleset.terrains.values.asSequence()
@@ -150,21 +150,21 @@ class MapEditorEditResourcesTab(
 ): Table(BaseScreen.skin), IMapEditorEditSubTabs {
     init {
         top()
-        defaults().pad(10f).fillX().left()
+        defaults().pad(4f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).left()
         allowedResources().firstOrNull()?.let { addResources(it) }
     }
 
     private fun addResources(firstResource: TileResource) {
         val eraserIcon = "Resource/${firstResource.name}"
         val eraser = FormattedLine("Remove resource", icon = eraserIcon, size = 32, iconCrossed = true)
-        add(eraser.render(0f).apply { onClick {
+        add(editTab.brushCard(eraser).apply { onClick {
             editTab.setBrush("Remove resource", eraserIcon, pediaLink = "", isRemove = true) { tile ->
                 tile.tileResource = null
                 tile.resourceAmount = 0
             }
-        } }).padBottom(0f).row()
+        } }).padBottom(0f)
         add(
-            MarkupRenderer.render(
+            editTab.renderPalette(
             getResources(),
             iconDisplay = FormattedLine.IconDisplay.NoLink
         ) { resourceName ->
@@ -175,7 +175,7 @@ class MapEditorEditResourcesTab(
                 else
                     it.setTileResource(resource, rng = editTab.randomness.RNG)
             }
-        }).padTop(0f).row()
+        }).padTop(0f)
     }
 
     private fun allowedResources() = ruleset.tileResources.values.asSequence()
@@ -204,21 +204,21 @@ class MapEditorEditImprovementsTab(
 ): Table(BaseScreen.skin), IMapEditorEditSubTabs {
     init {
         top()
-        defaults().pad(10f).fillX().left()
+        defaults().pad(4f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).left()
         allowedImprovements().firstOrNull()?.let { addImprovements(it) }
     }
 
     private fun addImprovements(firstImprovement: TileImprovement) {
         val eraserIcon = "Improvement/${firstImprovement.name}"
         val eraser = FormattedLine("Remove improvement", icon = eraserIcon, size = 32, iconCrossed = true)
-        add(eraser.render(0f).apply { onClick {
+        add(editTab.brushCard(eraser).apply { onClick {
             editTab.setBrush("Remove improvement", eraserIcon, pediaLink = "", isRemove = true) { tile ->
                 tile.removeImprovement()
                 tile.removeRoad()
             }
-        } }).padBottom(0f).row()
+        } }).padBottom(0f)
         add(
-            MarkupRenderer.render(
+            editTab.renderPalette(
             getImprovements(),
             iconDisplay = FormattedLine.IconDisplay.NoLink
         ) {
@@ -231,7 +231,7 @@ class MapEditorEditImprovementsTab(
                 editTab.setBrush(it, "Improvement/$it") { tile ->
                     tile.setImprovement(it)
                 }
-        }).padTop(0f).row()
+        }).padTop(0f)
     }
 
     private fun allowedImprovements() = ruleset.tileImprovements.values.asSequence()
@@ -273,7 +273,7 @@ class MapEditorEditStartsTab(
 
     init {
         top()
-        defaults().pad(10f).fillX().left()
+        defaults().pad(4f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).left()
         allowedNations().firstOrNull()?.let { addNations(it) }
     }
 
@@ -282,18 +282,18 @@ class MapEditorEditStartsTab(
     private fun addNations(firstNation: Nation) {
         val eraserIcon = "Nation/${firstNation.name}"
         val eraser = FormattedLine("Remove starting locations", icon = eraserIcon, size = 24, iconCrossed = true)
-        add(eraser.render(0f).apply { onClick {
+        add(editTab.brushCard(eraser).apply { onClick {
             editTab.setBrush("Remove", eraserIcon, handlerType = BrushHandlerType.Direct, pediaLink = "", isRemove = true) { tile ->
                 tile.tileMap.removeStartingLocations(tile.position)
             }
-        } }).padBottom(0f).row()
+        } }).padBottom(0f)
 
         addUsage()
 
         // Create the nation list with the spectator nation included, and shown/interpreted as "Any Civ" starting location.
         // We use Nation/Spectator because it hasn't been used yet and we need an icon within the Nation.
         add(
-            MarkupRenderer.render(
+            editTab.renderPalette(
                 getNations(),
                 iconDisplay = FormattedLine.IconDisplay.NoLink
             ) {
@@ -301,12 +301,10 @@ class MapEditorEditStartsTab(
                 val icon = "Nation/$it"
                 val pediaLink = if (it == Constants.spectator) "" else icon
                 val isMajorCiv = ruleset.nations[it]?.isMajorCiv ?: false
-                val selectedUsage = if (isMajorCiv) TileMap.StartingLocation.Usage.entries[usageOptionGroup.checkedIndex]
-                    else TileMap.StartingLocation.Usage.Normal
                 editTab.setBrush(it.spectatorToAnyCiv(), icon, BrushHandlerType.Direct, pediaLink) { tile ->
                     // toggle the starting location here, note this allows
                     // both multiple locations per nation and multiple nations per tile
-                    if (!tile.tileMap.addStartingLocation(it, tile, selectedUsage))
+                    if (!tile.tileMap.addStartingLocation(it, tile, if (isMajorCiv) TileMap.StartingLocation.Usage.entries[usageOptionGroup.checkedIndex] else TileMap.StartingLocation.Usage.Normal))
                         tile.tileMap.removeStartingLocation(it, tile)
                 }
             }
@@ -324,18 +322,25 @@ class MapEditorEditStartsTab(
             FormattedLine("[${it.name.spectatorToAnyCiv()}] starting location", link = it.name, icon = "Nation/${it.name}", size = 24)
         }.asIterable()
 
+    private fun usageCaption(usage: TileMap.StartingLocation.Usage) = when (usage) {
+        TileMap.StartingLocation.Usage.Normal -> "Starting position only"
+        TileMap.StartingLocation.Usage.Player -> "Include in player selection"
+        TileMap.StartingLocation.Usage.Human -> "First human player"
+    }
     private fun addUsage() {
-        val table = Table()
-        table.defaults().pad(5f)
-        table.add("Use for new game \"Select players\" button:".toLabel()).colspan(3).row()
+        val popup = com.unciv.ui.popups.Popup(editTab.screen())
+        popup.addGoodSizedLabel("Use for new game \"Select players\" button:").row()
         val defaultUsage = TileMap.StartingLocation.Usage.default
+        val button = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.button(usageCaption(defaultUsage)) { popup.open() }
         for (usage in TileMap.StartingLocation.Usage.entries) {
-            val checkBox = CheckBox(usage.label.tr(), skin)
-            table.add(checkBox)
+            val checkBox = CheckBox(usageCaption(usage).tr(), skin)
+            popup.add(checkBox).minHeight(com.unciv.ui.components.widgets.UiNavigation.minimumTouchSize()).row()
             usageOptionGroup.add(checkBox)
             checkBox.isChecked = usage == defaultUsage
+            checkBox.onClick { button.setText(usageCaption(usage).tr()); popup.close() }
         }
-        add(table).row()
+        popup.addCloseButton()
+        add(button).height(com.unciv.ui.components.widgets.UiNavigation.minimumTouchSize())
     }
 
     override fun isDisabled() = allowedNations().none()
@@ -347,7 +352,7 @@ class MapEditorEditRiversTab(
     private val editTab: MapEditorEditTab,
     private val ruleset: Ruleset
 ): Table(BaseScreen.skin), IMapEditorEditSubTabs, TabbedPager.IPageExtensions {
-    private val iconSize = 50f
+    private val iconSize = 32f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit
     private val showOnTerrain = ruleset.terrains.values.asSequence()
         .filter { it.type.isBaseTerrain && !it.isRough}
         .sortedByDescending { it.production * 2 + it.food }
@@ -359,10 +364,10 @@ class MapEditorEditRiversTab(
         val pediaLink = "Terrain/River"
 
         top()
-        defaults().pad(10f).left()
+        defaults().pad(4f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).left()
         val removeLine = Table().apply {
-            add(getRemoveRiverIcon()).padRight(10f)
-            add("Remove rivers".toLabel(fontSize = 32))
+            add(getRemoveRiverIcon()).size(iconSize).row()
+            add("Remove rivers".toLabel(fontSize = (14f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).toInt()))
             onClick {
                 editTab.setBrush(BrushHandlerType.River,"Remove rivers", getRemoveRiverIcon(), pediaLink) { tile ->
                     tile.hasBottomLeftRiver = false
@@ -377,11 +382,13 @@ class MapEditorEditRiversTab(
                 }
             }
         }
-        add(removeLine).row()
+        editTab.registerCard(removeLine, "Remove rivers")
+        removeLine.background = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.background(com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.raised)
+        add(removeLine).height(80f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).pad(4f)
 
         val leftRiverLine = Table().apply {
-            add(getRiverIcon(RiverEdge.Left)).padRight(10f)
-            add("Bottom left river".toLabel(fontSize = 32))
+            add(getRiverIcon(RiverEdge.Left)).size(iconSize).row()
+            add("Bottom left river".toLabel(fontSize = (14f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).toInt()))
             onClick {
                 editTab.setBrush(BrushHandlerType.Direct,"Bottom left river", getTileGroupWithRivers(
                     RiverEdge.Left
@@ -390,11 +397,13 @@ class MapEditorEditRiversTab(
                 }
             }
         }
-        add(leftRiverLine).row()
+        editTab.registerCard(leftRiverLine, "Bottom left river")
+        leftRiverLine.background = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.background(com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.raised)
+        add(leftRiverLine).height(80f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).pad(4f)
 
         val bottomRiverLine = Table().apply {
-            add(getRiverIcon(RiverEdge.Bottom)).padRight(10f)
-            add("Bottom river".toLabel(fontSize = 32))
+            add(getRiverIcon(RiverEdge.Bottom)).size(iconSize).row()
+            add("Bottom river".toLabel(fontSize = (14f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).toInt()))
             onClick {
                 editTab.setBrush(BrushHandlerType.Direct,"Bottom river", getTileGroupWithRivers(
                     RiverEdge.Bottom
@@ -403,11 +412,13 @@ class MapEditorEditRiversTab(
                 }
             }
         }
-        add(bottomRiverLine).row()
+        editTab.registerCard(bottomRiverLine, "Bottom river")
+        bottomRiverLine.background = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.background(com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.raised)
+        add(bottomRiverLine).height(80f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).pad(4f)
 
         val rightRiverLine = Table().apply {
-            add(getRiverIcon(RiverEdge.Right)).padRight(10f)
-            add("Bottom right river".toLabel(fontSize = 32))
+            add(getRiverIcon(RiverEdge.Right)).size(iconSize).row()
+            add("Bottom right river".toLabel(fontSize = (14f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).toInt()))
             onClick {
                 editTab.setBrush(BrushHandlerType.Direct,"Bottom right river", getTileGroupWithRivers(
                     RiverEdge.Right
@@ -416,12 +427,14 @@ class MapEditorEditRiversTab(
                 }
             }
         }
-        add(rightRiverLine).row()
+        editTab.registerCard(rightRiverLine, "Bottom right river")
+        rightRiverLine.background = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.background(com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.raised)
+        add(rightRiverLine).height(80f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).pad(4f)
 
         //todo this needs a better icon
         val spawnRiverLine = Table().apply {
-            add(getRiverIcon(RiverEdge.All)).padRight(10f)
-            add("Spawn river from/to".toLabel(fontSize = 32))
+            add(getRiverIcon(RiverEdge.All)).size(iconSize).row()
+            add("Spawn river from/to".toLabel(fontSize = (14f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).toInt()))
             onClick {
                 editTab.setBrush(
                     BrushHandlerType.RiverFromTo,
@@ -432,7 +445,9 @@ class MapEditorEditRiversTab(
                 )
             }
         }
-        add(spawnRiverLine).row()
+        editTab.registerCard(spawnRiverLine, "Spawn river from/to")
+        spawnRiverLine.background = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.background(com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.raised)
+        add(spawnRiverLine).height(80f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).pad(4f)
     }
 
     override fun isDisabled() = false
@@ -485,7 +500,7 @@ class MapEditorEditUnitsTab(
 ): Table(BaseScreen.skin), IMapEditorEditSubTabs {
     init {
         top()
-        defaults().pad(10f).left()
+        defaults().pad(4f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).left()
         add("Work in progress".toLabel(Color.FIREBRICK, 24))
     }
 

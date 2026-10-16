@@ -47,7 +47,7 @@ class EditorMapHolder(
         continuousScrollingX = tileMap.mapParameters.worldWrap
         addTiles(parentScreen.stage)
         if (editorScreen != null) {
-            addCaptureListener(getDragPaintListener())
+            setFlickScroll(false)
             addClickListener()
             setupZoomPanListeners()
         }
@@ -188,51 +188,6 @@ class EditorMapHolder(
         savedListeners = emptyList()
         for (listener in listenersToAdd) addListener(listener)
         for (listener in captureListenersToAdd) addCaptureListener(listener)
-    }
-
-    /** Factory to create the listener that does "paint by dragging"
-     *  Should only be called if this MapHolder is used from MapEditorScreen
-     */
-    private fun getDragPaintListener(): InputListener {
-        return object : InputListener() {
-            var isDragging = false
-            var isPainting = false
-            var touchDownTime = System.currentTimeMillis()
-
-            override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
-                touchDownTime = System.currentTimeMillis()
-                return true
-            }
-
-            override fun touchDragged(event: InputEvent?, x: Float, y: Float, pointer: Int) {
-                if (!isDragging && !isPanning) {
-                    isDragging = true
-                    val deltaTime = System.currentTimeMillis() - touchDownTime
-                    if (deltaTime > 400) {
-                        isPainting = true
-                        stage.cancelTouchFocusExcept(this, this@EditorMapHolder)
-                    }
-                }
-                if (!isPainting) return
-
-                editorScreen!!.hideSelection()
-                val stageCoords = actor?.stageToLocalCoordinates(Vector2(event!!.stageX, event.stageY)) ?: return
-                val centerTileInfo = getClosestTileTo(stageCoords)
-                    ?: return
-                editorScreen.tabs.edit.paintTilesWithBrush(centerTileInfo)
-            }
-
-            override fun touchUp(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int) {
-                // Reset the whole map
-                if (isPainting) {
-                    updateTileGroups()
-                    setTransients()
-                }
-
-                isDragging = false
-                isPainting = false
-            }
-        }
     }
 
     fun getClosestTileTo(stageCoords: Vector2): Tile? {

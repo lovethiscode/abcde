@@ -14,10 +14,11 @@ import com.unciv.ui.screens.mapeditorscreen.tabs.MapEditorViewTab
 class MapEditorMainTabs(
     editorScreen: MapEditorScreen
 ) : TabbedPager(
-    minimumHeight = editorScreen.stage.height,
-    maximumHeight = editorScreen.stage.height,
+    minimumHeight = editorScreen.getToolsHeight(),
+    maximumHeight = editorScreen.getToolsHeight(),
     headerFontSize = 24,
-    capacity = 7
+    capacity = 7,
+    showHeader = false
 ) {
     val view = MapEditorViewTab(editorScreen)
     val generate = MapEditorGenerateTab(editorScreen, headerHeight)
@@ -36,13 +37,16 @@ class MapEditorMainTabs(
         addPage("Generate", generate,
             ImageGetter.getImage("OtherIcons/New"), 25f,
             shortcutKey = KeyCharAndCode.ctrl('n'))
-        addPage("Edit", edit,
+        val editLifecycle = object : com.badlogic.gdx.scenes.scene2d.ui.Table(), TabbedPager.IPageExtensions {
+            override fun activated(index: Int, caption: String, pager: TabbedPager) = edit.activated(index, caption, pager)
+            override fun deactivated(index: Int, caption: String, pager: TabbedPager) = edit.deactivated(index, caption, pager)
+        }
+        addPage("Edit", editLifecycle,
             ImageGetter.getImage("OtherIcons/Terrains"), 25f,
             shortcutKey = KeyCharAndCode.ctrl('e'))
         addPage("Load", load,
             ImageGetter.getImage("OtherIcons/Load"), 25f,
-            shortcutKey = KeyCharAndCode.ctrl('l'),
-            disabled = load.noMapsAvailable())
+            shortcutKey = KeyCharAndCode.ctrl('l'))
         addPage("Save", save,
             ImageGetter.getImage("OtherIcons/Checkmark"), 25f,
             shortcutKey = KeyCharAndCode.ctrl('s'))
@@ -52,7 +56,7 @@ class MapEditorMainTabs(
         addPage("Options", options,
             ImageGetter.getImage("OtherIcons/Settings"), 25f,
             shortcutKey = KeyCharAndCode.ctrl('o'))
-        selectPage(0)
+        selectPage(-1)
 
         headerScroll.fadeScrollBars = false
     }
