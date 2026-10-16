@@ -333,8 +333,10 @@ internal class BattlefieldHud(private val world: WorldScreen) {
                 eventHeader.setBounds(right - eventWidth, top - touch, eventWidth, touch)
                 eventHeader.validate()
                 val eventBottom = if (portrait) maxOf(contextTop + gap, bottom + status.height + gap) else bottom + status.height + gap
-                events.update(world.viewingCiv.notifications, oneTime, Rectangle(right - eventWidth, eventBottom,
-                    eventWidth, maxOf(touch, eventHeader.y - eventBottom)))
+                val eventHeight = if (events.hasEntries(world.viewingCiv.notifications))
+                    maxOf(touch, eventHeader.y - eventBottom) else touch
+                events.update(world.viewingCiv.notifications, oneTime, Rectangle(right - eventWidth, eventHeader.y - eventHeight,
+                    eventWidth, eventHeight))
                 events.toFront()
                 eventHeader.toFront()
             }
@@ -362,6 +364,7 @@ private class BattlefieldEvents(private val world: WorldScreen) : ScrollPane(Tab
     private var historyEntry: Notification? = null
     var onExecuted: (Notification) -> Unit = {}
     fun remember(notification: Notification?) { if (notification != null) historyEntry = notification }
+    fun hasEntries(notifications: List<Notification>) = notifications.isNotEmpty() || historyEntry != null
 
     init {
         name = "ui-battlefield-events"
@@ -387,6 +390,10 @@ private class BattlefieldEvents(private val world: WorldScreen) : ScrollPane(Tab
         val previousScroll = scrollY
         list.clearChildren()
         list.top().left()
+        if (entries.isEmpty()) {
+            list.add("No notifications".toLabel(fontSize = BattlefieldHud.font(13f))).left()
+                .pad(BattlefieldHud.points(8f)).minHeight(touch).row()
+        }
         for ((index, notification) in entries.withIndex()) {
             val row = Button(BaseScreen.skin)
             BattlefieldGeometry.fitControl(row)
