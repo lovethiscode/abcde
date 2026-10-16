@@ -56,7 +56,7 @@ internal class CampaignHomeMenu(
         val tablet = !compactLandscape && screen.stage.width / unit >= 700f
         val sideBySide = (tablet || compactLandscape) && screen.stage.width > screen.stage.height
         val margin = px(if (compactLandscape) 12f else if (tablet) 32f else 20f)
-        val gap = px(if (compactLandscape) 12f else if (tablet) 24f else 16f)
+        val gap = px(if (compactLandscape) 8f else if (tablet) 24f else 16f)
         val width = (screen.stage.width - margin * 2f).coerceAtMost(px(1200f))
         pad(margin).top()
         val header = Table()
