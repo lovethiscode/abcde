@@ -100,7 +100,7 @@ class NextTurnButton(
     @Readonly fun isNextUnitAction(): Boolean = nextTurnAction == NextTurnAction.NextUnit
 
     internal fun fitBattlefield(targetWidth: Float) {
-        BattlefieldGeometry.fitControl(this)
+        BattlefieldGeometry.fitControl(this, primary = nextTurnAction == NextTurnAction.NextTurn && isEnabled)
         label.setFontSize(BattlefieldHud.font(14f))
         unitsDueLabel.setFontSize(BattlefieldHud.font(11f))
         label.wrap = true

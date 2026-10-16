@@ -42,14 +42,28 @@ internal object BattlefieldGeometry {
         }
     }
 
-    fun fitControl(button: Button, flat: Boolean = false, negative: Boolean = false) {
+    fun fitControl(button: Button, flat: Boolean = false, negative: Boolean = false, primary: Boolean = false) {
         val style = if (button is TextButton) TextButton.TextButtonStyle(button.style)
             else Button.ButtonStyle(button.style)
-        style.up = if (flat) null else outlined(if (negative) ExpeditionBlueTheme.dangerSurface else ExpeditionBlueTheme.panel)
-        style.down = outlined(ExpeditionBlueTheme.raised)
+        style.up = if (flat) null else outlined(when {
+            primary -> ExpeditionBlueTheme.gold
+            negative -> ExpeditionBlueTheme.dangerSurface
+            else -> ExpeditionBlueTheme.panel
+        })
+        // Primary controls retain a light surface under their dark text while pressed.
+        style.down = outlined(if (primary) ExpeditionBlueTheme.gold.cpy().lerp(ExpeditionBlueTheme.text, .15f)
+            else ExpeditionBlueTheme.raised)
         style.over = style.down
         style.checked = style.up
         style.disabled = if (flat) null else outlined(ExpeditionBlueTheme.background)
+        if (primary && style is TextButton.TextButtonStyle) {
+            style.fontColor = ExpeditionBlueTheme.primaryInk
+            style.downFontColor = ExpeditionBlueTheme.primaryInk
+            style.overFontColor = ExpeditionBlueTheme.primaryInk
+            style.checkedFontColor = ExpeditionBlueTheme.primaryInk
+            style.checkedOverFontColor = ExpeditionBlueTheme.primaryInk
+            style.disabledFontColor = ExpeditionBlueTheme.muted
+        }
         button.style = style
     }
 

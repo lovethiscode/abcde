@@ -262,7 +262,8 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         if (map.battlefieldExpanded) battle.isVisible = false
         val selected = world.bottomUnitTable.hasBattlefieldSelection
         val showUnit = selected && !map.battlefieldExpanded
-        val showActions = showUnit && !(portrait && battle.isVisible)
+        val showActions = showUnit && !(portrait && battle.isVisible) &&
+            (world.canChangeState || world.bottomUnitTable.selectedCity != null)
         world.bottomUnitTable.isVisible = showUnit
         world.unitActionsTable.isVisible = showActions
         contextBackground.isVisible = showUnit

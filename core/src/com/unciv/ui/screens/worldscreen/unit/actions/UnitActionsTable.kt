@@ -4,7 +4,6 @@ import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Interpolation
 import com.badlogic.gdx.math.Vector2
-import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -14,6 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.UncivGame
 import com.unciv.logic.map.mapunit.MapUnit
 import com.unciv.models.UpgradeUnitAction
+import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.brighten
 import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.input.keyShortcuts
@@ -263,21 +263,22 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
     }
 
     /** An undimmed, button-anchored menu; its transparent input shield consumes dismissal taps. */
-    private fun openBattlefieldMenu(anchor: Actor, unit: MapUnit, actions: List<UiUnitAction>) {
+    private fun openBattlefieldMenu(anchor: IconTextButton, unit: MapUnit, actions: List<UiUnitAction>) {
         val gap = BattlefieldHud.points(4f)
         val touch = UiNavigation.minimumTouchSize()
         val safe = worldScreen.safeAreaBoundsInWorld()
         val menuWidth = minOf(BattlefieldHud.points(220f), safe.width - gap * 2f)
-        val position = anchor.localToStageCoordinates(Vector2())
-        val roomAbove = (safe.y + safe.height - position.y - anchor.height - gap).coerceAtLeast(touch)
-        val roomBelow = (position.y - safe.y - gap).coerceAtLeast(touch)
-        val showAbove = roomAbove >= roomBelow
+        val unitPanel = worldScreen.bottomUnitTable
+        // The anchor belongs to the command area below the unit header. Opening directly above
+        // that button covers the identity of the unit receiving these orders.
+        val besidePanel = unitPanel.x + unitPanel.width + gap + menuWidth <= safe.x + safe.width
+        val menuBottom = if (besidePanel) y else unitPanel.y + unitPanel.height + gap
+        val menuTop = minOf(safe.y + safe.height, worldScreen.topBar.y) - gap
         val content = Table().apply {
             defaults().growX().minHeight(touch).padBottom(gap)
             for (action in actions) add(getUnitActionButton(unit, action)).width(menuWidth - gap * 2f).row()
         }
-        val availableHeight = if (showAbove) roomAbove else roomBelow
-        val menuHeight = minOf(content.prefHeight, availableHeight - gap * 2f)
+        val menuHeight = minOf(content.prefHeight, (menuTop - menuBottom - gap * 2f).coerceAtLeast(touch))
         val popup = object : Popup(worldScreen, Scrollability.None) {
             init {
                 name = "ui-unit-more-menu"
@@ -301,10 +302,10 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
             override fun layout() {
                 super.layout()
                 val point = anchor.localToStageCoordinates(Vector2())
-                val x = (point.x + anchor.width - innerTable.width)
+                val x = (if (besidePanel) unitPanel.x + unitPanel.width + gap
+                    else point.x + anchor.width - innerTable.width)
                     .coerceIn(safe.x, safe.x + safe.width - innerTable.width)
-                val y = if (showAbove) point.y + anchor.height + gap else point.y - innerTable.height - gap
-                innerTable.setPosition(x, y.coerceIn(safe.y, safe.y + safe.height - innerTable.height))
+                innerTable.setPosition(x, menuBottom.coerceIn(safe.y, safe.y + safe.height - innerTable.height))
             }
 
             override fun act(delta: Float) {
@@ -313,7 +314,11 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
             }
         }
         battlefieldMenu = popup
-        popup.closeListeners.add { if (battlefieldMenu === popup) battlefieldMenu = null }
+        anchor.label.setText("Show less".tr())
+        popup.closeListeners.add {
+            anchor.label.setText("Show more".tr())
+            if (battlefieldMenu === popup) battlefieldMenu = null
+        }
         popup.open()
     }
 
