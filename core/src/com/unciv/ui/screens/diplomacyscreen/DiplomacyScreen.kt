@@ -3,6 +3,7 @@ package com.unciv.ui.screens.diplomacyscreen
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.SplitPane
+import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.utils.Align
@@ -53,7 +54,9 @@ class DiplomacyScreen(
     internal val viewingCivView: CivView,
     private val selectCivView: ForeignCivView? = null,
     private val selectTrade: Trade? = null,
-    private val showTrade: Boolean = selectTrade != null
+    private val showTrade: Boolean = selectTrade != null,
+    private val restoredPage: String? = null,
+    private val restoredFilter: String = "All"
 ): BaseScreen(), RecreateOnResize {
     companion object {
         private const val nationIconSize = 100f
@@ -82,6 +85,11 @@ class DiplomacyScreen(
 
     private val splitPane = SplitPaneCenteringLeftSide()
 
+    internal val usesAdaptiveLayout get() = UiNavigation.isIos && skinStrings.usesExpeditionBlue
+    private var adaptive: AdaptiveDiplomacyView? = null
+    private var page: String? = null
+    private var activeTradeTable: TradeTable? = null
+
     internal var subPageCiv: Civilization? = null
 
     private fun navigateBack() {
@@ -96,6 +104,9 @@ class DiplomacyScreen(
     internal fun isNotPlayersTurn() = !GUI.isAllowedChangeState()
 
     init {
+        if (usesAdaptiveLayout) {
+            adaptive = AdaptiveDiplomacyView(this, closeButton as TextButton).apply { filter = restoredFilter; mount() }
+        } else {
         // In cramped conditions, start the left side with enough width for nation icon and padding, but allow it to get squeezed until just the icon fits.
         // (and SplitPane will squeeze even beyond the minWidth our left side supplies - when the right side has a conflicting minWidth, then both get squeezed).
         splitPane.splitAmount = 0.2f.coerceAtLeast(leftSideScroll.prefWidth / stage.width)
@@ -107,15 +118,29 @@ class DiplomacyScreen(
 
         positionCloseButton()
         stage.addActor(closeButton) // This must come after the split pane so it will be above, that the button will be clickable
+        }
 
-        if (selectCiv != null) {
+        val initialCiv = selectCiv ?: if (usesAdaptiveLayout) viewingCiv.diplomacyFunctions.getKnownCivsSorted().firstOrNull() else null
+        if (initialCiv != null) {
             if (showTrade) {
-                val tradeTable = setTrade(selectCiv)
+                val tradeTable = setTrade(initialCiv)
                 if (selectTrade != null)
                     tradeTable.tradeView.setStagedTrade(selectTrade)
                 tradeTable.offerColumnsTable.update()
+                tradeTable.refreshOfferState()
             } else
-                updateRightSide(selectCiv)
+                updateRightSide(initialCiv)
+            if (usesAdaptiveLayout && restoredPage != null && restoredPage != "trade") {
+                val city = CityStateDiplomacyTable(this)
+                val content = when (restoredPage) {
+                    "gift" -> city.getGoldGiftTable(initialCiv)
+                    "tribute" -> city.getDemandTributeTable(initialCiv)
+                    "improvement" -> city.getImprovementGiftTable(initialCiv)
+                    "demands" -> MajorCivDiplomacyTable(this).getDemandsTable(viewingCiv, initialCiv)
+                    else -> null
+                }
+                if (content != null) showSubPage(initialCiv,content,restoredPage)
+            }
         }
 
         globalShortcuts.add(KeyboardBinding.Civilopedia) { openCivilopedia() }
@@ -145,6 +170,7 @@ class DiplomacyScreen(
     }
 
     private fun positionCloseButton() {
+        if (adaptive != null) return
         if (UiNavigation.isIos) {
             closeButton.setPosition(closeButtonPad, stage.height - closeButtonPad, Align.topLeft)
             splitPane.setSize(stage.width, stage.height - closeButton.height - 2 * closeButtonPad)
@@ -152,6 +178,7 @@ class DiplomacyScreen(
     }
 
     internal fun updateLeftSideTable(selectCiv: Civilization?) {
+        if (adaptive != null) return
         leftSideTable.clear()
         leftSideTable.add().padBottom(closeButtonPad).row()  // no default pad, and make distance of first civ to top same as for the close button
 
@@ -232,6 +259,18 @@ class DiplomacyScreen(
 
     internal fun updateRightSide(otherCiv: Civilization) {
         subPageCiv = null
+        page = null
+        activeTradeTable = null
+        if (adaptive != null) {
+            UncivGame.Current.musicController.chooseTrack(otherCiv.civName,
+                MusicMood.peaceOrWar(viewingCiv.isAtWarWith(otherCiv)),MusicTrackChooserFlags.setSelectNation)
+            adaptive!!.show(otherCiv)
+            if (!otherCiv.isCityState) {
+                val hostile=otherCiv.getDiplomacyManager(viewingCiv)!!.isRelationshipLevelLE(RelationshipLevel.Enemy)
+                UncivGame.Current.musicController.playVoice("${otherCiv.civName}.${if(hostile) "hateHello" else "neutralHello"}")
+            }
+            return
+        }
         rightSideTable.clear()
         UncivGame.Current.musicController.chooseTrack(otherCiv.civName,
             MusicMood.peaceOrWar(viewingCiv.isAtWarWith(otherCiv)),MusicTrackChooserFlags.setSelectNation)
@@ -245,10 +284,19 @@ class DiplomacyScreen(
 
     internal fun setTrade(otherCiv: Civilization): TradeTable {
         subPageCiv = otherCiv
+        page = "trade"
         rightSideTable.clear()
         val tradeTable = TradeTable(viewingCivView, viewingCivView.gameView.getForeignCivView(otherCiv), this)
-        rightSideTable.add(tradeTable)
+        activeTradeTable = tradeTable
+        if (adaptive != null) adaptive!!.showSubPage(otherCiv,tradeTable,"trade",false)
+        else rightSideTable.add(tradeTable)
         return tradeTable
+    }
+
+    internal fun showSubPage(otherCiv: Civilization, content: Actor, route: String) {
+        subPageCiv = otherCiv; page = route
+        if (adaptive != null) adaptive!!.showSubPage(otherCiv,content,route)
+        else { rightSideTable.clear();rightSideTable.add(ScrollPane(content)) }
     }
 
     /**
@@ -274,7 +322,7 @@ class DiplomacyScreen(
      * @param otherCivDiplomacyManager Other human player [DiplomacyManager]
      * @return Relationship text (e.g. "Friend")
      */
-    private fun getHumanRelationshipText(otherCivDiplomacyManager: DiplomacyManager): String {
+    internal fun getHumanRelationshipText(otherCivDiplomacyManager: DiplomacyManager): String {
         return if (otherCivDiplomacyManager.diplomaticStatus == DiplomaticStatus.DefensivePact)
             Constants.defensivePact
         else if (otherCivDiplomacyManager.hasFlag(DiplomacyFlags.DeclarationOfFriendship))
@@ -408,11 +456,12 @@ class DiplomacyScreen(
         diplomacyTable.add(responseButton)
 
         rightSideTable.clear()
-        rightSideTable.add(diplomacyTable)
+        if (adaptive != null) showSubPage(otherCiv,diplomacyTable,"flavor")
+        else rightSideTable.add(diplomacyTable)
     }
 
     internal fun getGoToOnMapButton(civilization: Civilization): TextButton {
-        val goToOnMapButton = "Go to on map".toTextButton()
+        val goToOnMapButton = "Go to on map".toTextButton().apply { name = "ui-diplomacy-map" }
         goToOnMapButton.onClick {
             val worldScreen = UncivGame.Current.resetToWorldScreen()
             worldScreen.mapHolder.setCenterPosition(civilization.getCapital()!!.location.toHexCoord(), selectUnit = false)
@@ -431,6 +480,7 @@ class DiplomacyScreen(
     internal fun rightSideLabelWidth() = rightSideWidth() - 40f
 
     private fun rightSideWidth(): Float {
+        adaptive?.let { return it.detailWidth }
         splitPane.validate() // Ensure rightSideTable is sized
         return rightSideTable.width
     }
@@ -440,5 +490,12 @@ class DiplomacyScreen(
         positionCloseButton()
     }
 
-    override fun recreate(): BaseScreen = DiplomacyScreen(viewingCivView, selectCivView, selectTrade, showTrade)
+    override fun recreate(): BaseScreen {
+        val selected = adaptive?.selected?.let { viewingCivView.gameView.getForeignCivView(it) } ?: selectCivView
+        val staged = if (page == "trade") activeTradeTable?.tradeView?.let { view -> Trade().apply {
+            ourOffers.addAll(view.ourStagedOffers().map { it.copy() })
+            theirOffers.addAll(view.theirStagedOffers().map { it.copy() })
+        }} else selectTrade
+        return DiplomacyScreen(viewingCivView, selected, staged, page == "trade" || (adaptive == null && showTrade), page, adaptive?.filter ?: restoredFilter)
+    }
 }

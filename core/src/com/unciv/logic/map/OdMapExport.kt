@@ -9,14 +9,15 @@ import java.io.ByteArrayOutputStream
 import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import kotlin.math.abs
 
 /**
  * Writes a [TileMap] out as an Open Doctrines `.odmap`.
  *
- * The inverse of [OdMapImport], and inverse in the literal sense: the importer
- * samples the pixel at the centre of each grid cell, so the exporter paints
- * each cell as a solid rectangle, and a map that goes out and comes back is the
- * map that set out.
+ * The importer samples each cell's centre, so the exporter paints solid cells.
+ * With matching import dimensions, the shared terrain tokens retain their
+ * positions. The editor's default import dimensions may resample the raster.
+ * Hexagonal maps occupy a rectangular raster with sea outside their outline.
  *
  * What the archive holds, and why:
  *
@@ -51,29 +52,26 @@ object OdMapExport {
         val tiles = map.values.toList()
         require(tiles.isNotEmpty()) { "a TileMap with no tiles" }
 
-        // The grid is walked FORWARDS, the way the importer and TileMap's own
-        // constructor walk it, and never by inverting a hex coordinate back to
-        // a column and row. HexMath.getColumn/getRow are not exact inverses of
-        // getTileCoordsFromColumnRow: on odd columns the row comes back one
-        // out, because the `twoRows += 1` shift is not undone. Inverting a
-        // 20x10 map gives 50 wrong cells and only 190 distinct ones, so two
-        // hexes land on one province and seven provinces are never written.
-        val columns = map.mapParameters.mapSize.width
-        val rows = map.mapParameters.mapSize.height
-        val colMin = -columns / 2
-        val rowMin = -rows / 2
-
+        // Use the occupied grid, not mapSize's rectangular estimates for a
+        // hexagonal radius (or an odd wrap width rounded by TileMap). Undo the
+        // odd-column half-row shift BEFORE integer division, including below
+        // zero: HexMath.getRow() alone truncates those negative rows.
         val byCell = HashMap<Long, Tile>(tiles.size * 2)
-        for (ri in 0 until rows) for (ci in 0 until columns) {
-            val position = HexMath.getTileCoordsFromColumnRow(ci + colMin, ri + rowMin)
-            if (!map.contains(position)) continue
-            byCell[cellKey(ci + colMin, ri + rowMin)] = map[position]
+        var colMin = Int.MAX_VALUE
+        var colMax = Int.MIN_VALUE
+        var rowMin = Int.MAX_VALUE
+        var rowMax = Int.MIN_VALUE
+        for (tile in tiles) {
+            val column = HexMath.getColumn(tile.position)
+            val row = (tile.position.x + tile.position.y - abs(column) % 2) / 2
+            byCell[cellKey(column, row)] = tile
+            colMin = minOf(colMin, column)
+            colMax = maxOf(colMax, column)
+            rowMin = minOf(rowMin, row)
+            rowMax = maxOf(rowMax, row)
         }
-        if (byCell.size != tiles.size)
-            throw UncivShowableException(
-                "That map's declared size [${columns}x${rows}] does not match its "
-                    + "[${tiles.size}] tiles - [${byCell.size}] were found on the grid"
-            )
+        val columns = colMax - colMin + 1
+        val rows = rowMax - rowMin + 1
 
         map.assignContinents(TileMap.AssignContinentsMode.Ensure)
 

@@ -60,6 +60,28 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         diplomacyTable.add(leaderIntroTable).row()
         diplomacyTable.addSeparator()
 
+        val diplomacyManager = viewingCiv.getDiplomacyManager(otherCiv)!!
+        for (button in getDiplomacyActions(otherCiv)) diplomacyTable.add(button).row()
+
+        if (otherCiv.isHuman())
+            diplomacyTable.add(diplomacyScreen.getHumanRelationshipTable(otherCivDiplomacyManager)).row()
+        else {
+            diplomacyTable.add(diplomacyScreen.getRelationshipTable(otherCivDiplomacyManager)).row()
+            diplomacyTable.add(getDiplomacyModifiersTable(otherCivDiplomacyManager)).row()
+        }
+        val promisesTable = getPromisesTable(diplomacyManager, otherCivDiplomacyManager)
+        if (promisesTable != null) diplomacyTable.add(promisesTable).row()
+
+        // Starting playback here assumes the MajorCivDiplomacyTable is shown immediately
+        UncivGame.Current.musicController.playVoice(helloVoice)
+
+        return diplomacyTable
+    }
+
+
+    internal fun getDiplomacyActions(otherCiv: Civilization): List<TextButton> {
+        val otherCivDiplomacyManager = otherCiv.getDiplomacyManager(viewingCiv)!!
+        val diplomacyTable = Table()
         val diplomaticRelationshipsCanChange =
             !viewingCiv.gameInfo.ruleset.modOptions.hasUnique(UniqueType.DiplomaticRelationshipsCannotChange)
 
@@ -90,8 +112,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         val demandsButton = "Demands".toTextButton()
         demandsButton.name = "ui-demands-open:${otherCiv.civID}"
         demandsButton.onClick {
-            diplomacyScreen.rightSideTable.clear()
-            diplomacyScreen.rightSideTable.add(getDemandsTable(viewingCiv, otherCiv))
+            diplomacyScreen.showSubPage(otherCiv, getDemandsTable(viewingCiv, otherCiv), "demands")
         }
         diplomacyTable.add(demandsButton).row()
         if (diplomacyScreen.isNotPlayersTurn()) demandsButton.disable()
@@ -99,27 +120,15 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         if (otherCiv.getCapital() != null && viewingCiv.hasExplored(otherCiv.getCapital()!!.getCenterTile()))
             diplomacyTable.add(diplomacyScreen.getGoToOnMapButton(otherCiv)).row()
 
-        if (otherCiv.isHuman())
-            diplomacyTable.add(diplomacyScreen.getHumanRelationshipTable(otherCivDiplomacyManager)).row()
-        else {
-            diplomacyTable.add(diplomacyScreen.getRelationshipTable(otherCivDiplomacyManager)).row()
-            diplomacyTable.add(getDiplomacyModifiersTable(otherCivDiplomacyManager)).row()
-        }
-        val promisesTable = getPromisesTable(diplomacyManager, otherCivDiplomacyManager)
-        if (promisesTable != null) diplomacyTable.add(promisesTable).row()
-
-        // Starting playback here assumes the MajorCivDiplomacyTable is shown immediately
-        UncivGame.Current.musicController.playVoice(helloVoice)
-
-        return diplomacyTable
+        return diplomacyTable.children.filterIsInstance<TextButton>().toList()
     }
-
 
     private fun getNegotiatePeaceMajorCivButton(
         otherCiv: Civilization,
         otherCivDiplomacyManager: DiplomacyManager
     ): TextButton {
         val negotiatePeaceButton = "Negotiate Peace".toTextButton()
+        negotiatePeaceButton.name = "ui-negotiate-peace:${otherCiv.civID}"
         negotiatePeaceButton.onClick {
             val tradeTable = diplomacyScreen.setTrade(otherCiv)
             val peaceTreaty = TradeOffer(Constants.peaceTreaty, TradeOfferType.Treaty, speed = viewingCiv.gameInfo.speed)
@@ -143,7 +152,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         otherCiv: Civilization,
         diplomacyManager: DiplomacyManager
     ): TextButton {
-        val denounceButton = "Denounce ([30] turns)".toTextButton()
+        val denounceButton = "Denounce ([30] turns)".toTextButton().apply { name = "ui-diplomacy-denounce" }
         denounceButton.onClick {
             ConfirmPopup(diplomacyScreen, "Denounce [${otherCiv.civName}]?", "Denounce ([30] turns)") {
                 diplomacyManager.denounce()
@@ -194,7 +203,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         return tradeButton
     }
 
-    private fun getPromisesTable(
+    internal fun getPromisesTable(
         diplomacyManager: DiplomacyManager,
         otherCivDiplomacyManager: DiplomacyManager
     ): Table? {
@@ -216,7 +225,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         return if (promisesTable.cells.isEmpty) null else promisesTable
     }
 
-    private fun getDiplomacyModifiersTable(otherCivDiplomacyManager: DiplomacyManager): Table {
+    internal fun getDiplomacyModifiersTable(otherCivDiplomacyManager: DiplomacyManager): Table {
         val diplomacyModifiersTable = Table()
         diplomacyModifiersTable.defaults().spaceBottom(4f)
         for (modifier in otherCivDiplomacyManager.diplomaticModifiers) {
@@ -237,7 +246,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         return diplomacyModifiersTable
     }
 
-    private fun getDemandsTable(viewingCiv: Civilization, otherCiv: Civilization): Table {
+    internal fun getDemandsTable(viewingCiv: Civilization, otherCiv: Civilization): Table {
         diplomacyScreen.subPageCiv = otherCiv
         val demandsTable = Table()
         demandsTable.defaults().pad(10f)

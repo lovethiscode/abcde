@@ -1,8 +1,8 @@
 package com.unciv.ui.screens.mapeditorscreen
 
+import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
 import com.unciv.Constants
-import com.unciv.UncivGame
 import com.unciv.json.json
 import com.unciv.logic.UncivShowableException
 import com.unciv.logic.files.FileChooser
@@ -43,19 +43,17 @@ class MapEditorWesnothImporter(private val editorScreen: MapEditorScreen) : Disp
     private val ignoreLines = setOf("usage=map", "border_size=1")
 
     private val parseTerrain by lazy {
+        // RoboVM's regex engine does not accept the JVM named-group/COMMENTS
+        // pattern. Keep the same grammar using portable numbered captures.
         Regex(
-            """^
-                (((?<start>\d+)|[A-Za-z\d_]+)\ )*         # Space-separated prefixes allowed, if numeric it's a starting location, others are scenario-specific (we ignore)
-                (?<base>[A-Z_][a-z\\|/]{1,3})             # mandatory layer
-                (\^(?<layer>[A-Z_][a-z\\|/]{1,3}))?       # optional layer separated by `^`
-            $""".trimIndent(), RegexOption.COMMENTS)
+            """^(((\d+)|[A-Za-z\d_]+) )*([A-Z_][a-z\\|/]{1,3})(\^([A-Z_][a-z\\|/]{1,3}))?$""")
     }
 
     private val translationCodes: LinkedHashMap<String,ArrayList<String>> by lazy {
         json().fromJson(
             linkedMapOf<String,ArrayList<String>>()::class.java,
             arrayListOf<String>()::class.java,  // else we get Gdx.Array despite the class above stating ArrayList
-            UncivGame.Current.files.getLocalFile("jsons/WesnothImportMappings.json")
+            Gdx.files.internal("jsons/WesnothImportMappings.json")
         )
     }
 
@@ -141,9 +139,9 @@ class MapEditorWesnothImporter(private val editorScreen: MapEditorScreen) : Disp
         // First do a pattern match that validates and splits off player start indices, base and layer codes, and ignores other scenario prefixes
         val matches = parseTerrain.matchEntire(cellCode)
             ?: throw UncivShowableException("{That map is invalid!}\n{(\"[$cellCode]\" does not conform to TerrainCodesWML)}")
-        val start = matches.groups["start"]?.value
-        val base = matches.groups["base"]!!.value  // This capture is not optional in the pattern
-        val layer = matches.groups["layer"]?.value
+        val start = matches.groups[3]?.value
+        val base = matches.groupValues[4]  // This capture is not optional in the pattern
+        val layer = matches.groups[6]?.value
         // Now build a loose collection of candidate elements
         val allStrings: Sequence<String> =
             translateTerrainWML(base) + translateTerrainWML(layer) + fallback

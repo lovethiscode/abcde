@@ -26,22 +26,33 @@ class TradeTable(
 
     private fun retractOffer() {
         tradeView.tryRetractOffer()
-        offerButton.setText(offerTradeText.tr())
+        refreshOfferState()
+    }
+
+    /** Refresh restored drafts without retracting a trade that has already been sent. */
+    internal fun refreshOfferState() {
+        val pending = tradeView.hasPendingOfferFromUs()
+        offerButton.setText(if (pending) "Retract offer".tr() else offerTradeText.tr())
+        offerButton.isEnabled = pending || tradeView.theirStagedOffers().isNotEmpty() || tradeView.ourStagedOffers().isNotEmpty()
     }
 
     init {
         name = "ui-trade-table:${otherCivilization.civID}"
         offerButton.name = "ui-trade-submit"
-        offerColumnsTableWrapper.add(offerColumnsTable)
-        add(offerColumnsTableWrapper).row()
+        if (diplomacyScreen.usesAdaptiveLayout) {
+            offerColumnsTableWrapper.add(offerColumnsTable).grow().minSize(0f)
+            add(offerColumnsTableWrapper).grow().minSize(0f).row()
+        } else {
+            offerColumnsTableWrapper.add(offerColumnsTable)
+            add(offerColumnsTableWrapper).row()
+        }
 
         val lowerTable = Table().apply { defaults().pad(10f) }
 
         if (tradeView.tryLoadOurPendingOffer())
             offerColumnsTable.update()
 
-        if (tradeView.hasPendingOfferFromUs()) offerButton.setText("Retract offer".tr())
-        else offerButton.apply { isEnabled = false }.setText(offerTradeText.tr())
+        refreshOfferState()
 
         offerButton.onClick {
             if (tradeView.hasPendingOfferFromUs()) {
@@ -73,11 +84,19 @@ class TradeTable(
             offerButton.setText("Retract offer".tr())
         }
 
-        lowerTable.add(offerButton)
+        if (diplomacyScreen.usesAdaptiveLayout) {
+            val ui = DiplomacyScreenStyle.forScreen(diplomacyScreen)
+            ui.decorate(offerButton, primary = true)
+            offerButton.label.setEllipsis(false)
+            offerButton.label.wrap = true
+            lowerTable.defaults().pad(ui.px(4f))
+            lowerTable.add(offerButton).growX().minWidth(0f).minHeight(ui.px(44f))
+        } else lowerTable.add(offerButton)
 
         lowerTable.pack()
         lowerTable.y = 10f
-        add(lowerTable)
+        if (diplomacyScreen.usesAdaptiveLayout) add(lowerTable).growX().minWidth(0f)
+        else add(lowerTable)
         pack()
     }
 

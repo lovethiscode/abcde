@@ -425,6 +425,10 @@ class MapEditorScreen(map: TileMap? = null) : BaseScreen(), RecreateOnResize {
 
         imageOverlay?.apply {
             touchable = Touchable.disabled
+            // Group culling happens before Image.draw() can validate fillParent.
+            // Give the image its map bounds now, or an offscreen texture-sized
+            // image can be culled forever without ever getting laid out.
+            setSize(newHolderContent.width, newHolderContent.height)
             setFillParent(true)
             color.a = overlayAlpha
             newHolderContent.addActor(this)

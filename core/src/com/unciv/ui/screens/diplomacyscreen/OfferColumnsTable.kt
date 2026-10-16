@@ -1,6 +1,8 @@
 package com.unciv.ui.screens.diplomacyscreen
 
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.Group
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.Constants
 import com.unciv.logic.trade.TradeOffer
 import com.unciv.logic.trade.TradeOffersList
@@ -9,6 +11,7 @@ import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.addSeparator
 import com.unciv.ui.components.extensions.surroundWithCircle
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.popups.AskNumberPopup
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.view.ForeignCivView
@@ -22,6 +25,7 @@ class OfferColumnsTable(
     private val theirCiv: ForeignCivView,
     private val onChange: () -> Unit
 ): Table(BaseScreen.skin) {
+    private val ui = if (screen.usesAdaptiveLayout) DiplomacyScreenStyle.forScreen(screen) else null
 
     fun addOffer(offer: TradeOffer, offerList: TradeOffersList, correspondingOfferList: TradeOffersList) {
         offerList.add(offer.copy())
@@ -63,7 +67,25 @@ class OfferColumnsTable(
 
         val columnWidth = screen.getTradeColumnsWidth() - 20f // Subtract padding: ours and OffersListScroll's
 
-        if (!isPortraitMode) {
+        if (ui != null) {
+            defaults().pad(ui.px(4f)).minSize(0f)
+            fun heading(text: String, span: Int = 1) {
+                add(ui.label(text, 12, ui.muted, wrap = true)).growX().colspan(span)
+            }
+            if (isPortraitMode) {
+                heading("Our items", 2); row()
+                add(ourAvailableOffersTable).grow().minHeight(ui.px(52f)).colspan(2).row()
+                heading("[${theirCiv.civName}]'s items", 2); row()
+                add(theirAvailableOffersTable).grow().minHeight(ui.px(52f)).colspan(2).row()
+            } else {
+                heading("Our items"); heading("[${theirCiv.civName}]'s items"); row()
+                add(ourAvailableOffersTable).grow().minHeight(ui.px(52f))
+                add(theirAvailableOffersTable).grow().minHeight(ui.px(52f)).row()
+            }
+            heading("Our trade offer"); heading("[${theirCiv.civName}]'s trade offer"); row()
+            add(ourOffersTable).grow().minHeight(ui.px(52f))
+            add(theirOffersTable).grow().minHeight(ui.px(52f))
+        } else if (!isPortraitMode) {
             // In landscape, arrange in 4 panels: ours left / theirs right ; items top / offers bottom.
             add("Our items".tr())
             add("[${theirCiv.civName}]'s items".tr()).row()
@@ -110,6 +132,26 @@ class OfferColumnsTable(
         ourOffersTable.update(tradeView.ourStagedOffers(), tradeView.theirAvailableOffers(), ourCiv = ourCiv, theirCiv = theirCiv)
         theirOffersTable.update(tradeView.theirStagedOffers(), tradeView.ourAvailableOffers(), ourCiv = ourCiv, theirCiv = theirCiv)
         theirAvailableOffersTable.update(theirFilteredOffers, tradeView.ourAvailableOffers(), theirUntradables, ourCiv, theirCiv)
+        if (ui != null) {
+            fun style(group: Group) {
+                if (group is Table) for (cell in group.cells) {
+                    when (val button = cell.actor) {
+                        is IconTextButton -> ui.decorate(button)
+                        is TextButton -> ui.decorate(button).also {
+                            it.label.setEllipsis(false); it.label.wrap = true
+                        }
+                        else -> continue
+                    }
+                    cell.minSize(ui.px(44f)).growX()
+                }
+                for (child in group.children) if (child is Group) style(child)
+            }
+            for (list in listOf(ourAvailableOffersTable, theirAvailableOffersTable, ourOffersTable, theirOffersTable)) {
+                list.setScrollingDisabled(true, false)
+                list.table.top()
+                style(list.table)
+            }
+        }
     }
 
     private fun openGoldSelectionPopup(offer: TradeOffer, ourOffers: TradeOffersList, maxGold: Int) {

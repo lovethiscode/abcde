@@ -192,7 +192,7 @@ class MapEditorEditTab(
     }
 
     override fun deactivated(index: Int, caption: String, pager: TabbedPager) {
-        pager.setScrollDisabled(true)
+        pager.setScrollDisabled(false)
         editorScreen.tileClickHandler = null
     }
 

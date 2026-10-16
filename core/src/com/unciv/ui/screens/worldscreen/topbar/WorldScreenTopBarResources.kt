@@ -1,6 +1,6 @@
 package com.unciv.ui.screens.worldscreen.topbar
 
-import com.badlogic.gdx.scenes.scene2d.Group
+import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -14,6 +14,8 @@ import com.unciv.ui.components.YearTextUtil
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.screens.worldscreen.BattlefieldHud
+import com.unciv.ui.screens.worldscreen.BattlefieldGeometry
+import com.unciv.ui.screens.worldscreen.FacetedHudIcons
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.extensions.toStringSigned
 import com.unciv.ui.components.fonts.Fonts
@@ -27,9 +29,10 @@ import com.unciv.ui.screens.victoryscreen.VictoryScreen
 internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTableWrapper() {
     private val turnsLabel = "Turns: 0/400".toLabel()
     internal val battlefieldTurnLabel get() = turnsLabel
-    private data class ResourceActors(val resource: TileResource, val label: Label, val icon: Group)
+    private data class ResourceActors(val resource: TileResource, val label: Label, val icon: Actor)
     private val resourceActors = ArrayList<ResourceActors>(12)
     private val resourcesWrapper = Table()
+    internal val battlefieldResources get() = resourcesWrapper
     val worldScreen = topbar.worldScreen
 
     // Note: For a proper functioning of the "shift floating buttons down when cramped" feature, it is
@@ -69,7 +72,10 @@ internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTa
         val strategicResources = worldScreen.gameInfo.ruleset.tileResources.values
             .filter { it.resourceType == ResourceType.Strategic && !it.isCityWide }
         for (resource in strategicResources) {
-            val resourceImage = ImageGetter.getResourcePortrait(resource.name, iconSize)
+            val resourceImage = FacetedHudIcons.resource(resource.name, iconSize)
+                ?: ImageGetter.getResourcePortrait(resource.name, iconSize).let {
+                    if (BattlefieldHud.enabled) BattlefieldGeometry.icon(it) else it
+                }
             val resourceLabel = "0".toLabel()
             resourceActors += ResourceActors(resource, resourceLabel, resourceImage)
         }

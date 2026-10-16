@@ -1,40 +1,229 @@
 
 FacetedHudIcons.png
-size: 1024, 256
+size: 1024, 1024
 format: RGBA8888
 filter: MipMapLinearLinear, Linear
 repeat: none
-FacetedHudIcons/Archer
+FacetedHudIcons/Actions/Automate
   rotate: false
-  xy: 4, 4
+  xy: 169, 829
   size: 157, 157
   orig: 157, 157
   offset: 0, 0
   index: -1
-FacetedHudIcons/Fortify
+FacetedHudIcons/Actions/ConstructImprovement
+  rotate: false
+  xy: 169, 664
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/DisbandUnit
+  rotate: false
+  xy: 4, 334
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/Explore
+  rotate: false
+  xy: 169, 499
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/Fortify
+  rotate: false
+  xy: 499, 829
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/FortifyUntilHealed
+  rotate: false
+  xy: 4, 169
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/FoundCity
+  rotate: false
+  xy: 169, 334
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/Guard
+  rotate: false
+  xy: 499, 664
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/Pillage
+  rotate: false
+  xy: 664, 664
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/Promote
+  rotate: false
+  xy: 829, 829
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/Repair
   rotate: false
   xy: 169, 4
   size: 157, 157
   orig: 157, 157
   offset: 0, 0
   index: -1
-FacetedHudIcons/Gold
+FacetedHudIcons/Actions/RoadConnection
+  rotate: false
+  xy: 334, 169
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/SetUp
+  rotate: false
+  xy: 664, 499
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/ShowMore
+  rotate: false
+  xy: 829, 664
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/Skip
   rotate: false
   xy: 334, 4
   size: 157, 157
   orig: 157, 157
   offset: 0, 0
   index: -1
-FacetedHudIcons/Science
+FacetedHudIcons/Actions/Sleep
+  rotate: false
+  xy: 499, 169
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/Stop
+  rotate: false
+  xy: 664, 334
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/Swap
+  rotate: false
+  xy: 829, 499
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Actions/Upgrade
   rotate: false
   xy: 499, 4
   size: 157, 157
   orig: 157, 157
   offset: 0, 0
   index: -1
-FacetedHudIcons/Skip
+FacetedHudIcons/Resources/Aluminum
   rotate: false
-  xy: 664, 4
+  xy: 4, 829
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Resources/Coal
+  rotate: false
+  xy: 4, 499
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Resources/Horses
+  rotate: false
+  xy: 4, 4
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Resources/Iron
+  rotate: false
+  xy: 169, 169
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Resources/Oil
+  rotate: false
+  xy: 499, 499
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Resources/Uranium
+  rotate: false
+  xy: 664, 169
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Stats/Culture
+  rotate: false
+  xy: 334, 829
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Stats/Faith
+  rotate: false
+  xy: 334, 664
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Stats/Gold
+  rotate: false
+  xy: 334, 499
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Stats/Happiness
+  rotate: false
+  xy: 664, 829
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Stats/Malcontent
+  rotate: false
+  xy: 334, 334
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Stats/Science
+  rotate: false
+  xy: 499, 334
+  size: 157, 157
+  orig: 157, 157
+  offset: 0, 0
+  index: -1
+FacetedHudIcons/Units/Archer
+  rotate: false
+  xy: 4, 664
   size: 157, 157
   orig: 157, 157
   offset: 0, 0

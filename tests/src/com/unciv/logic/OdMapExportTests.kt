@@ -1,6 +1,7 @@
 package com.unciv.logic
 
 import com.badlogic.gdx.files.FileHandle
+import com.badlogic.gdx.graphics.Pixmap
 import com.unciv.logic.map.MapShape
 import com.unciv.logic.map.MapSize
 import com.unciv.logic.map.OdMapExport
@@ -149,6 +150,45 @@ class OdMapExportTests {
             Assert.fail("expected an all-water map to be refused")
         } catch (expected: UncivShowableException) {
             Assert.assertTrue(expected.message, expected.message.contains("all water"))
+        }
+    }
+
+    @Test
+    fun `hexagonal export includes every land tile and pads the outline with sea`() {
+        val map = TileMap(10, ruleset)
+        map.mapParameters.shape = MapShape.hexagonal
+        map.mapParameters.mapSize = MapSize(10)
+        val file = tempOdmap()
+        OdMapExport.write(map, file, "Hexagonal map")
+
+        ZipFile(file.file()).use { zip ->
+            val bytes = zip.getInputStream(zip.getEntry("provinces.png")).use { it.readBytes() }
+            val raster = Pixmap(bytes, 0, bytes.size)
+            try {
+                val provinceIds = HashSet<Int>()
+                for (y in 0 until raster.height step OdMapExport.defaultCellSize)
+                    for (x in 0 until raster.width step OdMapExport.defaultCellSize)
+                        provinceIds.add(raster.getPixel(x, y) ushr 8)
+                Assert.assertTrue("outside the hexagon is sea", provinceIds.remove(0))
+                Assert.assertEquals(331, map.values.size)
+                Assert.assertEquals("no lost or overlapping land cells", map.values.size, provinceIds.size)
+                val table = zip.getInputStream(zip.getEntry("provinces.json")).use { it.readBytes() }.toString(Charsets.UTF_8)
+                Assert.assertEquals(map.values.size, Regex(""""id":\d+""").findAll(table).count())
+            } finally {
+                raster.dispose()
+            }
+        }
+    }
+
+    @Test
+    fun `odd declared wrap width uses the actual rectangular grid`() {
+        val original = sampleMap(21, 11) // TileMap rounds wrap width down to20.
+        val file = tempOdmap()
+        OdMapExport.write(original, file)
+        val back = OdMapImport.read(file, ruleset, 20, 11)
+        Assert.assertEquals(220, back.values.size)
+        for (tile in original.values) {
+            Assert.assertEquals(OdTerrain.forTile(tile).baseTerrain, back[tile.position].baseTerrain)
         }
     }
 }
