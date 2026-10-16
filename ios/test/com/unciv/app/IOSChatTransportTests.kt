@@ -131,6 +131,32 @@ class IOSChatTransportTests {
         assertEquals(1, socket.closeCount)
     }
 
+    @Test
+    fun concurrentNativeCompletionsResumeOnlyOnce() = runBlocking {
+        repeat(100) {
+            val callbacks = Channel<(Result<Unit>) -> Unit>(1)
+            val pending = async {
+                kotlinx.coroutines.suspendCancellableCoroutine<Unit> { continuation ->
+                    callbacks.trySend(continuation.onceCallback()).getOrThrow()
+                }
+            }
+            val callback = callbacks.receive()
+            val start = java.util.concurrent.CountDownLatch(1)
+            val errors = java.util.concurrent.ConcurrentLinkedQueue<Throwable>()
+            val threads = List(4) {
+                Thread {
+                    start.await()
+                    try { callback(Result.success(Unit)) } catch (error: Throwable) { errors.add(error) }
+                }.apply { start() }
+            }
+            start.countDown()
+            threads.forEach { it.join() }
+            pending.await()
+            callback(Result.failure(IOException("late native failure")))
+            assertTrue(errors.toString(), errors.isEmpty())
+        }
+    }
+
     private class FakeSocket : IOSChatSocket {
         val sent = ArrayList<String>()
         val pings = Channel<Unit>(Channel.UNLIMITED)

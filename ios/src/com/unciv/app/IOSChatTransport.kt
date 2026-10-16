@@ -7,6 +7,7 @@ import com.unciv.logic.multiplayer.chat.Message
 import com.unciv.logic.multiplayer.chat.Response
 import com.unciv.logic.multiplayer.storage.MultiplayerServer
 import com.unciv.utils.PlatformCapabilities
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,9 +59,7 @@ class IOSChatTransport internal constructor(
             try {
                 suspendCancellableCoroutine<Unit> { continuation ->
                     continuation.invokeOnCancellation { closeSocket() }
-                    if (continuation.isActive) socket.open { result ->
-                        if (continuation.isActive) continuation.resumeWith(result)
-                    }
+                    if (continuation.isActive) socket.open(continuation.onceCallback())
                 }
             } catch (exception: Exception) {
                 closeSocket()
@@ -72,9 +71,7 @@ class IOSChatTransport internal constructor(
                     while (isActive) {
                         delay(pingIntervalMillis)
                         suspendCancellableCoroutine<Unit> { continuation ->
-                            if (continuation.isActive && isActive) socket.ping { result ->
-                                if (continuation.isActive) continuation.resumeWith(result)
-                            }
+                            if (continuation.isActive && isActive) socket.ping(continuation.onceCallback())
                         }
                     }
                 } catch (exception: CancellationException) {
@@ -90,9 +87,7 @@ class IOSChatTransport internal constructor(
             val text = ChatProtocol.encode(message)
             suspendCancellableCoroutine<Unit> { continuation ->
                 continuation.invokeOnCancellation { closeSocket() }
-                socket.send(text) { result ->
-                    if (continuation.isActive) continuation.resumeWith(result)
-                }
+                socket.send(text, continuation.onceCallback())
             }
         }
 
@@ -100,9 +95,7 @@ class IOSChatTransport internal constructor(
             check(isActive) { "Chat connection is closed" }
             val text = suspendCancellableCoroutine<String> { continuation ->
                 continuation.invokeOnCancellation { closeSocket() }
-                socket.receive { result ->
-                    if (continuation.isActive) continuation.resumeWith(result)
-                }
+                socket.receive(continuation.onceCallback())
             }
             return ChatProtocol.decode(text)
         }
@@ -115,6 +108,15 @@ class IOSChatTransport internal constructor(
                 socket.close()
             }
         }
+    }
+}
+
+// Native completion handlers can race when a socket fails or is cancelled. The
+// isActive check alone is not atomic with resumeWith, so claim completion first.
+internal fun <T> CancellableContinuation<T>.onceCallback(): (Result<T>) -> Unit {
+    val completed = AtomicBoolean()
+    return { result ->
+        if (completed.compareAndSet(false, true) && isActive) resumeWith(result)
     }
 }
 
