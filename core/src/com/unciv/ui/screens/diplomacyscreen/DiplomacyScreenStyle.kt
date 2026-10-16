@@ -71,6 +71,8 @@ internal class DiplomacyScreenStyle(private val textScale: Float = 1f) {
             button.add(icon.image(if(primary) ExpeditionBlueTheme.primaryInk else text)).size(px(18f)).padRight(px(8f))
             button.add(button.label).minWidth(0f)
         }
+        // TextButton's original label cell is replaced when an icon is inserted.
+        button.getCell(button.label).growX().minWidth(0f)
         button.isDisabled = disabled
         return button
     }

@@ -100,7 +100,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
                 copy.add(nameLabel).growX().minWidth(0f).left().row()
                 val dm=civ.getDiplomacyManager(player)!!
                 val relationship = if(civ.isHuman()&&player.isHuman())screen.getHumanRelationshipText(dm) else dm.relationshipLevel().name
-                copy.add(ui.label("{${if (civ.isCityState) "City-State" else "Civilization"}} · {$relationship}", 12, ui.muted))
+                copy.add(ui.label("{${if (civ.isCityState) "City-State" else "Civilization"}} · {$relationship}", 12, ui.muted).apply { setEllipsis(true) })
                     .left().growX().minWidth(0f).padTop(ui.px(3f))
                 add(copy).growX().minWidth(0f)
                 if (!layout.narrow && selected == civ) add(ImageGetter.getImage("OtherIcons/Checkmark").apply { color = ui.gold })
@@ -282,23 +282,35 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         }
         val map = actions.firstOrNull { it.name == "ui-diplomacy-map" }
         val bar = Table()
-        bar.add(ui.decorate(primary,true,icon=if(civ.isCityState && !civ.isAtWarWith(player))DiplomacyIcon.Gift else DiplomacyIcon.Trade)).width(ui.px(if(layout.wide)160f else 116f)).height(ui.px(44f)).padRight(ui.px(8f))
-        if (secondary != null) bar.add(ui.decorate(secondary)).minWidth(0f).maxWidth(ui.px(130f)).height(ui.px(44f)).padRight(ui.px(8f))
+        val primaryButton = ui.decorate(primary,true,icon=if(civ.isCityState && !civ.isAtWarWith(player))DiplomacyIcon.Gift else DiplomacyIcon.Trade)
+        val secondaryButton = secondary?.let { ui.decorate(it) }
+        val more = ui.decorate("More".toTextButton(),icon=if(layout.narrow)null else DiplomacyIcon.Down)
+        val moreWidth = if (layout.narrow) maxOf(68f,more.prefWidth/ui.unit) else 84f
+        val primaryWidth = if (layout.narrow) maxOf(116f,primaryButton.prefWidth/ui.unit) else if(layout.wide)160f else 116f
+        val secondaryWidth = secondaryButton?.let { maxOf(44f,it.prefWidth/ui.unit) } ?: 0f
+        val visibleSecondary = secondaryButton?.takeIf {
+            !layout.narrow || primaryWidth+secondaryWidth+moreWidth+16f <= layout.detailWidth-32f
+        }
+        val primaryCell = bar.add(primaryButton).height(ui.px(44f)).padRight(ui.px(8f))
+        if (layout.narrow) primaryCell.growX().minWidth(ui.px(primaryWidth)) else primaryCell.width(ui.px(primaryWidth))
+        if (visibleSecondary != null) {
+            val secondaryCell = bar.add(visibleSecondary).height(ui.px(44f)).padRight(ui.px(8f))
+            if (layout.narrow) secondaryCell.width(ui.px(secondaryWidth)) else secondaryCell.minWidth(0f).maxWidth(ui.px(130f))
+        }
         if (!layout.narrow && layout.detailWidth > 550f && map != null)
             bar.add(ui.decorate(map,ghost=true,icon=DiplomacyIcon.Map)).height(ui.px(44f)).padRight(ui.px(8f))
-        bar.add().growX()
-        val more = ui.decorate("More".toTextButton(),icon=if(layout.narrow)null else DiplomacyIcon.Down)
+        if (!layout.narrow) bar.add().growX()
         more.name = "ui-diplomacy-more"
         more.onActivation {
             val popup = Popup(screen)
             popup.add(ui.label("Diplomatic actions",18)).padBottom(ui.px(12f)).row()
-            for (button in actions.filter { it != primary && it != secondary }.sortedBy { it.name?.startsWith("ui-declare-war:")==true || it.name=="ui-diplomacy-denounce" }) {
+            for (button in actions.filter { it != primary && it != visibleSecondary }.sortedBy { it.name?.startsWith("ui-declare-war:")==true || it.name=="ui-diplomacy-denounce" }) {
                 popup.add(ui.decorate(button)).width(ui.px(minOf(320f,layout.detailWidth-24f))).minHeight(ui.px(44f)).padBottom(ui.px(8f)).row()
                 button.onActivation { popup.close() }
             }
             popup.addCloseButton(); popup.open()
         }
-        bar.add(more).width(ui.px(if(layout.narrow)68f else 84f)).height(ui.px(44f))
+        bar.add(more).width(ui.px(moreWidth)).height(ui.px(44f))
         detail.add(com.badlogic.gdx.scenes.scene2d.ui.Image(ui.surface(com.unciv.models.skins.ExpeditionBlueTheme.border,0f)))
             .growX().height(ui.px(1f)).row()
         detail.add(bar).growX().pad(ui.px(10f),ui.px(16f),ui.px(12f),ui.px(16f)).row()
