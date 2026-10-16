@@ -141,6 +141,7 @@ class MapEditorOptionsTab(
             val clipboardContentsString = Gdx.app.clipboard.contents.trim()
             val loadedMap = MapSaver.mapFromSavedString(clipboardContentsString)
             editorScreen.loadMap(loadedMap)
+            editorScreen.markUnsaved()
         } catch (ex: Exception) {
             Log.error("Could not load map", ex)
             ToastPopup("Could not load map!", editorScreen)

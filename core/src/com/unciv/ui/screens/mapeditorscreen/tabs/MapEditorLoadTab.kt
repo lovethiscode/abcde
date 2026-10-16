@@ -54,7 +54,7 @@ class MapEditorLoadTab(
         buttonTable.add(deleteButton)
         buttonTable.pack()
 
-        val fileTableHeight = editorScreen.stage.height - headerHeight - buttonTable.height - 2f
+        val fileTableHeight = editorScreen.getToolsHeight() - headerHeight - buttonTable.height - 2f
         add(mapFiles).size(editorScreen.getToolsWidth() - 20f, fileTableHeight).padTop(10f).row()
         add(buttonTable).row()
     }

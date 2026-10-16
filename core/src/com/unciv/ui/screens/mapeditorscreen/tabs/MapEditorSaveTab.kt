@@ -73,7 +73,7 @@ class MapEditorSaveTab(
         if (!UiNavigation.isIos) buttonTable.add(quitButton)
         buttonTable.pack()
 
-        val fileTableHeight = editorScreen.stage.height - headerHeight - mapNameTextField.prefHeight - buttonTable.height - 22f
+        val fileTableHeight = editorScreen.getToolsHeight() - headerHeight - mapNameTextField.prefHeight - buttonTable.height - 22f
         add(mapFiles).height(fileTableHeight).fillX().row()
         add(buttonTable).row()
     }
@@ -90,7 +90,9 @@ class MapEditorSaveTab(
         editorScreen.tileMap.mapParameters.type = MapGeneratedMainType.custom
         editorScreen.tileMap.description = editorScreen.descriptionTextField.text
         setSaveButton(false)
-        editorScreen.startBackgroundJob("MapSaver", false) { saverThread() }
+        val mapToSave = editorScreen.getMapCloneForSave()
+        val nameToSave = mapNameTextField.text
+        editorScreen.startBackgroundJob("MapSaver", false) { saverThread(mapToSave, nameToSave) }
     }
 
     private fun deleteHandler() {
@@ -129,18 +131,17 @@ class MapEditorSaveTab(
         deleteButton.color = if (file != null) Color.SCARLET else Color.BROWN
     }
 
-    private fun CoroutineScope.saverThread() {
+    private fun CoroutineScope.saverThread(mapToSave: TileMap, nameToSave: String) {
         try {
-            val mapToSave = editorScreen.getMapCloneForSave()
             if (!isActive) return
             mapToSave.assignContinents(TileMap.AssignContinentsMode.Reassign)
             if (!isActive) return
-            MapSaver.saveMap(mapNameTextField.text, mapToSave)
+            MapSaver.saveMap(nameToSave, mapToSave)
             Concurrency.runOnGLThread {
+                editorScreen.markSaved(mapToSave)
+                setSaveButton(true)
                 ToastPopup("Map saved successfully!", editorScreen)
             }
-            editorScreen.isDirty = false
-            setSaveButton(true)
         } catch (ex: Exception) {
             Log.error("Failed to save map", ex)
             Concurrency.runOnGLThread {
