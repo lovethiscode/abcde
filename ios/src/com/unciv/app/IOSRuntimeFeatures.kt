@@ -7,7 +7,6 @@ import com.unciv.logic.files.cloud.CloudSaveSync
 
 interface IOSRuntimeFeatures {
     val multiplayerLobbyServerUrl: String? get() = null
-    val voluntarySupportAvailable: Boolean
     val secureMultiplayerPasswords: Boolean
     val oggAudioAvailable: Boolean
     val achievementsAvailable: Boolean
@@ -22,7 +21,6 @@ interface IOSRuntimeFeatures {
     fun createAudio(configuration: IOSApplicationConfiguration): IOSAudio?
     fun initialize()
     fun onForeground()
-    fun showVoluntarySupport()
     fun showAchievements()
     fun showAchievementGuide()
     fun showEndlessShare(data: com.unciv.logic.endless.EndlessShareData) {}
@@ -30,7 +28,6 @@ interface IOSRuntimeFeatures {
 }
 
 object DefaultIOSRuntimeFeatures : IOSRuntimeFeatures {
-    override val voluntarySupportAvailable = false
     override val secureMultiplayerPasswords = false
     override val oggAudioAvailable = false
     override val achievementsAvailable = false
@@ -40,7 +37,6 @@ object DefaultIOSRuntimeFeatures : IOSRuntimeFeatures {
     override fun createAudio(configuration: IOSApplicationConfiguration): IOSAudio? = null
     override fun initialize() = Unit
     override fun onForeground() = Unit
-    override fun showVoluntarySupport() = Unit
     override fun showAchievements() = Unit
     override fun showAchievementGuide() = Unit
     override fun dispose() = Unit

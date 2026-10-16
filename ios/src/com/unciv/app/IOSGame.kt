@@ -44,7 +44,6 @@ class IOSGame @JvmOverloads constructor(
     private var invitationDisposed = false
     private var invitationJob: Job? = null
 
-    override val voluntarySupportAvailable get() = runtimeFeatures.voluntarySupportAvailable
     override val achievementsAvailable get() = runtimeFeatures.achievementsAvailable
     override val campaignSharingAvailable get() = runtimeFeatures.campaignSharingAvailable
     override fun showCampaignShare(data: com.unciv.logic.campaign.CampaignShareData) = runtimeFeatures.showCampaignShare(data)
@@ -94,8 +93,6 @@ class IOSGame @JvmOverloads constructor(
 
     override fun beginMultiplayerUploadBackgroundTask(onExpired: () -> Unit): MultiplayerBackgroundTask =
         IOSMultiplayerBackgroundTask(onExpired)
-
-    override fun showVoluntarySupport() = runtimeFeatures.showVoluntarySupport()
 
     override fun shareMultiplayerGame(gameName: String, gameId: String, invitationLink: String) {
         val message = "Join my Unciv game".tr() + ": " + gameName +

@@ -3,8 +3,6 @@ package com.unciv.ui.popups.options
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.Constants
 import com.unciv.UncivGame
-import com.unciv.ui.components.extensions.toTextButton
-import com.unciv.ui.components.input.onClick
 import com.unciv.ui.screens.civilopediascreen.FormattedLine
 import com.unciv.ui.screens.civilopediascreen.MarkupRenderer
 
@@ -13,11 +11,6 @@ internal object AboutTab {
     // MainMenuscreen adds this to a Popup - one Table wrapper could be saved by using renderTo(Popup.innerTable), but that would be longer code
     fun asTable() = Table().apply {
         renderTo(this)
-        if (UncivGame.Current.voluntarySupportAvailable) {
-            add("Support iOS maintenance".toTextButton().onClick {
-                UncivGame.Current.showVoluntarySupport()
-            }).padTop(15f).row()
-        }
     }
 
     private fun renderTo(table: Table) {

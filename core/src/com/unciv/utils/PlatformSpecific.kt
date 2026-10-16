@@ -86,13 +86,6 @@ interface PlatformSpecific {
     val platformCapabilities: PlatformCapabilities
         get() = PlatformCapabilities()
 
-    /** Whether this platform offers the optional, non-gameplay-affecting support purchase flow. */
-    val voluntarySupportAvailable: Boolean
-        get() = false
-
-    /** Opens the platform-owned voluntary support purchase flow. */
-    fun showVoluntarySupport() {}
-
     val achievementsAvailable: Boolean
         get() = false
     fun showAchievements() {}

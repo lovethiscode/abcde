@@ -94,9 +94,6 @@ listOf("runtimeClasspath", "testRuntimeClasspath").forEach { configurationName -
 dependencies {
     runtimeOnly(files(stageIosKtorUtils))
     testImplementation("junit:junit:4.13.2")
-    if (extensionSourceDir != null) {
-        implementation("com.mobidevelop.robovm:robopods-swift-storekit2:18.2.0.1")
-    }
     if (extensionTestSourceDir != null) testImplementation(rootProject.libs.gdx.backend.headless)
 }
 
@@ -356,14 +353,6 @@ val roboVmPlatformClasspath = providers.provider {
     }
 }
 
-val extensionBindingClasspath = providers.provider {
-    if (extensionSourceDir == null) emptyList<File>()
-    else iosRuntimeClasspath.get().incoming.artifacts.artifacts.filter {
-        val component = it.id.componentIdentifier as? ModuleComponentIdentifier
-        component?.group == "com.mobidevelop.robovm" && component.module == "robopods-swift-storekit2"
-    }.map { it.file }
-}
-
 val verifyRoboVmApiCompatibility by tasks.registering(VerifyRoboVmApiCompatibilityTask::class) {
     dependsOn(
         "classes",
@@ -380,7 +369,7 @@ val verifyRoboVmApiCompatibility by tasks.registering(VerifyRoboVmApiCompatibili
         project(":ios-backend").layout.buildDirectory.dir("upstream-contents"),
     )
     resolutionClasspath.from(iosRuntimeClasspath)
-    platformClasspath.from(roboVmPlatformClasspath, extensionBindingClasspath)
+    platformClasspath.from(roboVmPlatformClasspath)
     targetPrefixes.set(
         listOf(
             "java/",
