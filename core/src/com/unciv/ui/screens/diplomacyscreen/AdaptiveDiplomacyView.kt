@@ -320,7 +320,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         selected=civ; detail.clearChildren(); shell(); identity(civ)
         val title=when(route){"gift"->"Give a Gift";"tribute"->"Demand Tribute";"improvement"->"Gift Improvement";"demands"->"Demands";"trade"->"Trade";else->"Diplomacy"}
         if (route != "trade") detail.add(ui.label(title,18)).left().pad(ui.px(8f),ui.px(18f),ui.px(12f),ui.px(18f)).row()
-        if(route!="trade")fitContent(content,detailWidth-ui.px(40f))
+        if(route!="trade" && route!="tribute")fitContent(content,detailWidth-ui.px(40f))
         val actor = if(scroll) AutoScrollPane(content).apply { setScrollingDisabled(true,false) } else content
         detail.add(actor).grow().minSize(0f).pad(ui.px(8f),ui.px(18f),ui.px(18f),ui.px(18f)).row()
     }

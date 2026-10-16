@@ -423,6 +423,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
 
     internal fun getDemandTributeTable(otherCiv: Civilization): Table {
         diplomacyScreen.subPageCiv = otherCiv
+        if (diplomacyScreen.usesAdaptiveLayout) return TributeDemandTable(diplomacyScreen, otherCiv)
         val diplomacyTable = if (diplomacyScreen.usesAdaptiveLayout) Table() else getCityStateDiplomacyTableHeader(otherCiv)
         diplomacyTable.addSeparator()
         diplomacyTable.add("Tribute Willingness".toLabel()).row()
