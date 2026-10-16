@@ -2,6 +2,8 @@ package com.unciv.ui.screens.worldscreen.chat
 
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Input
+import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.InputListener
@@ -21,13 +23,17 @@ import com.unciv.ui.components.extensions.brighten
 import com.unciv.ui.components.extensions.coerceLightnessAtLeast
 import com.unciv.ui.components.extensions.getContrastRatio
 import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.ColorMarkupLabel
 import com.unciv.ui.components.widgets.UncivTextField
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.screens.basescreen.BaseScreen
+import com.unciv.ui.screens.basescreen.UncivStage
 import com.unciv.ui.screens.worldscreen.WorldScreen
+import com.unciv.ui.screens.worldscreen.BattlefieldGeometry
 
 
 private val civChatColorsMap = mapOf(
@@ -122,10 +128,17 @@ class ChatPopup(
     private val scrollPane = ScrollPane(chatTable, skin)
     private val messageField = UncivTextField(hint = "Type something...")
     private val passwordReminder = Table(skin)
+    private val iosScale = if (UiNavigation.isIos) UiNavigation.minimumTouchSize() / 44f else 1f
+    private val chatHeaderRow = Table(skin)
+    private val composer = Table(skin)
+    private val inputFont by lazy {
+        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(15f * iosScale / Fonts.ORIGINAL_FONT_SIZE) }
+    }
 
     init {
         ChatStore.chatPopup = this
-        chatTable.defaults().growX().pad(5f).left()
+        chatTable.defaults().growX().pad(5f * iosScale).left()
+        chatTable.top().left()
 
         /**
          * Layout:
@@ -135,7 +148,7 @@ class ChatPopup(
          */
 
         val chatHeader = Table(skin)
-        val chatLabel = "Chat".toLabel(fontSize = 30, alignment = Align.center)
+        val chatLabel = "Chat".toLabel(fontSize = if (UiNavigation.isIos) (18f * iosScale).toInt() else 30, alignment = Align.center)
         val chatIcon = ImageGetter.getImage("OtherIcons/Chat")
 
         chatHeader.add(chatIcon).size(chatLabel.height * 1.6f)
@@ -143,12 +156,11 @@ class ChatPopup(
         chatHeader.add(chatLabel).apply { if (!UiNavigation.isIos) expandX() }
 
         if (UiNavigation.isIos) {
-            val closeButton = UiNavigation.dismissButton().onClick {
-                ChatStore.chatPopup = null
-                close()
-            }
-            val header = UiNavigation.popupHeader(chatHeader, closeButton)
-            add(header).colspan(2).growX().row()
+            val closeButton = UiNavigation.dismissButton().apply { onClick { close() } }
+            BattlefieldGeometry.fitControl(closeButton)
+            chatHeaderRow.add(chatHeader).minWidth(0f).growX().left()
+            chatHeaderRow.add(closeButton).size(UiNavigation.minimumTouchSize())
+            add(chatHeaderRow).colspan(2).growX().row()
         } else {
             add(chatHeader).left().pad(5f).expandX()
             add(ImageButton(ImageGetter.getImage("OtherIcons/Close").drawable).onClick {
@@ -160,15 +172,32 @@ class ChatPopup(
 
         scrollPane.setFadeScrollBars(false)
         scrollPane.setScrollingDisabled(true, false)
-        add(scrollPane).colspan(2)
-            .size(0.5f * worldScreen.stage.width, 0.5f * worldScreen.stage.height)
-            .expand().fill().row()
-
-        add(passwordReminder).colspan(2).width(0.5f * worldScreen.stage.width).fillX().row()
-        add(messageField).expandX().fillX()
+        scrollPane.setOverscroll(false, false)
         val sendButton = Button(skin)
-        sendButton.add(ImageGetter.getImage("OtherIcons/Send"))
-        add(sendButton).size(messageField.height * 1.2f, messageField.height).padLeft(1f).row()
+        sendButton.name = "ui-chat-send"
+        messageField.name = "ui-chat-message"
+        if (UiNavigation.isIos) {
+            innerTable.pad(8f * iosScale)
+            innerTable.defaults().pad(0f)
+            innerTable.getCell(chatHeaderRow).pad(0f).height(44f * iosScale)
+            add(scrollPane).colspan(2).minSize(0f, 0f).prefSize(0f, 0f).grow().pad(8f * iosScale, 0f, 8f * iosScale, 0f).row()
+            add(passwordReminder).colspan(2).growX().row()
+            BattlefieldGeometry.fitControl(sendButton)
+            sendButton.add(ImageGetter.getImage("OtherIcons/Send")).size(22f * iosScale)
+            messageField.style = com.badlogic.gdx.scenes.scene2d.ui.TextField.TextFieldStyle(messageField.style).apply {
+                font = inputFont
+                messageFont = inputFont
+            }
+            composer.add(messageField).minWidth(0f).growX().height(44f * iosScale)
+            composer.add(sendButton).size(44f * iosScale).padLeft(8f * iosScale)
+            add(composer).colspan(2).growX().row()
+        } else {
+            add(scrollPane).colspan(2).size(0.5f * worldScreen.stage.width, 0.5f * worldScreen.stage.height).grow().row()
+            add(passwordReminder).colspan(2).width(0.5f * worldScreen.stage.width).fillX().row()
+            add(messageField).expandX().fillX()
+            sendButton.add(ImageGetter.getImage("OtherIcons/Send"))
+            add(sendButton).size(messageField.height * 1.2f, messageField.height).padLeft(1f).row()
+        }
 
         populateChat()
         refreshPasswordReminder()
@@ -185,12 +214,53 @@ class ChatPopup(
         })
     }
 
+    // Size the panel inside both the window safe area and the keyboard-visible region.
+    // Only the message list flexes; header, close and composer remain directly usable.
+    override fun layout() {
+        if (!UiNavigation.isIos) { super.layout(); return }
+        setPosition(0f, 0f)
+        val safe = worldScreen.safeAreaBoundsInWorld()
+        val visible = (stageToShowOn as UncivStage).lastKnownVisibleArea
+        val left = maxOf(safe.x, visible.x)
+        val bottom = maxOf(safe.y, visible.y)
+        val right = minOf(safe.x + safe.width, visible.x + visible.width)
+        val top = minOf(safe.y + safe.height, visible.y + visible.height)
+        val margin = 8f * iosScale
+        val panelWidth = minOf(600f * iosScale, right - left - margin * 2f).coerceAtLeast(1f)
+        val panelHeight = minOf(480f * iosScale, top - bottom - margin * 2f).coerceAtLeast(1f)
+        innerTable.setBounds(left + (right - left - panelWidth) / 2f,
+            bottom + (top - bottom - panelHeight) / 2f, panelWidth, panelHeight)
+        innerTable.validate()
+    }
+
+    override fun getPrefWidth() = if (UiNavigation.isIos) stageToShowOn.width else super.getPrefWidth()
+    override fun getPrefHeight() = if (UiNavigation.isIos) stageToShowOn.height else super.getPrefHeight()
+
+    override fun onVisibleAreaChanged(visibleArea: Rectangle) {
+        if (!UiNavigation.isIos) { super.onVisibleAreaChanged(visibleArea); return }
+        invalidateHierarchy()
+        validate()
+        scrollPane.scrollPercentY = 1f
+        scrollPane.updateVisualScroll()
+    }
+
+    override fun close() {
+        if (ChatStore.chatPopup === this) ChatStore.chatPopup = null
+        if (stageToShowOn.keyboardFocus?.isDescendantOf(this) == true) {
+            stageToShowOn.keyboardFocus = null
+            Gdx.input.setOnscreenKeyboardVisible(false)
+        }
+        super.close()
+        if (UiNavigation.isIos) inputFont.dispose()
+    }
+
     fun refreshPasswordReminder() {
         passwordReminder.clearChildren()
         if (ChatStore.passwordRequired) {
             passwordReminder.add(
                 "To use chat, set or check your password in Options → Multiplayer.".toLabel().apply {
                     wrap = true
+                    if (UiNavigation.isIos) setFontSize((13f * iosScale).toInt())
                 }
             ).growX().padBottom(5f)
         }
@@ -221,9 +291,9 @@ class ChatPopup(
         suffix: String? = null,
         scroll: Boolean = true
     ) {
-        chatTable.add(
-            createChatMessageLine(worldScreen.gameInfo, senderCivName, message, suffix)
-        ).growX().left().row()
+        val line = createChatMessageLine(worldScreen.gameInfo, senderCivName, message, suffix)
+        if (UiNavigation.isIos) line.children.filterIsInstance<Label>().forEach { it.setFontSize((15f * iosScale).toInt()) }
+        chatTable.add(line).minWidth(0f).growX().left().row()
         if (scroll) scrollToBottom()
     }
 

@@ -10,10 +10,15 @@ import com.unciv.logic.multiplayer.chat.ChatStore
 import com.unciv.logic.multiplayer.chat.ChatWebSocket
 import com.unciv.logic.multiplayer.chat.Message
 import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.worldscreen.WorldScreen
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
+import com.unciv.ui.screens.worldscreen.BattlefieldGeometry
+import com.unciv.ui.components.widgets.UiNavigation
 
 class ChatButton(val worldScreen: WorldScreen) : IconTextButton(
     "Chat", ImageGetter.getImage("OtherIcons/Chat"), 23
@@ -50,11 +55,14 @@ class ChatButton(val worldScreen: WorldScreen) : IconTextButton(
                 text += '+'
             }
             badgeLabel.setText(text)
-            val size = (height / 2).coerceAtLeast(28f)
+            if (BattlefieldHud.enabled) text = if (chat.unreadCount > 99) "99+" else text
+            badgeLabel.setText(text)
+            val size = if (BattlefieldHud.enabled) BattlefieldHud.points(16f) else (height / 2).coerceAtLeast(28f)
             badge.setSize((badgeLabel.prefWidth + 8f).coerceAtLeast(size), size)
+            if (BattlefieldHud.enabled) badge.setSize(maxOf(size, badgeLabel.prefWidth + BattlefieldHud.points(4f)), size)
             badge.setPosition(
-                width - badge.width / 1.5f,
-                height - badge.height / 1.5f
+                width - badge.width / if (BattlefieldHud.enabled) 1f else 1.5f,
+                height - badge.height / if (BattlefieldHud.enabled) 1f else 1.5f
             )
         } else flash.stop()
     }
@@ -65,6 +73,8 @@ class ChatButton(val worldScreen: WorldScreen) : IconTextButton(
     }
 
     init {
+        name = "ui-chat-open"
+        addTooltip("Chat")
         width = 95f
         iconCell.pad(3f).center()
         addActor(badge)
@@ -123,8 +133,21 @@ class ChatButton(val worldScreen: WorldScreen) : IconTextButton(
         }
     }
 
-    fun updatePosition() = setPosition(
-        worldScreen.techPolicyAndDiplomacy.x.coerceAtLeast(1f),
-        worldScreen.techPolicyAndDiplomacy.y - height - 1f
-    )
+    /** BattlefieldHud owns placement alongside notifications and the minimap. */
+    fun fitBattlefield() {
+        BattlefieldGeometry.fitControl(this)
+        pad(BattlefieldHud.points(6f))
+        label.isVisible = false
+        labelCell.size(0f).pad(0f)
+        iconCell.size(BattlefieldHud.points(20f)).pad(0f)
+        badgeLabel.setFontSize(BattlefieldHud.font(10f))
+        setSize(UiNavigation.minimumTouchSize(), UiNavigation.minimumTouchSize())
+        updateBadge()
+    }
+
+    fun updatePosition() {
+        if (BattlefieldHud.enabled) return
+        setPosition(worldScreen.techPolicyAndDiplomacy.x.coerceAtLeast(1f),
+            worldScreen.techPolicyAndDiplomacy.y - height - 1f)
+    }
 }
