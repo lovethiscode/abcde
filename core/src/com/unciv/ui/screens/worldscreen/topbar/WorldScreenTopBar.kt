@@ -152,6 +152,14 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
                 if (battlefieldInlineTech) add(inlineTechSlot).width(techWidth).height(touch).padLeft(gap)
                 add(overviewButton).minHeight(touch).right().padLeft(gap)
             }
+            // The compact HUD keeps the turn label beside the civilization, but strategic
+            // resources still need their own live row when a resource has been revealed.
+            if (resourceTable.battlefieldResources.children.notEmpty()) {
+                row()
+                add(resourceTable.battlefieldResources)
+                    .colspan(if (!portrait && battlefieldInlineTech) 4 else 3)
+                    .minWidth(0f).growX().minHeight(touch)
+            }
             background = BaseScreen.skinStrings.getUiBackground("WorldScreen/TopBar/StatsTable")
             setSize(availableWidth, prefHeight)
             setPosition(safe.x + gap, safe.y + safe.height - height - gap)
