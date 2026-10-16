@@ -72,6 +72,7 @@ import kotlin.math.ceil
 
 class MainMenuScreen: BaseScreen(), RecreateOnResize {
     private val backgroundStack = Stack()
+    private var homeMenu: CampaignHomeMenu? = null
     private val singleColumn = isCrampedPortrait()
 
     private val backgroundMapRuleset: Ruleset
@@ -160,6 +161,7 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
     private fun createMenu() {
         if (Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
             val menu = CampaignHomeMenu(this, ::resumeGame, ::quickstartNewGame, ::stopBackgroundMapGeneration)
+            homeMenu = menu
             val scrollPane = AutoScrollPane(menu).apply {
                 setFillParent(true)
                 setScrollingDisabled(true, false)
@@ -458,6 +460,12 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
     override fun render(delta: Float) {
         updateBackgroundBounds()
         super.render(delta)
+    }
+
+    override fun dispose() {
+        homeMenu?.dispose()
+        homeMenu = null
+        super.dispose()
     }
 
     override fun recreate(): BaseScreen {
