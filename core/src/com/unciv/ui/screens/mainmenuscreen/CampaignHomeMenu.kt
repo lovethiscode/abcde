@@ -88,7 +88,7 @@ internal class CampaignHomeMenu(
             if (hasSave) resumeGame() else showFreePlay()
         }.apply { name = "ui-resume" }
         if (hasSave) loadResumeSubtitle(resume.findActor("subtitle"))
-        actions.add(resume).width(actionsWidth).minHeight(px(if (tablet) 88f else 76f)).padBottom(gap).row()
+        actions.add(resume).width(actionsWidth).minHeight(px(if (sideBySide) 104f else if (tablet) 88f else 76f)).padBottom(gap).row()
 
         val cellWidth = (actionsWidth - px(2f)) / 2f
         val entries = listOf(
@@ -102,18 +102,23 @@ internal class CampaignHomeMenu(
             menuButton("Multiplayer", "Create a room and share its invitation, or join a friend's game.",
                 "OtherIcons/Multiplayer", cellWidth, KeyboardBinding.Multiplayer, action = ::showMultiplayer)
         )
-        val grid = Table()
+        val grid = Table().apply {
+            background = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape, surface)
+        }
+        entries.forEach { it.style = Button.ButtonStyle(it.style).apply { up = null } }
         for (row in 0..1) {
-            val rowHeight = maxOf(px(if (tablet) 120f else 108f), entries[row * 2].prefHeight, entries[row * 2 + 1].prefHeight)
-            grid.add(entries[row * 2]).width(cellWidth).height(rowHeight).padRight(px(2f))
+            val rowHeight = maxOf(px(if (sideBySide) 132f else if (tablet) 120f else 108f), entries[row * 2].prefHeight, entries[row * 2 + 1].prefHeight)
+            grid.add(entries[row * 2]).width(cellWidth).height(rowHeight)
+            grid.add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.border }).width(px(2f)).height(rowHeight)
             grid.add(entries[row * 2 + 1]).width(cellWidth).height(rowHeight)
             grid.row()
-            if (row == 0) { grid.add().colspan(2).height(px(2f)).row() }
+            if (row == 0) grid.add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.border })
+                .colspan(3).growX().height(px(1f)).row()
         }
         actions.add(grid).width(actionsWidth)
         actions.pack()
         val cover = campaignCover(coverWidth, tablet)
-        val coverHeight = maxOf(cover.prefHeight, px(if (tablet) 300f else 256f),
+        val coverHeight = maxOf(cover.prefHeight, px(if (sideBySide) 420f else if (tablet) 300f else 256f),
             if (sideBySide) actions.prefHeight else 0f)
         val body = Table()
         body.add(cover).width(coverWidth).height(coverHeight)
@@ -121,17 +126,22 @@ internal class CampaignHomeMenu(
         body.add(actions).width(actionsWidth).top().padTop(if (sideBySide) 0f else gap)
         add(body).width(width).padBottom(gap).row()
 
+        add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.border })
+            .width(width).height(px(1f)).padBottom(px(8f)).row()
         val tools = Table()
         val toolCount = if (game.achievementsAvailable) 4 else 3
         val toolWidth = (width - px(8f) * (toolCount - 1)) / toolCount
         fun tool(text: String, icon: String, binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Button {
+            val title = label(text, if (tablet) 15 else 12).apply { wrap = false; setAlignment(Align.center) }
+            val titleWidth = if (tablet) title.prefWidth.coerceAtMost(toolWidth - px(44f)) else toolWidth - px(10f)
+            title.wrap = true
             val control = button(text, binding, action).apply {
                 name = "ui-home-${text.lowercase().replace(' ', '-')}"
+                style = Button.ButtonStyle(style).apply { up = null }
                 pad(px(10f), px(5f), px(10f), px(5f))
                 add(ImageGetter.getImage(icon, gold)).size(px(22f))
                 if (!tablet) row()
-                add(label(text, if (tablet) 15 else 12).apply { setAlignment(Align.center) })
-                    .width(toolWidth - px(if (tablet) 44f else 10f))
+                add(title).width(titleWidth)
                     .padTop(if (tablet) 0f else px(6f)).padLeft(if (tablet) px(6f) else 0f)
             }
             tools.add(control).width(toolWidth).minHeight(px(64f)).fillY().padRight(px(8f))
@@ -140,7 +150,10 @@ internal class CampaignHomeMenu(
         tool("Civilopedia", "OtherIcons/Book", KeyboardBinding.Civilopedia) { screen.openCivilopedia() }
         tool("Mods", "OtherIcons/Mods", KeyboardBinding.ModManager) {
             game.pushScreen { ModManagementScreen() }
-        }.apply { isDisabled = !game.platformCapabilities.onlineModManagement }
+        }.apply {
+            isDisabled = !game.platformCapabilities.onlineModManagement
+            if (isDisabled) color.a = .5f
+        }
         if (game.achievementsAvailable) tool("Achievements", "OtherIcons/AchievementTrophy") { game.showAchievements() }
         tool("Map editor", "OtherIcons/MapEditor", KeyboardBinding.MapEditor) { game.pushScreen { MapEditorScreen() } }
         tools.cells.peek().padRight(0f)
@@ -203,10 +216,24 @@ internal class CampaignHomeMenu(
             add(label("Campaign challenges", 17, gold)).width(copyWidth).left().padTop(px(14f)).row()
             add(label("Designed situations. Your own strategy.", 13)).width(copyWidth).left().padTop(px(8f)).row()
             add().minHeight(px(22f)).expandY().row()
-            val enter = menuButton("Enter campaigns", "", "OtherIcons/ArrowRight", copyWidth, primary = true) {
+            val title = label("Enter campaigns", 17, ExpeditionBlueTheme.primaryInk).apply { wrap = false }
+            val enterWidth = (title.prefWidth + px(70f)).coerceAtLeast(px(172f)).coerceAtMost(copyWidth)
+            title.wrap = true
+            val enter = button("Enter campaigns") {
                 game.pushScreen { com.unciv.ui.screens.campaign.CampaignScreen() }
-            }.apply { name = "ui-enter-campaigns" }
-            add(enter).width(copyWidth).minHeight(px(44f)).left()
+            }.apply {
+                name = "ui-enter-campaigns"
+                style = Button.ButtonStyle(style).apply {
+                    up = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape, gold)
+                    down = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape, gold.cpy().mul(.85f, .85f, .85f, 1f))
+                    over = down
+                }
+                pad(px(12f), px(18f), px(12f), px(18f))
+                add(title).width(enterWidth - px(70f)).left()
+                add(ImageGetter.getImage("OtherIcons/ArrowRight", ExpeditionBlueTheme.primaryInk))
+                    .size(px(20f)).padLeft(px(14f))
+            }
+            add(enter).width(enterWidth).minHeight(px(44f)).left()
         }
         return Stack().apply { add(artwork.cover(px(16f))); add(copy) }
     }
@@ -218,7 +245,7 @@ internal class CampaignHomeMenu(
             val nation = preview.civilizations.firstOrNull { it.civID == preview.currentPlayer }?.civName
                 ?: return@run
             launchOnGLThread {
-                if (game.getScreen() === screen) label.setText(nation.tr() + " · " + "Turn [${preview.turns}]".tr())
+                if (game.getScreen() === screen) label.setText(nation.tr(hideIcons = true) + " · " + "Turn [${preview.turns}]".tr(hideIcons = true))
             }
         }
     }
