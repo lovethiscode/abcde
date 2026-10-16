@@ -23,7 +23,7 @@ import com.unciv.ui.popups.Popup
 
 /** iOS realization of approved A. All actions are supplied by the existing rule-aware factories. */
 internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, private val back: TextButton) {
-    private val ui = DiplomacyScreenStyle()
+    private val ui = DiplomacyScreenStyle.forScreen(screen)
     private val layout = DiplomacyScreenLayout(screen.stage.width/ui.unit, screen.stage.height/ui.unit)
     private val root = Table()
     var selected: Civilization? = null
@@ -96,7 +96,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
                 val icon = ImageGetter.getNationPortrait(civ.nation, ui.px(32f))
                 add(icon).size(ui.px(38f)).padRight(ui.px(10f))
                 val copy = Table()
-                val nameLabel = ui.label(civ.civName, 14).apply { setEllipsis(true) }
+                val nameLabel = ui.label(civ.civName, 14, hideIcons = true).apply { setEllipsis(true) }
                 copy.add(nameLabel).growX().minWidth(0f).left().row()
                 val dm=civ.getDiplomacyManager(player)!!
                 val relationship = if(civ.isHuman()&&player.isHuman())screen.getHumanRelationshipText(dm) else dm.relationshipLevel().name
@@ -147,7 +147,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         header.add(ImageGetter.getNationPortrait(civ.nation, ui.px(if (layout.wide) 52f else 42f)))
             .size(ui.px(if (layout.wide) 60f else 50f)).padRight(ui.px(14f))
         val text = Table()
-        text.add(ui.label(civ.civName, if (layout.wide) 30 else 25, wrap = true)).growX().minWidth(0f).left().row()
+        text.add(ui.label(civ.civName, if (layout.wide) 30 else 25, wrap = true, hideIcons = true)).growX().minWidth(0f).left().row()
         val subtitle = if (civ.isCityState) "{City-State} · {${civ.cityStateType.name}} · {${civ.cityStatePersonality}}"
             else "{Civilization} · {${civ.nation.leaderName}}"
         text.add(ui.label(subtitle, 12, ui.muted, true)).growX().left().padTop(ui.px(5f))
@@ -198,6 +198,10 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
             table.add(ticks).width(width).height(ui.px(16f)).padBottom(ui.px(12f)).row()
             if (value < 30 && !civ.isAtWarWith(player)) table.line("Reach 30 for friendship.",width)
             else if (civ.allyCiv != player && !civ.isAtWarWith(player)) table.line("Reach highest influence above 60 for alliance.",width)
+            if (dm.relationshipIgnoreAfraid() >= RelationshipLevel.Friend) {
+                val turns = dm.getTurnsToRelationshipChange()
+                if (turns != 0) table.line("Relationship changes in another [$turns] turns", width)
+            }
             civ.allyCiv?.let { ally ->
                 val name = if (player.knows(ally) || ally == player) ally.civName else "Unknown civilization"
                 table.line("Ally: [$name] with [${civ.getDiplomacyManager(ally)!!.getInfluence().toInt()}] Influence",width)
@@ -238,7 +242,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         }
         civ.cityStateUniqueUnit?.let { unit ->
             val tech = player.gameInfo.ruleset.units[unit]!!.requiredTechs().joinToString(" and ")
-            table.line("[${civ.civName}] is able to provide [$unit] once [$tech] is researched.",width)
+            table.line("[${civ.civName}] can provide [$unit] after researching [$tech].",width)
         }
         return table
     }

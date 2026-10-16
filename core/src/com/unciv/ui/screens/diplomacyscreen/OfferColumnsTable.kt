@@ -1,6 +1,8 @@
 package com.unciv.ui.screens.diplomacyscreen
 
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.Group
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.Constants
 import com.unciv.logic.trade.TradeOffer
 import com.unciv.logic.trade.TradeOffersList
@@ -22,6 +24,7 @@ class OfferColumnsTable(
     private val theirCiv: ForeignCivView,
     private val onChange: () -> Unit
 ): Table(BaseScreen.skin) {
+    private val ui = if (screen.usesAdaptiveLayout) DiplomacyScreenStyle.forScreen(screen) else null
 
     fun addOffer(offer: TradeOffer, offerList: TradeOffersList, correspondingOfferList: TradeOffersList) {
         offerList.add(offer.copy())
@@ -63,7 +66,25 @@ class OfferColumnsTable(
 
         val columnWidth = screen.getTradeColumnsWidth() - 20f // Subtract padding: ours and OffersListScroll's
 
-        if (!isPortraitMode) {
+        if (ui != null) {
+            defaults().pad(ui.px(4f)).minSize(0f)
+            fun heading(text: String, span: Int = 1) {
+                add(ui.label(text, 12, ui.muted, wrap = true)).growX().colspan(span)
+            }
+            if (isPortraitMode) {
+                heading("Our items", 2); row()
+                add(ourAvailableOffersTable).grow().colspan(2).row()
+                heading("[${theirCiv.civName}]'s items", 2); row()
+                add(theirAvailableOffersTable).grow().colspan(2).row()
+            } else {
+                heading("Our items"); heading("[${theirCiv.civName}]'s items"); row()
+                add(ourAvailableOffersTable).grow()
+                add(theirAvailableOffersTable).grow().row()
+            }
+            heading("Our trade offer"); heading("[${theirCiv.civName}]'s trade offer"); row()
+            add(ourOffersTable).grow()
+            add(theirOffersTable).grow()
+        } else if (!isPortraitMode) {
             // In landscape, arrange in 4 panels: ours left / theirs right ; items top / offers bottom.
             add("Our items".tr())
             add("[${theirCiv.civName}]'s items".tr()).row()
@@ -110,6 +131,23 @@ class OfferColumnsTable(
         ourOffersTable.update(tradeView.ourStagedOffers(), tradeView.theirAvailableOffers(), ourCiv = ourCiv, theirCiv = theirCiv)
         theirOffersTable.update(tradeView.theirStagedOffers(), tradeView.ourAvailableOffers(), ourCiv = ourCiv, theirCiv = theirCiv)
         theirAvailableOffersTable.update(theirFilteredOffers, tradeView.ourAvailableOffers(), theirUntradables, ourCiv, theirCiv)
+        if (ui != null) {
+            fun style(group: Group) {
+                if (group is Table) for (cell in group.cells) {
+                    val button = cell.actor as? TextButton ?: continue
+                    ui.decorate(button)
+                    button.label.setEllipsis(false)
+                    button.label.wrap = true
+                    cell.minHeight(ui.px(44f)).growX().minWidth(0f)
+                }
+                for (child in group.children) if (child is Group) style(child)
+            }
+            for (list in listOf(ourAvailableOffersTable, theirAvailableOffersTable, ourOffersTable, theirOffersTable)) {
+                list.setScrollingDisabled(true, false)
+                list.table.top()
+                style(list.table)
+            }
+        }
     }
 
     private fun openGoldSelectionPopup(offer: TradeOffer, ourOffers: TradeOffersList, maxGold: Int) {

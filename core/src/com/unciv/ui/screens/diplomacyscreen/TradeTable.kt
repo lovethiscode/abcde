@@ -32,8 +32,13 @@ class TradeTable(
     init {
         name = "ui-trade-table:${otherCivilization.civID}"
         offerButton.name = "ui-trade-submit"
-        offerColumnsTableWrapper.add(offerColumnsTable)
-        add(offerColumnsTableWrapper).row()
+        if (diplomacyScreen.usesAdaptiveLayout) {
+            offerColumnsTableWrapper.add(offerColumnsTable).grow().minSize(0f)
+            add(offerColumnsTableWrapper).grow().minSize(0f).row()
+        } else {
+            offerColumnsTableWrapper.add(offerColumnsTable)
+            add(offerColumnsTableWrapper).row()
+        }
 
         val lowerTable = Table().apply { defaults().pad(10f) }
 
@@ -73,11 +78,19 @@ class TradeTable(
             offerButton.setText("Retract offer".tr())
         }
 
-        lowerTable.add(offerButton)
+        if (diplomacyScreen.usesAdaptiveLayout) {
+            val ui = DiplomacyScreenStyle.forScreen(diplomacyScreen)
+            ui.decorate(offerButton, primary = true)
+            offerButton.label.setEllipsis(false)
+            offerButton.label.wrap = true
+            lowerTable.defaults().pad(ui.px(8f))
+            lowerTable.add(offerButton).growX().minWidth(0f).minHeight(ui.px(52f))
+        } else lowerTable.add(offerButton)
 
         lowerTable.pack()
         lowerTable.y = 10f
-        add(lowerTable)
+        if (diplomacyScreen.usesAdaptiveLayout) add(lowerTable).growX().minWidth(0f)
+        else add(lowerTable)
         pack()
     }
 

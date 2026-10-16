@@ -17,7 +17,13 @@ import kotlin.math.atan2
 import kotlin.math.sqrt
 
 /** Approved A composition, using the game's shared palette and existing bitmap font. */
-internal class DiplomacyScreenStyle {
+internal class DiplomacyScreenStyle(private val textScale: Float = 1f) {
+    companion object {
+        fun forScreen(screen: BaseScreen): DiplomacyScreenStyle {
+            val pointWidth = screen.stage.width / (UiNavigation.minimumTouchSize() / 44f)
+            return DiplomacyScreenStyle(if (pointWidth >= 1100f) 1.3f else 1f)
+        }
+    }
     val unit = UiNavigation.minimumTouchSize() / 44f
     val background = ExpeditionBlueTheme.background
     val panel = ExpeditionBlueTheme.panel
@@ -28,9 +34,9 @@ internal class DiplomacyScreenStyle {
     val positive = ExpeditionBlueTheme.success
     val danger = ExpeditionBlueTheme.danger
     fun px(n: Float) = n * unit
-    fun font(n: Int) = (n * unit).roundToInt().coerceAtLeast(1)
-    fun label(value: String, size: Int = 14, color: Color = text, wrap: Boolean = false) =
-        value.toLabel(color, font(size)).apply { this.wrap = wrap }
+    fun font(n: Int) = (n * unit * textScale).roundToInt().coerceAtLeast(1)
+    fun label(value: String, size: Int = 14, color: Color = text, wrap: Boolean = false, hideIcons: Boolean = false) =
+        value.toLabel(color, font(size), hideIcons = hideIcons).apply { this.wrap = wrap }
     fun surface(color: Color, radius: Float = 12f): BaseDrawable {
         val dot = ImageGetter.getWhiteDotDrawable().tint(color)
         val circle = ImageGetter.getCircleDrawable().tint(color)
