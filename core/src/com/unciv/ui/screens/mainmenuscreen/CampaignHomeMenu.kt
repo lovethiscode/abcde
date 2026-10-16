@@ -90,7 +90,8 @@ internal class CampaignHomeMenu(
         if (hasSave) loadResumeSubtitle(resume.findActor("subtitle"))
         actions.add(resume).width(actionsWidth).minHeight(px(if (sideBySide) 104f else if (tablet) 88f else 76f)).padBottom(gap).row()
 
-        val cellWidth = (actionsWidth - px(2f)) / 2f
+        val actionColumns = if (actionsWidth / unit < 600f && game.settings.fontSizeMultiplier > 1.25f) 1 else 2
+        val cellWidth = (actionsWidth - px(2f) * (actionColumns - 1)) / actionColumns
         val entries = listOf(
             menuButton("Free play", "Quickstart or customize a singleplayer game", "OtherIcons/Nations", cellWidth,
                 action = ::showFreePlay),
@@ -106,14 +107,15 @@ internal class CampaignHomeMenu(
             background = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape, surface)
         }
         entries.forEach { it.style = Button.ButtonStyle(it.style).apply { up = null } }
-        for (row in 0..1) {
-            val rowHeight = maxOf(px(if (sideBySide) 132f else if (tablet) 120f else 108f), entries[row * 2].prefHeight, entries[row * 2 + 1].prefHeight)
-            grid.add(entries[row * 2]).width(cellWidth).height(rowHeight)
-            grid.add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.border }).width(px(2f)).height(rowHeight)
-            grid.add(entries[row * 2 + 1]).width(cellWidth).height(rowHeight)
-            grid.row()
-            if (row == 0) grid.add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.border })
-                .colspan(3).growX().height(px(1f)).row()
+        for ((index, entry) in entries.withIndex()) {
+            grid.add(entry).width(cellWidth).minHeight(px(if (sideBySide) 132f else if (tablet) 120f else 108f)).fillY()
+            if ((index + 1) % actionColumns != 0) {
+                grid.add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.border }).width(px(2f)).growY()
+            } else {
+                grid.row()
+                if (index != entries.lastIndex) grid.add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.border })
+                    .colspan(actionColumns * 2 - 1).growX().height(px(1f)).row()
+            }
         }
         actions.add(grid).width(actionsWidth)
         actions.pack()
@@ -121,7 +123,7 @@ internal class CampaignHomeMenu(
         val coverHeight = maxOf(cover.prefHeight, px(if (sideBySide) 420f else if (tablet) 300f else 256f),
             if (sideBySide) actions.prefHeight else 0f)
         val body = Table()
-        body.add(cover).width(coverWidth).height(coverHeight)
+        body.add(cover).width(coverWidth).minHeight(coverHeight).fillY()
         if (sideBySide) body.add().width(gap) else body.row()
         body.add(actions).width(actionsWidth).top().padTop(if (sideBySide) 0f else gap)
         add(body).width(width).padBottom(gap).row()
@@ -130,7 +132,9 @@ internal class CampaignHomeMenu(
             .width(width).height(px(1f)).padBottom(px(8f)).row()
         val tools = Table()
         val toolCount = if (game.achievementsAvailable) 4 else 3
-        val toolWidth = (width - px(8f) * (toolCount - 1)) / toolCount
+        val toolColumns = if (width / unit < 900f && game.settings.fontSizeMultiplier > 1.25f) 2 else toolCount
+        val toolWidth = (width - px(8f) * (toolColumns - 1)) / toolColumns
+        var addedTools = 0
         fun tool(text: String, icon: String, binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Button {
             val title = label(text, if (tablet) 15 else 12).apply { wrap = false; setAlignment(Align.center) }
             val titleWidth = if (tablet) title.prefWidth.coerceAtMost(toolWidth - px(44f)) else toolWidth - px(10f)
@@ -144,7 +148,10 @@ internal class CampaignHomeMenu(
                 add(title).width(titleWidth)
                     .padTop(if (tablet) 0f else px(6f)).padLeft(if (tablet) px(6f) else 0f)
             }
-            tools.add(control).width(toolWidth).minHeight(px(64f)).fillY().padRight(px(8f))
+            tools.add(control).width(toolWidth).minHeight(px(64f)).fillY()
+                .padTop(if (addedTools >= toolColumns) px(8f) else 0f)
+                .padRight(if ((addedTools + 1) % toolColumns == 0) 0f else px(8f))
+            if (++addedTools % toolColumns == 0) tools.row()
             return control
         }
         tool("Civilopedia", "OtherIcons/Book", KeyboardBinding.Civilopedia) { screen.openCivilopedia() }
@@ -156,7 +163,6 @@ internal class CampaignHomeMenu(
         }
         if (game.achievementsAvailable) tool("Achievements", "OtherIcons/AchievementTrophy") { game.showAchievements() }
         tool("Map editor", "OtherIcons/MapEditor", KeyboardBinding.MapEditor) { game.pushScreen { MapEditorScreen() } }
-        tools.cells.peek().padRight(0f)
         add(tools).width(width)
         pack()
     }
@@ -213,7 +219,7 @@ internal class CampaignHomeMenu(
         val copy = Table().apply {
             pad(inset).top().left()
             add(label("Every step opens a new world.", if (tablet) 42 else 32)).width(copyWidth).left().row()
-            add(label("Campaign challenges", 17, gold)).width(copyWidth).left().padTop(px(14f)).row()
+            add(label("Campaign challenges", 17)).width(copyWidth).left().padTop(px(14f)).row()
             add(label("Designed situations. Your own strategy.", 13)).width(copyWidth).left().padTop(px(8f)).row()
             add().minHeight(px(22f)).expandY().row()
             val title = label("Enter campaigns", 17, ExpeditionBlueTheme.primaryInk).apply { wrap = false }
