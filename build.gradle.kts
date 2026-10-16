@@ -243,15 +243,3 @@ tasks.register("packBattlefieldTerrain") {
             layout.projectDirectory.dir("android/assets").asFile.absolutePath)
     }
 }
-
-// Rebuild only the approved HUD artwork; map and shared monochrome atlases stay independent.
-tasks.register("packFacetedHudIcons") {
-    group = "assets"
-    inputs.dir("android/Images.FacetedHudIcons")
-    outputs.files("android/assets/FacetedHudIcons.atlas", "android/assets/FacetedHudIcons.png")
-    doLast {
-        com.unciv.build.FacetedHudIconPacker.pack(
-            layout.projectDirectory.dir("android/Images.FacetedHudIcons").asFile.absolutePath,
-            layout.projectDirectory.dir("android/assets").asFile.absolutePath)
-    }
-}

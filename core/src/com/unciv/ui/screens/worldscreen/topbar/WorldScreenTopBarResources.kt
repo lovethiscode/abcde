@@ -15,7 +15,6 @@ import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.screens.worldscreen.BattlefieldHud
 import com.unciv.ui.screens.worldscreen.BattlefieldGeometry
-import com.unciv.ui.screens.worldscreen.FacetedHudIcons
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.extensions.toStringSigned
 import com.unciv.ui.components.fonts.Fonts
@@ -72,10 +71,9 @@ internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTa
         val strategicResources = worldScreen.gameInfo.ruleset.tileResources.values
             .filter { it.resourceType == ResourceType.Strategic && !it.isCityWide }
         for (resource in strategicResources) {
-            val resourceImage = FacetedHudIcons.resource(resource.name, iconSize)
-                ?: ImageGetter.getResourcePortrait(resource.name, iconSize).let {
-                    if (BattlefieldHud.enabled) BattlefieldGeometry.icon(it) else it
-                }
+            val resourceImage = ImageGetter.getResourcePortrait(resource.name, iconSize).let {
+                if (BattlefieldHud.enabled) BattlefieldGeometry.icon(it) else it
+            }
             val resourceLabel = "0".toLabel()
             resourceActors += ResourceActors(resource, resourceLabel, resourceImage)
         }

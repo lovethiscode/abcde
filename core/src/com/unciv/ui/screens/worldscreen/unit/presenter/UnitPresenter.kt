@@ -127,8 +127,7 @@ class UnitPresenter(private val unitTable: UnitTable, private val worldScreen: W
         // single selected unit
         if (selectedUnits.size == 1) with(unitTable) {
 
-            unitIconHolder.add(com.unciv.ui.screens.worldscreen.FacetedHudIcons.unit(unit, 30f)
-                ?: UnitIconGroup(unit, 30f)).pad(5f)
+            unitIconHolder.add(UnitIconGroup(unit, 30f)).pad(5f)
 
             for (promotion in unit.getPromotions())
                 if (!promotion.hasUnique(UniqueType.NotShownOnWorldScreen))

@@ -15,7 +15,6 @@ import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.worldscreen.BattlefieldHud
-import com.unciv.ui.screens.worldscreen.FacetedHudIcons
 import com.unciv.ui.components.extensions.toStringSigned
 import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.input.onClick
@@ -48,8 +47,8 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
     // These are all to improve performance IE reduce update time (was 150 ms on my phone, which is a lot!)
     private val malcontentColor = ExpeditionBlueTheme.color(colorFromRGB(239,83,80), ExpeditionBlueTheme.danger) // Color.valueOf("ef5350")
     private val happinessColor = ExpeditionBlueTheme.color(colorFromRGB(92, 194, 77), ExpeditionBlueTheme.success) // Color.valueOf("8cc24d")
-    private val malcontentImage = FacetedHudIcons.stat("Malcontent") ?: ImageGetter.getStatIcon("Malcontent")
-    private val happinessImage = FacetedHudIcons.stat("Happiness") ?: ImageGetter.getStatIcon("Happiness")
+    private val malcontentImage = ImageGetter.getStatIcon("Malcontent")
+    private val happinessImage = ImageGetter.getStatIcon("Happiness")
 
     private val worldScreen = topbar.worldScreen
     private val nativeStats = ArrayList<Table>()
@@ -76,8 +75,7 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
             noPad: Boolean = false,
             screenFactory: () -> BaseScreen?
         ) {
-            val image = FacetedHudIcons.stat(icon)
-                ?: ImageGetter.getStatIcon(icon)
+            val image = ImageGetter.getStatIcon(icon)
             val action = {
                 val screen = screenFactory()
                 // I don't like that it's ANR-able but to not do so we'd need to get rid of the nullable option
