@@ -8,3 +8,17 @@ Reuse supplied Steam map art, blue readability scrim, warm gold and theme text t
 Localization boundary: 46 supported languages have localized home copy. Navajo retains the project's English fallback because no reviewed Navajo home translations are available; schema and layout checks still include it. Do not count nonempty English placeholders as translated copy.
 
 Large game-font adaptation: below 600pt action-panel width and font multiplier above 1.25, gameplay entries use one column; below 900pt tools use two columns. All rows derive height from content, with minimums only. Validate label bounds against their owning button, including German at 1.5 on 375pt.
+
+## Direction contract
+
+THESIS: Implement the user's selected A campaign-first home in the native game, with the existing destinations and a clear return-to-game action.
+
+OWN-WORLD: Preserve expedition blue #17343F, warm gold actions, the gate icon, existing game icons and BitmapFont. Reuse the approved map artwork under a blue readability scrim.
+
+STORY: Continue the latest save or start a new game; find campaigns, free play, endless, load, multiplayer, tools and settings through their existing callbacks. Localize visible copy and let long text grow.
+
+FIRST VIEWPORT: Portrait stacks campaign cover, resume/new-game strip, gameplay grid and tools. Wide iPad places cover left and actions right. Short windows scroll; large text reflows to fewer columns rather than clipping.
+
+FORM: User-pinned A adaptation, inherited from the private parent's `.impeccable/surfaces/main-menu-a-refined-20261016.md`. No new concept roll or catalog QUALITY BAR card was used for this native extension. The approved A prototype is the visual reference; original candidate review records the earlier unavailable seed. This is a disclosed process boundary, not a newly corroborated seed reference.
+
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

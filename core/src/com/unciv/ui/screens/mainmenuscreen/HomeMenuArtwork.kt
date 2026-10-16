@@ -41,9 +41,9 @@ internal class HomeMenuArtwork : Disposable {
                     val top = 1f - (bottom + h) / height
                     batch.draw(texture, x + inset, y + bottom, width - inset * 2f, h,
                         if (shaded) left else u + du * left,
-                        if (shaded) 0f else v + dv * top,
+                        if (shaded) 0f else v + dv * (1f - bottom / height),
                         if (shaded) 1f - left else u + du * (1f - left),
-                        if (shaded) 1f else v + dv * (1f - bottom / height))
+                        if (shaded) 1f else v + dv * top)
                 }
                 strip(radius, height - 2f * radius, 0f)
                 val step = radius / 16f
