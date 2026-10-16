@@ -671,7 +671,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
      * B. Are outdated
      * */
     private fun redownloadUnupdatedMods(modNames: LinkedHashSet<String>) {
-        descriptionLabel.setText("Downloading unupdated mods...")
+        descriptionLabel.setText("Downloading unupdated mods...".tr())
         Concurrency.runOnNonDaemonThreadPool("redownloadUnupdatedMods") { 
             val modsToCheck = modNames.mapNotNull { RulesetCache[it] }
                 .filter { it.nations.any() && it.modOptions.modUrl.isNotEmpty()  }
@@ -684,15 +684,15 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
                 }
             
             Concurrency.runOnGLThread {
-                ToastPopup("Updating mods: $reposToUpdate", this@LoadGameScreen)
-                descriptionLabel.setText("Downloading unupdated mods - 0/${reposToUpdate.size}")
+                ToastPopup("Updating mods: [${reposToUpdate.joinToString { it.name }}]", this@LoadGameScreen)
+                descriptionLabel.setText("Downloading unupdated mods - [0]/[${reposToUpdate.size}]".tr())
             }
 
             for ((index, repo) in reposToUpdate.withIndex()) {
                 repo.downloadAndExtract()
                 Concurrency.runOnGLThread {
-                    ToastPopup("Downloaded ${repo.name}", this@LoadGameScreen)
-                    descriptionLabel.setText("Downloading unupdated mods - ${index+1}/${reposToUpdate.size}")
+                    ToastPopup("Downloaded [${repo.name}]", this@LoadGameScreen)
+                    descriptionLabel.setText("Downloading unupdated mods - [${index+1}]/[${reposToUpdate.size}]".tr())
                 }
             }
         }

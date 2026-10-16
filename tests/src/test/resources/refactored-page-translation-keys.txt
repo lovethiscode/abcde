@@ -1,0 +1,750 @@
+# Visible copy audited in mods, load/save, empire overview, multiplayer, rooms, setup and options.
+  paste it into a new GitHub issue)
+'Next unit' button cycles idle units
+'[saveFileName]' copied to clipboard!
+-declared requirements-
+-none-
+1. Tap Create room, choose the rules and map, then share the invitation.
+1. The Android player copies their Player ID from Multiplayer and sends it to the iOS host.
+2. In an empty player seat, the host taps Add player manually, pastes the Player ID, taps the portrait to choose a civilization, then taps Mark ready.
+2. Other iOS players open the invitation or paste it in Join by invitation, tap their civilization portrait to choose, then tap Ready.
+3. After starting, the Game ID is copied automatically. Send it to the Android player to add the game in Multiplayer.
+3. The host is ready automatically. When everyone is ready, the host taps Start game. No Player ID or Game ID exchange is needed.
+?
+AI
+About
+About this mod
+Accept
+Access code: [code]
+Account changed
+Action
+Add civilization
+Add friend
+Add mods
+Add player
+Add player manually
+Add seat
+Address and access code copied
+Address copied
+Advanced
+Advanced Settings
+Afraid
+After the game starts
+All
+All [amount]
+All mods
+All players must use the same game server and compatible game versions and rulesets.
+Allied with [civName]
+Allow anyone to spectate
+Android players join the started game by Game ID; they do not join the waiting room through its invitation link.
+Animate Unit actions menu
+Animate Unit movement button
+Apply
+Are you SURE you want to delete this mod?
+Are you really sure you want to play with the following known problems?
+Are you sure you ([civName]) want to resign?
+Are you sure you want to delete this friend?
+Are you sure you want to delete this local multiplayer record?
+Are you sure you want to delete this save from this device? It will remain in iCloud.
+Are you sure you want to delete this save?
+Are you sure you want to force the current player ([civName]) to resign?
+Are you sure you want to reset all game options to defaults?
+Are you sure you want to skip the turn of [civName]?
+Ask for confirmation when pressing next turn
+Asynchronous turns, no need to be online together
+At war with [enemy]
+Auth rejected for unknown reasons, please try again.
+Authentication validation was cancelled
+Author: [author]
+Auto Unit Cycle
+Auto-assign city production
+Auto-assign specialists in new cities
+Auto-build roads
+AutoPlay
+AutoPlay until victory
+Automated units can upgrade
+Automated units choose promotions
+Automated units move on turn start
+Automated workers replace improvements
+Automatic
+Automatic behavior for cities, workers and units
+Automatic save
+Automation
+Autosave
+Autosave turns must be larger than 0!
+Autosave turns over 200 may take a lot of space on your device.
+Autoupdate mod uniques
+Available
+Available nations
+Awaiting response...
+Back
+Back to mod list
+Banned nations
+Base Ruleset
+Base Supply
+Base ruleset
+Biome size
+Cancel
+Cancel ready
+Cannot load this save
+Category:
+Check connection
+Check extension mods based on:
+Check for idle units
+Check mod
+Checking iCloud availability...
+Choose a save and continue your civilization
+Choose civilization
+Choose the rules, map and civilizations for your game.
+Choose this mod in the new game settings.
+Choose your civilization, then get ready.
+Choose your preferred language
+Cities
+Cities and workers
+Cities auto-bombard at end of turn
+Cities following this religion:
+City defense
+City details
+City production total
+City-State count
+City-States
+Civilization introduction
+Civilizations
+Civilopedia
+Clear filters
+Clear search
+Click an icon to see the stats of this religion
+Close
+Close room
+Closest city
+Confirm selection
+Connecting to room...
+Connection failed. Retrying...
+Connection not checked
+Continuous rendering
+Convert gold to science
+Copy address
+Copy address + code
+Copy game ID
+Copy invitation
+Copy invitation link
+Copy invite
+Copy my Player ID
+Copy save
+Copy saved game to clipboard
+Copy the save or import another file to recover.
+Copy to clipboard
+Could not delete game!
+Could not download [modName]
+Could not download mod list
+Could not download mod list.
+Could not download music!
+Could not load game from clipboard!
+Could not load game from custom location!
+Could not load game!
+Could not load the missing mods!
+Could not save game to clipboard!
+Could not save game to custom location!
+Could not save game!
+Could not upload game. The Game ID was copied; open its saved Multiplayer entry to retry this exact game.
+Couldn't connect to Multiplayer Server!
+Create a room and share its invitation, or join a friend's game.
+Create room
+Creation stopped before upload because a local recovery copy could not be saved.
+Creation was interrupted and the Game ID was copied, but a local recovery copy could not be saved.
+Cultural
+Culture
+Current Turn: [civName] since [duration] ago
+Current construction
+Current game copied to clipboard!
+Current language
+Current mods
+Current points
+Current saves
+Current turn
+Cycle idle units by distance
+Debug
+Defensive pact with [civName]
+Delete
+Delete [modName]
+Delete local record
+Delete save
+Demanding [resource]
+Denounced [otherCiv]
+Diagram line colors
+Difficulty
+Diplomatic
+Disable starting bias
+Discover mods
+Display
+Do you want to reset completed tutorials?
+Doing this will reset your current user ID to the clipboard contents - are you sure?
+Domination
+Don't show again
+Done!
+Double tap interval
+Double-click
+Download
+Download latest save and enter
+Download missing mods
+Download mod from URL
+Download music
+Downloadable mods
+Downloaded [mod]
+Downloading unupdated mods - [current]/[total]
+Downloading unupdated mods...
+Downloading...
+Edit friend
+Edit manual player
+Empire Overview
+Enable Easter Eggs
+Enable Espionage
+Enable Nuclear Weapons
+Enable alternative rendering
+Enable experimental A* pathing
+Enable multiplayer status button in singleplayer games
+Enable out-of-game turn notifications
+Enable using display cutout areas
+Enlarge selected notifications
+Error while refreshing:
+Everyone is ready. Waiting for the host to start.
+Everyone is ready. You can start the game.
+Example map
+Experimental and tools
+Extend to fullscreen
+Extension mods
+Failed to delete [saveFileName].
+Failed to set password!
+Failed!
+Faith
+Far away
+Followers of this religion:
+Font family
+Font size multiplier
+Fonts and reading
+For chat, set or check your server password in Options → Multiplayer. Saving it reconnects chat automatically without leaving the game.
+For example: Weekend game
+Force current player to resign
+Founding Civ:
+Friend name
+Friend name is already in your friends list!
+Friends list
+Friends with [civName]
+Game ID
+Game ID copied to clipboard!
+Game ID or invitation link
+Game Options
+Game Speed
+Game created and ID copied, but its turn preview is not confirmed. Submitting the first turn will retry it.
+Game details are unavailable.
+Game invitation copied. Send it to another iOS player.
+Game name
+Game options
+Game pace
+Game rules
+Game settings summary
+Game setup
+Game started
+Gameplay
+Garrisoned by unit
+Garrisoned unit
+Generate example map
+Generate translation files
+Gestures and zoom
+Gold
+Got it
+Graphics
+Great person points
+Happiness
+Health
+Height
+Help
+Hide system status and navigation bars
+Holy City:
+Host
+Host · You
+How multiplayer works
+Human
+Human player
+I could maybe help you figure out what went wrong, since this isn't supposed to happen!
+ID successfully set!
+If Android hosts, send them your Player ID, then paste their Game ID in Join by invitation.
+Import a save file or restore from iCloud.
+Import from file
+Import save
+In Use
+In-game, update status of all games every:
+Increase your supply or reduce the amount of units to remove the production penalty
+Install the same version of every required ruleset and mod before joining. Automatic mod downloads are unavailable in this build.
+Installed
+Insufficient permissions to delete [saveFileName].
+Invalid ID!
+Invalid game ID!
+Invitation copied. Send it to your friends.
+Invite after creating
+Invite friends
+Invite friends to fill the empty seats.
+It looks like we can't make a map with the parameters you requested!
+It looks like your saved game can't be loaded!
+Join by invitation
+Join by invitation or Game ID
+Join or add game
+Keep the phone and computer on the same Wi-Fi network. Allow local network access if iOS asks.
+Keys
+Kick
+Known
+Known and alive ([numberOfCivs])
+Known and defeated ([numberOfCivs])
+Language
+Last refresh: [duration] ago
+Last updated [duration] ago
+Leave and join
+Leave room
+Leave the current waiting room and join this invitation?
+Leave this waiting room?
+Leaving closes the room for everyone.
+Legendary Start
+Link copied to clipboard
+Load copied data
+Load from clipboard
+Load from custom location
+Load game
+Load this save
+Loading latest game state...
+Loading...
+Local display name (optional)
+Local saves
+Local saves [amount]
+Locate mod errors
+Locate on map
+Long press
+Long press delay
+Majority Religion
+Manual
+Manual save
+Manually added
+Map
+Map Elevation
+Map Generation Type
+Map Options
+Map Shape
+Map Type
+Map is incompatible with the chosen ruleset!
+Map mirroring
+Map mouse auto-scroll
+Map options
+Map panning speed
+Map parameters
+Map size
+Map source
+Map type
+Maps, backgrounds, and controls extend to the screen edges.
+Mark ready
+Max Coast extension
+Max Turns
+Max zoom out
+Maybe you put too many players into too small a map?
+Member
+Military
+Minimal Faith required for\nthe next [Great Prophet]:
+Mirroring Type
+Missing mods are downloaded successfully.
+Mods
+Move units with a long tap
+Move units with a single tap
+Movement
+Movement and turns
+Moving
+Multi-turn AutoPlay amount
+Multiplayer
+Multiplayer is asynchronous and turn-based. When it is your turn, download the latest save, play, then end your turn to upload it.
+Multiplayer room
+Music playback
+My civilization
+My multiplayer games
+Name
+Natural Wonders
+Near [city]
+Never close popups by clicking outside
+No
+No Ancient Ruins
+No Barbarians
+No City Razing
+No Natural Wonders
+No game selected
+No games in this filter
+No human players selected!
+No manual saves
+No matching cities
+No mods
+No mods found
+No mods installed
+No multiplayer games yet
+No problems found.
+No saves yet
+No source
+No units
+No victory conditions were selected!
+None
+Not built
+Not found
+Not ready
+Not signed in
+Nothing found!
+Notifications log max turns
+Notifications on world screen
+Number of autosave files stored
+Number of tiles with this resource\nin your territory, without an\nappropriate improvement to use it
+Number of your cities celebrating\n'We Love The King Day' thanks\nto access to this resource
+Number of your cities\ndemanding this resource for\n'We Love The King Day'
+On some devices this rendering method is faster
+One City Challenge
+Online Multiplayer
+Online multiplayer servers are operated by third parties. The selected server receives your player ID, IP address, and game save data. Its availability, retention, deletion, and remote game saves are not guaranteed by Unciv. All players must use the same Unciv version and have the exact same versions of every mod installed.
+Online query result is incomplete
+Open Documentation
+Open Github page
+Open this address on your computer:
+Options
+Order trade offers by amount
+Other
+Our Civilization:
+Our offers
+Out-of-game, update status of all games every:
+Overview
+Overwrite
+Overwrite existing file?
+Owned
+Password
+Password must be at least 6 characters long
+Password set successfully for server [serverURL]
+Paste ID or link
+Paste an invitation to join a waiting room, or a Game ID to add an existing game.
+Paste from clipboard
+Paste player ID from clipboard
+Paste the Game ID or invitation link
+Paste the Player ID sent by the Android player. After starting, send them the Game ID.
+Pending trades
+Performance
+Permanent audiovisual mod
+Pick construction
+Play with Android players
+Play with iOS players
+Player ID
+Player ID already used!
+Player ID from clipboard
+Player ID from friends list
+Player ID is already in your friends list!
+Player ID is incorrect
+Player [number]
+Player name already used!
+Players
+Please enter the mod repository -or- archive zip -or- branch -or- release -or- commit url:
+Please input Player ID!
+Please input a name for your friend!
+Please input a player ID for your friend!
+Please see the Tutorial.
+Points per turn
+Population
+Prepared
+Production Penalty
+Promotions
+RNG Seed
+Radius
+Raging Barbarians
+Random
+Random civilizations
+Random number of City-States
+Random number of Civilizations
+Randomize seed
+Ranged strength
+Rare features richness
+Ready
+Receive Mod
+Receiver URL: [url]\nAccess code: [code]
+Recovery saved
+Refresh all games
+Refresh complete
+Refresh failed
+Refresh failed. Showing the latest saved details.
+Refreshing game
+Refreshing...
+Rejoin room
+Relations
+Relations diagram
+Religion
+Religions to be founded: [amount]
+Religious status:
+Reload mods
+Remote creation could not be confirmed. The Game ID was copied and a local recovery copy was saved. Open that Multiplayer entry to resume this exact game.
+Remote creation could not be confirmed. The Game ID was copied and a local recovery copy was saved. Open that Multiplayer entry to resume this exact game; do not start another one.
+Remove this player from the room?
+Rename
+Rename unit
+Replaces [improvement]
+Requirements could not be determined.\nChoose a base to check this Mod.
+Reset
+Reset to defaults
+Reset tutorials
+Resign
+Resource Setting
+Resource richness
+Resources we're offering in trades
+Restore saves from iCloud
+Restore saves from iCloud now?\nSaves deleted only on this device return\nif they still exist in iCloud.\nOther changes still sync both ways;\na same-named version may be replaced.\nConflicts are kept separately.
+Restrict to own civilization
+Restricted
+Retry
+Retry pending action
+Retry start
+Right-click
+Rome
+Rome is known for city building, law and military strength. Lead your empire from a single city to the world.
+Room
+Room and player information
+Room information
+Room players
+Room request failed. Please retry.
+Rooms require generated maps without mods
+Save
+Save and open
+Save game
+Save the current game and open this room invitation?
+Save to custom location
+Save type
+Saved at
+Saved game name
+Saves are synced with iCloud.
+Saves, fonts and interaction details
+Saving...
+Scenario file [name] is invalid.
+Science
+Scientific
+Score
+Screen
+Screen Mode
+Screen orientation
+Screen, graphics and map information
+Search cities
+Search languages
+Search mods
+See online Readme
+See your stats breakdown
+Select [thingToSelect]
+Select a game from the list to see its details.
+Select a mod to view its details
+Select a save from the list
+Select friend
+Select nations
+Select players from starting locations
+Server
+Server address
+Server limit reached! Please wait for [time] seconds
+Server limit reached! Please wait for [time] seconds. The Game ID was copied; open its saved Multiplayer entry to retry.
+Set a password to secure your userId
+Set available nations for random pool
+Set current user
+Set password
+Share game
+Share invitation
+Show AutoPlay button
+Show Charts
+Show Civilization Stats
+Show Demographics
+Show Rankings
+Show Small Skip/Cycle Unit Button
+Show additional stat types
+Show autosaves
+Show autosaves or import a save.
+Show global politics
+Show long-press indicators
+Show minimap
+Show persistent notification for turn notifier service
+Show pixel improvements
+Show resources and improvements
+Show suggested city locations for units that can found cities
+Show tile yields
+Show tutorials
+Show unit movement arrows
+Show worked tiles
+Show zoom buttons in world screen
+Shuffle Civ Order at Start
+Sign in to iCloud to sync saves.
+Single tap
+Singleplayer
+Size
+Size of Unitset art in Civilopedia
+Skip turn of current player
+Some games failed to refresh
+Some saved multiplayer passwords could not be moved to secure storage. They were removed from settings; authenticate again when prompted.
+Somewhere around [city]
+Sort Current:
+Sort Downloadable:
+Sort and Filter
+Sorting and filtering needs to wait until the online query finishes
+Sound
+Sound effects, ambience and music
+Sound notification for when it's your turn in any other game:
+Sound notification for when it's your turn in your currently open game:
+Stars
+Start a civilization with friends
+Start bias:
+Start game
+Start game!
+Starting Era
+Starting game. Waiting for the host to finish uploading...
+Starting game...
+Status
+Status and synchronization
+Status\n(puppet, resistance or being razed)
+Stockpiled resources
+Stop automated workers from removing vegetation terrain
+Strategic Balance
+Strength
+Success!
+Supply Deficit
+Support iOS maintenance
+Sync failed
+Sync local and iCloud saves now?\nA changed save may replace the same-named version\non the other side.\nConflicting versions are kept separately.
+Sync saves now
+Synced
+Syncing room settings...
+Syncing saves with iCloud...
+Take user ID from clipboard
+Take your turn when you are ready
+Temperature intensity
+Temperature shift
+Test area
+The Ottomans
+The currently accumulated stockpile amount
+The file data seems to be corrupted.
+The file is marked read-only.
+The full game was uploaded before creation was interrupted. The Game ID was copied and a local recovery copy was saved.
+The invitation game server differs from this room.
+The mod combination you selected is «RED»incorrectly defined!«»
+The number of players will be adjusted
+The receiver stops after one upload or when you close this window.
+Their offers
+These [numberOfPlayers] players will be adjusted
+This is a large map - may cause latency issues
+This is a very large map - may cause Out Of Memory crashes
+This is a work in progress.
+This is used for painting resources, not in map generator steps:
+This server does not support authentication
+This turn has lasted
+Tileset
+Time recovered per turn:
+Time remaining
+Time to play the turn: [duration]
+Time until skip turn:
+To add a friend, ask him to send you his player ID.\nClick the 'Add friend' button.\nInsert his player ID and a name for him.\nThen click the 'Add friend' button again.\n\nAfter that you will see him in your friends list.\n\nA new button will appear when creating a new\nmultiplayer game, which allows you to select your friend.
+Today [time]
+Total
+Total Supply
+Total time to play:
+Trade offer
+Turn [turn]
+Turn notification sounds
+Turn reminders, synchronization and servers
+Turn unavailable
+Turns between autosaves
+Turns until the next\ndiplomacy victory vote: [amount]
+UI
+UI Scale
+UI Skin
+Unavailable
+Unhandled problem, [errorMessage]
+Unhappiness
+Unimproved
+Unique units
+Uniques updated!
+Unit Supply
+Unit controls and turn pacing
+Unit icon opacity
+Unit selection
+Units and defense
+Unitset
+Unknown
+Update Mod categories
+Update mod
+Update status of currently played game every:
+Updated
+Updated [duration] ago
+Updating mods: [mods]
+Upgrade
+Use circles to indicate movable tiles
+UserID copied to clipboard
+Vacant seat
+Validating your authentication status...
+Vegetation richness
+Victory Conditions
+Victory conditions
+View advanced settings
+View latest game state
+View map parameters
+View mods
+View only
+View save details
+Visit repository
+Visit the wiki
+Visual Hints
+Volume
+WLTK demand
+WLTK+
+WLTK-
+Waiting [amount]
+Waiting for another player
+Waiting for other players to get ready.
+Waiting for player
+Waiting to retry iCloud save sync.
+War
+Water level
+We Love The King Day
+When disabled, saves battery life but certain animations will be suspended
+Which options should be available to the random selection?
+Width
+World
+World Size
+World Wrap
+World wrap maps are very memory intensive - creating large world wrap maps on Android can lead to crashes!
+XP
+Yes
+Yesterday [time]
+You
+You are not allowed to spectate!
+You cannot add your own player ID in your friend list!
+You do not have sufficient permissions to access the file.
+You have left this room or were removed. Open the invitation to rejoin.
+You have to write a name for your friend!
+You have to write an ID for your friend!
+You userId is unregistered! Set password to secure your userId
+You're currently using the default multiplayer server, which is based on a free Dropbox account. Because a lot of people use this, it is uncertain if you'll actually be able to access it consistently. Consider using a custom server instead.
+Your authentication status could not be determined
+Your current password has been succesfully verified
+Your current password was rejected from the server
+Your games will appear here
+Your turn [amount]
+Your turn to play
+[$filled]/[$total] seats filled · [$ready]/[$readyTotal] ready
+[$joined]/[$total] joined · [$ready]/[$readyTotal] ready
+[] deleted from this device.
+[amount] minutes
+[amount] multiplayer matches
+[civilization] · Turn [turn]
+[count] AI opponents
+[count] cities · [population] population
+[modName] Downloaded!
+[modName] received!
+[numberOfCivs] Civilizations in the game
+[numberOfExplicitPlayersText] to [playerRange] actual players by adding random AI's or by randomly omitting AI's.
+[numberOfTurns] turns
+[player] - [turns] turns
+[saveFileName] deleted successfully.
+an unknown civilization
+backup
+iCloud access is restricted.
+iCloud account changed. Tap Sync saves now to use the current account.
+iCloud is available.
+iCloud save sync failed.
+in all cities
+[count] mods
