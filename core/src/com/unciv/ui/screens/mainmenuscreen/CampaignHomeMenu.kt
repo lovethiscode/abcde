@@ -263,15 +263,56 @@ internal class CampaignHomeMenu(
     }
 
     private fun showFreePlay() {
-        val width = (screen.stage.width - px(72f)).coerceAtMost(px(480f))
+        val width = (screen.stage.width * .9f - px(40f)).coerceAtMost(px(640f))
+        val columns = if (width / unit / game.settings.fontSizeMultiplier >= 560f) 2 else 1
+        val gap = px(12f)
+        val choiceWidth = (width - gap * (columns - 1)) / columns
         Popup(screen).apply {
+            name = "ui-free-play-popup"
+            innerTable.background = BaseScreen.skinStrings.getUiBackground("",
+                BaseScreen.skinStrings.roundedEdgeRectangleShape,
+                ExpeditionBlueTheme.color(Color.valueOf("e5edf0"), ExpeditionBlueTheme.background))
+            bottomTable.pad(0f)
+            (getScrollPane()?.actor as? Table)?.apply {
+                pad(px(20f))
+                defaults().pad(0f)
+            }
+            getScrollPane()?.setScrollingDisabled(true, false)
             addTitleWithCloseButton(label("Free play", 24))
-            add(menuButton("Quickstart", "Start a game with the default settings", "OtherIcons/Quickstart",
-                width, KeyboardBinding.Quickstart) { close(); quickstartNewGame() })
-                .width(width).minHeight(px(88f)).padBottom(px(12f)).row()
-            add(menuButton("Singleplayer", "Choose your civilization, map and rules", "OtherIcons/New",
-                width, KeyboardBinding.StartNewGame) { close(); game.pushScreen { NewGameScreen() } })
-                .width(width).minHeight(px(88f)).row()
+            fun choice(title: String, description: String, icon: String,
+                       binding: KeyboardBinding, primary: Boolean, action: () -> Unit): Button {
+                val foreground = if (primary) ExpeditionBlueTheme.primaryInk else ink
+                val copyWidth = choiceWidth - px(94f)
+                return button(title, binding) { close(); action() }.apply {
+                    name = if (primary) "usage-new-game" else "usage-quickstart"
+                    if (primary) style = Button.ButtonStyle(style).apply {
+                        up = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape, gold)
+                        down = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape,
+                            gold.cpy().mul(.85f, .85f, .85f, 1f))
+                        over = down
+                    }
+                    pad(px(16f))
+                    add(ImageGetter.getImage(icon, if (primary) foreground else gold))
+                        .size(px(22f)).padRight(px(12f)).top()
+                    val copy = Table().apply {
+                        add(label(title, 18, foreground)).width(copyWidth).left().row()
+                        add(label(description, 13, if (primary) foreground else muted))
+                            .width(copyWidth).left().padTop(px(6f))
+                    }
+                    add(copy).width(copyWidth).left()
+                    add(ImageGetter.getImage("OtherIcons/ArrowRight", if (primary) foreground else gold))
+                        .size(px(16f)).padLeft(px(12f))
+                }
+            }
+            val choices = Table()
+            choices.add(choice("Quickstart", "Start a game with the default settings", "OtherIcons/Quickstart",
+                KeyboardBinding.Quickstart, false, quickstartNewGame))
+                .width(choiceWidth).minHeight(px(104f)).fillY()
+            if (columns == 2) choices.add().width(gap) else choices.row()
+            choices.add(choice("Singleplayer", "Choose your civilization, map and rules", "OtherIcons/New",
+                KeyboardBinding.StartNewGame, true) { game.pushScreen { NewGameScreen() } })
+                .width(choiceWidth).minHeight(px(104f)).fillY().padTop(if (columns == 1) gap else 0f)
+            add(choices).width(width).row()
             open()
         }
     }
