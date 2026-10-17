@@ -6,6 +6,7 @@ import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.*
+import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.TimeUtils
 import com.unciv.logic.campaign.CivilWarCampaign
 import com.unciv.logic.civilization.Civilization
@@ -152,13 +153,13 @@ class PolicyPickerScreen(
 
     private fun build(anchor: Pair<String, Float>? = if (initialized) captureAnchor() else null) {
         root.clearChildren()
-        root.pad(u(if (metrics.compact) 10f else 24f), u(metrics.padding), u(if (metrics.compact) 12f else 24f), u(metrics.padding))
+        root.pad(u(metrics.topInset), u(metrics.padding), u(metrics.bottomInset), u(metrics.padding))
         buildHeader()
         buildCatalog()
-        root.add(header).growX().minWidth(0f).padBottom(u(if (metrics.compact) 10f else 18f)).row()
+        root.add(header).growX().minWidth(0f).padBottom(u(metrics.headerGap)).row()
         body.clearChildren()
         val overview = Table().apply {
-            add(catalogToolbar()).growX().minWidth(0f).padBottom(u(10f)).row()
+            if (!metrics.compact) add(catalogToolbar()).growX().minWidth(0f).padBottom(u(10f)).row()
             add(catalogScroll).grow().minWidth(0f).minHeight(0f)
         }
         body.add(overview).grow().minWidth(0f).minHeight(0f)
@@ -167,7 +168,9 @@ class PolicyPickerScreen(
             body.add(buildDetails(false)).width(u(metrics.detailWidth)).growY().minHeight(0f)
         }
         root.add(body).grow().minWidth(0f).minHeight(0f).row()
-        if (!metrics.docked) root.add(selectionSummary()).growX().minWidth(0f).minHeight(u(64f)).padTop(u(10f))
+        if (!metrics.docked) root.add(selectionSummary()).growX().minWidth(0f)
+            .minHeight(u(metrics.summaryHeight)).apply { if (metrics.compact) height(u(metrics.summaryHeight)) }
+            .padTop(u(metrics.summaryGap))
         root.validate()
         if (anchor != null) cards[anchor.first]?.let {
             catalogScroll.scrollY = catalog.height - (it.y + it.height) + u(anchor.second)
@@ -181,9 +184,10 @@ class PolicyPickerScreen(
         appearance.decorate(closeButton)
         closeButton.clearChildren()
         closeButton.add(ImageGetter.getImage("OtherIcons/BackArrow")).size(u(16f))
-        if (!metrics.portrait) closeButton.add(label("Back", 13)).padLeft(u(6f))
-        header.add(closeButton).minSize(u(44f)).padRight(u(10f))
-        header.add(label("Social policies", if (metrics.compact) 20 else 23)).growX().minWidth(0f).left()
+        if (!metrics.portrait && !metrics.compact) closeButton.add(label("Back", 13)).padLeft(u(6f))
+        header.add(closeButton).minSize(u(44f)).padRight(u(if (metrics.compact) 6f else 10f))
+        header.add(label("Social policies", if (metrics.compact) 18 else 23).apply { setEllipsis(true) })
+            .growX().minWidth(0f).left()
         val progress = Table().apply {
             val caption = when {
                 branches.isEmpty() -> "No policies available".tr()
@@ -191,16 +195,23 @@ class PolicyPickerScreen(
                 policies.freePolicies > 0 -> "[${policies.freePolicies}] free policies remaining".tr()
                 else -> "${policies.storedCulture} / ${policies.getCultureNeededForNextPolicy()} ${"Culture".tr()}"
             }
-            add(label(caption, 13, if (policies.freePolicies > 0) appearance.gold else appearance.text, true)).growX().left().row()
+            add(label(caption, 13, if (policies.freePolicies > 0) appearance.gold else appearance.text, !metrics.compact)
+                .apply { if (metrics.compact) setEllipsis(true) }).growX().minWidth(0f).left().row()
             val cost = policies.getCultureNeededForNextPolicy().coerceAtLeast(1)
             add(ImageGetter.ProgressBar(u(180f), u(3f), false).setBackground(appearance.line)
                 .setProgress(appearance.gold, (policies.storedCulture.toFloat() / cost).coerceIn(0f, 1f)))
-                .growX().height(u(3f)).padTop(u(7f))
+                .growX().minWidth(0f).height(u(3f)).padTop(u(if (metrics.compact) 3f else 7f))
         }
         val search = action("", "ui-policy-search") { openOverlay("search") }.apply {
             clearChildren(); add(ImageGetter.getImage("OtherIcons/Search")).size(u(20f))
         }
-        if (metrics.portrait && metrics.width < 700f) {
+        if (metrics.compact) {
+            // Share one 44-point navigation row; the policy tree owns the remaining height.
+            header.add(progress).width(u((metrics.width * .2f).coerceIn(112f, 180f))).padLeft(u(8f)).padRight(u(8f))
+            header.add(branchLocator()).width(u(96f)).height(u(44f))
+            header.add(foldAllAction()).width(u(96f)).height(u(44f)).padLeft(u(4f))
+            header.add(search).size(u(44f)).padLeft(u(4f))
+        } else if (metrics.portrait && metrics.width < 700f) {
             header.add(search).size(u(44f))
             header.row()
             header.add(progress).colspan(3).growX().minWidth(0f).padTop(u(12f))
@@ -210,14 +221,20 @@ class PolicyPickerScreen(
         }
     }
 
-    private fun catalogToolbar() = Table().apply {
-        add(label("Policy codex", if (metrics.compact) 17 else 18)).growX().minWidth(0f).left()
-        add(action("Find branch", "ui-policy-branches", outlined = true) { openOverlay("branches") }).height(u(44f)).padLeft(u(8f))
+    private fun branchLocator() = action("Find branch", "ui-policy-branches", outlined = true) { openOverlay("branches") }
+
+    private fun foldAllAction(): TextButton {
         val allFolded = branches.all { it.name in collapsed }
-        add(action(if (allFolded) "Expand all" else "Collapse all", "ui-policy-fold-all") {
+        return action(if (allFolded) "Expand all" else "Collapse all", "ui-policy-fold-all") {
             if (allFolded) collapsed.clear() else collapsed.addAll(branches.map { it.name })
             build()
-        }).height(u(44f)).padLeft(u(4f))
+        }
+    }
+
+    private fun catalogToolbar() = Table().apply {
+        add(label("Policy codex", 18)).growX().minWidth(0f).left()
+        add(branchLocator()).height(u(44f)).padLeft(u(8f))
+        add(foldAllAction()).height(u(44f)).padLeft(u(4f))
     }
 
     private fun branchStatus(branch: PolicyBranch) = when {
@@ -339,9 +356,11 @@ class PolicyPickerScreen(
                     if (chosen) appearance.gold else appearance.line, thickness = if (chosen) 2f else 1f)
                 pad(u(4f))
                 add(icon(policy, if (adopted) appearance.gold else appearance.text)).size(u(if (metrics.compact) 22f else 30f)).row()
-                add(label(policy.name, 12).apply { setEllipsis(true) }).growX().minWidth(0f).padTop(u(3f)).row()
+                add(label(policy.name, 12).apply { setAlignment(Align.center); setEllipsis(true) })
+                    .growX().minWidth(0f).padTop(u(3f)).row()
                 add(label(if (adopted) "Adopted" else if (policies.isAdoptable(policy)) "Requirements met" else "Locked", 11,
-                    if (adopted) appearance.gold else appearance.muted).apply { setEllipsis(true) }).growX().minWidth(0f)
+                    if (adopted) appearance.gold else appearance.muted).apply { setAlignment(Align.center); setEllipsis(true) })
+                    .growX().minWidth(0f)
                 onClick {
                     // Selection rebuilds actors. Keep double-tap history on the screen, not the old node listener.
                     val now = TimeUtils.nanoTime()
@@ -452,14 +471,21 @@ class PolicyPickerScreen(
     private fun selectionSummary() = Table().apply {
         name = "ui-policy-details"; touchable = Touchable.enabled
         background = appearance.outline(appearance.panel)
-        pad(u(10f),u(14f),u(10f),u(14f))
+        pad(u(if (metrics.compact) 0f else 10f),u(14f),u(if (metrics.compact) 0f else 10f),u(14f))
         selected?.let { policy ->
-            add(icon(policy)).size(u(30f)).padRight(u(12f))
-            val text = Table().apply {
-                add(label(if(policy.policyBranchType == PolicyBranchType.BranchComplete) "Completion reward" else policy.name,16).apply { setEllipsis(true) }).growX().minWidth(0f).left().row()
-                add(label(stateText(policy),12,appearance.muted).apply { setEllipsis(true) }).growX().minWidth(0f).left()
+            add(icon(policy)).size(u(if (metrics.compact) 22f else 30f)).padRight(u(if (metrics.compact) 8f else 12f))
+            val title = if (policy.policyBranchType == PolicyBranchType.BranchComplete) "Completion reward" else policy.name
+            if (metrics.compact) {
+                add(label(title,14).apply { setEllipsis(true) }).growX().minWidth(0f).left()
+                add(label(stateText(policy),12,appearance.muted).apply { setEllipsis(true) })
+                    .width(u((metrics.width * .25f).coerceIn(96f, 200f))).padLeft(u(8f)).left()
+            } else {
+                val text = Table().apply {
+                    add(label(title,16).apply { setEllipsis(true) }).growX().minWidth(0f).left().row()
+                    add(label(stateText(policy),12,appearance.muted).apply { setEllipsis(true) }).growX().minWidth(0f).left()
+                }
+                add(text).growX().minWidth(0f)
             }
-            add(text).growX().minWidth(0f)
             add(label("View details",13,appearance.gold)).padLeft(u(8f))
             onClick { openOverlay("details") }
         } ?: add(label("No policies available",14,appearance.muted,true)).growX()

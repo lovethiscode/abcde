@@ -93,6 +93,11 @@ internal class PolicyCodexStyle(val unit: Float, val textScale: Float) {
 internal class PolicyCodexLayout(val width: Float, val height: Float) {
     val portrait = height > width
     val compact = !portrait && height < 600f
+    val topInset = if (compact) 8f else 24f
+    val bottomInset = if (compact) 8f else 24f
+    val headerGap = if (compact) 6f else 18f
+    val summaryGap = if (compact) 6f else 10f
+    val summaryHeight = if (compact) 44f else 64f
     val docked = width >= 800f && height >= 600f || width >= 1100f
     val padding = if (compact) 12f else if (width < 700f) 16f else 24f
     val gap = if (compact) 12f else 16f
