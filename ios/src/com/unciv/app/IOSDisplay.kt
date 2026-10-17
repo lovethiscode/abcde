@@ -15,12 +15,23 @@ import com.unciv.utils.ScreenOrientation
 import org.robovm.apple.dispatch.DispatchQueue
 import org.robovm.apple.foundation.NSOperatingSystemVersion
 import org.robovm.apple.foundation.NSProcessInfo
+import org.robovm.apple.uikit.UIDevice
 import org.robovm.apple.uikit.UIInterfaceOrientationMask
 import org.robovm.apple.uikit.UISceneActivationState
+import org.robovm.apple.uikit.UIUserInterfaceIdiom
 import org.robovm.apple.uikit.UIViewController
 import org.robovm.apple.uikit.UIWindowSceneGeometryPreferencesIOS
 
 class IOSDisplay : PlatformDisplay {
+    companion object {
+        /** UIKit LandscapeRight places the iPhone's front camera and cutout on the left. */
+        @JvmStatic
+        fun landscapeOrientationMask(): UIInterfaceOrientationMask =
+            if (UIDevice.getCurrentDevice().userInterfaceIdiom == UIUserInterfaceIdiom.Phone)
+                UIInterfaceOrientationMask.LandscapeRight
+            else UIInterfaceOrientationMask.Landscape
+    }
+
     @Volatile private var safeInsets = SafeInsets()
     @Volatile private var edgeToEdge = false
     @Volatile private var orientation = ScreenOrientation.Landscape
@@ -57,10 +68,13 @@ class IOSDisplay : PlatformDisplay {
 
     fun restoreOrientation() = requestOrientation(notifyOnFailure = false)
 
-    fun getOrientationMask(): UIInterfaceOrientationMask = when (orientation) {
-        ScreenOrientation.Landscape -> UIInterfaceOrientationMask.Landscape
-        ScreenOrientation.Portrait -> UIInterfaceOrientationMask.Portrait
-        ScreenOrientation.Auto -> UIInterfaceOrientationMask.AllButUpsideDown
+    fun getOrientationMask(): UIInterfaceOrientationMask {
+        val landscape = landscapeOrientationMask()
+        return when (orientation) {
+            ScreenOrientation.Landscape -> landscape
+            ScreenOrientation.Portrait -> UIInterfaceOrientationMask.Portrait
+            ScreenOrientation.Auto -> landscape.set(UIInterfaceOrientationMask.Portrait)
+        }
     }
 
     private fun requestOrientation(notifyOnFailure: Boolean) {

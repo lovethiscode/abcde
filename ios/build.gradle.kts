@@ -201,20 +201,19 @@ val verifyIosConfiguration by tasks.registering {
             "Info.plist.xml must declare exactly one application scene configuration"
         }
         val supportedOrientations = plistArrayValues("UISupportedInterfaceOrientations", "string")
-        check(supportedOrientations.size == 3 && supportedOrientations.toSet() == setOf(
+        check(supportedOrientations.size == 2 && supportedOrientations.toSet() == setOf(
+            "UIInterfaceOrientationLandscapeRight",
+            "UIInterfaceOrientationPortrait",
+        )) {
+            "The iPhone app must advertise camera-left LandscapeRight and Portrait exactly once"
+        }
+        val ipadOrientations = plistArrayValues("UISupportedInterfaceOrientations~ipad", "string")
+        check(ipadOrientations.size == 3 && ipadOrientations.toSet() == setOf(
             "UIInterfaceOrientationLandscapeLeft",
             "UIInterfaceOrientationLandscapeRight",
             "UIInterfaceOrientationPortrait",
         )) {
-            "The iPhone+iPad app must advertise LandscapeLeft, LandscapeRight and Portrait exactly once"
-        }
-        val hasIpadOrientations = Regex(
-            "<key>\\s*UISupportedInterfaceOrientations~ipad\\s*</key>"
-        ).containsMatchIn(plist)
-        val ipadOrientations = plistArrayValues("UISupportedInterfaceOrientations~ipad", "string")
-        check(!hasIpadOrientations ||
-            (ipadOrientations.size == 3 && ipadOrientations.toSet() == supportedOrientations.toSet())) {
-            "The iPad-specific orientation list, when present, must contain LandscapeLeft, LandscapeRight and Portrait exactly once"
+            "The iPad-specific orientation list must contain LandscapeLeft, LandscapeRight and Portrait exactly once"
         }
         check(Regex(
             "<key>\\s*CFBundleIcons~ipad\\s*</key>.*" +
