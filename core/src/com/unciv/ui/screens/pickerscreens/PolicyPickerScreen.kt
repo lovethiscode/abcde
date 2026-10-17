@@ -267,7 +267,7 @@ class PolicyPickerScreen(
             val graph = branchGraph(branch, metrics.branchWidth - 18f)
             // Nonstandard mod grids may be wider; preserve their coordinates instead of overlapping targets.
             val wideGraph = graph.prefWidth > u(metrics.branchWidth - 18f) + .1f
-            val graphActor: Actor = if (wideGraph) ScrollPane(graph, skin).apply {
+            val graphActor: Actor = if (wideGraph) ScrollPane(graph, BaseScreen.skin).apply {
                 setScrollingDisabled(false, true); setOverscroll(false, false)
             } else graph
             add(graphActor).growX().minWidth(0f).height(graph.prefHeight + u(if (wideGraph) 8f else 0f)).row()
@@ -296,7 +296,8 @@ class PolicyPickerScreen(
         val entries = members(branch)
         val maxCol = max(5, entries.maxOfOrNull { it.column } ?: 5)
         val maxRow = max(1, entries.maxOfOrNull { it.row } ?: 1)
-        val nodeWidth = if (metrics.branchWidth < 360f) 76f else 88f
+        val nodeWidth = if (metrics.branchWidth < 360f)
+            ((availableWidth - 28f) / 3f).coerceIn(64f, 76f) else 88f
         val nodeHeight = if (metrics.compact) 64f else 94f
         val rowStep = nodeHeight + 18f
         val minColumnDistance = entries.groupBy { it.row }.values.flatMap { row ->
