@@ -78,7 +78,11 @@ internal class CampaignHomeMenu(
         val margin = px(if (minimal) 6f else if (compact) 10f else if (tablet) 32f else 18f)
         val gap = px(if (minimal) 4f else if (compact) 8f else if (landscape) 12f else if (shortPhone) 12f else 22f)
         val width = (screen.stage.width - margin * 2f).coerceAtMost(px(1100f))
-        val content = Table().apply { pad(margin); if (!tablet) top() }
+        val content = Table().apply {
+            pad(margin)
+            if (landscape && !tablet && !compact) { padTop(px(10f)); padBottom(px(10f)) }
+            if (!tablet) top()
+        }
         val header = Table()
         header.add(artwork.icon()).size(px(if (tablet) 48f else 34f)).padRight(px(12f))
         val headingWidth = width - px(if (tablet) 120f else 108f)
@@ -167,7 +171,11 @@ internal class CampaignHomeMenu(
         var added = 0
         fun tool(text: String, icon: String, binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Button {
             val inline = (tablet || landscape) && !largeText
-            val titleWidth = toolWidth - px(if (inline) 42f else 8f)
+            val title = label(text, if (tablet) 16 else if (landscape) 13 else 12).apply {
+                wrap = false; setAlignment(Align.center)
+            }
+            val titleWidth = if (inline) title.prefWidth.coerceAtMost(toolWidth - px(42f)) else toolWidth - px(8f)
+            title.wrap = true
             val control = button(text, binding, action).apply {
                 name = "ui-home-${text.lowercase().replace(' ', '-')}"
                 style = Button.ButtonStyle(style).apply { up = null }
@@ -176,7 +184,7 @@ internal class CampaignHomeMenu(
                     add(ImageGetter.getImage(icon, gold)).size(px(22f))
                     if (!inline) row()
                 }
-                add(label(text, if (tablet) 16 else if (landscape) 13 else 12).apply { setAlignment(Align.center) })
+                add(title)
                     .width(titleWidth).padLeft(if (inline) px(10f) else 0f).padTop(if (!inline && !minimal) px(8f) else 0f)
             }
             tools.add(control).width(toolWidth).minHeight(px(if (landscape || minimal) 44f else 64f)).fillY()

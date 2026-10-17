@@ -19,10 +19,15 @@ internal class HomeMenuArtwork : Disposable {
     private val icon = Texture(Gdx.files.internal("ExtraImages/LaunchMarkTransparent@3x.png")).apply {
         setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear)
     }
-    private val scrim = Pixmap(2, 1, Pixmap.Format.RGBA8888).let {
-        it.setColor(ExpeditionBlueTheme.background.cpy().apply { a = .97f }); it.drawPixel(0, 0)
-        it.setColor(ExpeditionBlueTheme.background.cpy().apply { a = .55f }); it.drawPixel(1, 0)
-        Texture(it).apply { setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear); it.dispose() }
+    private val scrim = Pixmap(256, 1, Pixmap.Format.RGBA8888).let { pixmap ->
+        for (x in 0 until pixmap.width) {
+            val position = x.toFloat() / (pixmap.width - 1)
+            val opacity = if (position <= .45f) .96f + (.75f - .96f) * position / .45f
+                else .75f + (.145f - .75f) * (position - .45f) / .55f
+            pixmap.setColor(ExpeditionBlueTheme.background.cpy().apply { a = opacity })
+            pixmap.drawPixel(x, 0)
+        }
+        Texture(pixmap).apply { setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear); pixmap.dispose() }
     }
 
     fun icon() = Image(icon)
