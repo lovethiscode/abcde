@@ -12,6 +12,7 @@ import com.unciv.models.ruleset.PerpetualConstruction
 import com.unciv.models.ruleset.PerpetualConstruction.StatConversion
 import com.unciv.models.ruleset.unit.BaseUnit
 import com.unciv.models.translations.tr
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.darken
 import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.extensions.getTurnsToConstructionString
@@ -36,7 +37,9 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
             "CityScreen/ConstructionInfoTable/SelectedConstructionTable",
             tintColor = BaseScreen.skinStrings.skinConfig.baseColor.darken(0.5f)
         )
-        add(selectedConstructionTable).pad(2f).fill()
+        add(selectedConstructionTable).pad(if (cityScreen.usesWorkbench) 0f else 2f).apply {
+            if (cityScreen.usesWorkbench) growX() else fill()
+        }
         background = BaseScreen.skinStrings.getUiBackground(
             "CityScreen/ConstructionInfoTable/Background",
             tintColor = Color.WHITE
@@ -44,6 +47,7 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
     }
 
     fun update(selectedConstruction: IConstruction?) {
+        if (cityScreen.usesWorkbench) { background = null; selectedConstructionTable.background = null }
         selectedConstructionTable.clear()  // clears content and listeners
 
         if (selectedConstruction == null) {
@@ -79,7 +83,9 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
             buildingText += specialConstruction?.let { cityView.getProductionTooltip(it) }
                     ?: cityConstructions.getTurnsToConstructionString(construction)
 
-            add(Label(buildingText, BaseScreen.skin)).expandX().row()  // already translated
+            add(Label(buildingText, BaseScreen.skin).apply { wrap = cityScreen.usesWorkbench; if (cityScreen.usesWorkbench) setFontSize(15) }).apply {
+                if (cityScreen.usesWorkbench) width(cityScreen.workbenchWidth - 90f)
+            }.expandX().row()  // already translated
 
             val description = when (construction) {
                 is BaseUnit -> cityView.getUnitDescription(construction)
@@ -91,7 +97,8 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
 
             val descriptionLabel = Label(description, BaseScreen.skin)  // already translated
             descriptionLabel.wrap = true
-            add(descriptionLabel).colspan(2).width(cityScreen.stage.width / if(cityScreen.isCrampedPortrait()) 3 else 4)
+            if (cityScreen.usesWorkbench) descriptionLabel.setFontSize(14)
+            add(descriptionLabel).colspan(2).width(if (cityScreen.usesWorkbench) cityScreen.workbenchWidth - 24f else cityScreen.stage.width / if(cityScreen.isCrampedPortrait()) 3 else 4)
 
             if (cityConstructions.isBuilt(construction.name)) {
                 showSellButton(construction)

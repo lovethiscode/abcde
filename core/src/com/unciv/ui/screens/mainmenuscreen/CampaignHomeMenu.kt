@@ -43,7 +43,9 @@ internal class CampaignHomeMenu(
     private val surface = ExpeditionBlueTheme.color(Color.valueOf("f8faf7"), ExpeditionBlueTheme.panel)
     private val game = screen.game
     private val unit = UiNavigation.minimumTouchSize() / 44f
-    private val compactLandscape = screen.stage.width > screen.stage.height && screen.stage.height / unit < 600f
+    private var density = 0
+    private val compact get() = density > 0
+    private val minimal get() = density > 1
     private val artwork = HomeMenuArtwork()
     private fun px(value: Float) = value * unit
     private fun label(text: String, size: Int, color: Color = ink) =
@@ -53,21 +55,33 @@ internal class CampaignHomeMenu(
         name = "ui-campaign-home"
         background = ImageGetter.getWhiteDotDrawable().tint(
             ExpeditionBlueTheme.color(Color.valueOf("e5edf0"), ExpeditionBlueTheme.background))
-        val tablet = !compactLandscape && screen.stage.width / unit >= 700f
-        val sideBySide = (tablet || compactLandscape) && screen.stage.width > screen.stage.height
-        val margin = px(if (compactLandscape) 12f else if (tablet) 32f else 20f)
-        val gap = px(if (compactLandscape) 8f else if (tablet) 24f else 16f)
+        for (candidate in 0..2) {
+            density = candidate
+            clearChildren()
+            buildMenu()
+            if (prefHeight <= screen.stage.height) break
+        }
+        findActor<Label>("ui-home-save-subtitle")?.let(::loadResumeSubtitle)
+        setFillParent(true)
+        setSize(screen.stage.width, screen.stage.height)
+    }
+
+    private fun buildMenu() {
+        val tablet = minOf(screen.stage.width, screen.stage.height) / unit >= 700f
+        val sideBySide = screen.stage.width > screen.stage.height
+        val margin = px(if (minimal) 6f else if (compact) 12f else if (tablet) 32f else 20f)
+        val gap = px(if (minimal) 4f else if (compact) 8f else if (tablet) 24f else 16f)
         val width = (screen.stage.width - margin * 2f).coerceAtMost(px(1200f))
         pad(margin).top()
         val header = Table()
         header.add(artwork.icon()).size(px(36f)).padRight(px(12f))
         val heading = Table()
         val headingWidth = width - px(108f)
-        heading.add(label("Build a city. Shape your world.", 13, muted).apply { name = "ui-home-tagline" })
+        if (!minimal) heading.add(label("Build a city. Shape your world.", 13, muted).apply { name = "ui-home-tagline" })
             .width(headingWidth).left().row()
         val version = game.displayBuildNumber?.let { "v${UncivGame.VERSION.text} ($it)" }
             ?: "v${UncivGame.VERSION.text}"
-        heading.add(label(version, 10, muted).apply { setText(version); name = "ui-home-version" })
+        heading.add(label(version, 11, muted).apply { setText(version); name = "ui-home-version" })
             .width(headingWidth).left().padTop(px(3f))
         header.add(heading).expandX().left()
         val options = button("Options", KeyboardBinding.MainMenuOptions) { screen.openOptionsPopup() }.apply {
@@ -79,37 +93,37 @@ internal class CampaignHomeMenu(
         header.add(options).size(px(44f)).padLeft(px(16f))
         add(header).width(width).padBottom(gap).row()
 
-        val coverWidth = if (sideBySide) (width - gap) * .53f else width
+        val coverWidth = if (sideBySide) (width - gap) * (if (minimal) .34f else if (compact) .42f else .53f) else width
         val actionsWidth = if (sideBySide) width - coverWidth - gap else width
         val actions = Table()
         val hasSave = game.files.autosaves.autosaveExists()
         val resume = menuButton(if (hasSave) "Resume" else "Start new game",
             if (hasSave) "Your latest autosave" else "Choose your civilization, map and rules",
-            "OtherIcons/Resume", actionsWidth, KeyboardBinding.Resume, primary = true, compact = compactLandscape) {
+            "OtherIcons/Resume", actionsWidth, KeyboardBinding.Resume, primary = true, compact = compact) {
             if (hasSave) resumeGame() else showFreePlay()
         }.apply { name = "ui-resume" }
-        if (hasSave) loadResumeSubtitle(resume.findActor("subtitle"))
-        actions.add(resume).width(actionsWidth).minHeight(px(if (compactLandscape) 64f else if (sideBySide) 104f else if (tablet) 88f else 76f)).padBottom(gap).row()
+        if (hasSave) resume.findActor<Label>("subtitle")?.name = "ui-home-save-subtitle"
+        actions.add(resume).width(actionsWidth).minHeight(px(if (minimal) 44f else if (compact) 56f else if (sideBySide) 104f else if (tablet) 88f else 76f)).padBottom(gap).row()
 
-        val actionColumns = if (actionsWidth / unit < 600f && game.settings.fontSizeMultiplier > 1.25f) 1 else 2
+        val actionColumns = if (!compact && actionsWidth / unit < 600f && game.settings.fontSizeMultiplier > 1.25f) 1 else 2
         val cellWidth = (actionsWidth - px(2f) * (actionColumns - 1)) / actionColumns
         val entries = listOf(
             menuButton("Free play", "Quickstart or customize a singleplayer game", "OtherIcons/Nations", cellWidth,
-                compact = compactLandscape, action = ::showFreePlay),
-            menuButton("Endless survival", "Defense hall", "OtherIcons/Shield", cellWidth, compact = compactLandscape) {
+                compact = compact, action = ::showFreePlay),
+            menuButton("Endless survival", "Defense hall", "OtherIcons/Shield", cellWidth, compact = compact) {
                 game.pushScreen { com.unciv.ui.screens.endless.EndlessScreen() }
             }.apply { name = "ui-endless-open" },
             menuButton("Load game", "Choose a save and continue your civilization", "OtherIcons/Load", cellWidth,
-                KeyboardBinding.MainMenuLoad, compact = compactLandscape) { game.pushScreen { LoadGameScreen() } },
+                KeyboardBinding.MainMenuLoad, compact = compact) { game.pushScreen { LoadGameScreen() } },
             menuButton("Multiplayer", "Create a room and share its invitation, or join a friend's game.",
-                "OtherIcons/Multiplayer", cellWidth, KeyboardBinding.Multiplayer, compact = compactLandscape, action = ::showMultiplayer)
+                "OtherIcons/Multiplayer", cellWidth, KeyboardBinding.Multiplayer, compact = compact, action = ::showMultiplayer)
         )
         val grid = Table().apply {
             background = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape, surface)
         }
         entries.forEach { it.style = Button.ButtonStyle(it.style).apply { up = null } }
         for ((index, entry) in entries.withIndex()) {
-            grid.add(entry).width(cellWidth).minHeight(px(if (compactLandscape) 80f else if (sideBySide) 132f else if (tablet) 120f else 108f)).fillY()
+            grid.add(entry).width(cellWidth).minHeight(px(if (minimal) 44f else if (compact) 68f else if (sideBySide) 132f else if (tablet) 120f else 108f)).fillY()
             if ((index + 1) % actionColumns != 0) {
                 grid.add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.border }).width(px(2f)).growY()
             } else {
@@ -123,36 +137,36 @@ internal class CampaignHomeMenu(
         val cover = campaignCover(coverWidth, tablet)
         // Resolve wrapped labels at the cover width before asking for their preferred height.
         cover.pack()
-        val coverHeight = maxOf(cover.prefHeight, px(if (compactLandscape) 220f else if (sideBySide) 420f else if (tablet) 300f else 256f),
+        val coverHeight = maxOf(cover.prefHeight, px(if (minimal) 72f else if (compact) 160f else if (sideBySide) 420f else if (tablet) 300f else 256f),
             if (sideBySide) actions.prefHeight else 0f)
         val body = Table()
-        body.add(cover).width(coverWidth).minHeight(coverHeight).fillY()
+        val coverCell = body.add(cover).width(coverWidth).minHeight(coverHeight).growY()
         if (sideBySide) body.add().width(gap) else body.row()
         body.add(actions).width(actionsWidth).top().padTop(if (sideBySide) 0f else gap)
-        add(body).width(width).padBottom(gap).row()
+        add(body).width(width).growY().padBottom(gap).row()
 
         add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.border })
-            .width(width).height(px(1f)).padBottom(px(8f)).row()
+            .width(width).height(px(1f)).padBottom(px(if (minimal) 4f else 8f)).row()
         val tools = Table()
         val toolCount = if (game.achievementsAvailable) 4 else 3
-        val toolColumns = if (width / unit < 900f && game.settings.fontSizeMultiplier > 1.25f) 2 else toolCount
+        val toolColumns = if (width / unit < 520f && game.settings.fontSizeMultiplier > 1.25f) 2 else toolCount
         val toolWidth = (width - px(8f) * (toolColumns - 1)) / toolColumns
         var addedTools = 0
         fun tool(text: String, icon: String, binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Button {
-            val title = label(text, if (tablet) 15 else 12).apply { wrap = false; setAlignment(Align.center) }
-            val inline = tablet || compactLandscape
+            val title = label(text, if (minimal) 11 else if (tablet) 15 else 12).apply { wrap = false; setAlignment(Align.center) }
+            val inline = (tablet || sideBySide || minimal) && game.settings.fontSizeMultiplier <= 1.25f
             val titleWidth = if (inline) title.prefWidth.coerceAtMost(toolWidth - px(44f)) else toolWidth - px(10f)
             title.wrap = true
             val control = button(text, binding, action).apply {
                 name = "ui-home-${text.lowercase().replace(' ', '-')}"
                 style = Button.ButtonStyle(style).apply { up = null }
-                pad(px(10f), px(5f), px(10f), px(5f))
+                pad(px(if (compact) 6f else 10f), px(5f), px(if (compact) 6f else 10f), px(5f))
                 add(ImageGetter.getImage(icon, gold)).size(px(22f))
                 if (!inline) row()
                 add(title).width(titleWidth)
                     .padTop(if (inline) 0f else px(6f)).padLeft(if (inline) px(6f) else 0f)
             }
-            tools.add(control).width(toolWidth).minHeight(px(if (compactLandscape) 44f else 64f)).fillY()
+            tools.add(control).width(toolWidth).minHeight(px(if (compact) 44f else 64f)).fillY()
                 .padTop(if (addedTools >= toolColumns) px(8f) else 0f)
                 .padRight(if ((addedTools + 1) % toolColumns == 0) 0f else px(8f))
             if (++addedTools % toolColumns == 0) tools.row()
@@ -168,6 +182,11 @@ internal class CampaignHomeMenu(
         if (game.achievementsAvailable) tool("Achievements", "OtherIcons/AchievementTrophy") { game.showAchievements() }
         tool("Map editor", "OtherIcons/MapEditor", KeyboardBinding.MapEditor) { game.pushScreen { MapEditorScreen() } }
         add(tools).width(width)
+        pack()
+        // Spend the remaining safe height on artwork, after reserving every navigation control.
+        val overflow = (prefHeight - screen.stage.height).coerceAtLeast(0f)
+        coverCell.minHeight(maxOf(cover.prefHeight, coverHeight - overflow))
+        invalidateHierarchy()
         pack()
     }
 
@@ -195,16 +214,18 @@ internal class CampaignHomeMenu(
                 down = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape, gold.cpy().mul(.85f, .85f, .85f, 1f))
                 over = down
             }
-            pad(px(if (compact) 8f else 16f))
-            val copyWidth = width - px(if (primary) 70f else 32f)
-            if (primary) add(ImageGetter.getImage(icon, foreground)).size(px(26f)).padRight(px(12f))
+            val inset = if (minimal) 6f else if (compact) 8f else 16f
+            pad(px(inset))
+            val inlineIcon = !minimal && (primary || compact && game.settings.fontSizeMultiplier <= 1.25f)
+            val copyWidth = width - px(inset * 2f + if (inlineIcon) 38f else 0f)
+            if (inlineIcon) add(ImageGetter.getImage(icon, foreground)).size(px(26f)).padRight(px(12f))
             val copy = Table().apply {
-                if (!primary) {
+                if (!primary && !compact) {
                     add(ImageGetter.getImage(icon, gold)).size(px(if (compact) 18f else 22f)).left()
                         .padBottom(px(if (compact) 6f else 10f)).row()
                 }
-                add(label(text, if (primary && compact) 20 else if (primary) 22 else 17, foreground)).width(copyWidth).left().row()
-                if (subtitle.isNotEmpty()) add(label(subtitle, 12, if (primary) foreground else muted).apply { name = "subtitle" })
+                add(label(text, if (minimal) 14 else if (primary && compact) 18 else if (primary) 22 else if (compact) 15 else 17, foreground)).width(copyWidth).left().row()
+                if (!minimal && (primary || !compact) && subtitle.isNotEmpty()) add(label(subtitle, 12, if (primary) foreground else muted).apply { name = "subtitle" })
                     .width(copyWidth).left().padTop(px(if (compact) 4f else 6f))
             }
             add(copy).growX().left()
@@ -220,15 +241,17 @@ internal class CampaignHomeMenu(
     }
 
     private fun campaignCover(width: Float, tablet: Boolean): Stack {
-        val inset = px(if (compactLandscape) 16f else if (tablet) 28f else 24f)
+        val inset = px(if (minimal) 8f else if (compact) 16f else if (tablet) 28f else 24f)
         val copyWidth = width - inset * 2f
         val copy = Table().apply {
             pad(inset).top().left()
-            add(label("Every step opens a new world.", if (compactLandscape) 28 else if (tablet) 42 else 32)).width(copyWidth).left().row()
-            add(label("Campaign challenges", if (compactLandscape) 15 else 17)).width(copyWidth).left().padTop(px(if (compactLandscape) 8f else 14f)).row()
-            add(label("Designed situations. Your own strategy.", if (compactLandscape) 12 else 13)).width(copyWidth).left().padTop(px(if (compactLandscape) 6f else 8f)).row()
-            add().minHeight(px(if (compactLandscape) 12f else 22f)).expandY().row()
-            val title = label("Enter campaigns", if (compactLandscape) 15 else 17, ExpeditionBlueTheme.primaryInk).apply { wrap = false }
+            if (!minimal) {
+                add(label("Every step opens a new world.", if (compact) 22 else if (tablet) 42 else 32)).width(copyWidth).left().row()
+                if (!compact) add(label("Campaign challenges", 17)).width(copyWidth).left().padTop(px(14f)).row()
+                if (!compact) add(label("Designed situations. Your own strategy.", 13)).width(copyWidth).left().padTop(px(8f)).row()
+                add().minHeight(px(if (compact) 8f else 22f)).expandY().row()
+            }
+            val title = label("Enter campaigns", if (minimal) 14 else if (compact) 15 else 17, ExpeditionBlueTheme.primaryInk).apply { wrap = false }
             val enterWidth = (title.prefWidth + px(70f)).coerceAtLeast(px(172f)).coerceAtMost(copyWidth)
             title.wrap = true
             val enter = button("Enter campaigns") {
@@ -240,7 +263,7 @@ internal class CampaignHomeMenu(
                     down = BaseScreen.skinStrings.getUiBackground("", BaseScreen.skinStrings.roundedEdgeRectangleShape, gold.cpy().mul(.85f, .85f, .85f, 1f))
                     over = down
                 }
-                pad(px(if (compactLandscape) 8f else 12f), px(18f), px(if (compactLandscape) 8f else 12f), px(18f))
+                pad(px(if (compact) 8f else 12f), px(18f), px(if (compact) 8f else 12f), px(18f))
                 add(title).width(enterWidth - px(70f)).left()
                 add(ImageGetter.getImage("OtherIcons/ArrowRight", ExpeditionBlueTheme.primaryInk))
                     .size(px(20f)).padLeft(px(14f))

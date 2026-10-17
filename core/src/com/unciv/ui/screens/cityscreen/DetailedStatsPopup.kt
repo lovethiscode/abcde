@@ -5,6 +5,8 @@ import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.unciv.Constants
+import com.unciv.ui.components.input.onChange
 import com.badlogic.gdx.utils.Align
 import com.unciv.logic.city.StatTreeNode
 import com.unciv.models.stats.Stat
@@ -32,6 +34,7 @@ import kotlin.math.max
 class DetailedStatsPopup(
     private val cityScreen: CityScreen
 ) : Popup(cityScreen, Scrollability.None) {
+    private var embedded = false
     private val headerTable = Table()
     private val totalTable = Table()
 
@@ -72,6 +75,29 @@ class DetailedStatsPopup(
         closeListeners.add { cityScreen.pauseFireworks = false }
     }
 
+    internal fun workbenchContent(): Table {
+        embedded = true
+        update()
+        val combined = Table().apply {
+            add(headerTable).growX().row()
+            add(totalTable).growX()
+        }
+        val filters = cityWorkbenchSelectBox()
+        val filterStats = Stat.entries.filter { it != Stat.Faith || cityScreen.cityView.viewingCiv().isReligionEnabled() }
+        filters.setItems(*listOf("All".tr()).plus(filterStats.map { cityWorkbenchIconText(it.name.tr(hideIcons = true)) }).toTypedArray())
+        filters.onChange {
+            onlyWithStat = filterStats.getOrNull(filters.selectedIndex - 1)
+            update()
+        }
+        return Table().apply {
+            add(filters).growX().height(44f).padBottom(8f).row()
+            add(AutoScrollPane(combined).apply {
+                setOverscroll(false, false)
+                setScrollingDisabled(false, true)
+            }).width(cityScreen.workbenchManagementWidth).growY()
+        }
+    }
+
     private fun update() {
         headerTable.clear()
         totalTable.clear()
@@ -85,12 +111,12 @@ class DetailedStatsPopup(
             else -> Stat.entries
         }
         val columnCount = stats.size + 1
-        val statColMinWidth = if (onlyWithStat != null) 150f else 110f
+        val statColMinWidth = if (embedded) 65f else if (onlyWithStat != null) 150f else 110f
 
-        headerTable.add(getToggleButton(isDetailed)).minWidth(150f).grow()
+        headerTable.add(getToggleButton(isDetailed)).minWidth(if (embedded) 110f else 150f).grow()
 
         for (stat in stats) {
-            val label = stat.name.toLabel()
+            val label = stat.name.toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
             label.onClick {
                 onlyWithStat = if (onlyWithStat == null) stat else null
                 update()
@@ -101,19 +127,19 @@ class DetailedStatsPopup(
         headerTable.row()
         headerTable.addSeparator().padBottom(2f)
 
-        totalTable.add("Base values".toLabel().apply { setAlignment(Align.center) })
+        totalTable.add("Base values".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize).apply { setAlignment(Align.center) })
             .colspan(columnCount).growX().row()
         totalTable.addSeparator(colSpan = columnCount).padTop(2f)
         traverseTree(totalTable, stats, cityView.getBaseStatTree(), mergeHappiness = true, percentage = false)
 
         totalTable.addSeparator().padBottom(2f)
-        totalTable.add("Bonuses".toLabel().apply { setAlignment(Align.center) })
+        totalTable.add("Bonuses".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize).apply { setAlignment(Align.center) })
             .colspan(columnCount).growX().row()
         totalTable.addSeparator().padTop(2f)
         traverseTree(totalTable, stats, cityView.getStatPercentBonusTree(), percentage = true)
 
         totalTable.addSeparator().padBottom(2f)
-        totalTable.add("Final".toLabel().apply { setAlignment(Align.center) })
+        totalTable.add("Final".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize).apply { setAlignment(Align.center) })
             .colspan(columnCount).growX().row()
         totalTable.addSeparator().padTop(2f)
 
@@ -136,7 +162,7 @@ class DetailedStatsPopup(
             if (onlyWithStat != null && finalStats[onlyWithStat!!] == 0f)
                 continue
 
-            val label = source.toLabel(hideIcons = true).apply {
+            val label = source.toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize, hideIcons = true).apply {
                 setAlignment(Align.left)
                 onClick {
                     sourceHighlighted = if (sourceHighlighted == source) null else source
@@ -150,7 +176,7 @@ class DetailedStatsPopup(
             for (stat in stats) {
                 val value = finalStats[stat]
                 val cell = when (value) {
-                    0f -> "-".toLabel()
+                    0f -> "-".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
                     else -> value.toOneDecimalLabel()
                 }
 
@@ -166,7 +192,7 @@ class DetailedStatsPopup(
             totalTable.row()
         }
 
-        totalTable.add(wrapInTable("Total".toLabel(), colorTotal)).grow()
+        totalTable.add(wrapInTable("Total".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize), colorTotal)).grow()
         for (stat in stats) {
             totalTable.add(wrapInTable(final[stat]?.toOneDecimalLabel(), colorTotal))
                 .minWidth(statColMinWidth).grow()
@@ -174,6 +200,10 @@ class DetailedStatsPopup(
         totalTable.row()
 
         // Mini version of Scene2dExtensions.equalizeColumns - the number columns work thanks to statColMinWidth
+        if (embedded) {
+            spaceCityWorkbenchIcons(headerTable)
+            spaceCityWorkbenchIcons(totalTable)
+        }
         headerTable.packIfNeeded()
         totalTable.packIfNeeded()
         val firstColumnWidth = max(totalTable.getColumnWidth(0), headerTable.getColumnWidth(0))
@@ -184,7 +214,7 @@ class DetailedStatsPopup(
     }
 
     private fun getToggleButton(showDetails: Boolean): IconCircleGroup {
-        val label = (if (showDetails) "-" else "+").toLabel()
+        val label = (if (showDetails) "-" else "+").toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
         label.setAlignment(Align.center)
         val button = label
             .surroundWithCircle(25f, color = BaseScreen.skinStrings.skinConfig.baseColor)
@@ -234,7 +264,7 @@ class DetailedStatsPopup(
                 continue
             }
 
-            val label = text.toLabel(hideIcons = true).apply {
+            val label = text.toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize, hideIcons = true).apply {
                 setAlignment(Align.left)
                 onClick {
                     sourceHighlighted = if (sourceHighlighted == text) null else text
@@ -252,7 +282,7 @@ class DetailedStatsPopup(
             for (stat in stats) {
                 val value = child.totalStats[stat]
                 val cell = when {
-                    value == 0f -> "-".toLabel()
+                    value == 0f -> "-".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
                     percentage ->  value.toPercentLabel()
                     else -> value.toOneDecimalLabel()
                 }
@@ -274,7 +304,7 @@ class DetailedStatsPopup(
         }
 
         if (indentation == 0) {
-            table.add(wrapInTable("Total".toLabel(), colorTotal)).grow()
+            table.add(wrapInTable("Total".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize), colorTotal)).grow()
             for (stat in stats) {
                 if (percentage)
                     table.add(wrapInTable(total[stat]?.toPercentLabel(), colorTotal)).grow()
@@ -297,6 +327,6 @@ class DetailedStatsPopup(
         return tbl
     }
 
-    private fun Float.toPercentLabel() = percentFormatter.format(this).toLabel()
-    private fun Float.toOneDecimalLabel() = decimalFormatter.format(this).toLabel()
+    private fun Float.toPercentLabel() = percentFormatter.format(this).toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
+    private fun Float.toOneDecimalLabel() = decimalFormatter.format(this).toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
 }

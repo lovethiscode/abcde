@@ -12,7 +12,7 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 
 class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin) {
     private val cityView = cityScreen.cityView
-    private val numCol = 4
+    private val numCol = if (cityScreen.usesWorkbench) 2 else 4
 
     fun update() {
         clear()
@@ -23,9 +23,10 @@ class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin
         val topTable = Table() // holds 2 buttons
         // effectively a button, but didn't want to rewrite TextButton style
         // and much more compact and can control backgrounds easily based on settings
-        val resetLabel = "Reset Citizens".toLabel()
+        val resetLabel = "Reset Citizens".toLabel(fontSize = if (cityScreen.usesWorkbench) 13 else Constants.defaultFontSize)
         val resetCell = Table()
-        resetCell.add(resetLabel).pad(5f)
+        resetCell.name = "ui-city-reset-citizens"
+        resetCell.add(resetLabel).pad(5f).minHeight(if (cityScreen.usesWorkbench) 44f else 0f)
         if (cityScreen.canCityBeChanged()) {
             resetCell.touchable = Touchable.enabled
             resetCell.onActivation(binding = KeyboardBinding.ResetCitizens) {
@@ -39,9 +40,10 @@ class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin
         )
         topTable.add(resetCell).pad(3f)
 
-        val avoidLabel = "Avoid Growth".toLabel()
+        val avoidLabel = "Avoid Growth".toLabel(fontSize = if (cityScreen.usesWorkbench) 13 else Constants.defaultFontSize)
         val avoidCell = Table()
-        avoidCell.add(avoidLabel).pad(5f)
+        avoidCell.name = "ui-city-avoid-growth"
+        avoidCell.add(avoidLabel).pad(5f).minHeight(if (cityScreen.usesWorkbench) 44f else 0f)
         if (cityScreen.canCityBeChanged()) {
             avoidCell.touchable = Touchable.enabled
             avoidCell.onActivation(binding = KeyboardBinding.AvoidGrowth) {
@@ -57,7 +59,7 @@ class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin
         add(topTable).colspan(numCol).growX()
         row()
 
-        val focusLabel = "Citizen Focus".toLabel()
+        val focusLabel = "Citizen Focus".toLabel(fontSize = if (cityScreen.usesWorkbench) 14 else Constants.defaultFontSize)
         val focusCell = Table()
         focusCell.add(focusLabel).pad(5f)
         add(focusCell).colspan(numCol).growX().pad(3f)
@@ -68,9 +70,15 @@ class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin
         for (focus in CityFocus.entries) {
             if (!focus.tableEnabled) continue
             if (focus == CityFocus.FaithFocus && !cityView.viewingCiv().isReligionEnabled()) continue
-            val label = focus.label.toLabel()
+            val caption = if (cityScreen.usesWorkbench) when (focus) {
+                CityFocus.GoldGrowthFocus -> "{Gold} + {Growth}"
+                CityFocus.ProductionGrowthFocus -> "{Production} + {Growth}"
+                else -> focus.stat?.name ?: focus.label
+            } else focus.label
+            val label = caption.toLabel(fontSize = if (cityScreen.usesWorkbench) 15 else Constants.defaultFontSize)
             val cell = Table()
-            cell.add(label).pad(5f)
+            cell.name = "ui-city-focus:${focus.name}"
+            cell.add(label).pad(5f).minHeight(if (cityScreen.usesWorkbench) 44f else 0f)
             if (cityScreen.canCityBeChanged()) {
                 cell.touchable = Touchable.enabled
                 // Note the binding here only works when visible, so the main one is on CityStatsTable.miniStatsTable

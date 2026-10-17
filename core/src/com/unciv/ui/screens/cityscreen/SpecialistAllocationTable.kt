@@ -44,7 +44,8 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
                         update()
                     }
             }
-            add(toggleButton).colspan(5).row()
+            toggleButton.name = "ui-city-specialists-toggle"
+            add(toggleButton).minHeight(if (cityScreen.usesWorkbench) 44f else 0f).colspan(5).row()
         }
 
         // Since getMaxSpecialists is a Counter, iteration is potentially in random order. Ensure consistency by simplified sorting (no collator)
@@ -54,6 +55,16 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
             val newSpecialists = cityView.getNewSpecialists()
             val assignedSpecialists = newSpecialists[specialistName]
 
+            if (cityScreen.usesWorkbench) {
+                val row = Table()
+                row.add(specialistName.toLabel(fontSize = 15)).minWidth(0f).growX()
+                row.add(getUnassignButton(assignedSpecialists, specialistName)).size(44f)
+                row.add("$assignedSpecialists/$maxSpecialists".toLabel(fontSize = 16)).pad(6f)
+                row.add(getAssignButton(assignedSpecialists, maxSpecialists, specialistName)).size(44f)
+                add(row).colspan(5).growX().padTop(12f).row()
+                add(getSpecialistStatsTable(specialistName)).colspan(5).left().row()
+                continue
+            }
             if (cityScreen.canChangeState) add(getUnassignButton(assignedSpecialists, specialistName))
             add(getAllocationTable(assignedSpecialists, maxSpecialists, specialistName)).pad(10f)
             if (cityScreen.canChangeState) add(getAssignButton(assignedSpecialists, maxSpecialists, specialistName))
@@ -85,7 +96,8 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
         if (assignedSpecialists >= maxSpecialists || cityView.isPuppet()) return Table()
         val assignButton = "+".toLabel(ExpeditionBlueTheme.color(ImageGetter.CHARCOAL, ExpeditionBlueTheme.text), Constants.headingFontSize)
             .apply { this.setAlignment(Align.center) }
-            .surroundWithCircle(30f).apply { circle.color = ExpeditionBlueTheme.color(Color.GREEN.darken(0.2f), ExpeditionBlueTheme.raised) }
+            .surroundWithCircle(if (cityScreen.usesWorkbench) 44f else 30f).apply { circle.color = ExpeditionBlueTheme.color(Color.GREEN.darken(0.2f), ExpeditionBlueTheme.raised) }
+        assignButton.name = "ui-city-specialist-add:$specialistName"
         assignButton.onClick {
             cityView.tryAssignSpecialist(specialistName)
             cityScreen.updateAsync()
@@ -98,7 +110,8 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
     private fun getUnassignButton(assignedSpecialists: Int, specialistName: String): Actor {
         val unassignButton = "-".toLabel(ExpeditionBlueTheme.color(ImageGetter.CHARCOAL, ExpeditionBlueTheme.text), Constants.headingFontSize)
             .apply { this.setAlignment(Align.center) }
-            .surroundWithCircle(30f).apply { circle.color = ExpeditionBlueTheme.color(Color.RED.darken(0.1f), ExpeditionBlueTheme.dangerSurface) }
+            .surroundWithCircle(if (cityScreen.usesWorkbench) 44f else 30f).apply { circle.color = ExpeditionBlueTheme.color(Color.RED.darken(0.1f), ExpeditionBlueTheme.dangerSurface) }
+        unassignButton.name = "ui-city-specialist-remove:$specialistName"
         unassignButton.onClick {
             cityView.tryUnassignSpecialist(specialistName)
             cityScreen.updateAsync()

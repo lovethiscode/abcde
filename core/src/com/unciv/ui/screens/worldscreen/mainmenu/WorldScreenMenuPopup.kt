@@ -1,105 +1,187 @@
 package com.unciv.ui.screens.worldscreen.mainmenu
 
-import com.badlogic.gdx.scenes.scene2d.Actor
-import com.badlogic.gdx.scenes.scene2d.ui.Cell
+import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.math.Rectangle
+import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton
+import com.badlogic.gdx.utils.Align
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.extensions.toTextButton
+import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.KeyboardBinding
+import com.unciv.ui.components.input.keyShortcuts
+import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onLongPress
+import com.unciv.ui.components.widgets.AutoScrollPane
+import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.screens.savescreens.LoadGameScreen
 import com.unciv.ui.screens.victoryscreen.VictoryScreen
 import com.unciv.ui.screens.worldscreen.WorldScreen
 
-/** The in-game menu called from the "Hamburger" button top-left
- *
- *  Popup automatically opens as soon as it's initialized
- */
+/** The in-game menu, grouped by task and rebuilt when the safe viewport changes. */
 class WorldScreenMenuPopup(
     val worldScreen: WorldScreen,
-    expertMode: Boolean = false
-) : Popup(worldScreen, scrollable = Scrollability.All) {
-    private val singleColumn: Boolean
-    private fun <T: Actor?> Cell<T>.nextColumn() {
-        if (!singleColumn && column == 0) return
-        row()
-    }
-
+    private val expertMode: Boolean = false
+) : Popup(worldScreen, scrollable = Scrollability.None) {
     init {
         worldScreen.autoPlay.stopAutoPlay()
-        defaults().fillX()
+        rebuild()
+        open(force = true)
+    }
+
+    override fun onVisibleAreaChanged(visibleArea: Rectangle) {
+        rebuild()
+        super.onVisibleAreaChanged(visibleArea)
+    }
+
+    private fun rebuild() {
+        innerTable.clearChildren()
+        innerTable.pad(0f)
+        innerTable.defaults().pad(0f)
+        clickBehindToClose = true
+        // The map stage is edge-to-edge, so derive point scale from its own viewport.
+        val unit = if (UiNavigation.isIos) worldScreen.stage.width / Gdx.graphics.width else 1f
+        val ui = WorldScreenMenuStyle(unit)
+        val safe = worldScreen.safeAreaBoundsInWorld()
+        val portrait = safe.height > safe.width
+        val width = minOf(safe.width - ui.px(32f), ui.px(if (portrait) 650f else 800f))
+        val inset = ui.px(if (safe.height / unit < 480f) 20f else 24f)
+        val contentWidth = width - 2 * inset
+        innerTable.background = ui.surface(ui.background, 16f)
+        innerTable.name = "world-menu-panel"
+
+        val resume = "Continue playing".toTextButton(ui.buttonStyle(primary = true)).apply {
+            name = "world-menu-resume"
+            label.setFontSize(ui.font(17))
+            label.setAlignment(Align.center)
+            labelCell.minWidth(0f).growX()
+            pad(ui.px(10f), ui.px(16f), ui.px(10f), ui.px(16f))
+            onActivation { close() }
+            keyShortcuts.add(KeyCharAndCode.BACK)
+        }
+        val title = Table().apply {
+            add("Game menu".toLabel(ui.text, ui.font(24)).apply { wrap = true })
+                .minWidth(0f).growX().left().row()
+            add("[${worldScreen.viewingCiv.civName}] · Turn [${worldScreen.gameInfo.turns}]"
+                .toLabel(ui.muted, ui.font(14)).apply { wrap = true })
+                .minWidth(0f).growX().padTop(ui.px(4f))
+        }
+        val stackedHeader = portrait && resume.prefWidth > contentWidth * .46f
+        val resumeWidth = if (stackedHeader) contentWidth
+            else resume.prefWidth.coerceIn(ui.px(108f), contentWidth * .46f)
+        resume.label.wrap = true
+        val header = Table().apply {
+            pad(inset)
+            if (stackedHeader) {
+                add(title).width(contentWidth).left().row()
+                add(resume).width(resumeWidth).minHeight(ui.px(44f)).padTop(ui.px(16f))
+            } else {
+                add(title).width(contentWidth - resumeWidth - ui.px(16f)).left()
+                add(resume).width(resumeWidth).minHeight(ui.px(44f)).padLeft(ui.px(16f))
+            }
+        }
+        innerTable.add(header).width(width).row()
+        innerTable.add(ImageGetter.getWhiteDot().apply { color = ui.border }).height(unit).growX().row()
 
         val showSave = !worldScreen.gameInfo.gameParameters.isOnlineMultiplayer
-        val showMusic = worldScreen.game.musicController.isMusicAvailable()
         val endless = worldScreen.gameInfo.endless != null
         val showConsole = showSave && expertMode && !endless
-        val buttonCount = 7 + (if (showSave) 1 else 0) + (if (showMusic) 1 else 0) + (if (showConsole) 1 else 0) +
-            (if (worldScreen.game.achievementsAvailable) 2 else 0)
-
-        val emptyPrefHeight = this.prefHeight
-        val firstCell = addButton("Main menu") {
-            if (endless) { close(); com.unciv.ui.screens.endless.EndlessPopup(worldScreen).leave(toHall = false) }
-            else worldScreen.game.goToMainMenu()
+        val naturalWidths = HashMap<TextButton, Float>()
+        fun action(text: String, binding: KeyboardBinding? = null, quiet: Boolean = false,
+                   run: () -> Unit): TextButton = text.toTextButton(ui.buttonStyle(outline = quiet)).apply {
+            name = "world-menu-$text"
+            label.setFontSize(ui.font(17))
+            label.setAlignment(Align.left)
+            labelCell.minWidth(0f).growX()
+            pad(ui.px(10f), ui.px(12f), ui.px(10f), ui.px(12f))
+            naturalWidths[this] = prefWidth
+            label.wrap = true
+            if (binding == null) onActivation { run() }
+            else onActivation(binding = binding) { run() }
         }
-        singleColumn = worldScreen.isCrampedPortrait() ||
-            2 * prefWidth > maxPopupWidth ||  // Very coarse: Assume width of translated "Main menu" is representative
-            buttonCount * (prefHeight - emptyPrefHeight) + emptyPrefHeight < maxPopupHeight
-        firstCell.nextColumn()
-
-        addButton("Civilopedia", KeyboardBinding.Civilopedia) {
-            close()
-            worldScreen.openCivilopedia()
-        }.nextColumn()
-        if (showSave)
-            addButton("Save game", KeyboardBinding.SaveGame) {
+        val management = ArrayList<TextButton>()
+        if (showSave) management += action("Save game", KeyboardBinding.SaveGame) {
+            close(); worldScreen.openSaveGameScreen()
+        }
+        if (!endless) {
+            management += action("Load game", KeyboardBinding.LoadGame) {
+                close(); worldScreen.game.pushScreen { LoadGameScreen() }
+            }
+            management += action("Singleplayer", KeyboardBinding.NewGame, quiet = true) {
+                close(); worldScreen.openNewGameScreen()
+            }
+        }
+        management += action("Main menu", quiet = true) {
+            if (endless) {
                 close()
-                worldScreen.openSaveGameScreen()
-            }.nextColumn()
-        if (!endless) addButton("Load game", KeyboardBinding.LoadGame) {
-            close()
-            worldScreen.game.pushScreen{ LoadGameScreen() }
-        }.nextColumn()
-        if (!endless) addButton("Singleplayer", KeyboardBinding.NewGame) {
-            close()
-            worldScreen.openNewGameScreen()
-        }.nextColumn()
-        addButton(if (endless) "Defense status" else "Victory status", KeyboardBinding.VictoryScreen) {
+                com.unciv.ui.screens.endless.EndlessPopup(worldScreen).leave(toHall = false)
+            } else worldScreen.game.goToMainMenu()
+        }
+        val progress = arrayListOf(action(if (endless) "Defense status" else "Victory status", KeyboardBinding.VictoryScreen) {
             close()
             if (endless) com.unciv.ui.screens.endless.EndlessPopup(worldScreen)
-            else worldScreen.game.pushScreen{ VictoryScreen(worldScreen) }
-        }.nextColumn()
-        if (worldScreen.game.achievementsAvailable) {
-            addButton("Achievements") {
-                close()
-                worldScreen.game.showAchievements()
-            }.nextColumn()
-            addButton("Achievement guide") {
-                close()
-                worldScreen.game.showAchievementGuide()
-            }.nextColumn()
+            else worldScreen.game.pushScreen { VictoryScreen(worldScreen) }
+        })
+        if (worldScreen.game.achievementsAvailable) progress += action("Achievements") {
+            close(); worldScreen.game.showAchievements()
         }
-        val optionsCell = addButton("Options", KeyboardBinding.Options) {
-            close()
-            worldScreen.openOptionsPopup()
+        val help = arrayListOf(action("Civilopedia", KeyboardBinding.Civilopedia) {
+            close(); worldScreen.openCivilopedia()
+        })
+        if (worldScreen.game.achievementsAvailable) help += action("Achievement guide") {
+            close(); worldScreen.game.showAchievementGuide()
         }
-        optionsCell.actor.onLongPress {
-            close()
-            worldScreen.openOptionsPopup(withDebug = true)
+        help += action("Options", KeyboardBinding.Options) {
+            close(); worldScreen.openOptionsPopup()
+        }.apply {
+            onLongPress { close(); worldScreen.openOptionsPopup(withDebug = true) }
         }
-        optionsCell.nextColumn()
-        if (showMusic)
-            addButton("Music", KeyboardBinding.MusicPlayer) {
-                close()
-                WorldScreenMusicPopup(worldScreen).open(force = true)
-            }.nextColumn()
+        if (worldScreen.game.musicController.isMusicAvailable()) help += action("Music", KeyboardBinding.MusicPlayer) {
+            close(); WorldScreenMusicPopup(worldScreen).open(force = true)
+        }
+        if (showConsole) help += action("Developer Console", KeyboardBinding.DeveloperConsole) {
+            close(); worldScreen.openDeveloperConsole()
+        }
 
-        if (showConsole)
-            addButton("Developer Console", KeyboardBinding.DeveloperConsole) {
-                close()
-                worldScreen.openDeveloperConsole()
-            }.nextColumn()
-
-        addCloseButton().run { colspan(if (singleColumn || column == 1) 1 else 2) }
-        pack()
-
-        open(force = true)
+        val groups = listOf("Game management" to management, "Civilization progress" to progress, "Help and settings" to help)
+        val gap = ui.px(24f)
+        val groupWidth = if (portrait) contentWidth else (contentWidth - 2 * gap) / 3
+        val body = Table().apply { pad(inset) }
+        for ((index, entry) in groups.withIndex()) {
+            val (heading, buttons) = entry
+            // Long translations and enlarged fonts may need a full-width row in portrait.
+            val columns = if (portrait && buttons.all { naturalWidths.getValue(it) <= (groupWidth - ui.px(8f)) / 2 }) 2 else 1
+            val buttonWidth = (groupWidth - ui.px(8f) * (columns - 1)) / columns
+            val group = Table().apply {
+                add(heading.toLabel(ui.muted, ui.font(13)).apply { wrap = true })
+                    .width(groupWidth).colspan(columns).left().padBottom(ui.px(10f)).row()
+                for ((i, button) in buttons.withIndex()) {
+                    // Measure at the actual width so wrapped text grows the row instead of clipping.
+                    button.label.setSize(buttonWidth - ui.px(24f), 0f)
+                    button.label.invalidate()
+                    add(button).width(buttonWidth).minHeight(maxOf(ui.px(44f), button.label.prefHeight + ui.px(20f)))
+                        .padBottom(ui.px(8f)).padRight(if (i % columns == 0 && columns == 2) ui.px(8f) else 0f)
+                    if ((i + 1) % columns == 0) row()
+                }
+            }
+            if (!portrait && index > 0) {
+                body.add(ImageGetter.getWhiteDot().apply { color = ui.border })
+                    .width(unit).growY().padLeft(gap / 2).padRight(gap / 2 - unit)
+            }
+            body.add(group).width(groupWidth).top().padBottom(if (portrait && index < 2) ui.px(16f) else 0f)
+            if (portrait) body.row()
+        }
+        val scroll = AutoScrollPane(body).apply {
+            name = "world-menu-content"
+            setScrollingDisabled(true, false)
+            setOverscroll(false, false)
+        }
+        val availableHeight = (safe.height - ui.px(32f) - header.prefHeight - unit).coerceAtLeast(ui.px(44f))
+        innerTable.add(scroll).width(width).height(minOf(body.prefHeight, availableHeight))
+        innerTable.pack()
+        invalidateHierarchy()
     }
 }

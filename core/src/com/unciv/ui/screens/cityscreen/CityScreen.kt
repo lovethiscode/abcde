@@ -62,6 +62,11 @@ class CityScreen(
         const val wltkIconSize = 40f
     }
 
+    internal val usesWorkbench get() = UiNavigation.isIos
+    private var workbench: CityWorkbench? = null
+    internal val workbenchWidth get() = workbench?.bodyWidth ?: 300f
+    internal val workbenchManagementWidth get() = workbench?.managementWidth ?: 300f
+
     private val viewingCiv: CivView = cityView.gameView.civView
 
     internal val isSpying = cityView.isEspionageEnabled() && !cityView.isOwnedByViewer() && !viewingCiv.isSpectator()
@@ -156,12 +161,28 @@ class CityScreen(
         addTiles()
 
         // If we are spying then we shoulden't be able to see their construction screen.
+        if (usesWorkbench) {
+            stage.addActor(Table().apply {
+                background = ImageGetter.getWhiteDotDrawable().tint(Color.valueOf("17343f"))
+                setFillParent(true)
+                touchable = com.badlogic.gdx.scenes.scene2d.Touchable.disabled
+                toBack()
+            })
+            mapScrollPane.toFront()
+            workbench = CityWorkbench(this, constructionsTable, cityStatsTable, tileTable,
+                selectedConstructionTable, mapScrollPane) {
+                updateAnnexAndRazeCityButton()
+                razeCityButtonHolder
+            }
+            stage.addActor(workbench)
+        } else {
         constructionsTable.addActorsToStage()
         stage.addActor(cityStatsTable)
         stage.addActor(selectedConstructionTable)
         stage.addActor(tileTable)
         stage.addActor(cityPickerTable)  // add late so it's top in Z-order and doesn't get covered in cramped portrait
         stage.addActor(exitCityButton)
+        }
 
         cityView.updateCityStats()
         updateSync() // NOT async since that gives a "visual flash" when entering the city
@@ -169,7 +190,7 @@ class CityScreen(
         globalShortcuts.add(KeyboardBinding.PreviousCity) { page(-1) }
         globalShortcuts.add(KeyboardBinding.NextCity) { page(1) }
 
-        if (isPortrait()) mapScrollPane.apply {
+        if (!usesWorkbench && isPortrait()) mapScrollPane.apply {
             // center scrolling so city center sits more to the bottom right
             scrollX = (maxX - constructionsTable.getLowerWidth() - posFromEdge) / 2
             scrollY = (maxY - cityStatsTable.packIfNeeded().height - posFromEdge + cityPickerTable.top) / 2
@@ -204,6 +225,8 @@ class CityScreen(
     }
 
     internal fun updateWithoutConstructionAndMap() {
+        workbench?.let { it.update(); return }
+
         // Bottom right: Tile or selected construction info
         tileTable.update(selectedTile)
         tileTable.setPosition(stage.width - posFromEdge, posFromEdge, Align.bottomRight)
@@ -349,6 +372,7 @@ class CityScreen(
         }
 
         razeCityButtonHolder.pack()
+        if (usesWorkbench) return
         if(isCrampedPortrait()) {
             // cramped portrait: move raze button down to city picker
             val centerX = cityPickerTable.x + cityPickerTable.width / 2 - razeCityButtonHolder.width / 2
@@ -530,6 +554,8 @@ class CityScreen(
         }
         selectedTile = null
     }
+    internal fun selectWorkbenchTile(tile: TileView) = selectTile(tile)
+
     private fun selectTile(newTile: TileView?) {
         selectedConstruction = null
         selectedQueueEntryTargetTile = null
@@ -574,6 +600,7 @@ class CityScreen(
         val indexOfNextCity = (indexOfCity + delta + numCities) % numCities
         game.replaceCurrentScreen {
             val newCityScreen = CityScreen(viewableCities[indexOfNextCity], ambiencePlayer = passOnCityAmbiencePlayer())
+            workbench?.let { previous -> newCityScreen.workbench?.restore(previous) }
             newCityScreen.mapScrollPane.zoom(mapScrollPane.scaleX) // Retain zoom
             newCityScreen.updateAsync()
             newCityScreen
@@ -582,7 +609,10 @@ class CityScreen(
 
     // Don't use passOnCityAmbiencePlayer here - continuing play on the replacement screen would be nice,
     // but the rapid firing of several resize events will get that un-synced, they would no longer stop on leaving.
-    override fun recreate(): BaseScreen = CityScreen(cityView, selectedConstruction, selectedTile)
+    override fun recreate(): BaseScreen = CityScreen(cityView, selectedConstruction, selectedTile).also { replacement ->
+        replacement.selectedQueueEntry = selectedQueueEntry
+        workbench?.let { replacement.workbench?.restore(it) }
+    }
 
     override fun dispose() {
         cityAmbiencePlayer?.dispose()

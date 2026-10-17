@@ -41,6 +41,7 @@ class CityScreenTileTable(private val cityScreen: CityScreen) : Table() {
     }
 
     fun update(tileView: TileView?) {
+        if (cityScreen.usesWorkbench) { background = null; innerTable.background = null }
         innerTable.clear()
         if (tileView == null) {
             isVisible = false
@@ -56,7 +57,8 @@ class CityScreenTileTable(private val cityScreen: CityScreen) : Table() {
             tileView,
             hideUnits = cityScreen.isSpying,
             spyCity = if (cityScreen.isSpying) cityView else null
-        ), iconDisplay = IconDisplay.None) {
+        ), labelWidth = if (cityScreen.usesWorkbench) cityScreen.workbenchManagementWidth - 20f else 0f,
+            fitToWidth = cityScreen.usesWorkbench, iconDisplay = IconDisplay.None) {
             cityScreen.openCivilopedia(it)
         })
         innerTable.row()
@@ -120,7 +122,7 @@ class CityScreenTileTable(private val cityScreen: CityScreen) : Table() {
         val statsTable = Table()
         statsTable.defaults().pad(2f)
         for ((key, value) in stats) {
-            statsTable.add(ImageGetter.getStatIcon(key.name)).size(20f)
+            statsTable.add(ImageGetter.getStatIcon(key.name)).size(20f).padRight(if (cityScreen.usesWorkbench) 8f else 2f)
             statsTable.add(value.roundToInt().toLabel()).padRight(5f)
         }
         return statsTable
