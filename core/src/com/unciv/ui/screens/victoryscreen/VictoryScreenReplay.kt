@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.screens.overviewscreen.OverviewUi as U
+import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
 import com.badlogic.gdx.scenes.scene2d.ui.Container
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -17,8 +19,11 @@ import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.WorldScreen
 
-class VictoryScreenReplay(
-    worldScreen: WorldScreen
+class VictoryScreenReplay internal constructor(
+    worldScreen: WorldScreen,
+    private val state: VictoryPageState? = null,
+    contentWidth: Float = 0f,
+    contentHeight: Float = 0f
 ) : Table(BaseScreen.skin), TabbedPager.IPageExtensions {
     private val gameInfo = worldScreen.gameInfo
 
@@ -26,7 +31,7 @@ class VictoryScreenReplay(
     private var replayTimer : Timer.Task? = null
     private val header = Table()
 
-    private val yearLabel = "".toLabel()
+    private val yearLabel = if (state == null) "".toLabel() else U.plainLabel("", 13, U.muted)
     private val slider: UncivSlider
     private val replayMap: ReplayMap
     private val playImage = ImageGetter.getImage("OtherIcons/ForwardArrow")
@@ -44,7 +49,8 @@ class VictoryScreenReplay(
             .coerceAtLeast(120f)
         slider = UncivSlider(
             firstTurn.toFloat(), finalTurn.toFloat(), 1f,
-            initial = firstTurn.toFloat(),
+            plusMinus = state == null,
+            initial = (state?.replayTurn ?: firstTurn).toFloat(),
             sound = UncivSound.Silent,
             tipType = UncivSlider.TipType.None,
             onChange = this::sliderChanged
@@ -52,8 +58,8 @@ class VictoryScreenReplay(
         replayMap = ReplayMap(
             gameInfo.tileMap,
             worldScreen.selectedGameView.civView.getCiv(),
-            worldScreen.stage.width - 50,
-            worldScreen.stage.height - 250  // Empiric: `stage.height - pager.contentScroll_field.height` after init is 244.
+            if (state == null) worldScreen.stage.width - 50 else contentWidth - pt(24f),
+            if (state == null) worldScreen.stage.height - 250 else contentHeight - pt(84f)
         )
 
         playImage.setSize(24f)
@@ -61,7 +67,7 @@ class VictoryScreenReplay(
         playPauseButton.apply {
             // I decided against `align(Align.left)`: since the button is so much smaller than the year label, perfect symmetry is impossible
             setSize(26f, 26f)
-            onClick(::togglePause)
+            if (state == null) onClick(::togglePause)
         }
         yearLabel.setAlignment(Align.right)
         yearLabel.onClick {
@@ -69,12 +75,38 @@ class VictoryScreenReplay(
             restartTimer()
         }
 
-        header.defaults().space(15f).fillX().padTop(15f)
-        header.add(yearLabel).minWidth(80f).right()
-        header.add(slider).width(sliderWidth)
-        header.add(playPauseButton).minWidth(80f)
-
-        add(replayMap).pad(10f)
+        if (state == null) {
+            header.defaults().space(15f).fillX().padTop(15f)
+            header.add(yearLabel).minWidth(80f).right()
+            header.add(slider).width(sliderWidth)
+            header.add(playPauseButton).minWidth(80f)
+            add(replayMap).pad(10f)
+        } else {
+            val map = Table().apply {
+                background = U.rounded(U.panel, 10f)
+                add(replayMap).pad(pt(12f))
+            }
+            add(map).grow().minWidth(0f).minHeight(0f).row()
+            val controls = Table().apply {
+                val reset = U.button(flat = true) { resetTimer(); updateReplayTable(firstTurn) }.apply {
+                    add(U.plainLabel("Reset", 13, U.accent)); name = "victory-replay-reset"
+                }
+                val step = U.button(flat = true) { resetTimer(); updateReplayTable((slider.value.toInt() + 1).coerceAtMost(finalTurn)) }.apply {
+                    add(U.plainLabel("+1", 14)); name = "victory-replay-step"
+                }
+                val play = U.button { togglePause() }.apply {
+                    add(playPauseButton).size(pt(24f)); name = "victory-replay-play"
+                }
+                add(reset).height(U.touch)
+                add(step).size(U.touch)
+                add(slider).growX().minWidth(pt(60f)).height(U.touch).padLeft(pt(8f)).padRight(pt(8f))
+                add(play).size(U.touch)
+            }
+            add(controls).growX().minWidth(0f).padTop(pt(8f)).row()
+            add(yearLabel).right().padTop(pt(4f))
+            updateReplayTable(state.replayTurn ?: firstTurn)
+            playPauseButton.actor = if (state.replayPlaying) pauseImage else playImage
+        }
     }
 
     private fun togglePause() {
@@ -82,6 +114,7 @@ class VictoryScreenReplay(
     }
 
     private fun restartTimer() {
+        state?.replayPlaying = true
         replayTimer?.cancel()
         val firstTurn = slider.value.toInt()
         replayTimer = Timer.schedule(
@@ -100,6 +133,7 @@ class VictoryScreenReplay(
     }
 
     private fun resetTimer() {
+        state?.replayPlaying = false
         replayTimer?.cancel()
         replayTimer = null
         playPauseButton.actor = playImage
@@ -111,6 +145,7 @@ class VictoryScreenReplay(
     }
 
     private fun updateReplayTable(turn: Int) {
+        state?.replayTurn = turn
         val year = gameInfo.getYear(turn - finalTurn)
         yearLabel.setText(
             YearTextUtil.toYearText(
@@ -123,12 +158,16 @@ class VictoryScreenReplay(
     }
 
     override fun activated(index: Int, caption: String, pager: TabbedPager) {
-        restartTimer()
+        if (state != null) pager.setScrollDisabled(true)
+        if (state == null || state.replayPlaying) restartTimer()
     }
 
     override fun deactivated(index: Int, caption: String, pager: TabbedPager) {
+        val wasPlaying = state?.replayPlaying
         resetTimer()
+        if (wasPlaying != null) state?.replayPlaying = wasPlaying
+        if (state != null) pager.setScrollDisabled(false)
     }
 
-    override fun getFixedContent() = header
+    override fun getFixedContent() = if (state == null) header else null
 }
