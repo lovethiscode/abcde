@@ -146,7 +146,8 @@ class SaveGameScreen(private val gameInfo: GameInfo) :
         rightSideButton.remove()
         pickerPane.remove()
 
-        closeButton.label.setFontSize(saveGameContentFontSize)
+        if (UiNavigation.isIos) UiNavigation.styleBackButton(closeButton)
+        else closeButton.label.setFontSize(saveGameContentFontSize)
         showAutosavesCheckbox.label.setFontSize(saveGameContentFontSize)
         descriptionLabel.setFontSize(saveGameContentFontSize)
         errorLabel.setFontSize(saveGameCompactActionFontSize)

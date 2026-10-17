@@ -148,7 +148,7 @@ internal class NationPickerPopup(
             bottomTable.add().growX()
             val cancel = addCloseButton("Cancel").width(140f).minHeight(44f).actor
             cancel.name = "setup-civ-cancel"
-            SinglePlayerSetup.style(cancel, councilFont)
+            UiNavigation.styleTextButton(cancel)
             val confirm = addButton("Confirm selection", KeyCharAndCode.RETURN) { returnSelected() }
                 .width(160f).minHeight(44f).actor
             confirm.name = "setup-civ-confirm"

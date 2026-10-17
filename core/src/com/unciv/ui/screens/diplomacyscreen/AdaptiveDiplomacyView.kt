@@ -17,6 +17,7 @@ import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onClick
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.Popup
@@ -44,7 +45,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
     private fun shell() {
         root.clearChildren(); root.pad(ui.px(layout.padding))
         val header = Table()
-        ui.decorate(back, ghost = true)
+        UiNavigation.styleBackButton(back)
         header.add(back).height(ui.px(44f)).padRight(ui.px(12f))
         header.add(ui.label("Diplomacy", 21)).left().growX()
         root.add(header).growX().height(ui.px(44f)).padBottom(ui.px(12f)).row()

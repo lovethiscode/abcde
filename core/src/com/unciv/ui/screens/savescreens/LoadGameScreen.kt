@@ -120,8 +120,9 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         root.background = ui.surface(ui.background, 0f)
         root.pad(ui.px(if (wide) 28f else 16f), ui.px(16f), ui.px(if (wide) 32f else 16f), ui.px(16f))
         stage.addActor(root)
-        closeButton.name = "load-back"; closeButton.setText("")
-        ui.decorate(closeButton, SaveIcon.Back)
+        closeButton.name = "load-back"
+        if (UiNavigation.isIos) UiNavigation.styleBackButton(closeButton)
+        else { closeButton.setText(""); ui.decorate(closeButton, SaveIcon.Back) }
         closeButton.onActivation {
             if (narrow && showingDetails) { showingDetails = false; layoutBody() }
             else game.popScreen()
@@ -200,7 +201,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             add(importSaveButton).minHeight(ui.px(44f)).apply { if (narrow) width(actionWidth).minWidth(0f) }
         }
         val header = Table().apply {
-            add(closeButton).size(ui.px(44f)).padRight(ui.px(12f))
+            add(closeButton).width(if (UiNavigation.isIos) closeButton.prefWidth else ui.px(44f)).height(ui.px(44f)).padRight(ui.px(12f))
             add(heading).growX().minWidth(0f).left()
             if (narrow) { row(); add(actions).colspan(2).growX().minWidth(0f).padTop(ui.px(8f)) }
             else add(actions).padLeft(ui.px(16f))

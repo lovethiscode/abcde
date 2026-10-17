@@ -262,8 +262,7 @@ class NewGameScreen(
                 add(it).width(190f).minHeight(44f).padLeft(16f)
             }
         }
-        SinglePlayerSetup.style(closeButton, formFont)
-        closeButton.setText("← ${"Back".tr()}")
+        UiNavigation.styleBackButton(closeButton)
         pickerPane.setNavigationContent(header)
         val columns = Table().apply {
             pad(6f, 12f, 6f, 12f)

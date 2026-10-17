@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen.mainmenu
 
+import com.unciv.ui.components.extensions.toLabel
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -66,8 +67,8 @@ class WorldScreenMusicPopup(
             bottomTable.addMusicVolumeSlider(settings, musicController)
             bottomTable.addMusicPauseSlider(settings, musicController)
             bottomTable.addMusicCurrentlyPlaying(musicController)
-            bottomTable.addSimplePlayerControls(musicController).colspan(1)
-            addCloseButton()
+            bottomTable.addSimplePlayerControls(musicController).colspan(2)
+            addTitleWithCloseButton("Music".toLabel())
         } else {
             bottomTable.addMusicControls(settings, musicController)
             addCloseButton().colspan(2)

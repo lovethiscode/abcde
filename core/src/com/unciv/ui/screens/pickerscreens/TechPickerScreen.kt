@@ -171,11 +171,14 @@ class TechPickerScreen(
 
     private fun buildHeader() {
         header.clearChildren()
-        appearance.decorate(closeButton, outlined = true)
-        closeButton.setText(if (metrics.stacked) "" else "Back".tr())
-        closeButton.clearChildren()
-        closeButton.add(maskIcon(ImageGetter.getImage("OtherIcons/BackArrow"))).size(u(18f))
-        if (!metrics.stacked) closeButton.add(closeButton.label).padLeft(u(6f))
+        if (UiNavigation.isIos) UiNavigation.styleBackButton(closeButton, "Map")
+        else {
+            appearance.decorate(closeButton, outlined = true)
+            closeButton.setText(if (metrics.stacked) "" else "Back".tr())
+            closeButton.clearChildren()
+            closeButton.add(maskIcon(ImageGetter.getImage("OtherIcons/BackArrow"))).size(u(18f))
+            if (!metrics.stacked) closeButton.add(closeButton.label).padLeft(u(6f))
+        }
         header.add(closeButton).minSize(u(44f)).padRight(u(12f))
         val identity = Table().apply {
             left()
@@ -613,7 +616,11 @@ class TechPickerScreen(
     }
     private fun overlayHeader(title: String): Table = Table().apply {
         add(label(title,20)).growX().minWidth(0f).left()
-        add(action("Back", "ui-tech-overlay-back", outlined = true) { closeOverlay() }).height(u(44f))
+        val close = if (UiNavigation.isIos) UiNavigation.dismissButton().apply {
+            name = "ui-tech-overlay-back"
+            onActivation { closeOverlay() }
+        } else action("Back", "ui-tech-overlay-back", outlined = true) { closeOverlay() }
+        add(close).height(u(44f))
     }
 
     private fun buildDetails() {
@@ -826,8 +833,12 @@ class TechPickerScreen(
         if(draft==savedPlan || freeTechPick) { game.popScreen(); return }
         val popup = Popup(this)
         popup.addGoodSizedLabel("Discard changes to the research plan?").row()
-        popup.addCloseButton("Keep editing",style=appearance.buttonStyle(outlined=true))
-        popup.addButton("Discard changes",style=appearance.buttonStyle(primary=true)) { popup.close(); game.popScreen() }
+        if (UiNavigation.isIos) popup.addCloseButton()
+        val keepEditing = popup.addCloseButton("Keep editing", style = if (UiNavigation.isIos) UiNavigation.buttonStyle() else appearance.buttonStyle(outlined = true))
+        if (UiNavigation.isIos) UiNavigation.styleTextButton(keepEditing.actor)
+        popup.addButton("Discard changes", style = if (UiNavigation.isIos)
+            skin.get("negative", com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle::class.java)
+            else appearance.buttonStyle(primary = true)) { popup.close(); game.popScreen() }
         popup.open()
     }
 

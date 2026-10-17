@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.mapeditorscreen
 
+import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -38,7 +39,8 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
         touchable = Touchable.childrenOnly
         header.background = MapEditorStyle.background(MapEditorStyle.panel)
         header.defaults().height(44*u).pad(4*u)
-        header.add(MapEditorStyle.button("Back") { editor.closeEditor() })
+        header.add(if (UiNavigation.isIos) UiNavigation.backButton().apply { onActivation { editor.closeEditor() } }
+            else MapEditorStyle.button("Back") { editor.closeEditor() })
         val heading = Table().apply {
             title.setEllipsis(true)
             add(title).growX().minWidth(0f).left().row()
@@ -72,7 +74,9 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
         panel.touchable = Touchable.enabled
         val panelHeader = Table().apply {
             add(panelTitle).growX().left().padLeft(16*u)
-            add(MapEditorStyle.button("Close") { setMode(mode) }).height(44*u).pad(4*u)
+            add(if (UiNavigation.isIos) UiNavigation.dismissButton().apply { onActivation { setMode(mode) } }
+                else MapEditorStyle.button("Close") { setMode(mode) }).height(44*u).pad(4*u)
+                .apply { if (UiNavigation.isIos) width(44*u) }
         }
         panel.add(panelHeader).growX().row()
         panel.add(editor.tabs).grow().minSize(0f)

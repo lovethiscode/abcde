@@ -130,10 +130,12 @@ final class UncivGameplayDriverTests: XCTestCase {
     }
 
     private func coordinate(x: Double, y: Double, in application: XCUIApplication) -> XCUICoordinate {
-        let origin = application.coordinate(withNormalizedOffset: .zero)
+        // iPadOS may present the app in a window smaller than the display.
+        let window = application.windows.firstMatch
+        let origin = window.coordinate(withNormalizedOffset: .zero)
         return origin.withOffset(CGVector(
-            dx: application.frame.width * x,
-            dy: application.frame.height * y
+            dx: window.frame.width * x,
+            dy: window.frame.height * y
         ))
     }
 

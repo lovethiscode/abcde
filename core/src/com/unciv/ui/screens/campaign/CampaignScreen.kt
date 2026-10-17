@@ -139,7 +139,10 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         root.clearChildren()
         root.pad(px(if (compact) 8f else 12f), margin, px(if (compact) 14f else 20f), margin).top()
         val header = Table().apply {
-            val backButton = control(if (chapter >= 0 && !stacked) "战役总览" else "", "ui-campaign-back", quiet = true, action = ::back).apply {
+            val backButton = if (UiNavigation.isIos) UiNavigation.backButton().apply {
+                name = "ui-campaign-back"
+                onActivation { back() }
+            } else control(if (chapter >= 0 && !stacked) "战役总览" else "", "ui-campaign-back", quiet = true, action = ::back).apply {
                 addActor(artwork.icon("back", Theme.muted).apply { setBounds(0f, px(13f), px(18f), px(18f)) })
                 padLeft(px(24f))
             }

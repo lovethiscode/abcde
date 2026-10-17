@@ -41,7 +41,10 @@ internal class CityWorkbench(
     private val productionPanel = Table()
     private val mapControls = Table()
     private val mapHeader = Table()
-    private val exitButton = navigationIcon("OtherIcons/Close", "Back", "ui-city-exit") { screen.exit() }
+    private val exitButton = UiNavigation.backButton("Map", unit = 1f).apply {
+        name = "ui-city-exit"
+        onActivation { screen.exit() }
+    }
     private val content = Table()
     private val contentPane = AutoScrollPane(content)
     private var detailedStats: Actor? = null
@@ -128,7 +131,7 @@ internal class CityWorkbench(
         header.add(navigationIcon("OtherIcons/Options", "City management", "ui-city-manage") {
             manageOpen = !manageOpen; screen.clearSelection(); update()
         }).size(44f)
-        exitButton.setBounds(geometry.margin, geometry.height - 46f, 44f, 44f)
+        exitButton.setBounds(geometry.margin, geometry.height - 46f, exitButton.prefWidth, 44f)
         updateYields()
         updatePanels()
         updateMap()
@@ -139,7 +142,7 @@ internal class CityWorkbench(
 
     private fun updateYields() {
         yields.clear()
-        yields.add().width(52f).height(44f)
+        yields.add().width(exitButton.prefWidth + 8f).height(44f)
         val visibleStats = Stat.entries.filter { it != Stat.Faith || city.viewingCiv().isReligionEnabled() }
         visibleStats.forEachIndexed { index, stat ->
             val amount = if (stat == Stat.Happiness) city.getHappinessList().values.sum() else city.getCurrentCityStats()[stat]
@@ -237,7 +240,10 @@ internal class CityWorkbench(
     private fun addClose(text: String) {
         val row = Table()
         row.add(title(text).apply { wrap = true }).minWidth(0f).growX()
-        row.add(button("×", "ui-city-detail-close") { screen.clearSelection(); manageOpen = false; queueOpen = false; update() }).size(44f)
+        row.add(UiNavigation.dismissButton(unit = 1f).apply {
+            name = "ui-city-detail-close"
+            onActivation { screen.clearSelection(); manageOpen = false; queueOpen = false; update() }
+        }).size(44f)
         content.add(row).row()
     }
 
@@ -245,7 +251,10 @@ internal class CityWorkbench(
         if (screen.isSpying) return "Production information is not available".toLabel().apply { wrap = true }
         if (geometry.tablet && screen.selectedConstruction != null && !city.constructions.isBuilt(screen.selectedConstruction!!.name)) {
             val table = Table().apply { top().pad(12f) }
-            table.add(button("Back", "ui-city-production-back") { screen.clearSelection(); update() }).height(44f).row()
+            table.add(UiNavigation.backButton(unit = 1f).apply {
+                name = "ui-city-production-back"
+                onActivation { screen.clearSelection(); update() }
+            }).height(44f).row()
             detail.update(screen.selectedConstruction)
             table.add(detail).growX().row()
             table.add(constructions.workbenchActions(screen.selectedConstruction!!)).growX().row()
@@ -268,9 +277,11 @@ internal class CityWorkbench(
         mapControls.add(button("Buy tile", "ui-city-buy-mode") {
             city.chooseNewTileToOwn()?.let { screen.selectWorkbenchTile(it); screen.updateAsync() }
         }).minWidth(0f).height(44f).padLeft(8f)
-        mapControls.add(button(if (mapOnly) "Back" else "Map", "ui-city-map-full") {
+        val mapToggle = button(if (mapOnly) "Back" else "Map", "ui-city-map-full") {
             mapOnly = !mapOnly; update()
-        }).height(44f).padLeft(8f)
+        }
+        if (mapOnly) UiNavigation.styleBackButton(mapToggle, unit = 1f)
+        mapControls.add(mapToggle).height(44f).padLeft(8f)
         mapControls.setBounds(bounds.x + 10f, bounds.y + 10f, bounds.width - 20f, 44f)
     }
 
