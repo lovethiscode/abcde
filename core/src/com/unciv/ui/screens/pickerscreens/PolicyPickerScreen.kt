@@ -263,6 +263,7 @@ class PolicyPickerScreen(
         if (branch.name !in collapsed) {
             add(ruleLine()).height(u(1f)).growX().padTop(u(6f)).padBottom(u(4f)).row()
             val opener = action(if (policies.isAdopted(branch.name)) "Branch adopted" else "View adoption effects", "ui-policy:${branch.name}") { selectPolicy(branch) }
+            nodes[branch.name] = opener
             add(opener).growX().minWidth(0f).height(u(44f)).row()
             val graph = branchGraph(branch, metrics.branchWidth - 18f)
             // Nonstandard mod grids may be wider; preserve their coordinates instead of overlapping targets.
@@ -285,6 +286,7 @@ class PolicyPickerScreen(
                     add(ImageGetter.getImage("OtherIcons/ForwardArrow")).size(u(12f)).padLeft(u(8f))
                     onClick { selectPolicy(completion) }
                 }
+                nodes[completion.name] = rewardRow
                 add(rewardRow).growX().minWidth(0f).minHeight(u(if (metrics.compact) 48f else 60f))
             }
         }
