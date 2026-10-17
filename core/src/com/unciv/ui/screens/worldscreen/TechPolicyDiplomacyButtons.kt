@@ -77,7 +77,7 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
         pickTechButton.defaults().pad(20f)
         pickTechButton.add(pickTechLabel)
         techButtonHolder.onActivation(UncivSound.Paper, KeyboardBinding.TechnologyTree) {
-            game.pushScreen{ TechPickerScreen(viewingCiv.getCiv()) }
+            game.pushScreen{ TechPickerScreen(worldScreen.selectedGameView.civView.getCiv()) }
         }
 
         undoButton.add(ImageGetter.getImage("OtherIcons/Undo")).size(30f).pad(15f)
@@ -120,8 +120,9 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
             clearChildren()
             val touch = UiNavigation.minimumTouchSize()
             if (fogOfWarButtonHolder.actor != null) add(fogOfWarButtonHolder).minHeight(touch).row()
-            techButtonHolder.fill().minSize(0f).maxHeight(touch)
-            add(techButtonHolder).width(BattlefieldHud.points(140f)).height(touch)
+            val techWidth = BattlefieldHud.points(140f)
+            techButtonHolder.fill().minSize(0f).maxSize(techWidth, touch)
+            add(techButtonHolder).width(techWidth).height(touch)
             for (holder in listOf(policyButtonHolder, diplomacyButtonHolder, espionageButtonHolder, undoButtonHolder))
                 if (holder.actor != null) {
                     holder.fill().minSize(0f).maxSize(touch)
@@ -147,44 +148,64 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
     }
 
     private fun updateTechButton() {
+        // Spectators can change the selected civilization without recreating this HUD.
+        val researchCiv = worldScreen.selectedGameView.civView
         techButtonHolder.touchable = Touchable.disabled
         techButtonHolder.actor = null
-        if (worldScreen.gameInfo.ruleset.technologies.isEmpty() || viewingCiv.cities().isEmpty()) return
+        if (worldScreen.gameInfo.ruleset.technologies.isEmpty() || researchCiv.cities().isEmpty()) return
         techButtonHolder.touchable = Touchable.enabled
 
-        val currentTech = viewingCiv.currentTechnologyName()
+        val currentTech = researchCiv.currentTechnologyName()
         if (currentTech != null) {
             if (BattlefieldHud.enabled) {
                 val tech = worldScreen.gameInfo.ruleset.technologies[currentTech]!!
-                val icon = BattlefieldGeometry.icon(ImageGetter.getTechIconPortrait(tech.name, BattlefieldHud.points(22f)))
-                val turns = viewingCiv.turnsToTech(currentTech)
-                techButtonHolder.actor = IconTextButton("${currentTech.tr(true)} · $turns${Fonts.turn}", icon,
-                    BattlefieldHud.font(14f)).apply {
-                    name = "ui-tech-current"
-                    BattlefieldGeometry.fitControl(this)
-                    label.wrap = true
-                    labelCell.minWidth(0f).growX()
-                    iconCell.size(BattlefieldHud.points(22f)).padRight(BattlefieldHud.points(5f))
-                    pad(BattlefieldHud.points(6f))
-                    touchable = Touchable.disabled // the holder owns the existing activation binding
+                val icon = ImageGetter.getTechIconPortrait(tech.name, BattlefieldHud.points(22f))
+                val turns = researchCiv.turnsToTech(currentTech)
+                techButtonHolder.actor = battlefieldTechButton(currentTech.tr(true), icon, "ui-tech-current").apply {
+                    // Keep the turn count visible even when a long technology name is ellipsized.
+                    add("$turns${Fonts.turn}".toLabel(fontSize = BattlefieldHud.font(12f)))
+                        .padLeft(BattlefieldHud.points(3f))
                 }
                 return
             }
-            val innerButton = TechButton(currentTech, viewingCiv.getCiv().tech)
+            val innerButton = TechButton(currentTech, researchCiv.getCiv().tech)
             innerButton.setButtonColor(ExpeditionBlueTheme.color(colorFromRGB(7, 46, 43), ExpeditionBlueTheme.panel))
             techButtonHolder.actor = innerButton
-            val turnsToTech = viewingCiv.turnsToTech(currentTech)
+            val turnsToTech = researchCiv.turnsToTech(currentTech)
             innerButton.text.setText(currentTech.tr(true))
             innerButton.turns.setText(turnsToTech + Fonts.turn)
         } else {
-            val canResearch = viewingCiv.canResearchTech()
-            if (canResearch || viewingCiv.hasResearchedAnyTech()) {
+            val canResearch = researchCiv.canResearchTech()
+            if (canResearch || researchCiv.hasResearchedAnyTech()) {
+                if (BattlefieldHud.enabled) {
+                    techButtonHolder.actor = battlefieldTechButton(
+                        if (canResearch) "Choose tech" else "Technologies",
+                        ImageGetter.getStatIcon("Science"),
+                        if (canResearch) "ui-tech-pick" else "ui-tech-overview",
+                        needsResearch = canResearch
+                    )
+                    return
+                }
                 val text = if (canResearch) "{Pick a tech}!" else "Technologies"
                 pickTechLabel.setText(text.tr())
                 techButtonHolder.actor = pickTechButton
             }
         }
     }
+
+    /** All map research states share one compact geometry and the holder's existing activation. */
+    private fun battlefieldTechButton(text: String, icon: Actor, buttonName: String, needsResearch: Boolean = false) =
+        IconTextButton(text, BattlefieldGeometry.icon(icon), BattlefieldHud.font(14f)).apply {
+            name = buttonName
+            BattlefieldGeometry.fitControl(this)
+            label.wrap = false
+            label.setEllipsis(true)
+            if (needsResearch) label.color = ExpeditionBlueTheme.gold
+            labelCell.minWidth(0f).growX()
+            iconCell.size(BattlefieldHud.points(22f)).padRight(BattlefieldHud.points(5f))
+            pad(BattlefieldHud.points(6f))
+            touchable = Touchable.disabled // The holder opens the technology picker in every state.
+        }
 
     private fun updateUndoButton() {
         // Don't show the undo button if there is no action to undo

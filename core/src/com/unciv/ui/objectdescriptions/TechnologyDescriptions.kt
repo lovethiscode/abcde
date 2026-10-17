@@ -27,7 +27,7 @@ object TechnologyDescriptions {
      * Textual description used in TechPickerScreen and AlertPopup(AlertType.TechResearched) -
      * Civilization always known and description tailored to
      */
-    fun getDescription(technology: Technology, viewingCiv: Civilization): String = technology.run {
+    fun getDescription(technology: Technology, viewingCiv: Civilization, includeUnlocks: Boolean = true): String = technology.run {
         val ruleset = viewingCiv.gameInfo.ruleset
         val lineList = ArrayList<String>() // more readable than StringBuilder, with same performance for our use-case
 
@@ -48,6 +48,8 @@ object TechnologyDescriptions {
             .map { it.getText() }
         )
 
+        // The atlas has dedicated unlock rows; alerts and other callers retain the full description.
+        if (includeUnlocks) {
         val enabledUnits = getEnabledUnits(name, ruleset, viewingCiv)
         if (enabledUnits.any()) {
             lineList += "{Units enabled}: "
@@ -69,10 +71,12 @@ object TechnologyDescriptions {
             for (wonder in wonders)
                 lineList += " • ${wonder.name.tr()} (${wonder.getShortDescription(uniqueInclusionFilter=technology::uniqueIsNotRequirementForThisTech)})\n"
         }
+        }
 
         for (obj in getObsoletedObjects(name, ruleset, viewingCiv))
             lineList += "[${obj.name}] obsoleted"
 
+        if (includeUnlocks) {
         val resourcesRevealed = ruleset.tileResources.values.asSequence()
             .filter { it.revealedBy == name }
             .map { it.name }
@@ -86,6 +90,7 @@ object TechnologyDescriptions {
             .toList()
         if (tileImprovements.isNotEmpty())
             lineList += "{Tile improvements enabled}: " + tileImprovements.joinToString { it.name.tr() }
+        }
 
         return lineList.joinToString("\n") { it.tr() }
     }
