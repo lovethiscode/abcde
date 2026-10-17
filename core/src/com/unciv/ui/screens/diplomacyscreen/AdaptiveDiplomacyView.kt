@@ -47,10 +47,6 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         ui.decorate(back, ghost = true)
         header.add(back).height(ui.px(44f)).padRight(ui.px(12f))
         header.add(ui.label("Diplomacy", 21)).left().growX()
-        val returnButton = ui.decorate("Back to game".toTextButton(), ghost = true)
-        returnButton.name = "ui-diplomacy-world"
-        returnButton.onActivation { screen.game.popScreen() }
-        if (!layout.narrow) header.add(returnButton).height(ui.px(44f))
         root.add(header).growX().height(ui.px(44f)).padBottom(ui.px(12f)).row()
         val body = Table()
         if (layout.narrow) {
@@ -282,7 +278,14 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         }
         val map = actions.firstOrNull { it.name == "ui-diplomacy-map" }
         val bar = Table()
-        val primaryButton = ui.decorate(primary,true,icon=if(civ.isCityState && !civ.isAtWarWith(player))DiplomacyIcon.Gift else DiplomacyIcon.Trade)
+        val isGift = civ.isCityState && !civ.isAtWarWith(player)
+        val primaryButton = ui.decorate(primary,true,icon=if(isGift)DiplomacyIcon.Gift else DiplomacyIcon.Trade)
+        if (isGift) primaryButton.style.apply {
+            checked = up
+            disabled = up
+            checkedFontColor = fontColor
+            disabledFontColor = fontColor
+        }
         val secondaryButton = secondary?.let { ui.decorate(it) }
         val more = ui.decorate("More".toTextButton(),icon=if(layout.narrow)null else DiplomacyIcon.Down)
         val moreWidth = if (layout.narrow) maxOf(68f,more.prefWidth/ui.unit) else 84f

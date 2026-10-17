@@ -229,10 +229,12 @@ class PlayerPickerTable(
                 add((if (index == 0) "You".tr() else "${"AI".tr()} $index").toLabel(fontSize = 16))
                     .width(48f).left().padRight(4f)
                 add(selector).minWidth(0f).growX().minHeight(44f)
-                add(Table().apply {
-                    background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background)
-                    add((if (index == 0) "Human player" else "AI").toLabel(fontSize = 16)).pad(6f)
-                }).width(62f).center()
+                if (gameParameters.isOnlineMultiplayer) {
+                    add(Table().apply {
+                        background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background)
+                        add((if (index == 0) "Human player" else "AI").toLabel(fontSize = 16)).pad(6f)
+                    }).width(62f).center()
+                }
                 if (index > 0) add("×".toTextButton().apply {
                     name = "setup-remove-$index"
                     isDisabled = locked
