@@ -2,7 +2,11 @@ package com.unciv.ui.screens.victoryscreen
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.unciv.ui.screens.overviewscreen.OverviewUi
+import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
+import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.scenes.scene2d.ui.VerticalGroup
 import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
@@ -15,10 +19,12 @@ import com.unciv.models.ruleset.Victory
 import com.unciv.models.translations.tr
 import com.unciv.ui.audio.MusicMood
 import com.unciv.ui.audio.MusicTrackChooserFlags
+import com.unciv.ui.components.YearTextUtil
 import com.unciv.ui.components.widgets.TabbedPager
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.extensions.areSecretKeysPressed
 import com.unciv.ui.components.extensions.enable
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.onClick
@@ -31,14 +37,26 @@ import com.unciv.ui.screens.worldscreen.WorldScreen
 import yairm210.purity.annotations.Readonly
 import java.util.EnumSet
 
-class VictoryScreen(
+class VictoryScreen private constructor(
     private val worldScreen: WorldScreen,
-    pageNumber: Int = 0
+    pageNumber: Int,
+    private val pageState: VictoryPageState
 ) : PickerScreen(), RecreateOnResize {
+    constructor(worldScreen: WorldScreen, pageNumber: Int = 0) : this(worldScreen, pageNumber, VictoryPageState())
+
+    private val compact = stage.width < pt(640f)
+    private val tablet = minOf(stage.width, stage.height) > pt(600f)
+    private val contentWidth = stage.width - pt(if (tablet) 72f else 24f)
+    private val contentHeight = stage.height - pt(if (compact) 192f else if (tablet) 172f else 144f) -
+        (if (worldScreen.gameInfo.victoryData != null || worldScreen.selectedGameView.civView.getCiv().isDefeated()) pt(90f) else 0f)
     private val music get() = UncivGame.Current.musicController
     private val gameInfo = worldScreen.gameInfo
     private val playerCiv = worldScreen.selectedGameView.civView.getCiv()
-    private val tabs = TabbedPager(separatorColor = Color.WHITE, shortcutScreen = this)
+    private val tabs = if (UiNavigation.isIos) TabbedPager(
+        contentWidth, contentWidth, contentHeight, contentHeight,
+        backgroundColor = OverviewUi.background, shortcutScreen = this, showHeader = false
+    ).apply { background = OverviewUi.surface(OverviewUi.background) }
+    else TabbedPager(separatorColor = Color.WHITE, shortcutScreen = this)
 
     internal class CivWithStat(val civ: Civilization, val value: Int) {
         constructor(civ: Civilization, category: RankingType) : this(civ, civ.getStatForRanking(category))
@@ -98,20 +116,25 @@ class VictoryScreen(
         open fun isHidden(playerCiv: Civilization) = false
     }
 
+    private val orderedTabs get() = if (UiNavigation.isIos) listOf(
+        VictoryTabs.OurStatus, VictoryTabs.Global, VictoryTabs.Illustration, VictoryTabs.Rankings,
+        VictoryTabs.Demographics, VictoryTabs.Charts, VictoryTabs.Replay
+    ) else VictoryTabs.entries
+
     init {
         worldScreen.autoPlay.stopAutoPlay()
         //**************** Set up the tabs ****************
         splitPane.setFirstWidget(tabs)
         val iconSize = Constants.headingFontSize.toFloat()
 
-        for (tab in VictoryTabs.entries) {
+        for (tab in orderedTabs) {
             val tabHidden = tab.isHidden(playerCiv)
             if (tabHidden && !(tab.allowAsSecret && Gdx.input.areSecretKeysPressed()))
                 continue
             val icon = ImageGetter.getImage("VictoryScreenIcons/${tab.name}")
             tabs.addPage(
                 tab.caption ?: tab.name,
-                tab.getContent(this),
+                if (UiNavigation.isIos) nativeContent(tab) else tab.getContent(this),
                 icon, iconSize,
                 scrollAlign = Align.topLeft,
                 shortcutKey = KeyCharAndCode(tab.key),
@@ -137,30 +160,139 @@ class VictoryScreen(
         //**************** Set up floating info panels ****************
         // When horizontal screen space is scarce so they would overlap, insert
         // them into the scrolling portion of the TabbedPager header instead
-        tabs.pack()
-        val topRightPanel = VerticalGroup().apply {
-            space(5f)
-            align(Align.right)
-            addActor("{Game Speed}: {${gameInfo.gameParameters.speed}}".toLabel())
-            if ("Time" in gameInfo.gameParameters.victoryTypes)
-                addActor("{Max Turns}: ${gameInfo.gameParameters.maxTurns.tr()}".toLabel())
-            pack()
+        if (UiNavigation.isIos) buildNativeChrome() else {
+            tabs.pack()
+            val topRightPanel = VerticalGroup().apply {
+                space(5f)
+                align(Align.right)
+                addActor("{Game Speed}: {${gameInfo.gameParameters.speed}}".toLabel())
+                if ("Time" in gameInfo.gameParameters.victoryTypes)
+                    addActor("{Max Turns}: ${gameInfo.gameParameters.maxTurns.tr()}".toLabel())
+                pack()
+            }
+            val difficultyLabel = "{Difficulty}: {${gameInfo.difficulty}}".toLabel()
+            val neededSpace = topRightPanel.width.coerceAtLeast(difficultyLabel.width) * 2 + tabs.getHeaderPrefWidth()
+            if (UiNavigation.isIos || neededSpace > stage.width) {
+                // Let additions take part in TabbedPager's header scrolling
+                tabs.decorateHeader(difficultyLabel, leftSide = true, fixed = false)
+                tabs.decorateHeader(topRightPanel, leftSide = false, fixed = false)
+                tabs.headerScroll.fadeScrollBars = false
+            } else {
+                // Let additions float in the corners
+                val panelY = stage.height - tabs.getRowHeight(0) * 0.5f
+                stage.addActor(topRightPanel)
+                topRightPanel.setPosition(stage.width - 10f, panelY, Align.right)
+                stage.addActor(difficultyLabel)
+                difficultyLabel.setPosition(10f, panelY, Align.left)
+            }
         }
-        val difficultyLabel = "{Difficulty}: {${gameInfo.difficulty}}".toLabel()
-        val neededSpace = topRightPanel.width.coerceAtLeast(difficultyLabel.width) * 2 + tabs.getHeaderPrefWidth()
-        if (UiNavigation.isIos || neededSpace > stage.width) {
-            // Let additions take part in TabbedPager's header scrolling
-            tabs.decorateHeader(difficultyLabel, leftSide = true, fixed = false)
-            tabs.decorateHeader(topRightPanel, leftSide = false, fixed = false)
-            tabs.headerScroll.fadeScrollBars = false
-        } else {
-            // Let additions float in the corners
-            val panelY = stage.height - tabs.getRowHeight(0) * 0.5f
-            stage.addActor(topRightPanel)
-            topRightPanel.setPosition(stage.width - 10f, panelY, Align.right)
-            stage.addActor(difficultyLabel)
-            difficultyLabel.setPosition(10f, panelY, Align.left)
+    }
+
+    private fun nativeContent(tab: VictoryTabs): Table = when (tab) {
+        VictoryTabs.OurStatus, VictoryTabs.Global -> VictoryProgressPage(worldScreen, pageState,
+            tab == VictoryTabs.Global, compact, tablet, contentWidth, contentHeight)
+        VictoryTabs.Rankings -> VictoryStatisticsPage(worldScreen, pageState, false, compact)
+        VictoryTabs.Demographics -> VictoryStatisticsPage(worldScreen, pageState, true, compact)
+        VictoryTabs.Charts -> VictoryScreenCharts(worldScreen, pageState, compact)
+        VictoryTabs.Replay -> VictoryScreenReplay(worldScreen, pageState, contentWidth, contentHeight)
+        else -> tab.getContent(this)
+    }
+
+    private fun buildNativeChrome() {
+        pickerPane.remove()
+        descriptionLabel.setFontSize(font(13))
+        descriptionLabel.wrap = true
+        for (button in listOf(closeButton, rightSideButton)) {
+            button.label.setFontSize(font(14))
+            button.style = com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle(button.style).apply {
+                up = OverviewUi.rounded(if (button == rightSideButton) OverviewUi.accent else OverviewUi.panel)
+                down = OverviewUi.rounded(OverviewUi.selected)
+                over = down
+                fontColor = if (button == rightSideButton) com.unciv.models.skins.ExpeditionBlueTheme.primaryInk
+                    else com.unciv.models.skins.ExpeditionBlueTheme.text
+            }
+            button.pad(0f, pt(14f), 0f, pt(14f))
         }
+        val navigation = Table().apply { left() }
+        val buttons = linkedMapOf<VictoryTabs, Button>()
+        val navScroll = OverviewUi.scroll(navigation).apply { setScrollingDisabled(false, true) }
+        fun refreshNavigation() {
+            for (tab in orderedTabs) {
+                val caption = tab.caption ?: tab.name
+                if (tab in buttons || tabs.getPageIndex(caption) < 0) continue
+                val button = OverviewUi.button(flat = true) { tabs.selectPage(caption) }.apply {
+                    style = Button.ButtonStyle(style).apply { checked = OverviewUi.rounded(OverviewUi.raised) }
+                    if (!compact) add(ImageGetter.getImage("VictoryScreenIcons/${tab.name}")).size(pt(18f)).padRight(pt(7f))
+                    add(OverviewUi.plainLabel(caption, 15))
+                    pad(0f, pt(12f), 0f, pt(12f))
+                    name = "victory-tab-${tab.name}"
+                }
+                buttons[tab] = button
+                navigation.add(button).height(OverviewUi.touch).padRight(pt(4f))
+            }
+            for ((tab, button) in buttons) {
+                button.isChecked = tabs.getPageIndex(tab.caption ?: tab.name) == tabs.activePage
+                button.cells.last().actor.color = if (button.isChecked) OverviewUi.accent else com.unciv.models.skins.ExpeditionBlueTheme.text
+            }
+        }
+        val back = OverviewUi.button(flat = true) { game.popScreen() }.apply {
+            add(ImageGetter.getImage("OtherIcons/BackArrow").apply { color = OverviewUi.accent }).size(pt(18f)).padRight(pt(6f))
+            add(OverviewUi.plainLabel("Map", 16, OverviewUi.accent))
+        }
+        val header = Table().apply {
+            add(back).height(OverviewUi.touch).padRight(pt(16f))
+            add(OverviewUi.plainLabel("Victory status", 20).apply { setEllipsis(true) }).growX().minWidth(0f).left()
+            val context = Table().apply {
+                add(ImageGetter.getNationPortrait(playerCiv.nation, pt(24f))).size(pt(24f)).padRight(pt(7f))
+                add(OverviewUi.plainLabel(playerCiv.civName, 14).apply { setEllipsis(true) }).minWidth(0f).padRight(pt(12f))
+                val year = YearTextUtil.toYearText(gameInfo.getYear(), playerCiv.isLongCountDisplay())
+                add(OverviewUi.plainLabel("${gameInfo.turns} {Turn} · $year", 13, OverviewUi.muted))
+            }
+            if (compact) { row(); add(context).colspan(2).left().growX().minWidth(0f) } else add(context)
+        }
+        val metadata = Table().apply {
+            val info = "{Difficulty}: {${gameInfo.difficulty}} · {Game Speed}: {${gameInfo.gameParameters.speed}}" +
+                if ("Time" in gameInfo.gameParameters.victoryTypes) " · {Max Turns}: ${gameInfo.gameParameters.maxTurns.tr()}" else ""
+            add(OverviewUi.plainLabel(info, 12, OverviewUi.muted).apply { wrap = true }).growX().minWidth(0f).left()
+            if (compact) row()
+            val status = if (gameInfo.victoryData != null || playerCiv.isDefeated()) "Game ended" else "Game in progress"
+            add(OverviewUi.plainLabel(status, 12, OverviewUi.muted)).left().padLeft(if (compact) 0f else pt(12f))
+        }
+        val root = object : Table() {
+            override fun act(delta: Float) {
+                super.act(delta)
+                if (tabs.pageCount() != buttons.size) refreshNavigation()
+            }
+        }.apply {
+            background = OverviewUi.surface(OverviewUi.background)
+            setFillParent(true)
+            pad(pt(if (tablet) 24f else 8f), pt(if (tablet) 36f else 12f),
+                pt(if (tablet) 24f else 12f), pt(if (tablet) 36f else 12f))
+            add(header).growX().minWidth(0f).height(pt(if (compact) 76f else 48f)).row()
+            add(ImageGetter.getWhiteDot().apply { color = OverviewUi.border }).growX().height(pt(1f)).row()
+            add(navScroll).growX().minWidth(0f).height(pt(52f)).row()
+            add(metadata).growX().minWidth(0f).padBottom(pt(9f)).row()
+            add(tabs).grow().minWidth(0f).minHeight(0f).row()
+            if (rightSideButton.isVisible) {
+                val footer = Table().apply {
+                    add(descriptionLabel).colspan(if (compact) 2 else 1).growX().minWidth(0f).padRight(pt(12f))
+                    if (compact) row()
+                    add(closeButton).height(OverviewUi.touch).padRight(pt(8f))
+                    add(rightSideButton).height(OverviewUi.touch)
+                }
+                add(footer).growX().minWidth(0f).padTop(pt(10f))
+            }
+        }
+        tabs.onSelection { _, _, _ ->
+            refreshNavigation()
+            buttons.values.firstOrNull { it.isChecked }?.let {
+                root.validate(); navScroll.validate()
+                navScroll.scrollTo(it.x, it.y, it.width, it.height, false, false)
+                navScroll.updateVisualScroll()
+            }
+        }
+        refreshNavigation()
+        stage.addActor(root)
     }
 
     private fun displayWinner(victoryData: VictoryData) {
@@ -212,7 +344,7 @@ class VictoryScreen(
         super.dispose()
     }
 
-    override fun recreate(): BaseScreen = VictoryScreen(worldScreen, tabs.activePage)
+    override fun recreate(): BaseScreen = VictoryScreen(worldScreen, tabs.activePage, pageState)
 
     companion object {
         @Readonly

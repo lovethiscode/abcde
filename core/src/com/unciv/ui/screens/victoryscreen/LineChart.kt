@@ -24,7 +24,8 @@ import kotlin.math.sqrt
 data class DataPoint<T>(val x: T, val y: T, val civ: Civilization)
 
 class LineChart(
-    private val viewingCiv: Civilization
+    private val viewingCiv: Civilization,
+    private val overviewStyle: Boolean = false
 ) : WidgetGroup() {
 
     private val axisLineWidth = 2f
@@ -39,7 +40,7 @@ class LineChart(
     /** This should not be changed lightly. There's code (e.g. for generating the labels) that
      * assumes multiples of 10. Also please note, that the real number of labels is `maxLabels + 1`
      * as `0` is not counted. */
-    private val maxLabels = 10
+    private val maxLabels = if (overviewStyle) 5 else 10
 
     private var xLabels = emptyList<Int>()
     private var yLabels = emptyList<Int>()
@@ -78,8 +79,12 @@ class LineChart(
         xLabels = generateLabels(newData, false)
         yLabels = generateLabels(newData, true)
 
-        xLabelsAsLabels = xLabels.map { Label(it.tr(), axisLabelStyle) }
-        yLabelsAsLabels = yLabels.map { Label(it.tr(), axisLabelStyle) }
+        fun label(value: Int) = if (overviewStyle) value.toString().toLabel(
+            fontColor = com.unciv.ui.screens.overviewscreen.OverviewUi.muted,
+            fontSize = com.unciv.ui.screens.overviewscreen.OverviewUi.font(12), hideIcons = true
+        ).apply { pack() } else Label(value.tr(), axisLabelStyle)
+        xLabelsAsLabels = xLabels.map(::label)
+        yLabelsAsLabels = yLabels.map(::label)
     }
 
     @VisibleForTesting

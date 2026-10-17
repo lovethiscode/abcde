@@ -79,11 +79,11 @@ internal class VictoryScreenCivGroup(
     }
 
     companion object {
-        fun getCivImageAndColors(civ: Civilization, currentPlayer: Civilization, defeatedPlayerStyle: DefeatedPlayerStyle): Triple<Actor, Color, Color> {
+        fun getCivImageAndColors(civ: Civilization, currentPlayer: Civilization, defeatedPlayerStyle: DefeatedPlayerStyle, iconSize: Float = 30f): Triple<Actor, Color, Color> {
             when {
                 civ.isDefeated() && defeatedPlayerStyle == DefeatedPlayerStyle.GREYED_OUT -> {
                     val icon = (ImageGetter.getImage("OtherIcons/DisbandUnit"))
-                    icon.setSize(30f)
+                    icon.setSize(iconSize)
                     return Triple(icon, Color.LIGHT_GRAY, ImageGetter.CHARCOAL)
                 }
                 currentPlayer.isSpectator()
@@ -92,10 +92,10 @@ internal class VictoryScreenCivGroup(
                     || currentPlayer.knows(civ)
                     || currentPlayer.isDefeated()
                     || currentPlayer.victoryManager.hasWon() -> {
-                    return Triple(ImageGetter.getNationPortrait(civ.nation, 30f), civ.nation.getOuterColor(), civ.nation.getInnerColor())
+                    return Triple(ImageGetter.getNationPortrait(civ.nation, iconSize), civ.nation.getOuterColor(), civ.nation.getInnerColor())
                 }
                 else ->
-                    return Triple((ImageGetter.getRandomNationPortrait(30f)), Color.LIGHT_GRAY, ImageGetter.CHARCOAL)
+                    return Triple((ImageGetter.getRandomNationPortrait(iconSize)), Color.LIGHT_GRAY, ImageGetter.CHARCOAL)
             }
         }
 
