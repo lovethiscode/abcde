@@ -36,6 +36,8 @@ import com.unciv.ui.components.extensions.GdxKeyCodeFixes.DEL
 import com.unciv.ui.components.extensions.GdxKeyCodeFixes.toString
 import com.unciv.ui.components.extensions.GdxKeyCodeFixes.valueOf
 import com.unciv.ui.components.fonts.Fonts
+import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.input.ActorAttachments
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.VirtualMouseButtonKeys
@@ -291,9 +293,11 @@ fun ScrollPane.scrollTo(actor: Actor, center: Boolean = false) =
     scrollTo(actor.x, actor.y, actor.width, actor.height, center, center)
 
 /** Translate a [String] and make a [TextButton] widget from it */
-fun String.toTextButton(style: TextButtonStyle? = null, hideIcons: Boolean = false): TextButton {
+fun String.toTextButton(style: TextButtonStyle? = null, hideIcons: Boolean = false, unit: Float = UiTypography.unitsPerPoint()): TextButton {
     val text = this.tr(hideIcons)
-    return if (style == null) TextButton(text, BaseScreen.skin) else TextButton(text, style)
+    return (if (style == null) TextButton(text, BaseScreen.skin) else TextButton(text, style)).apply {
+        label.setTextRole(TextRole.Control, unit)
+    }
 }
 
 /** Convert a texture path into an Image, make an ImageButton with a [tinted][overColor]
@@ -359,6 +363,15 @@ fun String.toLabel() = Label(this.tr(), BaseScreen.skin)
 /** Make a [Label] widget containing this [Int] as text */
 fun Int.toLabel() = this.tr().toLabel()
 
+/** Semantic UI text; use unit = 1f only when the parent already converts points to stage units. */
+fun String.toLabel(role: TextRole, fontColor: Color = Color.WHITE,
+                   alignment: Int = Align.left, hideIcons: Boolean = false,
+                   unit: Float = UiTypography.unitsPerPoint()): Label =
+    toLabel(fontColor, UiTypography.size(role, unit), alignment, hideIcons)
+
+fun Int.toLabel(role: TextRole, unit: Float = UiTypography.unitsPerPoint()) =
+    tr().toLabel(role, unit = unit)
+
 /** Translate a [String] and make a [Label] widget from it with a specified font color and size */
 fun String.toLabel(fontColor: Color = Color.WHITE,
                     fontSize: Int = Constants.defaultFontSize,
@@ -383,8 +396,12 @@ fun String.toLabel(fontColor: Color = Color.WHITE,
  * Translate a [String] and make a [CheckBox] widget from it.
  * @param changeAction A callback to call on change, with a boolean lambda parameter containing the current [isChecked][CheckBox.isChecked].
  */
-fun String.toCheckBox(startsOutChecked: Boolean = false, changeAction: ((Boolean)->Unit)? = null)
+fun String.toCheckBox(startsOutChecked: Boolean = false, changeAction: ((Boolean)->Unit)? = null) =
+    toCheckBox(startsOutChecked, UiTypography.unitsPerPoint(), changeAction)
+
+fun String.toCheckBox(startsOutChecked: Boolean = false, unit: Float, changeAction: ((Boolean)->Unit)? = null)
     = CheckBox(this.tr(), BaseScreen.skin).apply {
+        label.setTextRole(TextRole.Control, unit)
         isChecked = startsOutChecked
         if (changeAction != null) onChange {
             changeAction(isChecked)
@@ -409,6 +426,9 @@ fun Label.setFontSize(size: Int): Label {
     setFontScale(size / Fonts.ORIGINAL_FONT_SIZE)
     return this
 }
+
+fun Label.setTextRole(role: TextRole, unit: Float = UiTypography.unitsPerPoint()): Label =
+    setFontSize(UiTypography.size(role, unit))
 
 /** Only if this Label contains [Stat symbols][Stat.fontChars], tweak `fontColor` and `text`
  *  so that these symbols render normally and not as black outline.

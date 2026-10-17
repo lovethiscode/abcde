@@ -1,5 +1,7 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
@@ -39,7 +41,7 @@ internal class DisplayTab(
                     settings.save()
                 }
                 add("Maps, backgrounds, and controls extend to the screen edges.".tr()
-                    .let { WrappableLabel(it, optionsPopup.tabs.prefWidth - 60f, fontSize = 14).apply { wrap = true } })
+                    .let { WrappableLabel(it, optionsPopup.tabs.prefWidth - 60f, fontSize = UiTypography.size(TextRole.Supporting, legacySize = 14)).apply { wrap = true } })
                     .colspan(2).growX().row()
             }
             addScreenModeSelectBox()
@@ -90,8 +92,7 @@ internal class DisplayTab(
             val continuousRenderingDescription = "When disabled, saves battery life but certain animations will be suspended"
             val continuousRenderingLabel = WrappableLabel(
                 continuousRenderingDescription,
-                optionsPopup.tabs.prefWidth - 60f, Color.ORANGE.brighten(0.7f), 14
-            )
+                optionsPopup.tabs.prefWidth - 60f, Color.ORANGE.brighten(0.7f),UiTypography.size(TextRole.Supporting, legacySize = 14))
             continuousRenderingLabel.wrap = true
             add(continuousRenderingLabel).colspan(2).padTop(10f).row()
 
@@ -105,8 +106,7 @@ internal class DisplayTab(
 
             val maxTextureUnitsLabel = WrappableLabel(
                 maxTextureUnitsText,
-                optionsPopup.tabs.prefWidth - 60f, Color.WHITE, 14
-            )
+                optionsPopup.tabs.prefWidth - 60f, Color.WHITE,UiTypography.size(TextRole.Supporting, legacySize = 14))
             maxTextureUnitsLabel.wrap = true
             add(maxTextureUnitsLabel).colspan(2).padTop(10f).row()
 
@@ -114,8 +114,7 @@ internal class DisplayTab(
             val disableNewerRenderingDescription = "On some devices this rendering method is faster"
             val disableNewerRenderingLabel = WrappableLabel(
                 disableNewerRenderingDescription,
-                optionsPopup.tabs.prefWidth - 60f, Color.ORANGE.brighten(0.7f), 14
-            )
+                optionsPopup.tabs.prefWidth - 60f, Color.ORANGE.brighten(0.7f),UiTypography.size(TextRole.Supporting, legacySize = 14))
             disableNewerRenderingLabel.wrap = true
             add(disableNewerRenderingLabel).colspan(2).padTop(10f).row()
 
@@ -185,7 +184,7 @@ internal class DisplayTab(
         if (useSidebar) {
             val description = (if (recommendedSizeSelected)
                 "The recommended UI size is already selected."
-            else "Choose a UI size that fits your screen.").toLabel(OptionsPopupStyle.muted).apply {
+            else "Choose a UI size that fits your screen.").toLabel(fontColor = OptionsPopupStyle.muted, role = TextRole.Body).apply {
                 wrap = true
             }
             autoSizeButton.apply {
@@ -206,7 +205,7 @@ internal class DisplayTab(
         val mode = Gdx.graphics.displayMode
         val widthInches = mode.width / Gdx.graphics.ppiX
         val heightInches = mode.height / Gdx.graphics.ppiY
-        add("{Screen size}: %.1f\" x %.1f\"".format(widthInches, heightInches).toLabel()).colspan(2).row()
+        add("{Screen size}: %.1f\" x %.1f\"".format(widthInches, heightInches).toLabel(TextRole.Body)).colspan(2).row()
     }
 
     /** Picks the [ScreenSize] giving roughly the same number of virtual units per physical inch of the shorter screen side everywhere */

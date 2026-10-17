@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.mapeditorscreen.tabs
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -54,7 +56,7 @@ class MapEditorModsTab(
         pad(5f)
 
         add(Table().apply {
-            add("{Base Ruleset}:".toLabel())
+            add("{Base Ruleset}:".toLabel(TextRole.Body))
             add(baseRulesetSelectBox).fillX()
         }).fillX().padBottom(10f).row()
 
@@ -139,11 +141,11 @@ class MapEditorModsTab(
         init {
             val incompatibilityTable = Table().apply {
                 for (inc in incompatibilities)
-                    add(inc.toLabel()).row()
+                    add(inc.toLabel(TextRole.Body)).row()
             }
             add(ScrollPane(incompatibilityTable)).colspan(2)
                 .maxHeight(stageToShowOn.height * 0.8f).row()
-            addGoodSizedLabel("Change map to fit selected ruleset?", 24).colspan(2).row()
+            addGoodSizedLabel("Change map to fit selected ruleset?",UiTypography.size(TextRole.PageTitle, legacySize = 24)).colspan(2).row()
             if (UiNavigation.isIos) {
                 addCloseButton(Constants.cancel, com.unciv.ui.components.input.KeyCharAndCode('n'))
                 addOKButton("Change map", com.unciv.ui.components.input.KeyCharAndCode('y'), action = onOK)

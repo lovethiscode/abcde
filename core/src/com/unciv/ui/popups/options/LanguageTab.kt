@@ -1,5 +1,6 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextField
@@ -25,16 +26,16 @@ internal class LanguageTab(
         setProgrammaticChangeEvents(true)
     }
     private val noResults by lazy {
-        "Nothing found!".toLabel(OptionsPopupStyle.muted, OptionsPopupStyle.fontSize(17f)).apply { wrap = true }
+        "Nothing found!".toLabel(OptionsPopupStyle.muted, OptionsPopupStyle.fontSize(TextRole.Body)).apply { wrap = true }
     }
     private val languageTables by lazy {
         if (!optionsPopup.useSidebar) this.addLanguageTables(optionsPopup.tabs.prefWidth * 0.9f - 10f)
         else {
             val source = Table()
             val tables = source.addLanguageTables(optionsPopup.tabs.prefWidth - 48f)
-            add("Current language".toLabel(OptionsPopupStyle.muted, OptionsPopupStyle.fontSize(14f))).left().pad(OptionsPopupStyle.points(8f)).row()
+            add("Current language".toLabel(OptionsPopupStyle.muted, OptionsPopupStyle.fontSize(TextRole.Supporting))).left().pad(OptionsPopupStyle.points(8f)).row()
             add((com.unciv.models.metadata.LocaleCode.find(settings.language)?.nativeName ?: settings.language)
-                .toLabel(OptionsPopupStyle.accent, OptionsPopupStyle.fontSize(18f))).left().pad(OptionsPopupStyle.points(8f)).row()
+                .toLabel(OptionsPopupStyle.accent, OptionsPopupStyle.fontSize(TextRole.Body))).left().pad(OptionsPopupStyle.points(8f)).row()
             search.style = TextField.TextFieldStyle(search.style).apply {
                 font = optionsPopup.contentFont
                 messageFont = optionsPopup.contentFont

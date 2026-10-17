@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -72,8 +74,8 @@ internal class NationPickerPopup(
     private val councilLobby = (screen as? com.unciv.ui.screens.multiplayerscreens.MultiplayerLobbyScreen)?.takeIf { UiNavigation.isIos }
     private val councilStyle = councilScreen != null || councilLobby != null
     private val councilFont get() = councilScreen?.formFont ?: councilLobby!!.formFont
-    private fun councilHeading(text: String, size: Int) =
-        councilScreen?.councilHeading(text,size) ?: councilLobby!!.councilHeading(text,size)
+    private fun councilHeading(text: String, role: TextRole) =
+        councilScreen?.councilHeading(text,role) ?: councilLobby!!.councilHeading(text,role)
     private val councilWidth = (stageToShowOn.width * .76f - 50f).coerceAtMost(1000f)
     private val settings = GUI.getSettings()
 
@@ -81,9 +83,10 @@ internal class NationPickerPopup(
     // depending on screen proportions - determine height for one of those
     private val partHeight = if (councilStyle) (stageToShowOn.height * .84f - 140f).coerceAtLeast(140f)
         else stageToShowOn.height * (if (stageToShowOn.isNarrowerThan4to3()) 0.45f else 0.8f)
-    private val civBlocksWidth = if (councilStyle) councilWidth * .34f
+    private val stackedLayout = stageToShowOn.isNarrowerThan4to3()
+    private val civBlocksWidth = if (councilStyle) councilWidth * (if (stackedLayout) 1f else .34f)
         else playerPicker?.civBlocksWidth ?: minOf(300f, stageToShowOn.width * 0.43f)
-    private val detailsWidth = if (councilStyle) councilWidth * .66f else civBlocksWidth
+    private val detailsWidth = if (councilStyle) councilWidth * (if (stackedLayout) 1f else .66f) else civBlocksWidth
 
     private val nationListTable = Table()
     private val nationListScroll = AutoScrollPane(nationListTable)
@@ -108,12 +111,12 @@ internal class NationPickerPopup(
             innerTable.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel, ExpeditionBlueTheme.controlBorder)
             addTitleWithCloseButton(Table().apply {
                 add(ImageGetter.getImage("OtherIcons/Cities", ExpeditionBlueTheme.gold)).size(24f).padRight(10f)
-                add(councilHeading("Choose civilization", 26))
+                add(councilHeading("Choose civilization", TextRole.PageTitle))
             })
         }
-        add(nationListScroll).size(civBlocksWidth + 10f, partHeight).padRight(if (councilStyle) 12f else 0f)
+        add(nationListScroll).size(civBlocksWidth + 10f, partHeight).padRight(if (councilStyle && !stackedLayout) 12f else 0f)
         // +10, because the nation table has a 5f pad, for a total of +10f
-        if (stageToShowOn.isNarrowerThan4to3()) row()
+        if (stackedLayout) row()
         nationDetailsScroll.setOverscroll(false, false)
         add(nationDetailsScroll).size(detailsWidth + 10f, partHeight) // Same here, see above
 
@@ -241,7 +244,7 @@ internal class NationPickerPopup(
                     background = SinglePlayerSetup.surface()
                     pad(8f, 10f, 8f, 10f)
                     add(ImageGetter.getNationPortrait(element.nation, 34f)).size(38f).padRight(10f)
-                    add(element.translatedName.toLabel(fontSize = 18)).minWidth(0f).growX().left()
+                    add(element.translatedName.toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18)).apply { wrap = true }).minWidth(0f).growX().left()
                     add(ImageGetter.getImage("OtherIcons/Checkmark", ExpeditionBlueTheme.gold).apply {
                         name = "nation-selected"
                         isVisible = false
@@ -393,9 +396,9 @@ internal class NationPickerPopup(
         defaults().left().growX().padBottom(8f)
         fun heading(caption: String, icon: String) = Table().apply {
             add(ImageGetter.getImage(icon, ExpeditionBlueTheme.gold)).size(20f).padRight(8f)
-            add(caption.toLabel(ExpeditionBlueTheme.gold, 18, hideIcons = true)).left().growX()
+            add(caption.toLabel(ExpeditionBlueTheme.gold, UiTypography.size(TextRole.Body, legacySize = 18), hideIcons = true)).left().growX()
         }
-        fun text(value: String, width: Float = textWidth) = value.toLabel(fontSize = 18, hideIcons = true).apply {
+        fun text(value: String, width: Float = textWidth) = value.toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18), hideIcons = true).apply {
             wrap = true
         }.also { it.setSize(width, it.prefHeight) }
         add(Table().apply {
@@ -408,7 +411,7 @@ internal class NationPickerPopup(
             add(banner).size(128f, 104f).top().padRight(18f)
             add(Table().apply {
                 val introWidth = textWidth - 146f
-                add(councilHeading(nation.name, 28).apply { color = ExpeditionBlueTheme.gold }).left().growX().row()
+                add(councilHeading(nation.name, TextRole.PageTitle).apply { color = ExpeditionBlueTheme.gold }).left().growX().row()
                 if (nation.leaderName.isNotEmpty())
                     add(text("{Leader}: {${nation.leaderName}}", introWidth)).width(introWidth).left().padTop(4f).row()
                 if (nation.startIntroPart1.isNotEmpty()) {

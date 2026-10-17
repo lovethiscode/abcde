@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.Constants
@@ -21,7 +23,7 @@ class PlayerReadyScreen(worldScreen: WorldScreen) : BaseScreen() {
         )
 
         table.add("[${curCiv.civName}] ready?".toLabel(
-            ExpeditionBlueTheme.color(curCiv.getInnerColor(), ExpeditionBlueTheme.text), Constants.headingFontSize))
+            ExpeditionBlueTheme.color(curCiv.getInnerColor(), ExpeditionBlueTheme.text), UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize)))
 
         table.onActivation {
             game.replaceCurrentScreen{ worldScreen }

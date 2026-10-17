@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
 import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.graphics.Color
@@ -175,7 +176,7 @@ class NotificationsOverviewTable(
         }
         expanders[turn] = expander
         val selectLabel = if (turn != gameInfo.turns) turnLabel
-            else currentTurn.toLabel()
+            else currentTurn.toLabel(TextRole.Body)
         selectItems += SelectItem(turn, selectLabel.text.toString())
         selectWidth = selectWidth.coerceAtLeast(selectLabel.prefWidth)
 
@@ -190,7 +191,7 @@ class NotificationsOverviewTable(
         )
         val text = (if (turnOffset == 0) "{$currentTurn}\u2004|\u2004" else "") +
             "${Fonts.turn}\u2004{$turn}\u2004|\u2004$yearText" // U+2004: Three-Per-Em Space
-        return text.toLabel()
+        return text.toLabel(TextRole.Body)
     }
 
     private fun getNotificationTable(turn: Int, index: Int, notification: Notification, doHighlight: Boolean) = Table(BaseScreen.skin).apply {
@@ -201,14 +202,14 @@ class NotificationsOverviewTable(
         val details = Table().apply {
             left()
             val label = ColorMarkupLabel(notification.text,
-                ExpeditionBlueTheme.color(ImageGetter.CHARCOAL, ExpeditionBlueTheme.text), fontSize = font(16))
+                ExpeditionBlueTheme.color(ImageGetter.CHARCOAL, ExpeditionBlueTheme.text), fontSize = font(TextRole.Control))
                 .apply { wrap = true }
             add(label).width(notificationWidth - icons.prefWidth - pt(132f)).left().row()
-            add(notification.category.name.toLabel(fontColor = OverviewUi.muted, fontSize = font(13)))
+            add(notification.category.name.toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting)))
                 .left().padTop(pt(5f))
         }
         add(details).minWidth(0f).growX().left()
-        add("{Turn} $turn".toLabel(fontColor = OverviewUi.muted, fontSize = font(14))).right().padLeft(pt(16f))
+        add("{Turn} $turn".toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting))).right().padLeft(pt(16f))
 
         val tintColor = when {
             !doHighlight -> OverviewUi.panel

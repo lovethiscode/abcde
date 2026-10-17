@@ -1,5 +1,6 @@
 package com.unciv.logic.files
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Files
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
@@ -67,7 +68,7 @@ open class FileChooser(
 
     // components
     private val fileNameInput = UncivTextField("Please enter a file name")
-    private val fileNameLabel = "File name:".toLabel()
+    private val fileNameLabel = "File name:".toLabel(TextRole.Control)
     private val fileNameWrapper = Table().apply {
         defaults().space(10f)
         add(fileNameLabel).growX().row()
@@ -75,8 +76,8 @@ open class FileChooser(
         addSeparator(height = 1f)
     }
     private val fileNameCell: Cell<Actor?>
-    private val dirTypeLabel = "".toLabel(Color.GRAY)  // color forces a style clone
-    private val pathLabel = "".toLabel(Color.GRAY, alignment = Align.left)
+    private val dirTypeLabel = "".toLabel(TextRole.Supporting, Color.GRAY)  // color forces a style clone
+    private val pathLabel = "".toLabel(TextRole.Supporting, Color.GRAY, alignment = Align.left)
     private val pathLabelWrapper = Table().apply {
         touchable = Touchable.enabled
         defaults().space(10f)

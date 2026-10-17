@@ -1,5 +1,7 @@
 package com.unciv.ui.components.widgets
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Vector2
@@ -146,7 +148,7 @@ open class TabbedPager(
         var scrollX = 0f
         var scrollY = 0f
 
-        val button = IconTextButton(caption, icon, pager.headerFontSize, pager.headerFontColor).apply {
+        val button = IconTextButton(caption, icon, pager.headerFontSize, pager.headerFontColor, labelFontSize = UiTypography.size(TextRole.Control)).apply {
             name = caption // enable finding pages by untranslated caption without needing our own field
             if (icon != null) {
                 if (iconSize != 0f)

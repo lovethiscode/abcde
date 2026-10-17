@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.mapeditorscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -55,7 +56,7 @@ class MapEditorFilesScroll(
                     // One header per Mod
                     existingSavesTable.add(Table().apply {
                         add(ImageGetter.getDot(Color.LIGHT_GRAY)).minHeight(2f).minWidth(15f)
-                        add(mod.toLabel(Color.LIGHT_GRAY)).left().pad(0f,2f)
+                        add(mod.toLabel(fontColor = Color.LIGHT_GRAY, role = TextRole.Body)).left().pad(0f,2f)
                         add(ImageGetter.getDot(Color.LIGHT_GRAY)).minHeight(2f).growX().row()
                     }).growX().row()
                     lastMod = mod

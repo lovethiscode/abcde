@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen.topbar
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -26,7 +27,7 @@ import com.unciv.ui.screens.overviewscreen.EmpireOverviewCategories
 import com.unciv.ui.screens.victoryscreen.VictoryScreen
 
 internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTableWrapper() {
-    private val turnsLabel = "Turns: 0/400".toLabel()
+    private val turnsLabel = "Turns: 0/400".toLabel(TextRole.Body)
     internal val battlefieldTurnLabel get() = turnsLabel
     private data class ResourceActors(val resource: TileResource, val label: Label, val icon: Actor)
     private val resourceActors = ArrayList<ResourceActors>(12)
@@ -74,7 +75,7 @@ internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTa
             val resourceImage = ImageGetter.getResourcePortrait(resource.name, iconSize).let {
                 if (BattlefieldHud.enabled) BattlefieldGeometry.icon(it) else it
             }
-            val resourceLabel = "0".toLabel()
+            val resourceLabel = "0".toLabel(TextRole.Body)
             resourceActors += ResourceActors(resource, resourceLabel, resourceImage)
         }
 
@@ -90,7 +91,7 @@ internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTa
     fun update(civInfo: Civilization) {
         resetScale()
         if (BattlefieldHud.enabled) {
-            turnsLabel.setFontSize(BattlefieldHud.font(11f))
+            turnsLabel.setFontSize(BattlefieldHud.font(TextRole.CompactData))
             defaults().space(BattlefieldHud.points(4f)).pad(0f).minHeight(UiNavigation.minimumTouchSize())
         }
 
@@ -123,7 +124,7 @@ internal class WorldScreenTopBarResources(topbar: WorldScreenTopBar) : ScalingTa
             val iconCell = resourcesWrapper.add(icon).padLeft(if (index == 0) 0f else extraPadBetweenResources)
             if (BattlefieldHud.enabled) {
                 iconCell.size(BattlefieldHud.points(16f))
-                label.setFontSize(BattlefieldHud.font(12f))
+                label.setFontSize(BattlefieldHud.font(TextRole.Supporting))
             }
 
             if (!resource.isStockpiled)

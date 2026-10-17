@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.Constants
@@ -19,7 +21,8 @@ import com.unciv.view.ForeignCityView
 
 class CityReligionInfoTable(
     private val cityView: ForeignCityView,
-    showMajority: Boolean = false
+    showMajority: Boolean = false,
+    private val unit: Float = UiTypography.unitsPerPoint()
 ) : Table(BaseScreen.skin) {
 
     init {
@@ -32,7 +35,7 @@ class CityReligionInfoTable(
             val (iconName, label) = getIconAndLabel(majorityReligion)
             add(linkedReligionIcon(iconName, majorityReligion?.name)).pad(5f)
             add()  // skip vertical separator
-            add("Majority Religion: [$label]".toLabel()).colspan(3).center().row()
+            add("Majority Religion: [$label]".toLabel(TextRole.Body, unit = unit)).colspan(3).center().row()
         }
 
         val holyCityOf = cityView.getReligionThisIsTheHolyCityOf()
@@ -41,28 +44,28 @@ class CityReligionInfoTable(
             add(linkedReligionIcon(iconName, holyCityOf)).pad(5f)
             add()
             if (!cityView.isBlockedHolyCity()) {
-                add("Holy City of: [$label]".toLabel()).colspan(3).center().row()
+                add("Holy City of: [$label]".toLabel(TextRole.Body, unit = unit)).colspan(3).center().row()
             } else {
-                add("Former Holy City of: [$label]".toLabel()).colspan(3).center().row()
+                add("Former Holy City of: [$label]".toLabel(TextRole.Body, unit = unit)).colspan(3).center().row()
             }
         }
 
         if (!followers.isEmpty()) {
             add().pad(5f)  // column for icon
             addSeparatorVertical(gridColor)
-            add("Followers".toLabel()).pad(5f)
+            add("Followers".toLabel(TextRole.Body, unit = unit)).pad(5f)
             addSeparatorVertical(gridColor)
-            add("Pressure".toLabel()).pad(5f).row()
+            add("Pressure".toLabel(TextRole.Body, unit = unit)).pad(5f).row()
             addSeparator(gridColor)
 
             for ((religion, followerCount) in followers.asSequence().sortedByDescending { it.value }) {
                 val iconName = cityView.getReligion(religion)!!.getIconName()
                 add(linkedReligionIcon(iconName, religion)).pad(5f)
                 addSeparatorVertical(gridColor)
-                add(followerCount.toLabel()).pad(5f)
+                add(followerCount.toLabel(TextRole.Body, unit = unit)).pad(5f)
                 addSeparatorVertical(gridColor)
                 if (futurePressures.containsKey(religion))
-                    add(("+ [${futurePressures[religion]}] pressure").toLabel()).pad(5f)
+                    add(("+ [${futurePressures[religion]}] pressure").toLabel(TextRole.Body, unit = unit)).pad(5f)
                 else
                     add()
                 row()
@@ -94,7 +97,7 @@ class CityReligionInfoTable(
         val (icon, label) = getIconAndLabel(cityView.getMajorityReligion())
         return ExpanderTab(
                 title = "Majority Religion: [$label]",
-                fontSize = Constants.defaultFontSize,
+                fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = Constants.defaultFontSize),
                 icon = ImageGetter.getReligionPortrait(icon, 30f),
                 defaultPad = 0f,
                 persistenceID = "CityStatsTable.Religion",

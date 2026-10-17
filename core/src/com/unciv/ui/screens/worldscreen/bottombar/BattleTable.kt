@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.bottombar
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
 import com.unciv.models.skins.ExpeditionBlueTheme
@@ -210,7 +212,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
     }
 
     /** Wrapped labels must not impose the old desktop column minimum on the native preview. */
-    private fun constrainBattlefieldCells(table: Table, fontSize: Float = 12f) {
+    private fun constrainBattlefieldCells(table: Table, fontSize: TextRole = TextRole.CompactData) {
         val gap = BattlefieldHud.points(2f)
         for (cell in table.cells) {
             cell.pad(cell.padTop.coerceAtMost(gap), cell.padLeft.coerceAtMost(gap),
@@ -218,7 +220,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
             when (val actor = cell.actor) {
                 is TextButton -> {
                     BattlefieldGeometry.fitControl(actor, negative = actor.name == "ui-attack")
-                    actor.label.setFontSize(BattlefieldHud.font(14f))
+                    actor.label.setFontSize(BattlefieldHud.font(TextRole.Control))
                     if (actor.isDisabled) actor.label.color = Color.WHITE
                     actor.pad(BattlefieldHud.points(6f))
                     cell.minHeight(UiNavigation.minimumTouchSize())
@@ -229,11 +231,11 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
                     cell.minWidth(0f)
                 }
                 is Table -> {
-                    constrainBattlefieldCells(actor, if (table === this && cell.row == 0) 13f else fontSize)
+                    constrainBattlefieldCells(actor, if (table === this && cell.row == 0) TextRole.Supporting else fontSize)
                     cell.minWidth(0f)
                 }
                 is ScrollPane -> {
-                    (actor.actor as? Table)?.let { constrainBattlefieldCells(it, 11f) }
+                    (actor.actor as? Table)?.let { constrainBattlefieldCells(it, TextRole.Supporting) }
                     cell.minWidth(0f).minHeight(0f)
                 }
             }
@@ -254,12 +256,12 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
             ("vs [" + key.drop(3) + "]").tr()
         else key.tr()
         val percentage = (if (value > 0) "+" else "") + value + "%"
-        val upOrDownLabel = if (value > 0f) "⬆".toLabel(Color.GREEN) // U+2B06 UPWARDS BLACK ARROW
-        else "⬇".toLabel(Color.RED) // U+2B07 DOWNWARDS BLACK ARROW
-        if (BattlefieldHud.enabled) upOrDownLabel.setFontSize(BattlefieldHud.font(11f))
+        val upOrDownLabel = if (value > 0f) "⬆".toLabel(fontColor = Color.GREEN, role = TextRole.Body) // U+2B06 UPWARDS BLACK ARROW
+        else "⬇".toLabel(fontColor = Color.RED, role = TextRole.Body) // U+2B07 DOWNWARDS BLACK ARROW
+        if (BattlefieldHud.enabled) upOrDownLabel.setFontSize(BattlefieldHud.font(TextRole.CompactData))
 
         add(upOrDownLabel)
-        val modifierLabel = "$percentage $description".toLabel(fontSize = 14).apply { wrap = true }
+        val modifierLabel = "$percentage $description".toLabel(fontSize = UiTypography.size(TextRole.Supporting, legacySize = 14)).apply { wrap = true }
         add(modifierLabel).width(quarterScreen - upOrDownLabel.minWidth)
     }
 
@@ -284,10 +286,10 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         clear()
 
         val attackerNameWrapper = Table()
-        val attackerLabel = attacker.getCombatantName().toLabel(hideIcons = true)
+        val attackerLabel = attacker.getCombatantName().toLabel(hideIcons = true, role = TextRole.Body)
         if (BattlefieldHud.enabled) {
             attackerLabel.wrap = true
-            attackerLabel.setFontSize(BattlefieldHud.font(13f))
+            attackerLabel.setFontSize(BattlefieldHud.font(TextRole.Supporting))
         }
         attackerNameWrapper.add(getIcon(attacker)).padRight(5f)
         val attackerLabelCell = attackerNameWrapper.add(attackerLabel)
@@ -299,7 +301,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         val defenderLabel = Label(defender.getCombatantName().tr(hideIcons = true), skin)
         if (BattlefieldHud.enabled) {
             defenderLabel.wrap = true
-            defenderLabel.setFontSize(BattlefieldHud.font(13f))
+            defenderLabel.setFontSize(BattlefieldHud.font(TextRole.Supporting))
 
         }
         defenderNameWrapper.add(getIcon(defender)).padRight(5f)
@@ -344,7 +346,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
 
         // from Battle.addXp(), check for can't gain more XP from Barbarians
         if (attacker is MapUnitCombatantView && attacker.getUnitView().hasReachedMaxXPFromBarbarians() && defender.getCivInfo().isBarbarian()) {
-            add("Cannot gain more XP from Barbarians".toLabel(fontSize = 16).apply { wrap = true }).width(quarterScreen)
+            add("Cannot gain more XP from Barbarians".toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 16)).apply { wrap = true }).width(quarterScreen)
             row()
         }
 
@@ -357,7 +359,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
                 defender.hasUnique(UniqueType.Uncapturable) -> ""
                 else -> "Captured!"
             }
-            add(defeatedText.toLabel())
+            add(defeatedText.toLabel(TextRole.Body))
         } else {
             var maxDamageToDefender = attacker.calculateDamageToDefender(defender, tileToAttackFromView, 1f)
             var minDamageToDefender = attacker.calculateDamageToDefender(defender, tileToAttackFromView, 0f)
@@ -366,7 +368,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
             val minDamageToAttacker = attacker.calculateDamageToAttacker(defender, tileToAttackFromView, 0f)
 
             if (!defender.isCity() && attacker is MapUnitCombatantView && attacker.hasUnique(UniqueType.ExtraRangedAttack)) {
-                add("Will perform an extra ranged attack".toLabel(fontSize = 16).apply { wrap = true }).width(quarterScreen)
+                add("Will perform an extra ranged attack".toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 16)).apply { wrap = true }).width(quarterScreen)
                 row()
 
                 val (maxExtraDamageToDefender, minExtraDamageToDefender) = attacker.getExtraRangedAttackBonusDamage(defender, tileToAttackFromView)
@@ -391,14 +393,14 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
             val avgDamageToAttacker = avg(attackerHealth - minRemainingLifeAttacker, attackerHealth - maxRemainingLifeAttacker)
 
             if (minRemainingLifeAttacker == attackerHealth)
-                add(attackerHealth.toLabel())
+                add(attackerHealth.toLabel(TextRole.Body))
             else if (maxRemainingLifeAttacker == minRemainingLifeAttacker)
-                add("$attackerHealth → $maxRemainingLifeAttacker ($avgDamageToAttacker)".toLabel()) // U+2192 RIGHTWARDS ARROW
+                add("$attackerHealth → $maxRemainingLifeAttacker ($avgDamageToAttacker)".toLabel(TextRole.Body)) // U+2192 RIGHTWARDS ARROW
             else
-                add("$attackerHealth → $minRemainingLifeAttacker-$maxRemainingLifeAttacker (~$avgDamageToAttacker)".toLabel())
+                add("$attackerHealth → $minRemainingLifeAttacker-$maxRemainingLifeAttacker (~$avgDamageToAttacker)".toLabel(TextRole.Body))
 
-            if (minRemainingLifeDefender == maxRemainingLifeDefender) add("$defenderHealth → $maxRemainingLifeDefender ($avgDamageToDefender)".toLabel())
-            else add("$defenderHealth → $minRemainingLifeDefender-$maxRemainingLifeDefender (~$avgDamageToDefender)".toLabel())
+            if (minRemainingLifeDefender == maxRemainingLifeDefender) add("$defenderHealth → $maxRemainingLifeDefender ($avgDamageToDefender)".toLabel(TextRole.Body))
+            else add("$defenderHealth → $minRemainingLifeDefender-$maxRemainingLifeDefender (~$avgDamageToDefender)".toLabel(TextRole.Body))
         }
 
         row().pad(5f)
@@ -483,7 +485,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         clear()
 
         val attackerNameWrapper = Table()
-        val attackerLabel = attacker.getCombatantName().toLabel(hideIcons = true)
+        val attackerLabel = attacker.getCombatantName().toLabel(hideIcons = true, role = TextRole.Body)
         attackerNameWrapper.add(getIcon(attacker)).padRight(5f)
         attackerNameWrapper.add(attackerLabel)
         add(attackerNameWrapper)
@@ -496,7 +498,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         for (tileView in targetTileView.getVisibleTilesInDistance(blastRadius)) {
             val defender = tryGetDefenderAtTile(tileView, true) ?: continue
 
-            val defenderLabel = defender.getCombatantName().toLabel(hideIcons = true)
+            val defenderLabel = defender.getCombatantName().toLabel(hideIcons = true, role = TextRole.Body)
             defenderNameWrapper.add(getIcon(defender)).padRight(5f)
             defenderNameWrapper.add(defenderLabel).row()
         }
@@ -550,7 +552,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         clear()
 
         val attackerNameWrapper = Table()
-        val attackerLabel = attacker.getCombatantName().toLabel(hideIcons = true)
+        val attackerLabel = attacker.getCombatantName().toLabel(hideIcons = true, role = TextRole.Body)
         attackerNameWrapper.add(getIcon(attacker)).padRight(5f)
         attackerNameWrapper.add(attackerLabel)
         add(attackerNameWrapper)

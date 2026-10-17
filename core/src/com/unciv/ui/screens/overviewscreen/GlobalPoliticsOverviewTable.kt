@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
 import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.graphics.Color
@@ -78,7 +79,7 @@ class GlobalPoliticsOverviewTable(
         clear()
         fixedContent.clear()
         val diagram = OverviewUi.button(flat = true) { updateDiagram(); overviewScreen.resizePage(this) }.apply {
-            add(OverviewUi.plainLabel("Relations diagram", 14, OverviewUi.accent)).padRight(pt(8f))
+            add(OverviewUi.plainLabel("Relations diagram", TextRole.Supporting, OverviewUi.accent)).padRight(pt(8f))
             add(ImageGetter.getImage("OtherIcons/ArrowRight").apply { color = OverviewUi.accent }).size(pt(12f))
             pad(0f, pt(12f), 0f, pt(12f))
         }
@@ -105,7 +106,7 @@ class GlobalPoliticsOverviewTable(
         val relationsPanel = Table().apply {
             background = OverviewUi.rounded(OverviewUi.panel, 10f)
             val header = Table().apply {
-                add(OverviewUi.plainLabel("Relations", 15)).growX().left().padLeft(pt(16f))
+                add(OverviewUi.plainLabel("Relations", TextRole.Control)).growX().left().padLeft(pt(16f))
                 add(diagram).height(OverviewUi.touch)
             }
             add(header).growX().row()
@@ -125,9 +126,9 @@ class GlobalPoliticsOverviewTable(
 
     private fun getCivInfoTable(civ: Civilization): Table {
         val civInfoTable = Table(skin).apply { left(); defaults().left() }
-        civInfoTable.add(civ.civName.toLabel(fontSize = font(18), hideIcons = true)).row()
-        civInfoTable.add(civ.nation.leaderName.toLabel(fontColor = OverviewUi.muted, fontSize = font(13))).padTop(pt(5f)).row()
-        civInfoTable.add(civ.tech.era.name.toLabel(fontSize = font(14))).padTop(pt(10f)).row()
+        civInfoTable.add(civ.civName.toLabel(fontSize = font(TextRole.Body), hideIcons = true)).row()
+        civInfoTable.add(civ.nation.leaderName.toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting))).padTop(pt(5f)).row()
+        civInfoTable.add(civ.tech.era.name.toLabel(fontSize = font(TextRole.Supporting))).padTop(pt(10f)).row()
         return civInfoTable
     }
 
@@ -155,7 +156,7 @@ class GlobalPoliticsOverviewTable(
                     left()
                     // Portrait children keep their creation size when the table cell resizes.
                     add(wonder.getImage(pt(20f))).size(pt(20f)).padRight(pt(12f))
-                    add(wonder.name.toLabel(fontSize = font(14), hideIcons = true).apply { wrap = true })
+                    add(wonder.name.toLabel(fontSize = font(TextRole.Supporting), hideIcons = true).apply { wrap = true })
                         .growX().minWidth(0f).left()
                 }
                 if (wonder.location != null && wonder.location.isVisible(viewingPlayer.getCiv())) {
@@ -186,14 +187,14 @@ class GlobalPoliticsOverviewTable(
             return politicsTable
 
         if (civ.isDefeated()) {
-            politicsTable.add("{Defeated} ${Fonts.death}".toLabel())
+            politicsTable.add("{Defeated} ${Fonts.death}".toLabel(TextRole.Body))
             return politicsTable
         }
 
         // wars
         for (otherCiv in civ.getKnownCivs()) {
             if (civ.isAtWarWith(otherCiv)) {
-                val warText = ColorMarkupLabel("At war with [${getCivName(otherCiv)}]", Color.RED, fontSize = font(14))
+                val warText = ColorMarkupLabel("At war with [${getCivName(otherCiv)}]", Color.RED, fontSize = font(TextRole.Supporting))
                 politicsTable.add(warText.apply { wrap = true }).colspan(2).growX().minWidth(0f).row()
             }
         }
@@ -202,13 +203,13 @@ class GlobalPoliticsOverviewTable(
         // defensive pacts and declaration of friendships
         for (otherCiv in civ.getKnownCivs()) {
             if (civ.getDiplomacyManager(otherCiv)?.hasFlag(DiplomacyFlags.DefensivePact) == true) {
-                val friendText = ColorMarkupLabel("Defensive pact with [${getCivName(otherCiv)}]", Color.CYAN, fontSize = font(14))
-                val turnsLeftText = " (${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.DefensivePact)} ${Fonts.turn})".toLabel()
+                val friendText = ColorMarkupLabel("Defensive pact with [${getCivName(otherCiv)}]", Color.CYAN, fontSize = font(TextRole.Supporting))
+                val turnsLeftText = " (${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.DefensivePact)} ${Fonts.turn})".toLabel(TextRole.Body)
                 politicsTable.add(friendText.apply { wrap = true }).growX().minWidth(0f)
                 politicsTable.add(turnsLeftText).row()
             } else if (civ.getDiplomacyManager(otherCiv)?.hasFlag(DiplomacyFlags.DeclarationOfFriendship) == true) {
-                val friendText = ColorMarkupLabel("Friends with [${getCivName(otherCiv)}]", Color.GREEN, fontSize = font(14))
-                val turnsLeftText = " (${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.DeclarationOfFriendship)} ${Fonts.turn})".toLabel()
+                val friendText = ColorMarkupLabel("Friends with [${getCivName(otherCiv)}]", Color.GREEN, fontSize = font(TextRole.Supporting))
+                val turnsLeftText = " (${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.DeclarationOfFriendship)} ${Fonts.turn})".toLabel(TextRole.Body)
                 politicsTable.add(friendText.apply { wrap = true }).growX().minWidth(0f)
                 politicsTable.add(turnsLeftText).row()
             }
@@ -218,8 +219,8 @@ class GlobalPoliticsOverviewTable(
         // denounced civs
         for (otherCiv in civ.getKnownCivs()) {
             if (civ.getDiplomacyManager(otherCiv)?.hasFlag(DiplomacyFlags.Denunciation) == true) {
-                val denouncedText = ColorMarkupLabel("Denounced [${getCivName(otherCiv)}]", Color.RED, fontSize = font(14))
-                val turnsLeftText = "(${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.Denunciation)} ${Fonts.turn})".toLabel()
+                val denouncedText = ColorMarkupLabel("Denounced [${getCivName(otherCiv)}]", Color.RED, fontSize = font(TextRole.Supporting))
+                val turnsLeftText = "(${civ.getDiplomacyManager(otherCiv)?.getFlag(DiplomacyFlags.Denunciation)} ${Fonts.turn})".toLabel(TextRole.Body)
                 politicsTable.add(denouncedText.apply { wrap = true }).growX().minWidth(0f)
                 politicsTable.add(turnsLeftText).row()
             }
@@ -229,7 +230,7 @@ class GlobalPoliticsOverviewTable(
         //allied CS
         for (cityState in gameInfo.getAliveCityStates()) {
             if (cityState.getDiplomacyManager(civ)?.isRelationshipLevelEQ(RelationshipLevel.Ally) == true) {
-                val alliedText = ColorMarkupLabel("Allied with [${getCivName(cityState)}]", Color.CYAN, fontSize = font(14))
+                val alliedText = ColorMarkupLabel("Allied with [${getCivName(cityState)}]", Color.CYAN, fontSize = font(TextRole.Supporting))
                 politicsTable.add(alliedText.apply { wrap = true }).colspan(2).growX().minWidth(0f).row()
             }
         }
@@ -332,7 +333,7 @@ class GlobalPoliticsOverviewTable(
     private fun getCivMiniTable(civInfo: Civilization): Table {
         val table = Table()
         table.add(ImageGetter.getNationPortrait(civInfo.nation, 25f)).pad(5f)
-        table.add(civInfo.civName.toLabel(hideIcons = true)).left().padRight(10f)
+        table.add(civInfo.civName.toLabel(hideIcons = true, role = TextRole.Body)).left().padRight(10f)
         table.touchable = Touchable.enabled
         table.onClick {
             if (civInfo.isDefeated() || viewingPlayer.isSpectator() || civInfo == viewingPlayer.getCiv()) return@onClick
@@ -344,22 +345,22 @@ class GlobalPoliticsOverviewTable(
     }
 
     private fun Table.addTitleInfo(columns: Int) {
-        add("[$relevantCivsCount] Civilizations in the game".toLabel()).colspan(columns).row()
+        add("[$relevantCivsCount] Civilizations in the game".toLabel(TextRole.Body)).colspan(columns).row()
         if (!viewingPlayer.isSpectator()) {
-            add("Our Civilization:".toLabel()).colspan(columns).left().padLeft(10f).padTop(10f).row()
+            add("Our Civilization:".toLabel(TextRole.Body)).colspan(columns).left().padLeft(10f).padTop(10f).row()
             add(getCivMiniTable(viewingPlayer.getCiv())).left()
             val scoreText = if (viewingPlayer.getCiv().isDefeated()) Fonts.death.toString()
                 else viewingPlayer.getCiv().calculateTotalScore().toInt().tr()
-            add(scoreText.toLabel()).left().row()
+            add(scoreText.toLabel(TextRole.Body)).left().row()
         }
         val turnsTillNextDiplomaticVote = viewingPlayer.getCiv().getTurnsTillNextDiplomaticVote() ?: return
-        add("Turns until the next\ndiplomacy victory vote: [$turnsTillNextDiplomaticVote]".toLabel()).colspan(columns).row()
+        add("Turns until the next\ndiplomacy victory vote: [$turnsTillNextDiplomaticVote]".toLabel(TextRole.Body)).colspan(columns).row()
     }
 
     private fun Table.addCivsCategory(columns: Int, aliveOrDefeated: String, civs: List<Civilization>) {
         addSeparator()
         val count = civs.count()
-        add("Known and $aliveOrDefeated ([$count])".toLabel())
+        add("Known and $aliveOrDefeated ([$count])".toLabel(TextRole.Body))
             .pad(5f).colspan(columns).row()
         if (count == 0) return
         addSeparator()
@@ -382,7 +383,7 @@ class GlobalPoliticsOverviewTable(
             if (civ.isCityState) {
                 advanceCols(1)
             } else {
-                add(civ.calculateTotalScore().toInt().toLabel()).left()
+                add(civ.calculateTotalScore().toInt().toLabel(TextRole.Body)).left()
                 advanceCols(2)
             }
         }

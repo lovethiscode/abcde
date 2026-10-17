@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.mainmenu
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -7,7 +9,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
-import kotlin.math.roundToInt
 
 /** Point-sized controls for the approved grouped menu, without changing the shared skin. */
 internal class WorldScreenMenuStyle(private val unit: Float) {
@@ -19,7 +20,7 @@ internal class WorldScreenMenuStyle(private val unit: Float) {
     private val gold = ExpeditionBlueTheme.color(Color.GOLD, ExpeditionBlueTheme.gold)
     private val ink = ExpeditionBlueTheme.color(Color.BLACK, ExpeditionBlueTheme.primaryInk)
     fun px(value: Float) = value * unit
-    fun font(value: Int) = px(value.toFloat()).roundToInt().coerceAtLeast(1)
+    fun font(value: TextRole) = UiTypography.size(value)
 
     fun surface(color: Color, radius: Float = 8f): BaseDrawable {
         val dot = ImageGetter.getWhiteDotDrawable().tint(color)

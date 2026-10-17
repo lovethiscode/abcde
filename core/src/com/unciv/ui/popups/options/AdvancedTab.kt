@@ -1,5 +1,6 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
@@ -104,7 +105,7 @@ internal class AdvancedTab(
     }
 
     private fun Table.addAutosaveField() {
-        add("Number of autosave files stored".toLabel().apply { wrap = true }).minWidth(0f).left().growX()
+        add("Number of autosave files stored".toLabel(TextRole.Body).apply { wrap = true }).minWidth(0f).left().growX()
 
         val autoSaveTurnsTextField = UncivTextField("", settings.maxAutosavesStored.toString())
         autoSaveTurnsTextField.maxLength = 8
@@ -373,7 +374,7 @@ internal class AdvancedTab(
     }
 
     private fun Table.addSetUserId() {
-        val idSetLabel = "".toLabel()
+        val idSetLabel = "".toLabel(TextRole.Body)
         val takeUserIdFromClipboardButton = "Take user ID from clipboard".toTextButton().onClick {
             val clipboardContents = Gdx.app.clipboard.contents?.trim()
             if (clipboardContents != null && clipboardContents.isUUID()) {

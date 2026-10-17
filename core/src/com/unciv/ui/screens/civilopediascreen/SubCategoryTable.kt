@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.civilopediascreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.Constants
@@ -24,7 +26,7 @@ internal class SubCategoryTable(subCategory: String) : Table() {
     private fun addLine() = add(getImage()).minWidth(lineToTextPad).height(lineThickness).growX()
 
     init {
-        val label = subCategory.toLabel(fontSize = Constants.headingFontSize)
+        val label = subCategory.toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize))
         addLine()
         add(label).pad(topPad, lineToTextPad, 0f, lineToTextPad)
         addLine()

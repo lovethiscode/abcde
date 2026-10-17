@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.civilopediascreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.Colors
@@ -280,12 +282,16 @@ data class FormattedLine (
      * @param labelWidth Total width to render into, needed to support wrap on Labels.
      * @param iconDisplay Flag to omit link or all images.
      */
-    fun render(labelWidth: Float, iconDisplay: IconDisplay = IconDisplay.All, fitToWidth: Boolean = false): Actor {
+    fun render(labelWidth: Float, iconDisplay: IconDisplay = IconDisplay.All, fitToWidth: Boolean = false, useUiTypography: Boolean = false,
+               unit: Float = UiTypography.unitsPerPoint()): Actor {
         if (extraImage.isNotEmpty()) return renderExtraImage(labelWidth, fitToWidth)
 
+        // Explicit mod size/header values retain their original coordinate contract.
         val fontSize = when {
+            useUiTypography && header in 1 until headerSizes.size -> UiTypography.size(
+                if (header <= 2) TextRole.PageTitle else TextRole.SectionTitle, unit, headerSizes[header])
             header in 1 until headerSizes.size -> headerSizes[header]
-            size == Int.MIN_VALUE -> Constants.defaultFontSize
+            size == Int.MIN_VALUE -> UiTypography.size(TextRole.Body, unit)
             else -> size
         }
         val labelColor = if (starred) defaultColor else displayColor
@@ -319,6 +325,11 @@ data class FormattedLine (
                 ColorMarkupLabel(textToDisplay, fontSize, hideIcons = iconCount != 0)
             else
                 textToDisplay.toLabel(labelColor, fontSize, hideIcons = iconCount != 0)
+            if (useUiTypography && header == 0 && size == Int.MIN_VALUE) {
+                label.style = com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle(label.style).apply {
+                    font = com.unciv.ui.components.fonts.Fonts.getReadingFont()
+                }
+            }
             label.wrap = (!centered || fitToWidth) && labelWidth > 0f
             label.setAlignment(align)
             if (labelWidth == 0f)

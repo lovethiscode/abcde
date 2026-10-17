@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -35,7 +37,7 @@ internal object UnitSupplyTable {
         }
         return ExpanderTab(
             title = "Unit Supply",
-            fontSize = Constants.defaultFontSize,
+            fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = Constants.defaultFontSize),
             icon = icon,
             startsOutOpened = deficit > 0,
             defaultPad = 0f,
@@ -60,7 +62,7 @@ internal object UnitSupplyTable {
             it.addLabeledValue("Production Penalty", "${stats.getUnitSupplyProductionPenalty().toInt()}%")
             if (deficit > 0) {
                 val penaltyLabel = "Increase your supply or reduce the amount of units to remove the production penalty"
-                    .toLabel(Color.FIREBRICK)
+                    .toLabel(fontColor = Color.FIREBRICK, role = TextRole.Body)
                 penaltyLabel.wrap = true
                 it.add(penaltyLabel).colspan(2).left()
                     .width(supplyTableWidth).row()
@@ -70,11 +72,11 @@ internal object UnitSupplyTable {
 
     // Here overloads are simpler than a generic:
     private fun Table.addLabeledValue (label: String, value: Int) {
-        add(label.toLabel()).left()
-        add(value.toLabel()).right().row()
+        add(label.toLabel(TextRole.Body)).left()
+        add(value.toLabel(TextRole.Body)).right().row()
     }
     private fun Table.addLabeledValue (label: String, value: String) {
-        add(label.toLabel()).left()
-        add(value.toLabel()).right().row()
+        add(label.toLabel(TextRole.Body)).left()
+        add(value.toLabel(TextRole.Body)).right().row()
     }
 }

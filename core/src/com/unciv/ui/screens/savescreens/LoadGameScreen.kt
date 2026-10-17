@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.savescreens
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
@@ -25,7 +26,6 @@ import com.unciv.models.ruleset.RulesetCache
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
 import com.unciv.ui.components.extensions.UncivDateFormat.formatDate
-import com.unciv.ui.components.extensions.allChildren
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.KeyCharAndCode
@@ -77,14 +77,14 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
     private val managementActions = Table()
     private val listContent = Table()
     private val savesList = LoadGameSaveList(ui)
-    private val countLabel = ui.label("Local saves", 14)
+    private val countLabel = ui.label("Local saves", TextRole.Supporting)
     private val showAutosavesCheckbox = CheckBox("Show autosaves".tr(), skin)
-    private val errorLabel = ui.label("", 13, ui.danger, true)
-    private val cloudStatusLabel = ui.label("", 14, ui.muted, true)
-    private val cloudButton = ui.button("iCloud", SaveIcon.Cloud, size = 13)
+    private val errorLabel = ui.label("", TextRole.Supporting, ui.danger, true)
+    private val cloudStatusLabel = ui.label("", TextRole.Supporting, ui.muted, true)
+    private val cloudButton = ui.button("iCloud", SaveIcon.Cloud, size = TextRole.Control)
     private val importSaveButton = ui.button("Import save", SaveIcon.Import, outline = true)
     private val copySavedGameToClipboardButton = getCopyExistingSaveToClipboardButton()
-    private val deleteSaveButton = ui.button("Delete", SaveIcon.Delete, ghost = true, size = 13)
+    private val deleteSaveButton = ui.button("Delete", SaveIcon.Delete, ghost = true, size = TextRole.Control)
     private val cloudSaveSync = game.files.cloudSaveSync
     private var lastCloudChangeRevision = cloudSaveSync.status.localChangeRevision
     private val cloudStatusListener: (CloudSaveStatus) -> Unit = { status ->
@@ -138,22 +138,22 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         cloudButton.add(SaveIcon.Down.image(ui.muted)).size(ui.px(14f)).padLeft(ui.px(8f))
         updateCloudStatus(cloudSaveSync.status)
         rightSideButton.name = "load-read"; rightSideButton.setText(loadThisSave.tr())
-        ui.decorate(rightSideButton, SaveIcon.Play, primary = true, size = 16)
+        ui.decorate(rightSideButton, SaveIcon.Play, primary = true, size = TextRole.Control)
         rightSideButton.setText(loadThisSave.tr()); rightSideButton.setLoadEnabled(false)
         rightSideButton.onActivation { onLoadGame(selectedSave) }
         rightSideButton.keyShortcuts.add(KeyCharAndCode.RETURN)
         copySavedGameToClipboardButton.name = "load-copy"
         copySavedGameToClipboardButton.setText("Copy save".tr())
-        ui.decorate(copySavedGameToClipboardButton, SaveIcon.Copy, ghost = true, size = 13)
+        ui.decorate(copySavedGameToClipboardButton, SaveIcon.Copy, ghost = true, size = TextRole.Control)
         copySavedGameToClipboardButton.addTooltip(copyExistingSaveToClipboard)
         deleteSaveButton.name = "load-delete"
-        ui.decorate(deleteSaveButton, SaveIcon.Delete, ghost = true, size = 13, tint = ui.danger)
+        ui.decorate(deleteSaveButton, SaveIcon.Delete, ghost = true, size = TextRole.Control, tint = ui.danger)
         deleteSaveButton.onActivation { deleteSelectedSave() }
         deleteSaveButton.keyShortcuts.add(KeyCharAndCode.DEL)
         deleteSaveButton.setLoadEnabled(false); copySavedGameToClipboardButton.setLoadEnabled(false)
         showAutosavesCheckbox.name = "load-autosaves"
         showAutosavesCheckbox.style = ui.checkboxStyle()
-        showAutosavesCheckbox.label.setFontSize(ui.font(13)); showAutosavesCheckbox.label.color = ui.muted
+        showAutosavesCheckbox.label.setFontSize(ui.font(TextRole.Control)); showAutosavesCheckbox.label.color = ui.muted
         showAutosavesCheckbox.imageCell.size(ui.px(18f)).padRight(ui.px(8f))
         showAutosavesCheckbox.labelCell.minWidth(0f)
         showAutosavesCheckbox.isChecked = game.settings.showAutosaves
@@ -162,7 +162,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             refreshSaves()
         }
         showAutosavesCheckbox.keyShortcuts.add(KeyCharAndCode.ctrl('a')) { showAutosavesCheckbox.toggle() }
-        descriptionLabel.setFontSize(ui.font(14)); descriptionLabel.wrap = true; descriptionLabel.color = ui.muted
+        descriptionLabel.setFontSize(ui.font(TextRole.Supporting)); descriptionLabel.wrap = true; descriptionLabel.color = ui.muted
         descriptionLabel.setText(""); errorLabel.isVisible = false
         savesList.name = "load-save-list"
         savesList.onSelected = ::selectSave
@@ -184,8 +184,8 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
 
     private fun initLayout() {
         val heading = Table().apply {
-            add(ui.label("Load game", if (wide) 30 else 26)).growX().minWidth(0f).left().row()
-            add(ui.label("Choose a save and continue your civilization", 13, ui.muted).apply { setEllipsis(true) })
+            add(ui.label("Load game", TextRole.PageTitle)).growX().minWidth(0f).left().row()
+            add(ui.label("Choose a save and continue your civilization", TextRole.Supporting, ui.muted).apply { setEllipsis(true) })
                 .growX().minWidth(0f).left().padTop(ui.px(3f))
         }
         val actions = Table().apply {
@@ -336,8 +336,8 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         if (file == null) {
             val blank = Table().apply {
                 add(SaveIcon.File.image(ui.muted)).size(ui.px(30f)).padBottom(ui.px(12f)).row()
-                add(ui.label("View save details", 17)).padBottom(ui.px(8f)).row()
-                add(ui.label("Select a save from the list", 14, ui.muted, true)).growX().minWidth(0f)
+                add(ui.label("View save details", TextRole.Body)).padBottom(ui.px(8f)).row()
+                add(ui.label("Select a save from the list", TextRole.Supporting, ui.muted, true)).growX().minWidth(0f)
             }
             detailContent.add(blank).grow().minWidth(0f).row()
             detailContent.add(statusHolder).growX().minWidth(0f)
@@ -348,26 +348,26 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             val icon = Table().apply { background = ui.surface(ui.raised); add(SaveIcon.Flag.image(ui.gold)).size(ui.px(25f)) }
             add(icon).size(ui.px(44f)).padRight(ui.px(12f)).top()
             val text = Table().apply {
-                add(ui.label(if (info == null) file.name() else civilizationAndTurn(info), if (wide) 28 else 23, wrap = true).apply {
+                add(ui.label(if (info == null) file.name() else civilizationAndTurn(info), TextRole.PageTitle, wrap = true).apply {
                     if (info == null) setText(file.name())
                 }).width((detailInnerWidth()-ui.px(56f)).coerceAtLeast(ui.px(80f))).left().row()
-                if (info != null) add(ui.label("", 13, ui.muted, true).apply { setText(file.name()) }).growX().minWidth(0f).padTop(ui.px(3f))
+                if (info != null) add(ui.label("", TextRole.Supporting, ui.muted, true).apply { setText(file.name()) }).growX().minWidth(0f).padTop(ui.px(3f))
             }
             add(text).growX().minWidth(0f)
         }
         detailContent.add(title).growX().minWidth(0f).left().padBottom(ui.px(if (wide) 24f else 12f)).row()
         if (info == null) {
-            detailContent.add(ui.label(if (selectedPreview?.error != null) "Could not load game!" else "Loading...", 14,
+            detailContent.add(ui.label(if (selectedPreview?.error != null) "Could not load game!" else "Loading...", TextRole.Supporting,
                 if (selectedPreview?.error != null) ui.danger else ui.muted, true)).growX().minWidth(0f).left().row()
-            if (selectedPreview?.error != null) detailContent.add(ui.label("Copy the save or import another file to recover.", 14, ui.muted, true))
+            if (selectedPreview?.error != null) detailContent.add(ui.label("Copy the save or import another file to recover.", TextRole.Supporting, ui.muted, true))
                 .growX().minWidth(0f).left().padTop(ui.px(12f)).row()
         } else {
             val grid = Table().apply { defaults().growX().minWidth(0f).top() }
             val singleColumn = detailInnerWidth() / ui.unit / game.settings.fontSizeMultiplier < 260f
             val fieldWidth = if (singleColumn) detailInnerWidth() else (detailInnerWidth()-ui.px(16f))/2
             fun field(label: String, value: String, width: Float = fieldWidth): Table = Table().apply {
-                add(ui.label(label, if (wide) 14 else 12, ui.muted, true)).width(width).left().row()
-                add(ui.label("", if (wide) 17 else 14, wrap = true).apply { setText(value) })
+                add(ui.label(label, TextRole.Supporting, ui.muted, true)).width(width).left().row()
+                add(ui.label("", if (wide) TextRole.Body else TextRole.Supporting, wrap = true).apply { setText(value) })
                     .width(width).left().padTop(ui.px(1f))
             }
             val fields = listOf(
@@ -384,7 +384,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             }
             grid.add(field("Base ruleset", info.ruleset, detailInnerWidth())).colspan(if (singleColumn) 1 else 2)
                 .padTop(ui.px(if (wide) 20f else 8f)).row()
-            if (info.online) grid.add(ui.label("Online Multiplayer", 13, ui.muted, true))
+            if (info.online) grid.add(ui.label("Online Multiplayer", TextRole.Supporting, ui.muted, true))
                 .colspan(if (singleColumn) 1 else 2).padTop(ui.px(8f)).growX().row()
             detailContent.add(grid).growX().minWidth(0f).left().row()
         }
@@ -397,8 +397,8 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         name = "load-empty"
         val symbol = Table().apply { background = ui.surface(ui.panel, 16f); add(SaveIcon.Archive.image(ui.muted)).size(ui.px(28f)) }
         add(symbol).size(ui.px(56f)).padBottom(ui.px(16f)).row()
-        add(ui.label(if (filtered) "No manual saves" else "No saves yet", 22, wrap = true)).growX().minWidth(0f).padBottom(ui.px(12f)).row()
-        add(ui.label(if (filtered) "Show autosaves or import a save." else "Import a save file or restore from iCloud.", 14, ui.muted, true)).growX().minWidth(0f).padBottom(ui.px(16f)).row()
+        add(ui.label(if (filtered) "No manual saves" else "No saves yet", TextRole.SectionTitle, wrap = true)).growX().minWidth(0f).padBottom(ui.px(12f)).row()
+        add(ui.label(if (filtered) "Show autosaves or import a save." else "Import a save file or restore from iCloud.", TextRole.Supporting, ui.muted, true)).growX().minWidth(0f).padBottom(ui.px(16f)).row()
         val actions = Table().apply {
             add(ui.button(if (filtered) "Show autosaves" else "Import save", if (filtered) SaveIcon.Clock else SaveIcon.Import, primary = true).apply {
                 name = "load-empty-import"; onActivation { if (filtered) showAutosavesCheckbox.isChecked = true else ImportSaveMenu(this) }
@@ -483,7 +483,6 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         ConfirmPopup(this, question, confirmText) {
             cloudSaveSync.requestSync(trigger)
         }.apply {
-            allChildren().filterIsInstance<Label>().forEach { it.setFontSize(ui.font(16)) }
         }.open()
     }
 
@@ -491,10 +490,10 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         override fun createContentTable() = super.createContentTable()!!.apply {
             add(getButton(loadFromClipboardMenu, KeyboardBinding.None) {
                 Concurrency.runOnGLThread { loadFromClipboard() }
-            }.apply { label.setFontSize(ui.font(14)) }).row()
+            }.apply { label.setFontSize(ui.font(TextRole.Control)) }).row()
             add(getButton(importFromFile, KeyboardBinding.None) {
                 Concurrency.runOnGLThread { loadFromCustomLocation() }
-            }.apply { label.setFontSize(ui.font(14)) }).row()
+            }.apply { label.setFontSize(ui.font(TextRole.Control)) }).row()
         }
     }
 

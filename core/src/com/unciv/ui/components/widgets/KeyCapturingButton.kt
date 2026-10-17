@@ -1,5 +1,7 @@
 package com.unciv.ui.components.widgets
 
+import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.extensions.setTextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
@@ -30,6 +32,7 @@ class KeyCapturingButton(
     initialStyle: KeyCapturingButtonStyle = KeyCapturingButtonStyle(),
     private val onKeyHit: ((key: KeyCharAndCode) -> Unit)? = null
 ) : ImageTextButton("", initialStyle) {
+    init { label.setTextRole(TextRole.Control) }
 
     /** A subclass of [ImageTextButtonStyle][ImageTextButton.ImageTextButtonStyle] that allows setting
      *  the image parts (imageUp and imageOver only as hovering is the only interaction) via ImageGetter.

@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
@@ -143,7 +145,7 @@ class PlayerPickerTable(
         }
 
         if (!locked && gameParameters.players.size < newRulesetPlayableCivs) {
-            val addPlayerButton = "+".toLabel(ImageGetter.CHARCOAL, 30)
+            val addPlayerButton = "+".toLabel(ImageGetter.CHARCOAL, UiTypography.size(TextRole.PageTitle, legacySize = 30))
                 .apply { this.setAlignment(Align.center) }
                 .surroundWithCircle(50f)
                 .onClick {
@@ -190,7 +192,7 @@ class PlayerPickerTable(
         val portraitSize = if (directSetup) 40f else 32f
         fun portrait() = previousScreen.ruleset.nations[player.chosenCiv]?.let { ImageGetter.getNationPortrait(it, portraitSize) }
             ?: ImageGetter.getRandomNationPortrait(portraitSize)
-        return object : IconTextButton(player.chosenCiv, portrait(), fontSize = 22) {
+        return object : IconTextButton(player.chosenCiv, portrait(), fontSize = 22, labelFontSize = UiTypography.size(TextRole.Control)) {
             private var displayedCiv = player.chosenCiv
 
             override fun act(delta: Float) {
@@ -207,7 +209,7 @@ class PlayerPickerTable(
             iconCell.size(portraitSize).padRight(10f)
             label.wrap = true
             labelCell.minWidth(0f).growX().left().padTop(0f)
-            if (!directSetup) add("›".toLabel(Color.LIGHT_GRAY, 22)).padLeft(8f)
+            if (!directSetup) add("›".toLabel(Color.LIGHT_GRAY, UiTypography.size(TextRole.SectionTitle, legacySize = 22))).padLeft(8f)
             onClick {
                 popupNationPicker(player, noRandom || gameParameters.randomNumberOfPlayers && player.playerType == AI)
             }
@@ -226,13 +228,13 @@ class PlayerPickerTable(
                 background = SinglePlayerSetup.surface(ExpeditionBlueTheme.raised,
                     if (index == 0) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.border)
                 pad(4f, 8f, 4f, 8f)
-                add((if (index == 0) "You".tr() else "${"AI".tr()} $index").toLabel(fontSize = 16))
+                add((if (index == 0) "You".tr() else "${"AI".tr()} $index").toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 16)))
                     .width(48f).left().padRight(4f)
                 add(selector).minWidth(0f).growX().minHeight(44f)
                 if (gameParameters.isOnlineMultiplayer) {
                     add(Table().apply {
                         background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background)
-                        add((if (index == 0) "Human player" else "AI").toLabel(fontSize = 16)).pad(6f)
+                        add((if (index == 0) "Human player" else "AI").toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 16))).pad(6f)
                     }).width(62f).center()
                 }
                 if (index > 0) add("×".toTextButton().apply {
@@ -247,7 +249,7 @@ class PlayerPickerTable(
         val maximum = previousScreen.ruleset.nations.values.count {
             it.isMajorCiv && !it.hasUnique(UniqueType.WillNotBeChosenForNewGames)
         }
-        playerListTable.add(IconTextButton("Add civilization", ImageGetter.getImage("OtherIcons/New"), fontSize = 18).apply {
+        playerListTable.add(IconTextButton("Add civilization", ImageGetter.getImage("OtherIcons/New"), fontSize = 18, labelFontSize = UiTypography.size(TextRole.Control)).apply {
             pad(6f)
             name = "setup-add"
             isDisabled = locked || gameParameters.players.size >= maximum
@@ -257,7 +259,7 @@ class PlayerPickerTable(
                 update()
             }
         }).width(width).minHeight(44f).padTop(4f).padBottom(8f).row()
-        playerListTable.add(IconTextButton("Random civilizations", ImageGetter.getImage("OtherIcons/NationSwap"), fontSize = 18).apply {
+        playerListTable.add(IconTextButton("Random civilizations", ImageGetter.getImage("OtherIcons/NationSwap"), fontSize = 18, labelFontSize = UiTypography.size(TextRole.Control)).apply {
             pad(6f)
             name = "setup-random"
             isDisabled = locked || noRandom || gameParameters.randomNumberOfPlayers
@@ -337,11 +339,11 @@ class PlayerPickerTable(
                 host -> "Host · You"
                 else -> "Waiting for player"
             }
-            playerTable.add(seatLabel.toLabel(if (host) Color.GOLD else Color.LIGHT_GRAY,18)).colspan(3).left().padBottom(6f).row()
+            playerTable.add(seatLabel.toLabel(if (host) Color.GOLD else Color.LIGHT_GRAY, UiTypography.size(TextRole.Body, legacySize = 18))).colspan(3).left().padBottom(6f).row()
         }
         val nationTable = if (invitedHuman) Table().apply {
             add(ImageGetter.getRandomNationPortrait(40f)).size(40f).pad(5f)
-            add("Invite after creating".toLabel(fontSize = 18).apply { setWrap(true) }).growX()
+            add("Invite after creating".toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18)).apply { setWrap(true) }).growX()
         } else getNationTable(player)
         if (singlePlayer) nationTable.left()
         playerTable.add(nationTable).left().growX()
@@ -351,9 +353,9 @@ class PlayerPickerTable(
         if (canChoosePlayerType)
             playerTable.add(playerTypeTextButton).width(100f).pad(5f).right()
         else if (self && singlePlayer)
-            playerTable.add("You".toLabel(Color.GOLD)).width(100f).pad(5f).right()
+            playerTable.add("You".toLabel(fontColor = Color.GOLD, role = TextRole.Body)).width(100f).pad(5f).right()
         else if (!self)
-            playerTable.add("AI".toLabel()).width(100f).pad(5f).right()
+            playerTable.add("AI".toLabel(TextRole.Body)).width(100f).pad(5f).right()
         fun updatePlayerTypeButtonEnabled() {
             // This could be written much shorter with logical operators - I think this is readable
             playerTypeTextButton.isEnabled = when {
@@ -383,7 +385,7 @@ class PlayerPickerTable(
         }
 
         if (!locked && !self) {
-            playerTable.add("-".toLabel(ImageGetter.CHARCOAL, 30, Align.center)
+            playerTable.add("-".toLabel(ImageGetter.CHARCOAL, UiTypography.size(TextRole.PageTitle, legacySize = 30), Align.center)
                 .surroundWithCircle(40f)
                 .onClick {
                     gameParameters.players.remove(player)
@@ -405,7 +407,7 @@ class PlayerPickerTable(
 
         val playerIdTextField = UncivTextField("Please input Player ID!", player.playerId)
         add(playerIdTextField).colspan(2).fillX().pad(5f)
-        val errorLabel = "✘".toLabel(Color.RED)
+        val errorLabel = "✘".toLabel(fontColor = Color.RED, role = TextRole.Body)
         add(errorLabel).pad(5f).row()
 
         fun onPlayerIdTextUpdated() {
@@ -464,7 +466,7 @@ class PlayerPickerTable(
                 ImageGetter.getRandomNationPortrait(40f)
             else ImageGetter.getNationPortrait(nationImageName, 40f)
         nationTable.add(nationImage).pad(5f)
-        nationTable.add(player.chosenCiv.toLabel(hideIcons = true)).pad(5f)
+        nationTable.add(player.chosenCiv.toLabel(hideIcons = true, role = TextRole.Body)).pad(5f)
         nationTable.touchable = Touchable.enabled
         return nationTable
     }

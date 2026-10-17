@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.screens.overviewscreen.OverviewUi as U
 import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
 import com.badlogic.gdx.scenes.scene2d.ui.Container
@@ -31,7 +32,7 @@ class VictoryScreenReplay internal constructor(
     private var replayTimer : Timer.Task? = null
     private val header = Table()
 
-    private val yearLabel = if (state == null) "".toLabel() else U.plainLabel("", 13, U.muted)
+    private val yearLabel = if (state == null) "".toLabel(TextRole.Body) else U.plainLabel("", TextRole.Supporting, U.muted)
     private val slider: UncivSlider
     private val replayMap: ReplayMap
     private val playImage = ImageGetter.getImage("OtherIcons/ForwardArrow")
@@ -89,10 +90,10 @@ class VictoryScreenReplay internal constructor(
             add(map).grow().minWidth(0f).minHeight(0f).row()
             val controls = Table().apply {
                 val reset = U.button(flat = true) { resetTimer(); updateReplayTable(firstTurn) }.apply {
-                    add(U.plainLabel("Reset", 13, U.accent)); name = "victory-replay-reset"
+                    add(U.plainLabel("Reset", TextRole.Supporting, U.accent)); name = "victory-replay-reset"
                 }
                 val step = U.button(flat = true) { resetTimer(); updateReplayTable((slider.value.toInt() + 1).coerceAtMost(finalTurn)) }.apply {
-                    add(U.plainLabel("+1", 14)); name = "victory-replay-step"
+                    add(U.plainLabel("+1", TextRole.Supporting)); name = "victory-replay-step"
                 }
                 val play = U.button { togglePause() }.apply {
                     add(playPauseButton).size(pt(24f)); name = "victory-replay-play"

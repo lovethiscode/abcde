@@ -1,5 +1,6 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.GUI
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.toLabel
@@ -76,7 +77,7 @@ internal class KeyBindingsTab(
     ) {
         it.defaults().padTop(5f)
         for ((binding, widget) in bindings) {
-            it.add(binding.label.toLabel()).padRight(10f).minWidth(labelWidth / 2)
+            it.add(binding.label.toLabel(TextRole.Body)).padRight(10f).minWidth(labelWidth / 2)
             it.add(widget).row()
             widget.current = keyBindings[binding]
         }

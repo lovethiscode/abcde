@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.unit.presenter
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.utils.Align
 import com.unciv.logic.map.HexCoord
 import com.unciv.models.ruleset.unique.UniqueType
@@ -98,7 +100,7 @@ class UnitPresenter(private val unitTable: UnitTable, private val worldScreen: W
             }
 
             if (!unit.isCivilian()) {
-                descriptionTable.add("XP".toLabel().apply {
+                descriptionTable.add("XP".toLabel(TextRole.Body).apply {
                     onClick {
                         if (selectedUnit == null) return@onClick
                         worldScreen.game.pushScreen{ PromotionPickerScreen(unit) }
@@ -138,7 +140,7 @@ class UnitPresenter(private val unitTable: UnitTable, private val worldScreen: W
                 if (status.uniques.any { it.type == UniqueType.NotShownOnWorldScreen }) continue
 
                 val group = ImageGetter.getPromotionPortrait(status.name)
-                val turnsLeft = "${status.turnsLeft}${Fonts.turn}".toLabel(fontSize = 8)
+                val turnsLeft = "${status.turnsLeft}${Fonts.turn}".toLabel(fontSize = UiTypography.size(TextRole.CompactData, legacySize = 8))
                     .surroundWithCircle(15f, color = ImageGetter.CHARCOAL)
                 group.addActor(turnsLeft)
                 turnsLeft.setPosition(group.width, 0f, Align.bottomRight)

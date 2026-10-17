@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.utils.Align
@@ -19,7 +20,7 @@ internal class PromotionButton(
     defaultBgShape = BaseScreen.skinStrings.roundedEdgeRectangleMidShape,
     defaultBgBorder = BaseScreen.skinStrings.roundedEdgeRectangleMidBorderShape
 ) {
-    private val label = node.promotion.name.toLabel(hideIcons = true)
+    private val label = node.promotion.name.toLabel(hideIcons = true, role = TextRole.Control)
     private val defaultLabelStyle = label.style
     private val colors = BaseScreen.skin[PromotionScreenColors::class.java]
 

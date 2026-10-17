@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -78,24 +80,24 @@ object GameSetupOverview {
     }
 
     fun field(title: String, control: Actor, width: Float) = Table().apply {
-        add(title.toLabel(muted, 16).apply { setWrap(true) }).width(width).left().padBottom(8f).row()
+        add(title.toLabel(muted, UiTypography.size(TextRole.Control, legacySize = 16)).apply { setWrap(true) }).width(width).left().padBottom(8f).row()
         add(control).width(width).minHeight(UiNavigation.minimumTouchSize()).fillX()
     }
 
     fun heading(title: String, subtitle: String) = Table().apply {
-        add(title.toLabel(accent, 28).apply { setWrap(true) }).minWidth(0f).growX().left().row()
-        add(subtitle.toLabel(muted, 18).apply { setWrap(true) }).minWidth(0f).growX().left().padTop(6f)
+        add(title.toLabel(accent, UiTypography.size(TextRole.PageTitle, legacySize = 28)).apply { setWrap(true) }).minWidth(0f).growX().left().row()
+        add(subtitle.toLabel(muted, UiTypography.size(TextRole.Body, legacySize = 18)).apply { setWrap(true) }).minWidth(0f).growX().left().padTop(6f)
     }
 
     fun summaryRow(title: String, value: String, compact: Boolean = false, action: (() -> Unit)? = null) = Table().apply {
         val labels = Table().apply {
             add(title.toLabel(muted, if (compact) 14 else 16).apply { setWrap(true) }).minWidth(0f).growX().left().row()
-            add(value.toLabel(fontSize = if (compact) 18 else 20, hideIcons = true).apply { setWrap(true) })
+            add(value.toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = if (compact) 18 else 20), hideIcons = true).apply { setWrap(true) })
                 .minWidth(0f).growX().left().padTop(4f)
         }
         add(labels).minWidth(0f).growX().left()
         if (action != null) {
-            add("›".toLabel(accent, 26)).padLeft(12f)
+            add("›".toLabel(accent, UiTypography.size(TextRole.PageTitle, legacySize = 26))).padLeft(12f)
             onClick { action() }
         }
         pad(if (compact) 6f else 10f, 0f, if (compact) 6f else 10f, 0f)

@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.extensions.setFontSize
@@ -167,7 +169,7 @@ class WorldScreen(
     private var endlessPrompt = ""
     private val endlessButton = "Endless survival".toTextButton().apply {
         name = "ui-endless-status"
-        label.setFontSize(15)
+        label.setFontSize(UiTypography.size(TextRole.Control, legacySize = 15))
         label.wrap = true
         onActivation { com.unciv.ui.screens.endless.EndlessPopup(this@WorldScreen) }
     }

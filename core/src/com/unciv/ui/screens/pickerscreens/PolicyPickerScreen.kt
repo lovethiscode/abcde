@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -314,7 +316,7 @@ class PolicyPickerScreen(
             text += "{On adoption}:" + "\n\n" + onAdoption + "\n\n" +
                 "{On completion}:" + "\n\n" + onCompletion
 
-            val label = text.toLabel(fontSize = 13)
+            val label = text.toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 13))
             label.setFillParent(false)
             label.setAlignment(Align.topLeft)
             label.wrap = true
@@ -326,7 +328,7 @@ class PolicyPickerScreen(
                     for (conditional in unique.modifiers) {
                         warning += "• " + conditional.text.tr() + "\n"
                     }
-                val warningLabel = ColorMarkupLabel(warning, Color.RED, fontSize = 13)
+                val warningLabel = ColorMarkupLabel(warning, Color.RED, fontSize = UiTypography.size(TextRole.Body, legacySize = 13))
                 warningLabel.setAlignment(Align.topLeft)
                 warningLabel.wrap = true
                 labelTable.add(warningLabel).pad(0f, 20f, 17f, 20f).grow()
@@ -552,7 +554,7 @@ class PolicyPickerScreen(
         val expandIcon = ImageGetter.getImage("OtherIcons/BackArrow").apply { rotation = 90f }.toGroup(10f)
         table.add(expandIcon).minWidth(15f).expandX().left()
         table.add(
-            branch.name.tr(hideIcons = true).uppercase().toLabel(fontSize = 14, alignment = Align.center)
+            branch.name.tr(hideIcons = true).uppercase().toLabel(fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = 14), alignment = Align.center)
         ).center()
         table.add(icon).expandX().left().padLeft(5f)
 
@@ -592,7 +594,7 @@ class PolicyPickerScreen(
             text = "Adopt"
         }
 
-        val label = text.toLabel(fontSize = 14)
+        val label = text.toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 14))
         label.setAlignment(Align.center)
 
         label.color = when {

@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.mainmenuscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Button
@@ -28,7 +30,6 @@ import com.unciv.ui.screens.savescreens.LoadGameScreen
 import com.unciv.utils.Concurrency
 import com.unciv.utils.ONLINE_MULTIPLAYER_UNAVAILABLE
 import com.unciv.utils.launchOnGLThread
-import kotlin.math.roundToInt
 
 /** Selected A layout. All game creation, loading and tools retain their existing implementations. */
 internal class CampaignHomeMenu(
@@ -48,8 +49,8 @@ internal class CampaignHomeMenu(
     private val minimal get() = density > 1
     private val artwork = HomeMenuArtwork()
     private fun px(value: Float) = value * unit
-    private fun label(text: String, size: Int, color: Color = ink) =
-        text.toLabel(color, (size * unit).roundToInt()).apply { wrap = true }
+    private fun label(text: String, size: TextRole, color: Color = ink) =
+        text.toLabel(color, if (size == TextRole.Display) UiTypography.displaySize(compact, unit = unit) else UiTypography.size(size, unit)).apply { wrap = true }
 
     init {
         name = "ui-campaign-home"
@@ -77,11 +78,11 @@ internal class CampaignHomeMenu(
         header.add(artwork.icon()).size(px(36f)).padRight(px(12f))
         val heading = Table()
         val headingWidth = width - px(108f)
-        if (!minimal) heading.add(label("Build a city. Shape your world.", 13, muted).apply { name = "ui-home-tagline" })
+        if (!minimal) heading.add(label("Build a city. Shape your world.", TextRole.Supporting, muted).apply { name = "ui-home-tagline" })
             .width(headingWidth).left().row()
         val version = game.displayBuildNumber?.let { "v${UncivGame.VERSION.text} ($it)" }
             ?: "v${UncivGame.VERSION.text}"
-        heading.add(label(version, 11, muted).apply { setText(version); name = "ui-home-version" })
+        heading.add(label(version, TextRole.Metadata, muted).apply { setText(version); name = "ui-home-version" })
             .width(headingWidth).left().padTop(px(3f))
         header.add(heading).expandX().left()
         val options = button("Options", KeyboardBinding.MainMenuOptions) { screen.openOptionsPopup() }.apply {
@@ -157,7 +158,7 @@ internal class CampaignHomeMenu(
         val toolWidth = (width - px(8f) * (toolColumns - 1)) / toolColumns
         var addedTools = 0
         fun tool(text: String, icon: String, binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Button {
-            val title = label(text, if (minimal) 11 else if (tablet) 15 else 12).apply { wrap = false; setAlignment(Align.center) }
+            val title = label(text, TextRole.Control).apply { wrap = false; setAlignment(Align.center) }
             val inline = (tablet || sideBySide || minimal) && game.settings.fontSizeMultiplier <= 1.25f
             val titleWidth = if (inline) title.prefWidth.coerceAtMost(toolWidth - px(44f)) else toolWidth - px(10f)
             title.wrap = true
@@ -228,8 +229,8 @@ internal class CampaignHomeMenu(
                     add(ImageGetter.getImage(icon, gold)).size(px(if (compact) 18f else 22f)).left()
                         .padBottom(px(if (compact) 6f else 10f)).row()
                 }
-                add(label(text, if (minimal) 14 else if (primary && compact) 18 else if (primary) 22 else if (compact) 15 else 17, foreground)).width(copyWidth).left().row()
-                if (!minimal && (primary || !compact) && subtitle.isNotEmpty()) add(label(subtitle, 12, if (primary) foreground else muted).apply { name = "subtitle" })
+                add(label(text, if (primary) TextRole.SectionTitle else TextRole.Control, foreground)).width(copyWidth).left().row()
+                if (!minimal && (primary || !compact) && subtitle.isNotEmpty()) add(label(subtitle, TextRole.Supporting, if (primary) foreground else muted).apply { name = "subtitle" })
                     .width(copyWidth).left().padTop(px(if (compact) 4f else 6f))
             }
             add(copy).growX().left()
@@ -250,12 +251,12 @@ internal class CampaignHomeMenu(
         val copy = Table().apply {
             pad(inset).top().left()
             if (!minimal) {
-                add(label("Every step opens a new world.", if (compact) 22 else if (tablet) 42 else 32)).width(copyWidth).left().row()
-                if (!compact) add(label("Campaign challenges", 17)).width(copyWidth).left().padTop(px(14f)).row()
-                if (!compact) add(label("Designed situations. Your own strategy.", 13)).width(copyWidth).left().padTop(px(8f)).row()
+                add(label("Every step opens a new world.", TextRole.Display)).width(copyWidth).left().row()
+                if (!compact) add(label("Campaign challenges", TextRole.Body)).width(copyWidth).left().padTop(px(14f)).row()
+                if (!compact) add(label("Designed situations. Your own strategy.", TextRole.Supporting)).width(copyWidth).left().padTop(px(8f)).row()
                 add().minHeight(px(if (compact) 8f else 22f)).expandY().row()
             }
-            val title = label("Enter campaigns", if (minimal) 14 else if (compact) 15 else 17, ExpeditionBlueTheme.primaryInk).apply { wrap = false }
+            val title = label("Enter campaigns", TextRole.Control, ExpeditionBlueTheme.primaryInk).apply { wrap = false }
             val enterWidth = (title.prefWidth + px(70f)).coerceAtLeast(px(172f)).coerceAtMost(copyWidth)
             title.wrap = true
             val enter = button("Enter campaigns") {
@@ -306,7 +307,7 @@ internal class CampaignHomeMenu(
                 defaults().pad(0f)
             }
             getScrollPane()?.setScrollingDisabled(true, false)
-            addTitleWithCloseButton(label("Free play", 24))
+            addTitleWithCloseButton(label("Free play", TextRole.PageTitle))
             fun choice(title: String, description: String, icon: String,
                        binding: KeyboardBinding, primary: Boolean, action: () -> Unit): Button {
                 val foreground = if (primary) ExpeditionBlueTheme.primaryInk else ink
@@ -323,8 +324,8 @@ internal class CampaignHomeMenu(
                     add(ImageGetter.getImage(icon, if (primary) foreground else gold))
                         .size(px(22f)).padRight(px(12f)).top()
                     val copy = Table().apply {
-                        add(label(title, 18, foreground)).width(copyWidth).left().row()
-                        add(label(description, 13, if (primary) foreground else muted))
+                        add(label(title, TextRole.Body, foreground)).width(copyWidth).left().row()
+                        add(label(description, TextRole.Supporting, if (primary) foreground else muted))
                             .width(copyWidth).left().padTop(px(6f))
                     }
                     add(copy).width(copyWidth).left()

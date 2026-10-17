@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -55,7 +57,7 @@ class CityScreenCityPickerTable(private val cityScreen: CityScreen) : Table() {
         }
 
         val currentCityLabel = cityView.name
-            .toLabel(fontSize = 30, fontColor = civView.getInnerColor(), hideIcons = true)
+            .toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 30), fontColor = civView.getInnerColor(), hideIcons = true)
         if (cityScreen.canChangeState) currentCityLabel.onClick {
             CityRenamePopup(
                 screen = cityScreen,
@@ -70,7 +72,7 @@ class CityScreenCityPickerTable(private val cityScreen: CityScreen) : Table() {
         cityNameTable.add(currentCityLabel).minWidth(0f).padTopDescent()
 
         val currentCityPop = " (${cityView.getPopulationCount()})"
-            .toLabel(fontSize = 30, fontColor = civView.getInnerColor(), hideIcons = true)
+            .toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 30), fontColor = civView.getInnerColor(), hideIcons = true)
         cityNameTable.add(currentCityPop).padTopDescent()
 
         val garrison = cityView.getGarrison()

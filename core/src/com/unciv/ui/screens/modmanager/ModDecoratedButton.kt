@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.modmanager
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Image
@@ -18,9 +19,9 @@ import com.unciv.ui.images.ImageGetter
  */
 internal class ModDecoratedButton(private var modInfo: ModUIData) : Table() {
     private val stateImages: ModStateImages?
-    private val title = ModManagementStyle.label(modInfo.buttonText(), 24)
-    private val trailing = ModManagementStyle.label("", 18, ModManagementStyle.muted)
-    private val categoriesLabel = ModManagementStyle.label("", 18, ModManagementStyle.muted)
+    private val title = ModManagementStyle.label(modInfo.buttonText(), TextRole.PageTitle)
+    private val trailing = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
+    private val categoriesLabel = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
 
     init {
         touchable = Touchable.enabled

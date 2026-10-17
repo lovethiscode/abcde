@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -39,7 +41,7 @@ enum class UnitOverviewTabColumn(
                 item.displayName(),
                 UnitIconGroup(item, 20f).apply { if (!item.isIdle()) color.a = 0.5f },
                 fontColor = if (item.isIdle()) Color.WHITE else Color.LIGHT_GRAY
-            )
+            , labelFontSize = UiTypography.size(TextRole.Control))
             button.name = "unit-${item.id}"  // Marker to find a unit in select()
             button.onClick {
                 actionContext.selectUnit(item)
@@ -95,7 +97,7 @@ enum class UnitOverviewTabColumn(
         override fun getEntryActor(item: MapUnitView, iconSize: Float, actionContext: UnitOverviewTab): Actor? {
             val closestCityTile = getClosestCityTile(item) ?: return null
             val cityColor = if (item.getTile() == closestCityTile) ExpeditionBlueTheme.color(Color.FOREST.brighten(0.5f), ExpeditionBlueTheme.success) else Color.WHITE
-            val label = closestCityTile.owningCity()!!.name.toLabel(fontColor = cityColor, alignment = Align.center)
+            val label = closestCityTile.owningCity()!!.name.toLabel(fontColor = cityColor, alignment = Align.center, role = TextRole.Body)
             label.onClick { showWorldScreenAt(closestCityTile) }
             return label
         }
@@ -130,7 +132,7 @@ enum class UnitOverviewTabColumn(
         override fun getEntryString(item: MapUnitView) = if (item.isCivilian()) ""
             else "{${item.xp}}/{${item.xpForNextPromotion()}}"
         override fun getComparator() = compareBy<MapUnitView> { it.xpForNextPromotion() }.thenBy { it.xp }
-        override fun getTotalsActor(items: Iterable<MapUnitView>) = items.sumOf { it.xp }.toLabel()
+        override fun getTotalsActor(items: Iterable<MapUnitView>) = items.sumOf { it.xp }.toLabel(TextRole.Body)
     },
     ;
     //endregion
@@ -146,10 +148,10 @@ enum class UnitOverviewTabColumn(
     @Readonly open fun getEntryString(item: MapUnitView): String? = getEntryValue(item).takeIf { it > 0 }?.tr()
 
     //region Overridden superclass methods
-    override fun getHeaderActor(iconSize: Float) = (headerLabel ?: name).toLabel()
+    override fun getHeaderActor(iconSize: Float) = (headerLabel ?: name).toLabel(TextRole.Body)
     @Readonly override fun getEntryValue(item: MapUnitView) = 0
     override fun getEntryActor(item: MapUnitView, iconSize: Float, actionContext: UnitOverviewTab): Actor? =
-        getEntryString(item)?.toLabel(alignment = Align.center, hideIcons = true)
+        getEntryString(item)?.toLabel(alignment = Align.center, hideIcons = true, role = TextRole.Body)
     override fun getComparator() = if (isNumeric) super.getComparator()
         // Sort empty cells to the end by faking a `String.MAX_VALUE` - to do it properly would be a far more verbose Comparator subclass
         else compareBy(ISortableGridContentProvider.collator) { getEntryString(it)?.tr(hideIcons = true) ?: "😀zzz" }

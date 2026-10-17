@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.unciv.logic.map.MapGeneratedMainType
@@ -89,7 +90,7 @@ class MapOptionsTable(private val newGameScreen: NewGameScreen) : Table() {
             add(mapTypeSpecificTable).growX().row()
         } else {
             val mapTypeSelectWrapper = Table()  // wrap to center-align Label and SelectBox easier
-            mapTypeSelectWrapper.add("{Map Type}:".toLabel()).left().expandX()
+            mapTypeSelectWrapper.add("{Map Type}:".toLabel(TextRole.Body)).left().expandX()
             mapTypeSelectWrapper.add(mapTypeSelectBox).right()
             add(mapTypeSelectWrapper).pad(10f).fillX().row()
             add(mapTypeSpecificTable).row()

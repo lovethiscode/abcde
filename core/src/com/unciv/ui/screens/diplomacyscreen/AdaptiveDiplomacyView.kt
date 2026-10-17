@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.diplomacyscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -14,7 +15,6 @@ import com.unciv.models.ruleset.tile.ResourceType
 import com.unciv.models.ruleset.unique.GameContext
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.toTextButton
-import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.UiNavigation
@@ -39,7 +39,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         screen.stage.addActor(root)
         shell()
         if (player.diplomacyFunctions.getKnownCivsSorted().none())
-            detail.add(ui.label("No known civilizations",16,ui.muted,true)).pad(ui.px(24f)).grow()
+            detail.add(ui.label("No known civilizations",TextRole.Control,ui.muted,true)).pad(ui.px(24f)).grow()
     }
 
     private fun shell() {
@@ -47,7 +47,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         val header = Table()
         UiNavigation.styleBackButton(back)
         header.add(back).height(ui.px(44f)).padRight(ui.px(12f))
-        header.add(ui.label("Diplomacy", 21)).left().growX()
+        header.add(ui.label("Diplomacy", TextRole.PageTitle)).left().growX()
         root.add(header).growX().height(ui.px(44f)).padBottom(ui.px(12f)).row()
         val body = Table()
         if (layout.narrow) {
@@ -72,8 +72,8 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         val known = player.diplomacyFunctions.getKnownCivsSorted().toList()
         if (!layout.narrow) {
             val title = Table()
-            title.add(ui.label("Known civilizations", 14)).left().growX()
-            title.add(ui.label(known.size.toString(), 12, ui.muted))
+            title.add(ui.label("Known civilizations", TextRole.Supporting)).left().growX()
+            title.add(ui.label(known.size.toString(), TextRole.Supporting, ui.muted))
             roster.add(title).growX().pad(ui.px(12f)).row()
             val filters = Table()
             for (key in listOf("All", "Civilizations", "City-States")) {
@@ -93,11 +93,11 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
                 val icon = ImageGetter.getNationPortrait(civ.nation, ui.px(32f))
                 add(icon).size(ui.px(38f)).padRight(ui.px(10f))
                 val copy = Table()
-                val nameLabel = ui.label(civ.civName, 14, hideIcons = true).apply { setEllipsis(true) }
+                val nameLabel = ui.label(civ.civName, TextRole.Supporting, hideIcons = true).apply { setEllipsis(true) }
                 copy.add(nameLabel).growX().minWidth(0f).left().row()
                 val dm=civ.getDiplomacyManager(player)!!
                 val relationship = if(civ.isHuman()&&player.isHuman())screen.getHumanRelationshipText(dm) else dm.relationshipLevel().name
-                copy.add(ui.label("{${if (civ.isCityState) "City-State" else "Civilization"}} · {$relationship}", 12, ui.muted).apply { setEllipsis(true) })
+                copy.add(ui.label("{${if (civ.isCityState) "City-State" else "Civilization"}} · {$relationship}", TextRole.Supporting, ui.muted).apply { setEllipsis(true) })
                     .left().growX().minWidth(0f).padTop(ui.px(3f))
                 add(copy).growX().minWidth(0f)
                 if (!layout.narrow && selected == civ) add(ImageGetter.getImage("OtherIcons/Checkmark").apply { color = ui.gold })
@@ -144,12 +144,12 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         header.add(ImageGetter.getNationPortrait(civ.nation, ui.px(if (layout.wide) 52f else 42f)))
             .size(ui.px(if (layout.wide) 60f else 50f)).padRight(ui.px(14f))
         val text = Table()
-        text.add(ui.label(civ.civName, if (layout.wide) 30 else 25, wrap = true, hideIcons = true)).growX().minWidth(0f).left().row()
+        text.add(ui.label(civ.civName, TextRole.PageTitle, wrap = true, hideIcons = true)).growX().minWidth(0f).left().row()
         val subtitle = if (civ.isCityState) "{City-State} · {${civ.cityStateType.name}} · {${civ.cityStatePersonality}}"
             else "{Civilization} · {${civ.nation.leaderName}}"
-        text.add(ui.label(subtitle, 12, ui.muted, true)).growX().left().padTop(ui.px(5f))
+        text.add(ui.label(subtitle, TextRole.Supporting, ui.muted, true)).growX().left().padTop(ui.px(5f))
         header.add(text).growX().minWidth(0f)
-        header.add(ui.label(if (civ.isAtWarWith(player)) "War" else "Peace", 12,
+        header.add(ui.label(if (civ.isAtWarWith(player)) "War" else "Peace", TextRole.Supporting,
             if (civ.isAtWarWith(player)) ui.danger else ui.positive)).padLeft(ui.px(8f))
         detail.add(header).growX().pad(ui.px(18f), ui.px(layout.contentPadding), ui.px(14f), ui.px(layout.contentPadding)).row()
     }
@@ -158,9 +158,9 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         top().left()
         add(ImageGetter.getWhiteDotDrawable().tint(com.unciv.models.skins.ExpeditionBlueTheme.border).let { com.badlogic.gdx.scenes.scene2d.ui.Image(it) })
             .width(width).height(ui.px(1f)).padBottom(ui.px(14f)).row()
-        add(ui.label(title, 16)).width(width).left().padBottom(ui.px(10f)).row()
+        add(ui.label(title, TextRole.Control)).width(width).left().padBottom(ui.px(10f)).row()
     }
-    private fun Table.line(text: String, width: Float, color: Color = ui.muted, size: Int = 13) {
+    private fun Table.line(text: String, width: Float, color: Color = ui.muted, size: TextRole = TextRole.Body) {
         add(ui.label(text, size, color, true)).width(width).left().padBottom(ui.px(8f)).row()
     }
 
@@ -170,8 +170,8 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         val value = if (civ.isCityState) dm.getInfluence().toInt() else dm.opinionOfOtherCiv().toInt()
         val table = section("Our relationship", width)
         val summary = Table()
-        summary.add(ui.label(if(civ.isHuman()&&player.isHuman())screen.getHumanRelationshipText(dm) else level.name, 16)).left().growX()
-        if(!civ.isHuman())summary.add(ui.label((if (value > 0) "+" else "")+value, 22, if (value < 0) ui.danger else ui.positive))
+        summary.add(ui.label(if(civ.isHuman()&&player.isHuman())screen.getHumanRelationshipText(dm) else level.name, TextRole.Control)).left().growX()
+        if(!civ.isHuman())summary.add(ui.label((if (value > 0) "+" else "")+value, TextRole.SectionTitle, if (value < 0) ui.danger else ui.positive))
         table.add(summary).width(width).padBottom(ui.px(12f)).row()
         if (civ.isCityState) {
             val fraction = DiplomacyScreenLayout.influencePosition(dm.getInfluence())
@@ -191,7 +191,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
                     }
                 }
             }
-            for (tick in listOf("−30", "{Neutral} 0", "{Friend} 30", "{Ally} 60+")) ticks.addActor(ui.label(tick,11,ui.muted))
+            for (tick in listOf("−30", "{Neutral} 0", "{Friend} 30", "{Ally} 60+")) ticks.addActor(ui.label(tick,TextRole.Metadata,ui.muted))
             table.add(ticks).width(width).height(ui.px(16f)).padBottom(ui.px(12f)).row()
             if (value < 30 && !civ.isAtWarWith(player)) table.line("Reach 30 for friendship.",width)
             else if (civ.allyCiv != player && !civ.isAtWarWith(player)) table.line("Reach highest influence above 60 for alliance.",width)
@@ -223,17 +223,17 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         val table = section("City-State bonuses", width)
         val relation = civ.getDiplomacyManager(player)!!.relationshipIgnoreAfraid()
         for ((level,title) in listOf(RelationshipLevel.Friend to "When Friends:", RelationshipLevel.Ally to "When Allies:")) {
-            table.line(title,width,ui.muted,12)
+            table.line(title,width,ui.muted,TextRole.Supporting)
             for (bonus in CityStateFunctions.getCityStateBonuses(civ.cityStateType,level).filterNot { it.isHiddenToUsers() }) {
                 val active = relation >= level && bonus.conditionalsApply(GameContext(player))
-                table.line(bonus.getDisplayText(),width,if(active) ui.positive else ui.text,14)
+                table.line(bonus.getDisplayText(),width,if(active) ui.positive else ui.text,TextRole.Supporting)
             }
             table.add().height(ui.px(6f)).row()
         }
         for (resource in civ.cityStateFunctions.getCityStateResourcesForAlly().filter { it.resource.resourceType != ResourceType.Bonus }) {
             val row = Table()
             row.add(ImageGetter.getResourcePortrait(resource.resource.name,ui.px(18f))).size(ui.px(18f)).padRight(ui.px(8f))
-            row.add(ui.label("{${resource.resource.name}} ×${resource.amount}",13,ui.muted)).growX().left()
+            row.add(ui.label("{${resource.resource.name}} ×${resource.amount}",TextRole.Supporting,ui.muted)).growX().left()
             row.onClick { screen.openCivilopedia(resource.resource.makeLink()) }
             table.add(row).width(width).minHeight(ui.px(44f)).row()
         }
@@ -249,7 +249,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         val dm = player.getDiplomacyManager(civ)!!
         for ((flag,caption) in listOf(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclarationOfFriendship to "Declaration of Friendship",
             com.unciv.logic.civilization.diplomacy.DiplomacyFlags.Denunciation to "Denounce")) {
-            if (dm.hasFlag(flag)) table.line("{$caption} · ${dm.getFlag(flag)} {turns}",width,ui.text,14)
+            if (dm.hasFlag(flag)) table.line("{$caption} · ${dm.getFlag(flag)} {turns}",width,ui.text,TextRole.Supporting)
         }
         if (dm.trades.isEmpty()) table.line("No active trades",width)
         for (trade in dm.trades) {
@@ -307,7 +307,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         more.name = "ui-diplomacy-more"
         more.onActivation {
             val popup = Popup(screen)
-            popup.add(ui.label("Diplomatic actions",18)).padBottom(ui.px(12f)).row()
+            popup.add(ui.label("Diplomatic actions",TextRole.Body)).padBottom(ui.px(12f)).row()
             for (button in actions.filter { it != primary && it != visibleSecondary }.sortedBy { it.name?.startsWith("ui-declare-war:")==true || it.name=="ui-diplomacy-denounce" }) {
                 popup.add(ui.decorate(button)).width(ui.px(minOf(320f,layout.detailWidth-24f))).minHeight(ui.px(44f)).padBottom(ui.px(8f)).row()
                 button.onActivation { popup.close() }
@@ -323,7 +323,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
     fun showSubPage(civ: Civilization, content: Actor, route: String, scroll: Boolean = true) {
         selected=civ; detail.clearChildren(); shell(); identity(civ)
         val title=when(route){"gift"->"Give a Gift";"tribute"->"Demand Tribute";"improvement"->"Gift Improvement";"demands"->"Demands";"trade"->"Trade";else->"Diplomacy"}
-        if (route != "trade") detail.add(ui.label(title,18)).left().pad(ui.px(8f),ui.px(18f),ui.px(12f),ui.px(18f)).row()
+        if (route != "trade") detail.add(ui.label(title,TextRole.Body)).left().pad(ui.px(8f),ui.px(18f),ui.px(12f),ui.px(18f)).row()
         if(route!="trade" && route!="tribute")fitContent(content,detailWidth-ui.px(40f))
         val actor = if(scroll) AutoScrollPane(content).apply { setScrollingDisabled(true,false) } else content
         detail.add(actor).grow().minSize(0f).pad(ui.px(8f),ui.px(18f),ui.px(18f),ui.px(18f)).row()
@@ -332,7 +332,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
     private fun fitContent(actor: Actor, width: Float) {
         if(actor is Table) for(cell in actor.cells) {
             val child=cell.actor
-            if(child is Label) child.setFontSize(ui.font(14))
+            // Labels retain their semantic roles; this pass only decorates controls.
             if(child is Label) { child.wrap=true; child.setAlignment(Align.left);cell.width((width-ui.px(24f)).coerceAtLeast(ui.px(40f))) }
             if(child is TextButton) {ui.decorate(child);cell.minHeight(ui.px(44f));cell.maxWidth(width)}
         }

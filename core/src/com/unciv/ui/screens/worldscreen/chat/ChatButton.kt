@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.chat
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -22,13 +24,13 @@ import com.unciv.ui.components.widgets.UiNavigation
 
 class ChatButton(val worldScreen: WorldScreen) : IconTextButton(
     "Chat", ImageGetter.getImage("OtherIcons/Chat"), 23
-) {
+, labelFontSize = UiTypography.size(TextRole.Control)) {
     private val chat = ChatStore.getChatByGameId(
         worldScreen.gameInfo.gameId,
         worldScreen.gameInfo.gameParameters.multiplayerServerUrl,
     )
 
-    private val badgeLabel = "".toLabel(fontSize = 16, alignment = Align.center)
+    private val badgeLabel = "".toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 16), alignment = Align.center)
     private val badge = Table().apply {
         touchable = Touchable.disabled
         background = ImageGetter.getCircleDrawable().tint(Color.FIREBRICK)
@@ -140,7 +142,7 @@ class ChatButton(val worldScreen: WorldScreen) : IconTextButton(
         label.isVisible = false
         labelCell.size(0f).pad(0f)
         iconCell.size(BattlefieldHud.points(20f)).pad(0f)
-        badgeLabel.setFontSize(BattlefieldHud.font(10f))
+        badgeLabel.setFontSize(BattlefieldHud.font(TextRole.CompactData))
         setSize(UiNavigation.minimumTouchSize(), UiNavigation.minimumTouchSize())
         updateBadge()
     }

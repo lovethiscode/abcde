@@ -1,5 +1,6 @@
 package com.unciv.ui.components.widgets
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Interpolation
@@ -95,7 +96,7 @@ class UncivSlider (
     private val slider = Slider(min, max, step, vertical, BaseScreen.skin)
     private val minusButton: IconCircleGroup?
     private val plusButton: IconCircleGroup?
-    private val tipLabel = "".toLabel(Color.LIGHT_GRAY)
+    private val tipLabel = "".toLabel(TextRole.CompactData, Color.LIGHT_GRAY)
     private val tipContainer: Container<Label> = Container(tipLabel)
     private val tipHideTask = object : Timer.Task() {
         override fun run() {

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -176,7 +177,7 @@ private class UniqueTable(
         for ((index, parameter) in uniqueType.text.getPlaceholderParameters().withIndex()) {
             val paramTable = Table().apply { defaults().pad(10f) }
             paramTable.background = ImageGetter.getWhiteDotDrawable().tint(Color.DARK_GRAY)
-            paramTable.add("Parameter ${index+1}: $parameter".toLabel()).row()
+            paramTable.add("Parameter ${index+1}: $parameter".toLabel(TextRole.Body)).row()
             val knownParamValues = uniqueType.parameterTypeMap[index]
                 .flatMap { it.getKnownValuesForAutocomplete(ruleset) }.toSet()
 
@@ -198,7 +199,7 @@ private class UniqueTable(
                     paramSelectBox.setItems(filteredValues)
                 }
                 paramTable.add(paramSearchTable).row()
-            } else paramTable.add("No known values".toLabel())
+            } else paramTable.add("No known values".toLabel(TextRole.Body))
 
             parameterSelectBoxTable.add(paramTable).fillY()
         }
@@ -206,14 +207,14 @@ private class UniqueTable(
 
     private fun updateUnique() {
         uniqueErrorTable.clear()
-        uniqueErrorTable.add("Errors:".toLabel()).row()
+        uniqueErrorTable.add("Errors:".toLabel(TextRole.Body)).row()
 
         val uniqueErrors = UniqueValidator(ruleset, tryFixUnknownUniques = true)
             .checkUnique(Unique(uniqueTextField.text), null)
         for (error in uniqueErrors)
-            uniqueErrorTable.add(error.text.toLabel().apply { wrap = true }).width(stage.width/2).row()
+            uniqueErrorTable.add(error.text.toLabel(TextRole.Body).apply { wrap = true }).width(stage.width/2).row()
         if (uniqueErrors.isEmpty())
-            uniqueErrorTable.add("No errors!".toLabel())
+            uniqueErrorTable.add("No errors!".toLabel(TextRole.Body))
 
         onUniqueChange()
     }

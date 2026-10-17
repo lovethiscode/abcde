@@ -1,5 +1,7 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
@@ -79,7 +81,7 @@ internal interface OptionsPopupHelpers {
     fun Table.addHeader(text: String): Cell<Label> {
         if (!children.isEmpty) // doesn't count empty cells
             addSeparator()
-        val cell = add(text.toLabel(fontSize = Constants.headingFontSize))
+        val cell = add(text.toLabel(fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize)))
         cell.colspan(2).spaceTop(10f).row()
         return cell
     }
@@ -133,7 +135,7 @@ internal interface OptionsPopupHelpers {
      *  @see addEnumAsStringSelectBox
      */
     fun <T> Table.addSelectBox(text: String, property: KMutableProperty0<T>, items: Iterable<T>, action: ((T, T) -> Unit)? = null): SelectBox<T> {
-        add(text.toLabel().apply { wrap = true }).minWidth(0f).left().growX()
+        add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).left().growX()
 
         val select = SelectBox<T>(BaseScreen.skin)
         select.setItems(items.toGdxArray())
@@ -161,7 +163,7 @@ internal interface OptionsPopupHelpers {
      *  @see addEnumAsStringSelectBox
      */
     fun Table.addTranslatedSelectBox(text: String, property: KMutableProperty0<String>, items: Iterable<String>, action: ((String) -> Unit)? = null) {
-        add(text.toLabel().apply { wrap = true }).minWidth(0f).left().growX()
+        add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).left().growX()
         val select = TranslatedSelectBox(items as? Collection ?: items.toList(), property.get())
         add(select).pad(if (ExpeditionBlueTheme.enabled) OptionsPopupStyle.points(6f) else 10f)
             .minHeight(if (ExpeditionBlueTheme.enabled) UiNavigation.minimumTouchSize() else 0f).minWidth(rightWidgetMinWidth)
@@ -207,7 +209,7 @@ internal interface OptionsPopupHelpers {
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         action: ((T) -> Unit)? = null
     ) {
-        val label = text.toLabel(Color.GRAY)
+        val label = text.toLabel(fontColor = Color.GRAY, role = TextRole.Control)
         label.wrap = true
         add(label).minWidth(0f).left().growX()
         val select = SelectBox<T>(BaseScreen.skin)
@@ -255,14 +257,14 @@ internal interface OptionsPopupHelpers {
         fun formatValue(value: Float) = getTipText?.invoke(value)
             ?: if (step.toFloat() >= 1f) value.toInt().toString() else "%.2f".format(value).trimEnd('0').trimEnd('.')
         val valueLabel = if (ExpeditionBlueTheme.enabled && !keepValueTip)
-            formatValue(initial.toFloat()).toLabel(OptionsPopupStyle.accent, OptionsPopupStyle.fontSize(17f)) else null
+            formatValue(initial.toFloat()).toLabel(OptionsPopupStyle.accent, OptionsPopupStyle.fontSize(TextRole.Body)) else null
         if (valueLabel != null) {
             val labelRow = Table().apply {
-                add(text.toLabel().apply { wrap = true }).minWidth(0f).growX().left()
+                add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).growX().left()
                 add(valueLabel).right().padLeft(OptionsPopupStyle.points(12f))
             }
             add(labelRow).colspan(2).growX().pad(OptionsPopupStyle.points(8f), OptionsPopupStyle.points(12f), 0f, OptionsPopupStyle.points(12f)).row()
-        } else add(text.toLabel().apply { wrap = true }).minWidth(0f).left().growX().padTop(8f)
+        } else add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).left().growX().padTop(8f)
 
         // lateinit, otherwise the callback can't capture it, and by the time the callback fires this will be initialized
         lateinit var slider: UncivSlider

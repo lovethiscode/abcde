@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.status
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Button
@@ -50,7 +52,7 @@ class MultiplayerStatusButton(
 
     private val events = EventBus.EventReceiver()
     private var compact = false
-    private val compactLabel = "".toLabel(alignment = Align.center)
+    private val compactLabel = "".toLabel(alignment = Align.center, role = TextRole.Body)
     private val compactBadge = Table().apply {
         touchable = Touchable.disabled
         background = ImageGetter.getCircleDrawable().tint(Color.FIREBRICK)
@@ -136,7 +138,7 @@ class MultiplayerStatusButton(
             addActor(compactBadge)
         }
         getCell(loadingImage).size(BattlefieldHud.points(20f)).pad(0f)
-        compactLabel.setFontSize(BattlefieldHud.font(10f))
+        compactLabel.setFontSize(BattlefieldHud.font(TextRole.CompactData))
         updateCompactBadge()
     }
 
@@ -161,7 +163,7 @@ class MultiplayerStatusButton(
 }
 
 private class TurnIndicator : HorizontalGroup(), Disposable {
-    val gameAmount = Label("2", BaseScreen.skin)
+    val gameAmount = Label("2", BaseScreen.skin).apply { setFontSize(UiTypography.size(TextRole.CompactData)) }
     val image = ImageGetter.getImage("OtherIcons/ExclamationMark")
 
     init {

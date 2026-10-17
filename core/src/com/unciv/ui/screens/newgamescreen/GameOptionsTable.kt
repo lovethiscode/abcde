@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.unciv.models.skins.ExpeditionBlueTheme
@@ -184,7 +186,7 @@ class GameOptionsTable(
             add(Table().apply { defaults().growX(); addMinMaxCityStatesSliders() }).growX().row()
         add(Table().apply {
             add(ImageGetter.getImage("OtherIcons/AchievementTrophy", ExpeditionBlueTheme.gold)).size(22f).padRight(8f)
-            add("Victory conditions".toLabel(ExpeditionBlueTheme.gold, 20))
+            add("Victory conditions".toLabel(ExpeditionBlueTheme.gold, UiTypography.size(TextRole.SectionTitle, legacySize = 20)))
         }).left().padTop(4f).padBottom(4f).row()
         addVictoryTypeCheckboxes()
         fun group(title: String, id: String, opened: Boolean = false, build: Table.() -> Unit) {
@@ -217,7 +219,7 @@ class GameOptionsTable(
         if (forInviteRoom || modCheckboxes.children.size == 0)
             group("Extension mods", "Mods") {
                 add((if (forInviteRoom) "Rooms require generated maps without mods" else "No mods installed")
-                    .toLabel().apply { wrap = true }).growX().row()
+                    .toLabel(TextRole.Body).apply { wrap = true }).growX().row()
             }
         else add(modCheckboxes).width(width).padTop(8f).row()
         SinglePlayerSetup.style(this, font)
@@ -262,8 +264,8 @@ class GameOptionsTable(
         val pace = GameSetupOverview.card().apply {
             val innerWidth = leftWidth - 36f
             defaults().width(innerWidth).left().padBottom(12f)
-            add("Game pace".toLabel(fontSize = 24)).row()
-            add("Game Speed".toLabel(Color.LIGHT_GRAY, 16)).padBottom(8f).row()
+            add("Game pace".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24))).row()
+            add("Game Speed".toLabel(Color.LIGHT_GRAY, UiTypography.size(TextRole.Control, legacySize = 16))).padBottom(8f).row()
             add(Table().apply {
                 val speeds = ruleset.speeds.keys.toList()
                 val columns = minOf(4, speeds.size)
@@ -293,7 +295,7 @@ class GameOptionsTable(
         val victories = GameSetupOverview.card().apply {
             val innerWidth = rightWidth - 36f
             defaults().width(innerWidth).left().padBottom(6f)
-            add("Victory Conditions".toLabel(fontSize = 24)).padBottom(20f).row()
+            add("Victory Conditions".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24))).padBottom(20f).row()
             for (victory in ruleset.selectableVictories()) {
                 add(victory.name.toCheckBox(victory.name in gameParameters.victoryTypes) { enabled ->
                     if (enabled) gameParameters.victoryTypes.add(victory.name)
@@ -367,7 +369,7 @@ class GameOptionsTable(
         if (!UncivGame.Current.platformCapabilities.onlineMultiplayer) {
             gameParameters.isOnlineMultiplayer = false
             addCheckbox("Online Multiplayer", false, lockable = false) {}.isDisabled = true
-            add(ONLINE_MULTIPLAYER_UNAVAILABLE.toLabel(Color.GRAY)).colspan(2).row()
+            add(ONLINE_MULTIPLAYER_UNAVAILABLE.toLabel(fontColor = Color.GRAY, role = TextRole.Body)).colspan(2).row()
             return
         }
 
@@ -532,14 +534,14 @@ class GameOptionsTable(
         maxSlider.isDisabled = locked
 
         if (directLayoutWidth != null) {
-            add(minText.toLabel()).colspan(2).left().row()
+            add(minText.toLabel(TextRole.Body)).colspan(2).left().row()
             add(minSlider).colspan(2).minWidth(0f).growX().padTop(10f).row()
-            add(maxText.toLabel()).colspan(2).left().row()
+            add(maxText.toLabel(TextRole.Body)).colspan(2).left().row()
             add(maxSlider).colspan(2).minWidth(0f).growX().padTop(10f).row()
         } else {
-            add(minText.toLabel()).left().expandX()
+            add(minText.toLabel(TextRole.Body)).left().expandX()
             add(minSlider).padTop(10f).row()
-            add(maxText.toLabel()).left().expandX()
+            add(maxText.toLabel(TextRole.Body)).left().expandX()
             add(maxSlider).padTop(10f).row()
         }
     }
@@ -563,7 +565,7 @@ class GameOptionsTable(
         val cityStatesAvailable = numberOfCityStates()
         if (cityStatesAvailable == 0) return
 
-        add("{City-States}:".toLabel()).left().expandX()
+        add("{City-States}:".toLabel(TextRole.Body)).left().expandX()
         val slider = UncivSlider(0f, cityStatesAvailable.toFloat(), 1f, initial = gameParameters.numberOfCityStates.toFloat()) {
             gameParameters.numberOfCityStates = it.toInt()
         }
@@ -575,8 +577,8 @@ class GameOptionsTable(
         if (gameParameters.victoryTypes.none { ruleset.victories[it]?.enablesMaxTurns() == true })
             return null
 
-        if (directLayoutWidth != null) add("{Max Turns}:".toLabel()).colspan(2).left().row()
-        else add("{Max Turns}:".toLabel()).left().expandX()
+        if (directLayoutWidth != null) add("{Max Turns}:".toLabel(TextRole.Body)).colspan(2).left().row()
+        else add("{Max Turns}:".toLabel(TextRole.Body)).left().expandX()
         val slider = UncivSlider(100f, 1500f, 5f, initial = gameParameters.maxTurns.toFloat()) {
             gameParameters.maxTurns = it.toInt()
         }
@@ -588,7 +590,7 @@ class GameOptionsTable(
 
     private fun Table.addSelectBox(text: String, values: Collection<String>, initialState: String, onChange: (newValue: String) -> String?): TranslatedSelectBox {
         add(text.toLabel(if (roomLayoutWidth != null) Color.LIGHT_GRAY else Color.WHITE,
-            if (roomLayoutWidth != null) 16 else 18, hideIcons = true)).left()
+            UiTypography.size(TextRole.Control), hideIcons = true)).left()
         if (roomLayoutWidth != null) row()
         val selectBox = TranslatedSelectBox(values, initialState)
         selectBox.isDisabled = locked
@@ -663,7 +665,7 @@ class GameOptionsTable(
         defaultHourValue: Int,
         defaultMinuteValue: Int
     ) {
-        add(title.toLabel(hideIcons = true)).left()
+        add(title.toLabel(hideIcons = true, role = TextRole.Body)).left()
         if (roomLayoutWidth != null || directLayoutWidth != null) getCell(children.peek()).colspan(3).row()
         val minutes = param.get(gameParameters)
         val selector = if (roomLayoutWidth == null && directLayoutWidth == null)
@@ -715,7 +717,7 @@ class GameOptionsTable(
         }
     }
     private fun addVictoryTypeCheckboxes() {
-        if (directLayoutWidth == null) add("{Victory Conditions}:".toLabel()).colspan(2).row()
+        if (directLayoutWidth == null) add("{Victory Conditions}:".toLabel(TextRole.Body)).colspan(2).row()
 
         // Create a checkbox for each VictoryType existing
         val victoryConditionsTable = Table().apply { defaults().pad(if (directLayoutWidth == null) 5f else 2f) }

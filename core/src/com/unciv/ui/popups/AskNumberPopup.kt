@@ -1,5 +1,6 @@
 package com.unciv.ui.popups
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
@@ -42,7 +43,7 @@ class AskNumberPopup(
     init {
         val wrapper = Table()
         wrapper.add(icon).padRight(10f)
-        wrapper.add(label.toLabel())
+        wrapper.add(label.toLabel(TextRole.Body))
         add(wrapper).colspan(2).row()
 
         val valueField = UncivTextField.Integer(label, defaultValue)
@@ -53,7 +54,7 @@ class AskNumberPopup(
         fun addValueButton(delta: Int) {
             centerTable.add(
                 Button(
-                    delta.toStringSigned().toLabel(),
+                    delta.toStringSigned().toLabel(TextRole.Body),
                     skin
                 ).apply {
                     onClick {
@@ -76,7 +77,7 @@ class AskNumberPopup(
             addValueButton(value)
         }
 
-        val errorLabel = errorText.toLabel()
+        val errorLabel = errorText.toLabel(TextRole.Body)
         errorLabel.color = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
 
         addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.cancel else com.unciv.Constants.close)

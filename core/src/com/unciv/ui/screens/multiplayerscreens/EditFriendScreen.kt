@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
@@ -29,14 +30,14 @@ class EditFriendScreen(selectedFriend: FriendList.Friend) : PickerScreen() {
         val deleteFriendButton = "Delete".toTextButton()
         val friendlist = FriendList()
 
-        topTable.add("Friend name".toLabel()).row()
+        topTable.add("Friend name".toLabel(TextRole.Body)).row()
         topTable.add(friendNameTextField).pad(10f).padBottom(30f).width(stage.width/2).row()
 
         pastePlayerIDButton.onClick {
             playerIDTextField.text = Gdx.app.clipboard.contents
         }
 
-        topTable.add("Player ID".toLabel()).row()
+        topTable.add("Player ID".toLabel(TextRole.Body)).row()
         val gameIDTable = Table()
         gameIDTable.add(playerIDTextField).pad(10f).width(2*stage.width/3 - pastePlayerIDButton.width)
         gameIDTable.add(pastePlayerIDButton)

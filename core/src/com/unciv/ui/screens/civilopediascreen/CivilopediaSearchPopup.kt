@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.civilopediascreen
 
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
@@ -83,15 +86,16 @@ class CivilopediaSearchPopup(
             innerTable.background = background
             innerTable.top()
             getCell(innerTable).grow()
-            addTitleWithCloseButton("Civilopedia".toLabel(fontSize = 25))
+            addTitleWithCloseButton("Civilopedia".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 25)))
             val width = (pediaScreen.stage.width - 80f).coerceAtLeast(240f)
             val touch = UiNavigation.minimumTouchSize()
             val fields = Table().apply { defaults().left().padBottom(10f) }
-            fields.add("Search text:".toLabel(ExpeditionBlueTheme.muted)).row()
+            fields.add("Search text:".toLabel(fontColor = ExpeditionBlueTheme.muted, role = TextRole.Body)).row()
             fields.add(searchText).width(width).minHeight(touch).growX().row()
-            fields.add("Mod filter:".toLabel(ExpeditionBlueTheme.muted)).padTop(8f).row()
+            fields.add("Mod filter:".toLabel(fontColor = ExpeditionBlueTheme.muted, role = TextRole.Body)).padTop(8f).row()
             fields.add(modSelect).width(width).minHeight(touch).growX().row()
             searchButton = TextButton("Search!".tr(), BaseScreen.skin, "positive").apply {
+                label.setFontSize(UiTypography.size(TextRole.Control))
                 name = "civilopedia-run-search"
                 onActivation { startSearch(searchText.text) }
                 keyShortcuts.add(KeyCharAndCode.RETURN)
@@ -103,9 +107,9 @@ class CivilopediaSearchPopup(
             bottomTable.pad(0f)
             clickBehindToClose = false
         } else {
-            add("Search text:".toLabel())
+            add("Search text:".toLabel(TextRole.Body))
             add(searchText).growX().row()
-            add("Mod filter:".toLabel())
+            add("Mod filter:".toLabel(TextRole.Body))
             add(modSelect).growX().row()
             resultCell = add().colspan(2).growX()
             row()
@@ -217,7 +221,7 @@ class CivilopediaSearchPopup(
 
     private fun CoroutineScope.addResult(entry: ICivilopediaText) {
         launchOnGLThread {
-            val actor = entry.getIconName().toLabel(alignment = Align.left)
+            val actor = entry.getIconName().toLabel(alignment = Align.left, role = TextRole.Body)
             val link = entry.makeLink()
             if (pediaScreen.usesPages) {
                 actor.wrap = true

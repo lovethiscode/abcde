@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
@@ -108,20 +110,20 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private var configurationDue = 0L
     private var configurationJob: Job? = null
     private var seatSources = arrayListOf<Int>()
-    private val status = "Connecting to room...".toLabel()
-    private val roomRole = "".toLabel(fontSize = 18)
+    private val status = "Connecting to room...".toLabel(TextRole.Body)
+    private val roomRole = "".toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18))
     private val setupFont = lazy {
-        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(18f / Fonts.ORIGINAL_FONT_SIZE) }
+        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(UiTypography.size(TextRole.Control, UiTypography.unitsPerPoint(stage)) / Fonts.ORIGINAL_FONT_SIZE) }
     }
     internal val formFont get() = setupFont.value
     private val headingFont = lazy {
         val renderer = Fonts.fontImplementation.javaClass.getDeclaredConstructor().newInstance() as FontImplementation
-        renderer.setFontFamily(FontFamilyData("Hiragino Mincho ProN"), Fonts.ORIGINAL_FONT_SIZE.toInt())
+        renderer.setFontFamily(FontFamilyData("Hiragino Mincho ProN"), game.settings.getFontSize())
         renderer.getBitmapFont()
     }
-    internal fun councilHeading(text: String, size: Int = 24) = text.toLabel(ExpeditionBlueTheme.text, size, hideIcons = true).apply {
+    internal fun councilHeading(text: String, role: TextRole = TextRole.PageTitle) = text.toLabel(role, ExpeditionBlueTheme.text, hideIcons = true).apply {
         style = Label.LabelStyle(style).apply { font = headingFont.value }
-        setFontScale(size / Fonts.ORIGINAL_FONT_SIZE)
+        setFontScale(UiTypography.size(role, UiTypography.unitsPerPoint(stage)) / Fonts.ORIGINAL_FONT_SIZE)
     }
     private val councilColumnWidth get() = if (isNarrowerThan4to3()) stage.width - 48f else (stage.width - 72f) * .31f
     private fun stylePrimary(button: TextButton) {
@@ -227,7 +229,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             SinglePlayerSetup.style(inviteButton, formFont)
             SinglePlayerSetup.style(copyInvitationButton, formFont)
             stylePrimary(startButton)
-            status.setFontSize(18)
+            status.setFontSize(UiTypography.size(TextRole.Body, legacySize = 18))
             footer.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel)
             footer.pad(6f, 10f, 6f, 10f)
         }
@@ -439,7 +441,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 pad(18f)
                 defaults().left().growX().padBottom(10f)
                 for (value in values)
-                    add(value.toLabel(fontSize = 18).apply { setWrap(true) }).row()
+                    add(value.toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18)).apply { setWrap(true) }).row()
             }
             val gameValues = listOf(gameSetup.gameParameters.baseRuleset, gameSetup.gameParameters.speed,
                 gameSetup.gameParameters.difficulty, gameSetup.gameParameters.startingEra)
@@ -448,8 +450,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 left()
                 if (UiNavigation.isIos) {
                     add(ImageGetter.getImage("OtherIcons/Nations", ExpeditionBlueTheme.gold)).size(24f).padRight(8f)
-                    add(councilHeading("Room players",22)).left().growX()
-                } else add("Players".toLabel(fontSize = 24)).left().row()
+                    add(councilHeading("Room players",TextRole.SectionTitle)).left().growX()
+                } else add("Players".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24))).left().row()
                 val counts = if (humans.any { it.manual }) "[$joined]/[${humans.size}] seats filled · [$ready]/[${humans.size}] ready"
                     else "[$joined]/[${humans.size}] joined · [$ready]/[${humans.size}] ready"
                 add(counts.toLabel(if (UiNavigation.isIos) ExpeditionBlueTheme.muted else Color.LIGHT_GRAY,
@@ -482,23 +484,23 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 }
             }).height(44f).growX().padBottom(12f).row()
             val information: (Table) -> Unit = { table ->
-                table.add("Game ID".toLabel(Color.LIGHT_GRAY,16)).left().row()
-                table.add(r.gameId.toLabel(fontSize = 16).apply { setText(r.gameId); setWrap(true) }).growX().row()
+                table.add("Game ID".toLabel(Color.LIGHT_GRAY, UiTypography.size(TextRole.Control, legacySize = 16))).left().row()
+                table.add(r.gameId.toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 16)).apply { setText(r.gameId); setWrap(true) }).growX().row()
                 for (seat in r.seats.filter { it.playerId.isNotEmpty() }) {
-                    table.add("Player [${seat.seatId+1}]".toLabel(Color.LIGHT_GRAY,16)).left().padTop(8f).row()
-                    table.add(seat.playerId.toLabel(fontSize = 16).apply { setText(seat.playerId); setWrap(true) }).growX().row()
+                    table.add("Player [${seat.seatId+1}]".toLabel(Color.LIGHT_GRAY, UiTypography.size(TextRole.Control, legacySize = 16))).left().padTop(8f).row()
+                    table.add(seat.playerId.toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 16)).apply { setText(seat.playerId); setWrap(true) }).growX().row()
                 }
             }
             val details = if (UiNavigation.isIos) SinglePlayerSetup.group("Room information",cardsWidth,
-                "Room.Information",detailsOpen,information) else ExpanderTab("Room and player information",fontSize = 18,
+                "Room.Information",detailsOpen,information) else ExpanderTab("Room and player information",fontSize = UiTypography.size(TextRole.Body, legacySize = 18),
                 startsOutOpened = detailsOpen,expanderWidth = cardsWidth,onChange = { detailsOpen = !detailsOpen },initContent = information)
             players.add(details).growX()
             val settings = if (editable || UiNavigation.isIos) configurationTable ?: buildConfiguration(settingsWidth).also { configurationTable = it }
                 else if (landscape) Table().apply {
-                    add(scrollColumn("Game Options".toLabel(fontSize = 24), summary(gameValues), gameOptionsScroll)).width(cardsWidth).growY().padRight(16f)
-                    add(scrollColumn("Map Options".toLabel(fontSize = 24), summary(mapValues), mapOptionsScroll)).width(cardsWidth).growY()
+                    add(scrollColumn("Game Options".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24)), summary(gameValues), gameOptionsScroll)).width(cardsWidth).growY().padRight(16f)
+                    add(scrollColumn("Map Options".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24)), summary(mapValues), mapOptionsScroll)).width(cardsWidth).growY()
                 } else Table().apply {
-                    add("Game setup".toLabel(Color.GOLD,22)).left().row()
+                    add("Game setup".toLabel(Color.GOLD, UiTypography.size(TextRole.SectionTitle, legacySize = 22))).left().row()
                     add(summary(mapValues + gameValues)).growX()
                 }
             settings.touchable = if (!connected || busy || r.state != "WAITING") Touchable.disabled else Touchable.childrenOnly
@@ -561,7 +563,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         header.apply {
             add(back).minHeight(UiNavigation.minimumTouchSize()).padRight(16f)
             if (UiNavigation.isIos && this@MultiplayerLobbyScreen.stage.width < 850f) {
-                add(councilHeading("Multiplayer room", 26).apply { wrap = true }).growX().minWidth(0f).left()
+                add(councilHeading("Multiplayer room", TextRole.PageTitle).apply { wrap = true }).growX().minWidth(0f).left()
                 add(roomRole).padLeft(8f)
                 row()
                 add(Table().apply {
@@ -571,14 +573,14 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             } else if (UiNavigation.isIos) {
                 add(Table().apply {
                     add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX().padRight(18f)
-                    add(councilHeading("Multiplayer room", 28))
+                    add(councilHeading("Multiplayer room", TextRole.PageTitle))
                     add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX().padLeft(18f)
                 }).growX().padRight(18f)
                 add(roomRole).width(54f).padRight(10f)
                 add(inviteButton).width(126f).height(44f).padRight(8f)
                 add(copyInvitationButton).width(126f).height(44f)
             } else {
-                add("Multiplayer room".toLabel(fontSize = 28)).left().growX()
+                add("Multiplayer room".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 28))).left().growX()
                 if (this@MultiplayerLobbyScreen.stage.width < 850f) row()
                 add(inviteButton).height(44f).padRight(8f)
                 add(copyInvitationButton).height(44f)
@@ -595,17 +597,17 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             val previewHeight = (columnWidth / 1.85f).coerceAtMost(190f)
             add(mapSettings!!.createOverviewPreview(columnWidth, previewHeight))
                 .size(columnWidth,previewHeight).padBottom(6f).row()
-            add("Example map".toLabel(ExpeditionBlueTheme.muted,14)).padBottom(8f).row()
+            add("Example map".toLabel(ExpeditionBlueTheme.muted, UiTypography.size(TextRole.Supporting, legacySize = 14))).padBottom(8f).row()
             add(if (editable) mapSettings!! else readOnlyMapSettings(columnWidth)).width(columnWidth).top()
         }
         gameSettings!!.touchable = if (editable && connected && !busy) Touchable.childrenOnly else Touchable.disabled
         mapSettings!!.touchable = gameSettings!!.touchable
         fun heading(title: String, icon: String) = Table().apply {
             add(ImageGetter.getImage(icon,ExpeditionBlueTheme.gold)).size(24f).padRight(8f)
-            add(councilHeading(title,22)).left().growX()
+            add(councilHeading(title,TextRole.SectionTitle)).left().growX()
             if (!editable) {
                 add(ImageGetter.getImage("OtherIcons/LockSmall",ExpeditionBlueTheme.muted)).size(14f).padLeft(8f)
-                add("View only".toLabel(ExpeditionBlueTheme.muted,14)).padLeft(5f)
+                add("View only".toLabel(ExpeditionBlueTheme.muted, UiTypography.size(TextRole.Supporting, legacySize = 14))).padLeft(5f)
             }
         }
         val columns = Table().apply {
@@ -639,9 +641,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private fun readOnlyRows(width: Float, values: List<Pair<String,String>>) = Table().apply {
         top()
         for ((caption,value) in values) {
-            add(caption.toLabel(ExpeditionBlueTheme.text,18).apply { wrap = true })
+            add(caption.toLabel(ExpeditionBlueTheme.text, UiTypography.size(TextRole.Body, legacySize = 18)).apply { wrap = true })
                 .width(width * .44f).left().padRight(8f).padBottom(12f)
-            add(value.toLabel(ExpeditionBlueTheme.text,18,hideIcons = true).apply { wrap = true; setText(value) })
+            add(value.toLabel(ExpeditionBlueTheme.text, UiTypography.size(TextRole.Body, legacySize = 18),hideIcons = true).apply { wrap = true; setText(value) })
                 .minWidth(0f).growX().left().padBottom(12f).row()
         }
     }
@@ -657,9 +659,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         ))).width(width).row()
         add(Table().apply {
             add(ImageGetter.getImage("OtherIcons/AchievementTrophy",ExpeditionBlueTheme.gold)).size(22f).padRight(8f)
-            add("Victory conditions".toLabel(ExpeditionBlueTheme.gold,20))
+            add("Victory conditions".toLabel(ExpeditionBlueTheme.gold, UiTypography.size(TextRole.SectionTitle, legacySize = 20)))
         }).left().padTop(8f).padBottom(8f).row()
-        add(GameSetupOverview.victoryDescription(gameSetupInfo).toLabel(ExpeditionBlueTheme.text,18)
+        add(GameSetupOverview.victoryDescription(gameSetupInfo).toLabel(ExpeditionBlueTheme.text, UiTypography.size(TextRole.Body, legacySize = 18))
             .apply { wrap = true }).width(width).left().padBottom(12f).row()
         add(SinglePlayerSetup.group("View advanced settings",width,"Room.ReadOnlyRules") { table ->
             table.add(readOnlyRows(width - 24f,listOf(
@@ -687,12 +689,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             ))).growX()
             if (p.enableRandomNationsPool) {
                 table.row()
-                table.add(p.randomNationsPool.joinToString(" · ") { it.tr() }.toLabel().apply { wrap = true })
+                table.add(p.randomNationsPool.joinToString(" · ") { it.tr() }.toLabel(TextRole.Body).apply { wrap = true })
                     .width(width - 24f)
             }
         }).width(width).padBottom(8f).row()
         add(SinglePlayerSetup.group("View mods",width,"Room.ReadOnlyMods") {
-            it.add("Rooms require generated maps without mods".toLabel().apply { wrap = true }).width(width - 24f)
+            it.add("Rooms require generated maps without mods".toLabel(TextRole.Body).apply { wrap = true }).width(width - 24f)
         }).width(width)
     }
 
@@ -733,7 +735,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             background = SinglePlayerSetup.surface(if (mine) ExpeditionBlueTheme.raised else ExpeditionBlueTheme.panel,
                 if (mine && r.hostId == userId) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.border)
             pad(8f)
-            add(title.toLabel(if (mine) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.text,18)
+            add(title.toLabel(if (mine) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.text, UiTypography.size(TextRole.Body, legacySize = 18))
                 .apply { wrap = true }).width(width * .23f).left().padRight(8f)
             val nation = ruleset.nations[s.civilization]
             val civilization = Table().apply {
@@ -743,7 +745,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     else -> ImageGetter.getNationPortrait(nation,40f)
                 }
                 add(portrait).size(40f).padRight(10f)
-                add((if (empty) "Waiting for player" else s.civilization).toLabel(ExpeditionBlueTheme.text,18,hideIcons = true)
+                add((if (empty) "Waiting for player" else s.civilization).toLabel(ExpeditionBlueTheme.text, UiTypography.size(TextRole.Body, legacySize = 18),hideIcons = true)
                     .apply { wrap = true }).minWidth(0f).growX().left()
                 if (!empty && canChooseCivilization(r,s,own)) {
                     add(ImageGetter.getImage("OtherIcons/ArrowRight",ExpeditionBlueTheme.text).apply { setOrigin(7f,7f); rotation = -90f })
@@ -757,7 +759,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 if (s.human && s.ready)
                     add(ImageGetter.getImage("OtherIcons/Checkmark",ExpeditionBlueTheme.success)).size(18f).padRight(5f)
                 add((if (!s.human) "AI" else if (s.ready) "Prepared" else "Not ready")
-                    .toLabel(if (s.human && s.ready) ExpeditionBlueTheme.success else ExpeditionBlueTheme.muted,16)
+                    .toLabel(if (s.human && s.ready) ExpeditionBlueTheme.success else ExpeditionBlueTheme.muted, UiTypography.size(TextRole.Control, legacySize = 16))
                     .apply { wrap = true }).minWidth(0f).growX()
             }).width(72f).padLeft(8f)
             if (!mine && r.hostId == userId && own != null && r.state == "WAITING") {
@@ -816,8 +818,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val twoColumns = !isNarrowerThan4to3()
         val columnWidth = if(twoColumns) (width-16f)/2f else width
         fun column(title: String, options: Table, pane: AutoScrollPane) = if (twoColumns)
-            scrollColumn(title.toLabel(fontSize = 24), options, pane) else Table().apply {
-            add(title.toLabel(fontSize = 24)).left().padBottom(12f).row()
+            scrollColumn(title.toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24)), options, pane) else Table().apply {
+            add(title.toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24))).left().padBottom(12f).row()
             add(options).width(columnWidth).top()
         }
         return Table().apply {
@@ -904,7 +906,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             else -> "Player [${s.seatId+1}]"
         }
         val heading = Table().apply {
-            add(title.toLabel(fontSize = 20)).growX().left()
+            add(title.toLabel(fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = 20))).growX().left()
             if (r.hostId == userId && own != null && configurationSupported && r.state == "WAITING" && !mine && s.playerId.isEmpty()) {
                 add((if(s.human) "Human" else "AI").toTextButton().apply {
                     isEnabled = connected && !busy && !configurationPending
@@ -919,11 +921,11 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     }
                 }).height(44f).padLeft(8f)
             }
-            if (s.human && !empty) add((if (s.ready) "Ready" else "Not ready").toLabel(if (s.ready) Color.GREEN else Color.LIGHT_GRAY,16)).padLeft(8f)
+            if (s.human && !empty) add((if (s.ready) "Ready" else "Not ready").toLabel(if (s.ready) Color.GREEN else Color.LIGHT_GRAY, UiTypography.size(TextRole.Control, legacySize = 16))).padLeft(8f)
         }
         card.add(heading).growX().row()
         if (s.manual) card.add(Table().apply {
-            add("Manually added".toLabel(Color.LIGHT_GRAY,16)).growX().left()
+            add("Manually added".toLabel(Color.LIGHT_GRAY, UiTypography.size(TextRole.Control, legacySize = 16))).growX().left()
             if (manualControl) add("Player ID".toTextButton().apply {
                 isEnabled = connected && !busy && !configurationPending
                 onClick { beforeModal(); editManualPlayer(s) }
@@ -979,7 +981,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     }
                 }
                 add(portrait).size(44f).padRight(12f)
-                add(s.civilization.toLabel(fontSize = 22, hideIcons = true).apply { setWrap(true) }).minWidth(0f).growX().left()
+                add(s.civilization.toLabel(fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = 22), hideIcons = true).apply { setWrap(true) }).minWidth(0f).growX().left()
             }
             if (controls.hasChildren()) civilization.add(controls).padLeft(8f)
             card.add(civilization).width(width-32f).padTop(12f)
@@ -1077,5 +1079,5 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         room?.let { setup = json().fromJson(GameSetupInfo::class.java,it.setup) }
     }
     override fun show() { super.show(); paused = false; connectRoom() }
-    override fun dispose() { disposed = true; disconnectRoom(); mapSettings?.cancelBackgroundJobs(); if (!enteringGame) job?.cancel(); super.dispose() }
+    override fun dispose() { disposed = true; disconnectRoom(); mapSettings?.cancelBackgroundJobs(); if (!enteringGame) job?.cancel(); if (setupFont.isInitialized()) formFont.dispose(); if (headingFont.isInitialized()) headingFont.value.dispose(); super.dispose() }
 }

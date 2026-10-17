@@ -1,5 +1,6 @@
 package com.unciv.ui.popups
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
 import com.badlogic.gdx.utils.Align
@@ -35,7 +36,7 @@ open class ConfirmPopup(
     ) : this(screen.stage, question, confirmText, isConfirmPositive, restoreDefault, action)
 
     /** The [Label][com.badlogic.gdx.scenes.scene2d.ui.Label] created for parameter `question` for optional layout tweaking */
-    private val promptLabel = question.toLabel()
+    private val promptLabel = question.toLabel(TextRole.Body)
 
     init {
         promptLabel.setAlignment(Align.center)

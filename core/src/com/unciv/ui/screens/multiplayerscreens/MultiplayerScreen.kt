@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
@@ -60,11 +62,11 @@ import kotlinx.coroutines.CancellationException
 import org.threeten.bp.Duration
 import com.unciv.ui.components.widgets.AutoScrollPane as ScrollPane
 
-internal const val multiplayerTitleFontSize = 28
-internal const val multiplayerEmphasisFontSize = 24
-internal const val multiplayerContentFontSize = 22
-internal const val multiplayerSecondaryFontSize = 18
-internal const val multiplayerDenseFontSize = 16
+internal val multiplayerTitleFontSize get() = UiTypography.size(TextRole.PageTitle, legacySize = 28)
+internal val multiplayerEmphasisFontSize get() = UiTypography.size(TextRole.SectionTitle, legacySize = 24)
+internal val multiplayerContentFontSize get() = UiTypography.size(TextRole.Body, legacySize = 22)
+internal val multiplayerSecondaryFontSize get() = UiTypography.size(TextRole.Supporting, legacySize = 18)
+internal val multiplayerDenseFontSize get() = UiTypography.size(TextRole.Control, legacySize = 16)
 
 class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
     private val appearance = MultiplayerScreenStyle(UiNavigation.minimumTouchSize() / 44f)
@@ -120,7 +122,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
 
     private val gameCountLabel = "".toLabel(Color.LIGHT_GRAY, fontSize = multiplayerSecondaryFontSize)
     private val gamesHeader = Table()
-    private val gamesHeadingLabel = "My multiplayer games".toLabel(appearance.text, fontSize = appearance.font(16)).apply {
+    private val gamesHeadingLabel = "My multiplayer games".toLabel(appearance.text, fontSize = appearance.font(TextRole.Control)).apply {
         setEllipsis(true)
     }
     private val serverStatusDot = "●".toLabel(Color.LIGHT_GRAY, fontSize = multiplayerSecondaryFontSize)
@@ -197,7 +199,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
 
     private fun setupRightSideButton() {
         rightSideButton.setText("Download latest save and enter".tr())
-        appearance.decorate(rightSideButton, MultiplayerIcon.Download, primary = true, fontSize = 14)
+        appearance.decorate(rightSideButton, MultiplayerIcon.Download, primary = true, fontSize = TextRole.Control)
         rightSideButton.onClick {
             if (isDownloadingMods) return@onClick
             val targetGame = selectedGame ?: return@onClick
@@ -289,28 +291,28 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
         createRoomButton.name = "multiplayer-create"
         appearance.decorate(addGameButton, MultiplayerIcon.Link, primary = true)
         addGameButton.name = "multiplayer-join"
-        appearance.decorate(refreshButton, MultiplayerIcon.Refresh, ghost = true, fontSize = 12)
+        appearance.decorate(refreshButton, MultiplayerIcon.Refresh, ghost = true, fontSize = TextRole.Control)
         refreshButton.name = "multiplayer-refresh"
-        appearance.decorate(shareGameButton, MultiplayerIcon.Share, outlined = true, fontSize = 12)
+        appearance.decorate(shareGameButton, MultiplayerIcon.Share, outlined = true, fontSize = TextRole.Control)
         shareGameButton.name = "multiplayer-share"
         copyInviteButton.setText("Copy invite".tr())
-        appearance.decorate(copyInviteButton, MultiplayerIcon.Link, outlined = true, fontSize = 12)
+        appearance.decorate(copyInviteButton, MultiplayerIcon.Link, outlined = true, fontSize = TextRole.Control)
         copyInviteButton.name = "multiplayer-copy-invite"
         rightSideButton.name = "multiplayer-enter"
         listOf(gameCountLabel, serverUrlLabel, serverStateLabel).forEach {
-            it.setFontSize(appearance.font(12)); it.setFontColor(appearance.muted)
+            it.setFontSize(appearance.font(TextRole.Supporting)); it.setFontColor(appearance.muted)
         }
-        serverStatusDot.setFontSize(appearance.font(10))
-        detailTitleLabel.setFontSize(appearance.font(20)); detailTitleLabel.setFontColor(appearance.text)
-        detailRulesetLabel.setFontSize(appearance.font(12)); detailRulesetLabel.setFontColor(appearance.muted)
-        detailStatusLabel.setFontSize(appearance.font(12))
+        serverStatusDot.setFontSize(appearance.font(TextRole.Metadata))
+        detailTitleLabel.setFontSize(appearance.font(TextRole.SectionTitle)); detailTitleLabel.setFontColor(appearance.text)
+        detailRulesetLabel.setFontSize(appearance.font(TextRole.Supporting)); detailRulesetLabel.setFontColor(appearance.muted)
+        detailStatusLabel.setFontSize(appearance.font(TextRole.Supporting))
         detailStatusBadge.clearChildren()
         detailStatusBadge.add(detailStatusLabel).minWidth(0f).maxWidth(u(120f)).pad(u(4f), u(9f), u(4f), u(9f))
         listOf(currentTurnValue, turnDurationValue, ownCivilizationValue, timeRemainingValue).forEach {
-            it.setFontSize(appearance.font(16)); it.setFontColor(appearance.text)
+            it.setFontSize(appearance.font(TextRole.Control)); it.setFontColor(appearance.text)
         }
         timeRemainingValue.setFontColor(appearance.positive)
-        detailNoteLabel.setFontSize(appearance.font(11)); detailNoteLabel.setFontColor(appearance.muted)
+        detailNoteLabel.setFontSize(appearance.font(TextRole.Metadata)); detailNoteLabel.setFontColor(appearance.muted)
         detailsActionWidth = u(layout.detailsWidth - 32f)
         val drawingBounds = (stage.viewport as SafeAreaViewport).drawingBounds
         stage.addActor(Image(ImageGetter.getWhiteDotDrawable()).apply {
@@ -342,8 +344,8 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
 
     private fun createHeader(): Table {
         val u = appearance::px
-        val title = "Multiplayer".toLabel(appearance.text, fontSize = appearance.font(24))
-        val subtitle = "Take your turn when you are ready".toLabel(appearance.muted, fontSize = appearance.font(12)).apply {
+        val title = "Multiplayer".toLabel(appearance.text, fontSize = appearance.font(TextRole.PageTitle))
+        val subtitle = "Take your turn when you are ready".toLabel(appearance.muted, fontSize = appearance.font(TextRole.Supporting)).apply {
             setEllipsis(true)
         }
         val heading = Table().apply {
@@ -392,7 +394,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
         val u = appearance::px
         val filters = Table().apply {
             for (filter in MultiplayerGameFilter.entries) {
-                val button = appearance.button("", fontSize = 12).apply {
+                val button = appearance.button("", fontSize = TextRole.Control).apply {
                     name = "multiplayer-filter-${filter.name}"
                     onClick { changeFilter(filter) }
                 }
@@ -467,7 +469,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
     }
 
     private fun createInfoItem(title: String, value: Label): Table = Table().apply {
-        add(title.toLabel(appearance.muted, fontSize = appearance.font(11))).growX().minWidth(0f).left().row()
+        add(title.toLabel(appearance.muted, fontSize = appearance.font(TextRole.Metadata))).growX().minWidth(0f).left().row()
         add(value).growX().minWidth(0f).left().padTop(appearance.px(4f))
     }
 
@@ -478,11 +480,11 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
         detailsPanel.center()
         if (noGames) {
             detailsPanel.add(appearance.image(MultiplayerIcon.Users, appearance.gold)).size(u(36f)).left().padBottom(u(12f)).row()
-            detailsPanel.add("Start a civilization with friends".toLabel(appearance.text, fontSize = appearance.font(25)).apply {
+            detailsPanel.add("Start a civilization with friends".toLabel(appearance.text, fontSize = appearance.font(TextRole.PageTitle)).apply {
                 wrap = true
             }).growX().minWidth(0f).left().padBottom(u(8f)).row()
             detailsPanel.add("Create a room and share its invitation, or join a friend's game.".toLabel(
-                appearance.muted, fontSize = appearance.font(13)).apply { wrap = true })
+                appearance.muted, fontSize = appearance.font(TextRole.Supporting)).apply { wrap = true })
                 .growX().minWidth(0f).maxWidth(u(330f)).left().padBottom(u(16f)).row()
             val actions = Table().apply {
                 val create = appearance.button("Create room", MultiplayerIcon.Plus, primary = true).apply {
@@ -500,11 +502,11 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
             }
             detailsPanel.add(actions).left().row()
             detailsPanel.add("Asynchronous turns, no need to be online together".toLabel(appearance.muted,
-                fontSize = appearance.font(11))).growX().minWidth(0f).left().padTop(u(10f))
+                fontSize = appearance.font(TextRole.Metadata))).growX().minWidth(0f).left().padTop(u(10f))
         } else {
-            detailsPanel.add("No game selected".toLabel(appearance.text, fontSize = appearance.font(20))).left().row()
+            detailsPanel.add("No game selected".toLabel(appearance.text, fontSize = appearance.font(TextRole.SectionTitle))).left().row()
             detailsPanel.add("Select a game from the list to see its details.".toLabel(appearance.muted,
-                fontSize = appearance.font(13)).apply { wrap = true }).growX().minWidth(0f).left().padTop(u(8f))
+                fontSize = appearance.font(TextRole.Supporting)).apply { wrap = true }).growX().minWidth(0f).left().padTop(u(8f))
         }
     }
 
@@ -537,7 +539,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
                 pad(appearance.px(8f))
                 for (source in actions) {
                     val destructive = source in listOf(deleteButton, resignButton, forceResignButton)
-                    val item = appearance.button(source.text.toString(), ghost = true, fontSize = 14).apply {
+                    val item = appearance.button(source.text.toString(), ghost = true, fontSize = TextRole.Control).apply {
                         name = "multiplayer-menu-${source.text}"
                         isEnabled = source.isEnabled
                         if (destructive) {
@@ -650,8 +652,8 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
             if (noGames) {
                 gamesPanelContent.name = "multiplayer-empty-list"
                 gamesPanelContent.add(appearance.image(MultiplayerIcon.Games, appearance.muted)).size(appearance.px(38f)).padBottom(appearance.px(12f)).row()
-                gamesPanelContent.add("No multiplayer games yet".toLabel(appearance.text, fontSize = appearance.font(15))).padBottom(appearance.px(8f)).row()
-                gamesPanelContent.add("Your games will appear here".toLabel(appearance.muted, fontSize = appearance.font(12)))
+                gamesPanelContent.add("No multiplayer games yet".toLabel(appearance.text, fontSize = appearance.font(TextRole.Control))).padBottom(appearance.px(8f)).row()
+                gamesPanelContent.add("Your games will appear here".toLabel(appearance.muted, fontSize = appearance.font(TextRole.Supporting)))
             } else {
                 gamesPanelContent.name = "multiplayer-games-content"
                 val filters = Table()

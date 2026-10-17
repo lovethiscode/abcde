@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.basescreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.extensions.setFontSize
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
@@ -59,7 +62,7 @@ internal class StageMouseOverDebug {
             bottomHeight = padding
         }
         style.fontColor = Color.GOLDENROD
-        label = Label("", style)
+        label = Label("", style).apply { setFontSize(UiTypography.size(TextRole.Metadata)) }
         label.setAlignment(Align.center)
     }
 

@@ -1,5 +1,7 @@
 package com.unciv.ui.images
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
@@ -397,7 +399,7 @@ object ImageGetter {
 
         override fun draw(batch: Batch?, parentAlpha: Float) = super.draw(batch, parentAlpha)
 
-        fun setLabel(color: Color, text: String, fontSize: Int = Constants.defaultFontSize) : ProgressBar {
+        fun setLabel(color: Color, text: String, fontSize: Int = UiTypography.size(TextRole.CompactData)) : ProgressBar {
             label = text.toLabel()
             label?.setAlignment(Align.center)
             label?.setFontColor(color)

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.Constants
 import com.unciv.logic.civilization.Civilization
@@ -29,7 +30,7 @@ class VictoryScreenDemographics(
                 if (playerCiv.isDefeated() || !playerCiv.isMajorCiv()) continue
             }
             row()
-            add(rankLabel.name.toLabel())
+            add(rankLabel.name.toLabel(TextRole.Body))
 
             for (category in RankingType.filteredEntries(playerCiv.gameInfo.gameParameters)) {
                 // Use turn-start snapshots so mid-turn army/economy changes cannot be used to
@@ -44,10 +45,10 @@ class VictoryScreenDemographics(
 
                 @Suppress("NON_EXHAUSTIVE_WHEN") // RankLabels.Demographic treated above
                 when (rankLabel) {
-                    RankLabels.Rank -> add((aliveMajorCivsSorted.indexOfFirst { it.civ == playerCiv } + 1).toLabel())
+                    RankLabels.Rank -> add((aliveMajorCivsSorted.indexOfFirst { it.civ == playerCiv } + 1).toLabel(TextRole.Body))
                     RankLabels.Value -> addRankCivGroup(aliveMajorCivsSorted.first { it.civ == playerCiv })
                     RankLabels.Best -> addRankCivGroup(aliveMajorCivsSorted.first())
-                    RankLabels.Average -> add((aliveMajorCivsSorted.sumOf { it.value }.toFloat() / aliveMajorCivsSorted.size).roundToInt().toLabel())
+                    RankLabels.Average -> add((aliveMajorCivsSorted.sumOf { it.value }.toFloat() / aliveMajorCivsSorted.size).roundToInt().toLabel(TextRole.Body))
                     RankLabels.Worst -> addRankCivGroup(aliveMajorCivsSorted.last())
                 }
             }
@@ -68,7 +69,7 @@ class VictoryScreenDemographics(
     private fun buildDemographicsHeaders() {
         val demoLabel = Table().apply { defaults().pad(5f) }
 
-        demoLabel.add("Demographic".toLabel()).row()
+        demoLabel.add("Demographic".toLabel(TextRole.Body)).row()
         demoLabel.addSeparator().fillX()
         add(demoLabel)
 
@@ -80,7 +81,7 @@ class VictoryScreenDemographics(
                 textAndIcon.add(columnImage).center()
                     .size(Constants.defaultFontSize.toFloat() * 0.75f)
                     .padRight(2f).padTop(-2f)
-            textAndIcon.add(category.label.toLabel()).row()
+            textAndIcon.add(category.label.toLabel(TextRole.Body)).row()
             headers.add(textAndIcon)
             headers.addSeparator()
             add(headers)

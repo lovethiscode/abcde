@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
 import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.graphics.Color
@@ -84,7 +85,7 @@ class ResourcesOverviewTab(
     private fun ResourceSupplyList.getLabel(resource: TileResource, origin: String, amount: Int): Label {
         val color = if (isDeficit(resource, origin, amount)) Color.RED else Color.WHITE
         val text = (if (resource.isStockpiled && amount >= 0 && origin != ExtraInfoOrigin.Stockpile.name) "+" else "") + amount.toString()
-        return text.toLabel(color, fontSize = font(14))
+        return text.toLabel(color, fontSize = font(TextRole.Supporting))
     }
 
     private fun ResourceSupplyList.getOrZero(resource: TileResource, origin: String) =
@@ -108,7 +109,7 @@ class ResourcesOverviewTab(
     private fun TileResource.getLabel(): Label {
         val deficit = resourceDrilldown.isDeficit(this, total, resourceDrilldown.sumBy(this))
         val color = if (deficit) Color.RED else Color.WHITE
-        val label = name.toLabel(color, fontSize = font(16), hideIcons = true)
+        val label = name.toLabel(color, fontSize = font(TextRole.Control), hideIcons = true)
         label.onClick {
             overviewScreen.openCivilopedia(makeLink())
         }
@@ -162,7 +163,7 @@ class ResourcesOverviewTab(
                 add(getResourceImage(resource.name)).size(pt(28f)).padRight(pt(12f))
                 val identity = Table().apply {
                     add(resource.getLabel().apply { wrap = true }).growX().minWidth(0f).left().row()
-                    add("${resource.resourceType.name} resource".toLabel(fontColor = OverviewUi.muted, fontSize = font(13))
+                    add("${resource.resourceType.name} resource".toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting))
                         .apply { wrap = true }).growX().minWidth(0f).left().padTop(6f)
                 }
                 val identityCell = add(identity).left().padRight(20f)
@@ -170,13 +171,13 @@ class ResourcesOverviewTab(
                 val sources = Table().apply {
                     for (origin in origins) {
                         val label = resourceDrilldown.getLabel(resource, origin) ?: continue
-                        add(origin.removeSuffix("+").toLabel(fontColor = OverviewUi.muted, fontSize = font(13))
+                        add(origin.removeSuffix("+").toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting))
                             .apply { wrap = true }).growX().minWidth(0f).left().padRight(16f)
                         add(label).right().row()
                     }
                     for (origin in extraOrigins) {
                         val label = extraDrilldown.getLabel(resource, origin.name) ?: continue
-                        add(origin.horizontalCaption.toLabel(fontColor = OverviewUi.muted, fontSize = font(13))
+                        add(origin.horizontalCaption.toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting))
                             .apply { wrap = true }).growX().minWidth(0f).left().padRight(16f)
                         add(label).right().row()
                     }
@@ -184,7 +185,7 @@ class ResourcesOverviewTab(
                 if (!overviewScreen.compact) add(sources).growX().minWidth(0f).left()
                 val total = Table().apply {
                     add(resourceDrilldown.getTotalLabel(resource)).row()
-                    add("Available".toLabel(fontColor = OverviewUi.muted, fontSize = font(13))).padTop(6f)
+                    add("Available".toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting))).padTop(6f)
                 }
                 add(total).width(if (overviewScreen.compact) pt(90f) else 110f).padLeft(16f)
                 if (overviewScreen.compact) {

@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.extensions.setFontSize
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.ui.VerticalGroup
@@ -40,7 +43,7 @@ private class FriendDisplay(
 ) : Table() {
     var friendName: String = friend.name
         private set
-    val friendButton = TextButton(friendName, BaseScreen.skin)
+    val friendButton = TextButton(friendName, BaseScreen.skin).apply { label.setFontSize(UiTypography.size(TextRole.Control)) }
 
     init {
         padBottom(5f)

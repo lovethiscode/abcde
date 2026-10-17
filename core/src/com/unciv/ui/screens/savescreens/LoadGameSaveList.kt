@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.savescreens
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.scenes.scene2d.ui.Image
@@ -88,8 +89,8 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
         val button = TextButton("", ui.buttonStyle(ghost = true)).apply {
             name = "load-save-${file.name()}"; pad(ui.px(10f), ui.px(12f), ui.px(10f), ui.px(12f))
         }
-        private val title = ui.label("", 15).apply { setText(file.name()); setEllipsis(true); setAlignment(Align.left) }
-        val metadata = ui.label("Loading...", 13, ui.muted).apply { setEllipsis(true) }
+        private val title = ui.label("", TextRole.Control).apply { setText(file.name()); setEllipsis(true); setAlignment(Align.left) }
+        val metadata = ui.label("Loading...", TextRole.Supporting, ui.muted).apply { setEllipsis(true) }
         private val icon: Image = (if (file.name().startsWith("Autosave")) SaveIcon.Clock else SaveIcon.Flag).image(ui.muted)
         private val iconBox = Table().apply {
             background = ui.surface(ui.panel, 10f)
@@ -103,7 +104,7 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
                 add(title).growX().minWidth(0f).left().row()
                 val meta = Table().apply {
                     add(metadata).minWidth(0f).left()
-                    val type = ui.label(if (file.name().startsWith("Autosave")) "Automatic" else "Manual", 11, ui.muted)
+                    val type = ui.label(if (file.name().startsWith("Autosave")) "Automatic" else "Manual", TextRole.Metadata, ui.muted)
                     add(Table().apply { background = ui.surface(ui.panel, 4f); add(type).pad(ui.px(2f), ui.px(6f), ui.px(2f), ui.px(6f)) })
                         .padLeft(ui.px(8f))
                     add().growX()
@@ -112,7 +113,7 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
             }
             button.add(text).growX().minWidth(0f)
             // Time punctuation and leading zeroes are data, not localizable numbers.
-            button.add(ui.label("", 12, ui.muted).apply { setText(compactSaveDate(file.lastModified())) })
+            button.add(ui.label("", TextRole.Supporting, ui.muted).apply { setText(compactSaveDate(file.lastModified())) })
                 .padLeft(ui.px(8f))
             button.add(check).size(ui.px(16f)).padLeft(ui.px(8f))
         }

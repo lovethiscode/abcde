@@ -1,5 +1,8 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -84,7 +87,7 @@ internal class ModCheckTab(
             fixedContent.add(searchModsTextField).colspan(3).fillX().row()
 
         val labeledBaseSelect = Table().apply {
-            add("Check extension mods based on:".toLabel()).padRight(10f)
+            add("Check extension mods based on:".toLabel(TextRole.Body)).padRight(10f)
             val baseMods = listOf(MOD_CHECK_WITHOUT_BASE, MOD_CHECK_DYNAMIC_BASE) + RulesetCache.getSortedBaseRulesets()
             modCheckBaseSelect = TranslatedSelectBox(baseMods, MOD_CHECK_DYNAMIC_BASE).apply {
                 selectedIndex = 1
@@ -148,7 +151,7 @@ internal class ModCheckTab(
         if (loadingErrors.isNotEmpty()) {
             val errorTable = Table().apply { defaults().pad(2f) }
             for (loadingError in loadingErrors)
-                errorTable.add(loadingError.toLabel()).width(stage.width / 2).row()
+                errorTable.add(loadingError.toLabel(TextRole.Body)).width(stage.width / 2).row()
             modCheckResultTable.add(errorTable).row()
         }
 
@@ -281,7 +284,7 @@ internal class ModCheckTab(
                         .onClick { autoUpdateUniques(game.screen!!, mod, replaceableUniques) }).row()
             }
             for (line in modLinks) {
-                val label = Label(line.text, BaseScreen.skin)
+                val label = Label(line.text, BaseScreen.skin).apply { setFontSize(UiTypography.size(TextRole.Body)) }
                     .apply { color = line.errorSeverityToReport.color }
                 label.wrap = true
                 it.add(label).width(stage.width / 2).row()
@@ -302,7 +305,7 @@ internal class ModCheckTab(
             defaults().pad(8f)
             background = BaseScreen.skinStrings.getUiBackground("General/DisabledBox", tintColor = Color.DARK_GRAY)
             add(ImageGetter.getImage("OtherIcons/Question").apply { setSize(33f) }).padRight(10f).growY()
-            add(mod.name.toLabel(Color.LIGHT_GRAY, Constants.headingFontSize, alignment = Align.left)).left().grow()
+            add(mod.name.toLabel(Color.LIGHT_GRAY, UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize), alignment = Align.left)).left().grow()
             addTooltip("Requirements could not be determined.\nChoose a base to check this Mod.", 16f, targetAlign = Align.top)
         }
         addResultCommon(mod, table)

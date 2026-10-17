@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -26,7 +27,7 @@ class VictoryScreenGlobalVictory(
 
         defaults().pad(10f)
         for (victory in victoriesToShow) {
-            header.add("[${victory.name}] Victory".toLabel()).pad(10f)
+            header.add("[${victory.name}] Victory".toLabel(TextRole.Body)).pad(10f)
             add(getColumn(majorCivs, victory, civView.getCiv()))
         }
         header.addSeparator(Color.GRAY)

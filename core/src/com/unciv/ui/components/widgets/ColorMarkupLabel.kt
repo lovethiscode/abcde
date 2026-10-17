@@ -2,6 +2,8 @@
 
 package com.unciv.ui.components.widgets
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.Colors
 import com.badlogic.gdx.graphics.g2d.GlyphLayout
@@ -32,7 +34,7 @@ class ColorMarkupLabel private constructor(
      */
     constructor(
         text: String,
-        fontSize: Int = Constants.defaultFontSize,
+        fontSize: Int = UiTypography.size(TextRole.Body),
         defaultColor: Color = Color.WHITE,
         hideIcons: Boolean = false
     ) : this(fontSize, mapMarkup(text, ExpeditionBlueTheme.labelColor(defaultColor), hideIcons))
@@ -49,7 +51,7 @@ class ColorMarkupLabel private constructor(
         text: String,
         textColor: Color,
         symbolColor: Color = Color.WHITE,
-        fontSize: Int = Constants.defaultFontSize
+        fontSize: Int = UiTypography.size(TextRole.Body)
     ) : this (fontSize, prepareText(text, ExpeditionBlueTheme.labelColor(textColor), symbolColor))
 
     /** Only if wrap was turned on, this is the prefWidth before.

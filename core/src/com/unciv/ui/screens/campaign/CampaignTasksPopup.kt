@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.campaign
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -43,12 +45,12 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         innerTable.background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.panel)
 
         val heading = Table().apply {
-            add(d.number.toString().padStart(2, '0').toLabel(Theme.gold, 28)).padRight(16f)
+            add(d.number.toString().padStart(2, '0').toLabel(Theme.gold, UiTypography.size(TextRole.PageTitle, legacySize = 28))).padRight(16f)
             add(Table().apply {
                 defaults().left()
-                add((if (d.id == CivilWarCampaign.id) "历史战役 / 联邦" else "文明的诞生 / [${CampaignCatalog.chapters[(d.number - 1) / 4]}]").toLabel(Theme.muted, 14)).row()
-                add(d.title.toLabel(Theme.text, 25)).padTop(3f).row()
-                add("行动回合 [${if (d.hardTurnLimit > 0) (state.completedRounds + 1).coerceAtMost(d.hardTurnLimit) else state.completedRounds + 1}] · 已完成 [${state.completedRounds}] 回合".toLabel(Theme.muted, 15)).padTop(4f)
+                add((if (d.id == CivilWarCampaign.id) "历史战役 / 联邦" else "文明的诞生 / [${CampaignCatalog.chapters[(d.number - 1) / 4]}]").toLabel(Theme.muted, UiTypography.size(TextRole.Supporting, legacySize = 14))).row()
+                add(d.title.toLabel(Theme.text, UiTypography.size(TextRole.PageTitle, legacySize = 25))).padTop(3f).row()
+                add("行动回合 [${if (d.hardTurnLimit > 0) (state.completedRounds + 1).coerceAtMost(d.hardTurnLimit) else state.completedRounds + 1}] · 已完成 [${state.completedRounds}] 回合".toLabel(Theme.muted, UiTypography.size(TextRole.Control, legacySize = 15))).padTop(4f)
             }).expandX().left()
         }
         addTitleWithCloseButton(heading)
@@ -57,31 +59,31 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         if (terminal) {
             screen.campaignResultShown = true
             goals.add(bodyText(if (result.failed) "本次挑战失败" else "战役通关", goalsWidth,
-                if (result.failed) Theme.danger else Theme.gold, 23)).padBottom(6f).row()
+                if (result.failed) Theme.danger else Theme.gold, TextRole.PageTitle)).padBottom(6f).row()
             val best = runCatching { CampaignStore(screen.game.files).progress().bestStars["${d.id}:${d.scoringVersion}"] ?: 0 }.getOrNull()
             goals.add(bodyText(if (result.failed) result.failureReason else
                 if (best == null) "Latest attempt: [${state.resultStars}] / 3 stars" else
-                "本次获得 [${state.resultStars}] 星 · 本版本最高 [$best] 星", goalsWidth, Theme.muted, 16))
+                "本次获得 [${state.resultStars}] 星 · 本版本最高 [$best] 星", goalsWidth, Theme.muted, TextRole.Control))
                 .padBottom(12f).row()
         }
         val met = listOf(result.main, result.worker, result.population)
         for ((i, goal) in copy.objectives.withIndex()) {
             if (i < 2) goals.add(bodyText(if (i == 0) "通关目标 · 必做 1 星" else "挑战目标 · 可选，各 1 星",
-                goalsWidth, Theme.gold, 16)).padTop(if (i == 0) 0f else 12f).padBottom(7f).row()
+                goalsWidth, Theme.gold, TextRole.Control)).padTop(if (i == 0) 0f else 12f).padBottom(7f).row()
             val card = Table().apply {
                 background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", if (i == 0) Theme.raised else Theme.background)
                 pad(12f)
                 add((if (met[i] && !result.failed) "✓" else "○").toLabel(
-                    if (met[i] && !result.failed) Theme.gold else Theme.muted, 22)).top().width(26f).padRight(8f)
+                    if (met[i] && !result.failed) Theme.gold else Theme.muted, UiTypography.size(TextRole.SectionTitle, legacySize = 22))).top().width(26f).padRight(8f)
                 val textWidth = goalsWidth - 58f
                 add(Table().apply {
                     defaults().left()
-                    add(bodyText(goal, textWidth, Theme.text, 18)).row()
+                    add(bodyText(goal, textWidth, Theme.text, TextRole.Body)).row()
                     result.details.getOrNull(i)?.let {
-                        add(bodyText(it, textWidth, if (met[i] && !result.failed) Theme.success else Theme.muted, 15)).padTop(5f).row()
+                        add(bodyText(it, textWidth, if (met[i] && !result.failed) Theme.success else Theme.muted, TextRole.Control)).padTop(5f).row()
                     }
                     if (i in result.impossible) add(bodyText("本次已错过这颗星，仍可完成通关及其他挑战。",
-                        textWidth, Theme.danger, 15)).padTop(5f).row()
+                        textWidth, Theme.danger, TextRole.Control)).padTop(5f).row()
                 }).width(textWidth)
             }
             goals.add(card).width(goalsWidth).padBottom(8f).row()
@@ -109,7 +111,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
                 locations.add("哈珀斯费里 · 受损交通" to CivilWarCampaign.harpersFerry)
             }
             if (locations.isNotEmpty()) {
-                side.add(bodyText("地图定位", sideWidth, Theme.gold, 16)).row()
+                side.add(bodyText("地图定位", sideWidth, Theme.gold, TextRole.Control)).row()
                 for ((title, position) in locations) side.add(boardButton("定位 · [$title]") { locate(position) })
                     .width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).row()
             }
@@ -120,9 +122,9 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         }).width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).row()
         if (!state.hintsDismissed) {
             for ((i, hint) in copy.hints.withIndex())
-                side.add(bodyText("${i + 1}. ${hint.tr()}", sideWidth, Theme.text, 16)).row()
-            side.add(bodyText("本关设置", sideWidth, Theme.gold, 16)).padTop(6f).row()
-            for (restriction in copy.restrictions) side.add(bodyText(restriction, sideWidth, Theme.muted, 14)).row()
+                side.add(bodyText("${i + 1}. ${hint.tr()}", sideWidth, Theme.text, TextRole.Control)).row()
+            side.add(bodyText("本关设置", sideWidth, Theme.gold, TextRole.Control)).padTop(6f).row()
+            for (restriction in copy.restrictions) side.add(bodyText(restriction, sideWidth, Theme.muted, TextRole.Supporting)).row()
         }
         side.add(boardButton(if (terminal) "返回战役 / 重新挑战" else "保存并返回战役") { leave(d.id) }.apply {
             name = "ui-campaign-return"
@@ -146,7 +148,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
                 result.main -> "当前可获得 [${result.stars}] 星 · 结算时检查目标"
                 else -> "完成通关目标后可结算"
             }
-            add(bodyText(caption, statusWidth, Theme.muted, 14)).padTop(5f)
+            add(bodyText(caption, statusWidth, Theme.muted, TextRole.Supporting)).padTop(5f)
         }
         bottomTable.pad(14f, 25f, 18f, 25f)
         bottomTable.defaults().pad(0f).space(10f)
@@ -171,7 +173,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         }.apply {
             width(if (wide) boardWidth * .29f else (boardWidth - 10f) / 2)
             minHeight(UiNavigation.minimumTouchSize())
-            actor.label.setFontSize(18)
+            actor.label.setFontSize(UiTypography.size(TextRole.Control, legacySize = 18))
             if (!terminal) {
                 actor.name = "ui-campaign-submit"
                 actor.isDisabled = !result.main || !screen.isPlayersTurn || screen.isNextTurnUpdateRunning()
@@ -180,11 +182,11 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         open()
     }
 
-    private fun bodyText(text: String, width: Float, color: Color = Theme.text, size: Int = 18) =
-        Table().apply { add(text.trCampaign().toLabel(color, size).apply { wrap = true }).width(width).left() }
+    private fun bodyText(text: String, width: Float, color: Color = Theme.text, size: TextRole = TextRole.Body) =
+        Table().apply { add(text.trCampaign().toLabel(size, color).apply { wrap = true }).width(width).left() }
 
     private fun boardButton(title: String, action: () -> Unit): TextButton = title.toTextButton().apply {
-        label.setFontSize(17)
+        label.setFontSize(UiTypography.size(TextRole.Control, legacySize = 17))
         label.wrap = true
         onActivation { action() }
     }

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.MathUtils.lerp
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -54,8 +55,8 @@ class LineChart(
     private var preparedForWidth = 0f
     private var preparedForHeight = 0f
 
-    override fun getMinWidth() = maxLabels * (21f + axisToLabelPadding) // 21f ~= "99".toLabel().prefWidth
-    override fun getMinHeight() = maxLabels * (18f + axisToLabelPadding) // 18f ~= "99".toLabel().prefHeight
+    override fun getMinWidth() = maxLabels * (21f + axisToLabelPadding) // 21f ~= "99".toLabel(TextRole.Body).prefWidth
+    override fun getMinHeight() = maxLabels * (18f + axisToLabelPadding) // 18f ~= "99".toLabel(TextRole.Body).prefHeight
     override fun getPrefWidth() = if (hasChildren()) width else minWidth
     override fun getPrefHeight() = if (hasChildren()) height else minHeight
 
@@ -81,7 +82,7 @@ class LineChart(
 
         fun label(value: Int) = if (overviewStyle) value.toString().toLabel(
             fontColor = com.unciv.ui.screens.overviewscreen.OverviewUi.muted,
-            fontSize = com.unciv.ui.screens.overviewscreen.OverviewUi.font(12), hideIcons = true
+            fontSize = com.unciv.ui.screens.overviewscreen.OverviewUi.font(TextRole.Supporting), hideIcons = true
         ).apply { pack() } else Label(value.tr(), axisLabelStyle)
         xLabelsAsLabels = xLabels.map(::label)
         yLabelsAsLabels = yLabels.map(::label)

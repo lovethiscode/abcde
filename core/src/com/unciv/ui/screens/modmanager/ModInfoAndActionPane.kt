@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.modmanager
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.scenes.scene2d.ui.Image
@@ -32,7 +33,7 @@ internal class ModInfoAndActionPane(
     private val repoUrlToPreviewImage = HashMap<String, Texture?>()
     private val imageHolder = Table()
     private val secondaryActions = Table()
-    private val sizeLabel = ModManagementStyle.label("", 18, ModManagementStyle.muted)
+    private val sizeLabel = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
     companion object {
         fun formatSize(size: Int) = when {
             size <= 0 -> ""
@@ -104,9 +105,9 @@ internal class ModInfoAndActionPane(
         }
         val heading = Table()
         val title = Table().apply {
-            add(ModManagementStyle.label(cleanModName(modName), 30)).growX().minWidth(0f).row()
+            add(ModManagementStyle.label(cleanModName(modName), TextRole.PageTitle)).growX().minWidth(0f).row()
             if (author.isNotEmpty())
-                add(ModManagementStyle.label("Author: [$author]", 18, ModManagementStyle.muted))
+                add(ModManagementStyle.label("Author: [$author]", TextRole.Body, ModManagementStyle.muted))
                     .growX().minWidth(0f).padTop(8f)
         }
         heading.add(imageHolder).size(48f).top().padRight(14f)
@@ -116,7 +117,7 @@ internal class ModInfoAndActionPane(
         val facts = Table().apply { defaults().growX().minWidth(0f).top().padRight(18f) }
         fun metric(value: Label, caption: String): Table = Table().apply {
             add(value).growX().minWidth(0f).left().row()
-            add(ModManagementStyle.label(caption, 18, ModManagementStyle.muted))
+            add(ModManagementStyle.label(caption, TextRole.Body, ModManagementStyle.muted))
                 .growX().minWidth(0f).padTop(4f)
         }
         val factValues = ArrayList<Pair<Label, String>>()
@@ -125,12 +126,12 @@ internal class ModInfoAndActionPane(
         // Keep the size actor attached even when unknown: the asynchronous query may fill it later.
         if (!isBuiltin) factValues.add(sizeLabel to "Size")
         if (updatedAt.isNotEmpty())
-            factValues.add(ModManagementStyle.label("", 20).apply {
+            factValues.add(ModManagementStyle.label("", TextRole.SectionTitle).apply {
                 wrap = false
                 setText(updatedAt.take(10))
             } to "Updated")
         if (stars != null)
-            factValues.add(ModManagementStyle.label("$stars${Fonts.star}", 20).apply { wrap = false } to "Stars")
+            factValues.add(ModManagementStyle.label("$stars${Fonts.star}", TextRole.SectionTitle).apply { wrap = false } to "Stars")
         val stackedFacts = factValues.sumOf { (value, _) -> value.prefWidth.toDouble() + 18f } > availableWidth
         for ((value, caption) in factValues) {
             facts.add(metric(value, caption)).minWidth(value.prefWidth + 18f)
@@ -140,7 +141,7 @@ internal class ModInfoAndActionPane(
 
         add(com.unciv.ui.images.ImageGetter.getWhiteDot().apply { color = ModManagementStyle.line })
             .height(1f).pad(4f, 0f, 16f, 0f).row()
-        add(ModManagementStyle.label("About this mod", 22)).growX().minWidth(0f).row()
+        add(ModManagementStyle.label("About this mod", TextRole.SectionTitle)).growX().minWidth(0f).row()
         add(description).growX().minWidth(0f).padBottom(16f).row()
 
         if (repoUrl.isNotEmpty()) {

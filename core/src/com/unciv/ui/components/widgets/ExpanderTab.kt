@@ -1,5 +1,7 @@
 package com.unciv.ui.components.widgets
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Interpolation
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -10,7 +12,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.Value
 import com.badlogic.gdx.utils.Align
-import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.ActivationTypes
@@ -40,7 +41,7 @@ import com.unciv.ui.screens.basescreen.BaseScreen
  */
 class ExpanderTab(
     val title: String,
-    fontSize: Int = Constants.headingFontSize,
+    fontSize: Int = UiTypography.size(TextRole.SectionTitle),
     icon: Actor? = null,
     startsOutOpened: Boolean = true,
     defaultPad: Float = 10f,

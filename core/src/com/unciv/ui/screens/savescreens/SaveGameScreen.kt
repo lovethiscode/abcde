@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.savescreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
@@ -33,10 +35,10 @@ import com.unciv.utils.Log
 import com.unciv.utils.launchOnGLThread
 
 
-private const val saveGameTitleFontSize = 28
-private const val saveGameSecondaryFontSize = 18
-private const val saveGameContentFontSize = 22
-private const val saveGameCompactActionFontSize = 20
+private val saveGameTitleFontSize get() = UiTypography.size(TextRole.PageTitle, legacySize = 28)
+private val saveGameSecondaryFontSize get() = UiTypography.size(TextRole.Supporting, legacySize = 18)
+private val saveGameContentFontSize get() = UiTypography.size(TextRole.Body, legacySize = 22)
+private val saveGameCompactActionFontSize get() = UiTypography.size(TextRole.Control, legacySize = 20)
 
 class SaveGameScreen(private val gameInfo: GameInfo) :
     LoadOrSaveScreen(saveButtonFontSize = saveGameContentFontSize) {
@@ -147,11 +149,11 @@ class SaveGameScreen(private val gameInfo: GameInfo) :
         pickerPane.remove()
 
         if (UiNavigation.isIos) UiNavigation.styleBackButton(closeButton)
-        else closeButton.label.setFontSize(saveGameContentFontSize)
-        showAutosavesCheckbox.label.setFontSize(saveGameContentFontSize)
+        else closeButton.label.setFontSize(UiTypography.size(TextRole.Control))
+        showAutosavesCheckbox.label.setFontSize(UiTypography.size(TextRole.Control))
         descriptionLabel.setFontSize(saveGameContentFontSize)
-        errorLabel.setFontSize(saveGameCompactActionFontSize)
-        rightSideButton.label.setFontSize(saveGameContentFontSize)
+        errorLabel.setFontSize(UiTypography.size(TextRole.Body))
+        rightSideButton.label.setFontSize(UiTypography.size(TextRole.Control))
         copyJsonButton.label.setFontSize(saveGameCompactActionFontSize)
         saveToCustomLocationButton.label.setFontSize(saveGameCompactActionFontSize)
         deleteSaveButton.label.setFontSize(saveGameCompactActionFontSize)

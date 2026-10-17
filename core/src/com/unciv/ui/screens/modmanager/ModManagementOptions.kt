@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.modmanager
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.metadata.ModCategories
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.fonts.Fonts
@@ -76,7 +78,7 @@ internal class ModManagementOptions(
     fun openPopup() {
         val popup = Popup(modManagementScreen)
         val width = (modManagementScreen.stage.width - 80f).coerceAtMost(540f)
-        val title = "Sort and Filter".toLabel(fontSize = 24)
+        val title = "Sort and Filter".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24))
         if (UiNavigation.isIos) popup.addTitleWithCloseButton(title) else popup.add(title).padBottom(16f).row()
         val categorySelect = TranslatedSelectBox(ModCategories.asSequence().map { it.label }.toList(), category.label)
         categorySelect.onChange {
@@ -86,7 +88,7 @@ internal class ModManagementOptions(
         }
         for ((label, select) in listOf("Category:" to categorySelect,
             "Sort Current:" to sortPicker(true), "Sort Downloadable:" to sortPicker(false))) {
-            popup.add(ModManagementStyle.label(label, 20)).width(width).left().padBottom(6f).row()
+            popup.add(ModManagementStyle.label(label, TextRole.SectionTitle)).width(width).left().padBottom(6f).row()
             popup.add(select).width(width).minHeight(ModManagementStyle.touchHeight).padBottom(16f).row()
         }
         if (!UiNavigation.isIos) popup.addCloseButton()

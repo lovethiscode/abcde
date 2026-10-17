@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.unit.actions
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Interpolation
@@ -243,7 +245,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         }
         if (secondary.isNotEmpty()) {
             val more = IconTextButton("Show more",
-                BattlefieldGeometry.icon(ImageGetter.getUnitActionPortrait("ShowMore")), BattlefieldHud.font(12f)).apply {
+                BattlefieldGeometry.icon(ImageGetter.getUnitActionPortrait("ShowMore")), BattlefieldHud.font(TextRole.Supporting), labelFontSize = UiTypography.size(TextRole.Control)).apply {
                 name = "ui-unit-more"
                 BattlefieldGeometry.fitControl(this, flat = true)
                 pad(BattlefieldHud.points(2f))
@@ -325,7 +327,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
     internal fun updateBattlefieldCity() {
         clear()
         val city = worldScreen.bottomUnitTable.selectedCity?.tryGetCityView() ?: return
-        val button = IconTextButton("City", ImageGetter.getImage("OtherIcons/Cities"), BattlefieldHud.font(13f)).apply {
+        val button = IconTextButton("City", ImageGetter.getImage("OtherIcons/Cities"), BattlefieldHud.font(TextRole.Supporting), labelFontSize = UiTypography.size(TextRole.Control)).apply {
             name = "ui-context-city-open"
             BattlefieldGeometry.fitControl(this, flat = true)
             iconCell.size(BattlefieldHud.points(18f))
@@ -356,7 +358,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         val binding = unitAction.uiType.binding
 
         val fontColor = if (unitAction.isCurrentAction) ExpeditionBlueTheme.color(Color.YELLOW, ExpeditionBlueTheme.gold) else Color.WHITE
-        val actionButton = IconTextButton(unitAction.title, icon, fontColor = fontColor)
+        val actionButton = IconTextButton(unitAction.title, icon, fontColor = fontColor, labelFontSize = UiTypography.size(TextRole.Control))
         actionButton.name = "ui-unit-action:${unitAction.uiType.name}"
         val upgradeAction = unitAction.unitAction as? UpgradeUnitAction
         if (upgradeAction != null) actionButton.name += ":${upgradeAction.unitToUpgradeTo.name}"
@@ -364,7 +366,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         actionButton.labelCell.padTop(0f) // aligned with icon 
         if (BattlefieldHud.enabled) {
             BattlefieldGeometry.fitControl(actionButton, flat = true)
-            actionButton.label.setFontSize(BattlefieldHud.font(12f))
+            actionButton.label.setFontSize(BattlefieldHud.font(TextRole.Control))
             actionButton.label.wrap = true
             actionButton.labelCell.minWidth(0f).growX()
             actionButton.iconCell.size(BattlefieldHud.points(18f)).padRight(BattlefieldHud.points(5f))

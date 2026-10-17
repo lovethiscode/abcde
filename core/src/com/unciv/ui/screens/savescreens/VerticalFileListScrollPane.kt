@@ -1,12 +1,13 @@
 package com.unciv.ui.screens.savescreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
-import com.unciv.Constants
 import com.unciv.logic.files.UncivFiles
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.input.keyShortcuts
@@ -32,7 +33,7 @@ import kotlin.math.abs
  */
 open class VerticalFileListScrollPane(
     protected val existingSavesTable: Table = Table(),
-    private val buttonFontSize: Int = Constants.defaultFontSize,
+    private val buttonFontSize: Int = UiTypography.size(TextRole.Control),
 ) : AutoScrollPane(existingSavesTable) {
 
     private class FileHandleButton(val file: FileHandle, val index: Int, fontSize: Int) : TextButton(file.name(), BaseScreen.skin) {

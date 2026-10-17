@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
 import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -95,9 +96,9 @@ class StatsOverviewTab(
                     else -> ImageGetter.getStatIcon(label)
                 }
                 add(icon).size(pt(18f)).padLeft(pt(12f)).padRight(pt(8f))
-                add(OverviewUi.plainLabel(label, 15).apply { wrap = true })
+                add(OverviewUi.plainLabel(label, TextRole.Control).apply { wrap = true })
                     .minWidth(0f).growX().left().padTop(pt(10f)).padBottom(pt(10f))
-                amounts[label]?.let { add(it.toString().toLabel(fontColor = OverviewUi.accent, fontSize = font(14))).right().padRight(12f) }
+                amounts[label]?.let { add(it.toString().toLabel(fontColor = OverviewUi.accent, fontSize = font(TextRole.Supporting))).right().padRight(12f) }
             }).minHeight(pt(52f))
             if (overviewScreen.compact) cell.width(pt(170f)).padRight(pt(8f))
             else cell.growX().padBottom(pt(4f)).row()
@@ -122,14 +123,14 @@ class StatsOverviewTab(
     private fun Table.addLabeledValue(label: String, value: Float) {
         val roundedValue = value.roundToInt()
         if (roundedValue == 0) return
-        add(label.toLabel(fontColor = OverviewUi.muted, hideIcons = true, fontSize = font(14)).apply { wrap = true })
+        add(label.toLabel(fontColor = OverviewUi.muted, hideIcons = true, fontSize = font(TextRole.Supporting)).apply { wrap = true })
             .minWidth(0f).growX().left().minHeight(pt(35f))
-        add(roundedValue.toString().toLabel(fontSize = font(14))).right().row()
+        add(roundedValue.toString().toLabel(fontSize = font(TextRole.Supporting))).right().row()
         add(ImageGetter.getWhiteDot().apply { color = OverviewUi.border }).colspan(2).growX().height(pt(1f)).row()
     }
     private fun Table.addTotal(value: Float) {
-        add("Total".toLabel(fontColor = OverviewUi.accent, fontSize = font(14))).left().minHeight(pt(36f))
-        add(value.roundToInt().toString().toLabel(fontColor = OverviewUi.accent, fontSize = font(14))).right().row()
+        add("Total".toLabel(fontColor = OverviewUi.accent, fontSize = font(TextRole.Supporting))).left().minHeight(pt(36f))
+        add(value.roundToInt().toString().toLabel(fontColor = OverviewUi.accent, fontSize = font(TextRole.Supporting))).right().row()
         pack()
     }
 
@@ -183,7 +184,7 @@ class StatsOverviewTab(
     private fun Table.addGoldSlider() {
         addSeparator()
         val sliderTable = Table()
-        sliderTable.add("Convert gold to science".toLabel()).row()
+        sliderTable.add("Convert gold to science".toLabel(TextRole.Body)).row()
 
         val slider = UncivSlider(0f, 1f, 0.1f,
             initial = viewingPlayer.getGoldPercentConvertedToScience(),
@@ -202,24 +203,24 @@ class StatsOverviewTab(
     private fun updateGreatPeopleTable() = greatPeopleTable.apply {
         clear()
         add()
-        add("Current points".toLabel())
-        add("Points per turn".toLabel()).row()
+        add("Current points".toLabel(TextRole.Body))
+        add("Points per turn".toLabel(TextRole.Body)).row()
 
         val greatPersonPoints = viewingPlayer.getGreatPersonPointsCounter()
         val greatPersonPointsPerTurn = viewingPlayer.getGreatPersonPointsForNextTurn()
         for ((greatPerson, points) in greatPersonPoints) {
             val pointsToGreatPerson = viewingPlayer.getPointsRequiredForGreatPerson(greatPerson)
-            add(greatPerson.toLabel()).left()
-            add("$points/$pointsToGreatPerson".toLabel())
-            add(greatPersonPointsPerTurn[greatPerson].toLabel()).right().row()
+            add(greatPerson.toLabel(TextRole.Body)).left()
+            add("$points/$pointsToGreatPerson".toLabel(TextRole.Body))
+            add(greatPersonPointsPerTurn[greatPerson].toLabel(TextRole.Body)).right().row()
         }
 
         val greatGeneralPoints = viewingPlayer.getGreatGeneralPointsCounter()
         val pointsForNextGreatGeneral = viewingPlayer.getPointsForNextGreatGeneralCounter()
         for ((unit, points) in greatGeneralPoints) {
             val pointsToGreatGeneral = pointsForNextGreatGeneral[unit]
-            add(unit.toLabel()).left()
-            add("$points/$pointsToGreatGeneral".toLabel()).row()
+            add(unit.toLabel(TextRole.Body)).left()
+            add("$points/$pointsToGreatGeneral".toLabel(TextRole.Body)).row()
         }
 
         pack()

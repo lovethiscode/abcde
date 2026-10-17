@@ -23,10 +23,11 @@ open class IconTextButton(
     text: String,
     val icon: Actor? = null,
     fontSize: Int = Constants.defaultFontSize,
-    val fontColor: Color = Color.WHITE
+    val fontColor: Color = Color.WHITE,
+    labelFontSize: Int = fontSize
 ) : Button(BaseScreen.skin) {
     /** [Label] instance produced by, and with content and formatting as specified in [String.toLabel]. */
-    val label = text.toLabel(fontColor, fontSize, hideIcons = true) // Since by definition we already have an icon
+    val label = text.toLabel(fontColor, labelFontSize, hideIcons = true) // Since by definition we already have an icon
 
     /** Table cell containing the [icon] if any, or `null` (that is, when no [icon] was supplied, the Cell will exist but have no Actor). */
     val iconCell: Cell<Actor> =

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -26,13 +27,13 @@ class VictoryScreenOurVictory(
 
         defaults().pad(10f)
         for (victory in victoriesToShow) {
-            header.add("[${victory.name}] Victory".toLabel()).pad(10f)
+            header.add("[${victory.name}] Victory".toLabel(TextRole.Body)).pad(10f)
             add(getColumn(victory, civView.getCiv())).top()
         }
 
         row()
         for (victory in victoriesToShow) {
-            val victoryScreenHeaderLabel = victory.victoryScreenHeader.toLabel()
+            val victoryScreenHeaderLabel = victory.victoryScreenHeader.toLabel(TextRole.Body)
             victoryScreenHeaderLabel.wrap = true
             add(victoryScreenHeaderLabel).width(stageWidth / 5)
         }

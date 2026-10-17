@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Button
@@ -38,6 +41,7 @@ class PickerPane(
         BaseScreen.skin.get("positive", TextButtonStyle::class.java) else null)
 
     private val screenSplit = 0.85f
+    internal var useContentSizedFooter = false
     private val maxBottomTableHeight = 150f     // about 7 lines of normal text
 
     /**
@@ -105,7 +109,11 @@ class PickerPane(
             getCell(navigationHeader).height(if (hasNavigation) maxOf(closeButton.height + 16f, navigationHeader.prefHeight) else 0f)
         }
         super.layout()
-        if (!showSideDescription) {
+        if (!showSideDescription && useContentSizedFooter) {
+            splitPane.validate()
+            val footerHeight = bottomTable.prefHeight.coerceAtMost(splitPane.height * .35f)
+            if (splitPane.height > 0f) splitPane.splitAmount = 1f - footerHeight / splitPane.height
+        } else if (!showSideDescription) {
             bottomTable.height = bottomTable.height.coerceAtMost(maxBottomTableHeight)
             splitPane.splitAmount = (scrollPane.height / (scrollPane.height + bottomTable.height)).coerceAtLeast(screenSplit)
         }
@@ -155,6 +163,7 @@ class PickerPane(
      *  This also ensures vertical scroll is reset when changing description
      */
     inner class DescriptionLabel : Label("", BaseScreen.skin) {
+        init { setFontSize(UiTypography.size(TextRole.Body)) }
         override fun setText(newText: CharSequence?) {
             super.setText(newText)
             descriptionScroll.validate()
@@ -168,7 +177,7 @@ class PickerPane(
         const val pickerOptionIconSize = 30f
         /** Return a button for picker screens that display a list of big buttons with icons and labels. */
         fun getPickerOptionButton(icon: Actor, label: String): Button {
-            return IconTextButton(label, icon).apply {
+            return IconTextButton(label, icon, labelFontSize = UiTypography.size(TextRole.Control)).apply {
                 iconCell.size(pickerOptionIconSize).pad(10f)
                 labelCell.pad(10f)
             }

@@ -1,5 +1,7 @@
 package com.unciv.ui.crashhandling
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -154,7 +156,7 @@ class CrashScreen(val exception: Throwable) : BaseScreen() {
 
     /** @return Label for title at top of screen. */
     private fun makeTitleLabel() =
-        "An unrecoverable error has occurred in Unciv:".toLabel(fontSize = Constants.headingFontSize)
+        "An unrecoverable error has occurred in Unciv:".toLabel(fontSize = UiTypography.size(TextRole.PageTitle))
             .apply {
                 wrap = true
                 setAlignment(Align.center)
@@ -163,7 +165,7 @@ class CrashScreen(val exception: Throwable) : BaseScreen() {
     /** @return Actor that displays a scrollable view of the error report text. */
     private fun makeErrorScroll(): Actor {
         val errorLabel = Label(displayedText, skin).apply {
-            setFontSize(15)
+            setFontSize(UiTypography.size(TextRole.Body, legacySize = 15))
         }
         val errorTable = Table()
         errorTable.add(errorLabel)
@@ -182,7 +184,7 @@ class CrashScreen(val exception: Throwable) : BaseScreen() {
 
     /** @return Table that displays decision buttons for the bottom of the screen. */
     private fun makeActionButtonsTable(): Table {
-        val copyButton = IconTextButton("Copy", fontSize = Constants.headingFontSize)
+        val copyButton = IconTextButton("Copy", fontSize = Constants.headingFontSize, labelFontSize = UiTypography.size(TextRole.Control))
             .onClick {
                 try {
                     Gdx.app.clipboard.contents = fullText
@@ -201,7 +203,7 @@ class CrashScreen(val exception: Throwable) : BaseScreen() {
             }
         val reportButton = IconTextButton("Open Issue Tracker", ImageGetter.getImage("OtherIcons/Link"),
             Constants.headingFontSize
-        )
+        , labelFontSize = UiTypography.size(TextRole.Control))
             .onClick {
                 if (copied) {
                     Gdx.net.openURI("${Constants.uncivRepoURL}issues")
@@ -212,7 +214,7 @@ class CrashScreen(val exception: Throwable) : BaseScreen() {
                     )
                 }
             }
-        val closeButton = IconTextButton("Close Unciv", fontSize = Constants.headingFontSize)
+        val closeButton = IconTextButton("Close Unciv", fontSize = Constants.headingFontSize, labelFontSize = UiTypography.size(TextRole.Control))
             .onClick { Gdx.app.exit() }
 
         val buttonsTable = Table()

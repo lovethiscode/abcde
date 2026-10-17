@@ -1,5 +1,8 @@
 package com.unciv.ui.popups.options
 
+import kotlin.math.roundToInt
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
@@ -44,9 +47,9 @@ class OptionsPopup(
     private val contentPadding get() = OptionsPopupStyle.points(if (compactNavigation) 12f else 20f)
     private val navigation = Table()
     private val navigationButtons = ArrayList<IconTextButton>()
-    private val pageDescription = "".toLabel(OptionsPopupStyle.muted, OptionsPopupStyle.fontSize(14f)).apply { wrap = true }
+    private val pageDescription = "".toLabel(OptionsPopupStyle.muted, OptionsPopupStyle.fontSize(TextRole.Supporting)).apply { wrap = true }
     private val contentFontDelegate = lazy {
-            Fonts.fontImplementation.getBitmapFont().apply { data.setScale(OptionsPopupStyle.fontSize(17f) / Fonts.ORIGINAL_FONT_SIZE) }
+            Fonts.fontImplementation.getBitmapFont().apply { data.setScale(OptionsPopupStyle.fontSize(TextRole.Control) / Fonts.ORIGINAL_FONT_SIZE) }
     }
     internal val contentFont get() = contentFontDelegate.value
     private var visibleHeight = 0f
@@ -120,13 +123,13 @@ class OptionsPopup(
                 onClick { close() }
             }
             add(back).minSize(UiNavigation.minimumTouchSize()).padRight(OptionsPopupStyle.points(10f))
-            add("Options".toLabel(OptionsPopupStyle.text, OptionsPopupStyle.fontSize(22f)).apply { wrap = true })
+            add("Options".toLabel(OptionsPopupStyle.text, OptionsPopupStyle.fontSize(TextRole.PageTitle)).apply { wrap = true })
                 .minWidth(0f).growX().left()
         }
 
         navigation.top().pad(0f, OptionsPopupStyle.points(12f), OptionsPopupStyle.points(8f), OptionsPopupStyle.points(12f))
         for ((index, page) in visiblePages.withIndex()) {
-            val button = IconTextButton(page.label, page.getIcon(settings.language), OptionsPopupStyle.fontSize(17f)).apply {
+            val button = IconTextButton(page.label, page.getIcon(settings.language), OptionsPopupStyle.points(17f).roundToInt(), labelFontSize = UiTypography.size(TextRole.Control)).apply {
                 style = Button.ButtonStyle(style).apply {
                     up = OptionsPopupStyle.surface(Color.CLEAR)
                     checked = OptionsPopupStyle.selectedNavigationDrawable()

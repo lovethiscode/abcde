@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.mapeditorscreen.tabs
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -167,7 +169,7 @@ class MapEditorEditTab(private val editorScreen: MapEditorScreen, @Suppress("UNU
         background = MapEditorStyle.background(MapEditorStyle.raised)
         val rendered = line.copy(text = "", link = "", size = (30*u).toInt()).render(0f)
         add(rendered).height(34*u).row()
-        add(line.text.toLabel(fontSize = (14*u).toInt(), fontColor = MapEditorStyle.text, hideIcons = true).apply {
+        add(line.text.toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = u), fontColor = MapEditorStyle.text, hideIcons = true).apply {
             wrap = true; setAlignment(com.badlogic.gdx.utils.Align.center)
         }).width(104*u).height(38*u)
         pad(4*u)

@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.diplomacyscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -113,12 +115,12 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
 
         diplomacyTable.add(LeaderIntroTable(otherCiv)).padBottom(15f).row()
 
-        diplomacyTable.add("{Type}:  {${otherCiv.cityStateType.name}}".toLabel()).row()
-        diplomacyTable.add("{Personality}:  {${otherCiv.cityStatePersonality}}".toLabel()).row()
+        diplomacyTable.add("{Type}:  {${otherCiv.cityStateType.name}}".toLabel(TextRole.Body)).row()
+        diplomacyTable.add("{Personality}:  {${otherCiv.cityStatePersonality}}".toLabel(TextRole.Body)).row()
 
         if (otherCiv.detailedCivResources.any { it.resource.resourceType != ResourceType.Bonus }) {
             val resourcesTable = Table()
-            resourcesTable.add("{Resources}:  ".toLabel()).padRight(10f)
+            resourcesTable.add("{Resources}:  ".toLabel(TextRole.Body)).padRight(10f)
             val cityStateResources = otherCiv.cityStateFunctions.getCityStateResourcesForAlly()
             for (supplyList in cityStateResources) {
                 if (supplyList.resource.resourceType == ResourceType.Bonus)
@@ -127,7 +129,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
                 val wrapper = Table()
                 val image = ImageGetter.getResourcePortrait(name, 30f)
                 wrapper.add(image).padRight(5f)
-                wrapper.add(supplyList.amount.toLabel())
+                wrapper.add(supplyList.amount.toLabel(TextRole.Body))
                 resourcesTable.add(wrapper).padRight(20f)
                 wrapper.addTooltip(name, 18f)
                 wrapper.onClick {
@@ -146,7 +148,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
                 "Unknown civilization"
             else ally.civName
             diplomacyTable
-                .add("Ally: [$allyName] with [$allyInfluence] Influence".toLabel())
+                .add("Ally: [$allyName] with [$allyInfluence] Influence".toLabel(TextRole.Body))
                 .row()
         }
 
@@ -160,7 +162,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
                     newProtectors.add(protector.civName.tr())
             }
             val protectorString = "{Protected by}: " + newProtectors.joinToString(", ")
-            diplomacyTable.add(protectorString.toLabel().apply {
+            diplomacyTable.add(protectorString.toLabel(TextRole.Body).apply {
                 wrap = true
                 setAlignment(Align.center)
             }).width(diplomacyScreen.rightSideLabelWidth()).row()
@@ -176,7 +178,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         }
         diplomacyTable.add(diplomacyScreen.getRelationshipTable(otherCivDiplomacyManager)).row()
         if (nextLevelString.isNotEmpty()) {
-            diplomacyTable.add(nextLevelString.toLabel()).row()
+            diplomacyTable.add(nextLevelString.toLabel(TextRole.Body)).row()
         }
         diplomacyTable.row().padTop(15f)
 
@@ -185,7 +187,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             // RelationshipChange = Ally -> Friend or Friend -> Favorable
             val turnsToRelationshipChange = otherCivDiplomacyManager.getTurnsToRelationshipChange()
             if (turnsToRelationshipChange != 0)
-                diplomacyTable.add("Relationship changes in another [$turnsToRelationshipChange] turns".toLabel())
+                diplomacyTable.add("Relationship changes in another [$turnsToRelationshipChange] turns".toLabel(TextRole.Body))
                     .row()
         }
 
@@ -197,7 +199,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             if (bonuses.none()) return
             
             val headerColor = if (currentRelationLevel == bonusLevel) Color.GREEN else Color.WHITE
-            diplomacyTable.add(header.toLabel(fontColor = headerColor).apply { setAlignment(Align.center) }).row()
+            diplomacyTable.add(header.toLabel(fontColor = headerColor, role = TextRole.Body).apply { setAlignment(Align.center) }).row()
             val gameContext = GameContext(viewingCiv)
             for (bonus in bonuses) {
                 val bonusLabelColor = if (currentRelationLevel == bonusLevel && bonus.conditionalsApply(gameContext))
@@ -215,7 +217,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             val techNames = viewingCiv.gameInfo.ruleset.units[otherCiv.cityStateUniqueUnit]!!.requiredTechs()
             val techAndTech = techNames.joinToString(" and ")
             val isOrAre = if (techNames.count() == 1) "is" else "are"
-            diplomacyTable.add("[${otherCiv.civName}] is able to provide [${unitName}] once [${techAndTech}] [${isOrAre}] researched.".toLabel(fontSize = Constants.defaultFontSize)).row()
+            diplomacyTable.add("[${otherCiv.civName}] is able to provide [${unitName}] once [${techAndTech}] [${isOrAre}] researched.".toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = Constants.defaultFontSize))).row()
         }
 
         return diplomacyTable
@@ -426,18 +428,18 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         if (diplomacyScreen.usesAdaptiveLayout) return TributeDemandTable(diplomacyScreen, otherCiv)
         val diplomacyTable = if (diplomacyScreen.usesAdaptiveLayout) Table() else getCityStateDiplomacyTableHeader(otherCiv)
         diplomacyTable.addSeparator()
-        diplomacyTable.add("Tribute Willingness".toLabel()).row()
+        diplomacyTable.add("Tribute Willingness".toLabel(TextRole.Body)).row()
         val modifierTable = Table()
         val tributeModifiers = otherCiv.cityStateFunctions.getTributeModifiers(viewingCiv, requireWholeList = true)
         for (item in tributeModifiers) {
             val color = if (item.value >= 0) Color.GREEN else Color.RED
-            modifierTable.add(item.key.toLabel(color))
-            modifierTable.add(item.value.tr().toLabel(color)).row()
+            modifierTable.add(item.key.toLabel(fontColor = color, role = TextRole.Body))
+            modifierTable.add(item.value.tr().toLabel(fontColor = color, role = TextRole.Body)).row()
         }
-        modifierTable.add("Sum:".toLabel())
-        modifierTable.add(tributeModifiers.values.sum().toLabel()).row()
+        modifierTable.add("Sum:".toLabel(TextRole.Body))
+        modifierTable.add(tributeModifiers.values.sum().toLabel(TextRole.Body)).row()
         diplomacyTable.add(modifierTable).row()
-        diplomacyTable.add("At least 0 to take gold, at least 30 and size 4 city for worker".toLabel()).row()
+        diplomacyTable.add("At least 0 to take gold, at least 30 and size 4 city for worker".toLabel(TextRole.Body)).row()
         diplomacyTable.addSeparator()
 
         val demandGoldButton = "Take [${otherCiv.cityStateFunctions.goldGainedByTribute()}] gold (-15 Influence)".toTextButton()
@@ -476,15 +478,15 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             quest.name
         val description = assignedQuest.getDescription()
 
-        questTable.add(title.toLabel(fontSize = Constants.headingFontSize)).row()
-        questTable.add(description.toLabel().apply { wrap = true; setAlignment(Align.center) })
+        questTable.add(title.toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize))).row()
+        questTable.add(description.toLabel(TextRole.Body).apply { wrap = true; setAlignment(Align.center) })
             .width(diplomacyScreen.stage.width / 2).row()
         if (quest.duration > 0)
-            questTable.add("[${remainingTurns}] turns remaining".toLabel()).row()
+            questTable.add("[${remainingTurns}] turns remaining".toLabel(TextRole.Body)).row()
         if (quest.isGlobal()) {
             val leaderString = assignedQuest.assignerCiv.questManager.getScoreStringForGlobalQuest(assignedQuest)
             if (leaderString.isNotEmpty())
-                questTable.add(leaderString.toLabel()).row()
+                questTable.add(leaderString.toLabel(TextRole.Body)).row()
         }
 
         questTable.onClick {
@@ -502,10 +504,10 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         val progress = if (viewingCiv.knows(target)) "Currently you have killed [${otherCiv.questManager.unitsKilledSoFar(target, viewingCiv)}] of their military units."
         else "You need to find them first!"
 
-        warTable.add(title.toLabel(fontSize = Constants.headingFontSize)).row()
-        warTable.add(description.toLabel().apply { wrap = true; setAlignment(Align.center) })
+        warTable.add(title.toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize))).row()
+        warTable.add(description.toLabel(TextRole.Body).apply { wrap = true; setAlignment(Align.center) })
             .width(diplomacyScreen.stage.width / 2).row()
-        warTable.add(progress.toLabel().apply { wrap = true; setAlignment(Align.center) })
+        warTable.add(progress.toLabel(TextRole.Body).apply { wrap = true; setAlignment(Align.center) })
             .width(diplomacyScreen.stage.width / 2).row()
 
         return warTable

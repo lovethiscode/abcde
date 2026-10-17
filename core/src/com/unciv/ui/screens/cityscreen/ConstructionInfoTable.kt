@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -83,7 +85,7 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
             buildingText += specialConstruction?.let { cityView.getProductionTooltip(it) }
                     ?: cityConstructions.getTurnsToConstructionString(construction)
 
-            add(Label(buildingText, BaseScreen.skin).apply { wrap = cityScreen.usesWorkbench; if (cityScreen.usesWorkbench) setFontSize(15) }).apply {
+            add(Label(buildingText, BaseScreen.skin).apply { wrap = cityScreen.usesWorkbench; if (cityScreen.usesWorkbench) setFontSize(UiTypography.size(TextRole.Control, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 15)) }).apply {
                 if (cityScreen.usesWorkbench) width(cityScreen.workbenchWidth - 90f)
             }.expandX().row()  // already translated
 
@@ -97,7 +99,7 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
 
             val descriptionLabel = Label(description, BaseScreen.skin)  // already translated
             descriptionLabel.wrap = true
-            if (cityScreen.usesWorkbench) descriptionLabel.setFontSize(14)
+            if (cityScreen.usesWorkbench) descriptionLabel.setFontSize(UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 14))
             add(descriptionLabel).colspan(2).width(if (cityScreen.usesWorkbench) cityScreen.workbenchWidth - 24f else cityScreen.stage.width / if(cityScreen.isCrampedPortrait()) 3 else 4)
 
             if (cityConstructions.isBuilt(construction.name)) {
@@ -114,7 +116,7 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
 
                 if (buildUnitWithPromotions != null) {
                     row()
-                    add("Use default promotions".toCheckBox(buildUnitWithPromotions) {
+                    add("Use default promotions".toCheckBox(buildUnitWithPromotions, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)) {
                         cityView.trySetUnitShouldUseSavedPromotion(baseUnit, it)
                     }).colspan(2).center()
                 }
@@ -130,7 +132,7 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
             selectedConstructionTable.run {
                 val sellAmount = cityView.getGoldForSellingBuilding(construction.name)
                 val sellText = "{Sell} $sellAmount " + Fonts.gold
-                val sellBuildingButton = sellText.toTextButton()
+                val sellBuildingButton = sellText.toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))
                 row()
                 add(sellBuildingButton).padTop(5f).colspan(2).center()
 

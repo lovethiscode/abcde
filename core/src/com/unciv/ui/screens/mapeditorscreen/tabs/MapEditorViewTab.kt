@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.mapeditorscreen.tabs
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
@@ -126,7 +128,7 @@ class MapEditorViewTab(
             }
             add(ExpanderTab(
                 "{Natural Wonders} (${naturalWonders.size})",
-                fontSize = 21,
+                fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 21),
                 startsOutOpened = false,
                 headerPad = 5f
             ) {
@@ -142,7 +144,7 @@ class MapEditorViewTab(
                 .map { FormattedLine(if (it.second == 1) it.first else "{${it.first}} (${it.second})", it.first, "Nation/${it.first}") }
             add(ExpanderTab(
                 "{Starting locations} (${tileMap.startingLocationsByNation.size})",
-                fontSize = 21,
+                fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 21),
                 startsOutOpened = false,
                 headerPad = 5f
             ) {
@@ -228,7 +230,7 @@ class MapEditorViewTab(
         if (tile.tileResource != null && (tile.resourceAmount > 0 || tile.tileResource?.resourceType == ResourceType.Strategic)) {
             renderedInfo.addSeparator(Color.GRAY)
             renderedInfo.add(Table().apply {
-                add("Resource abundance".toLabel(alignment = Align.left)).left().growX()
+                add("Resource abundance".toLabel(alignment = Align.left, role = TextRole.Body)).left().growX()
                 val slider = UncivSlider(0f, 42f, 1f,
                     initial = tile.resourceAmount.toFloat()
                 ) {

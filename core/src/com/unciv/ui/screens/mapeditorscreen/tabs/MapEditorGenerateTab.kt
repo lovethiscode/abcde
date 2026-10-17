@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.mapeditorscreen.tabs
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
@@ -172,7 +174,7 @@ class MapEditorGenerateTab(
         init {
             top()
             pad(10f)
-            add("Map Options".toLabel(fontSize = 24)).row()
+            add("Map Options".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24))).row()
             add(Table().apply {
                 add(copyParametersButton).padRight(15f)
                 add(pasteParametersButton)
@@ -241,7 +243,7 @@ class MapEditorGenerateTab(
             top()
             pad(10f)
             defaults().pad(2.5f)
-            add("Generator steps".toLabel(fontSize = 24)).row()
+            add("Generator steps".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24))).row()
             optionGroup.setMinCheckCount(0)
             for (option in MapGeneratorSteps.entries) {
                 if (option <= MapGeneratorSteps.All) continue

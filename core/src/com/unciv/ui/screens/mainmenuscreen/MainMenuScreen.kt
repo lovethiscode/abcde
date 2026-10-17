@@ -1,5 +1,7 @@
 ﻿package com.unciv.ui.screens.mainmenuscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -110,7 +112,7 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
             skinStrings.skinConfig.baseColor
         )
         table.add(ImageGetter.getImage(icon)).size(50f).padRight(20f)
-        table.add(text.toLabel(fontSize = 30, alignment = Align.left)).expand().left().minWidth(200f)
+        table.add(text.toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 30), alignment = Align.left)).expand().left().minWidth(200f)
             .padTopDescent()
 
         table.touchable = Touchable.enabled
@@ -245,7 +247,7 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
             game.popScreen()
         }
 
-        val civilopediaButton = "?".toLabel(fontSize = 48)
+        val civilopediaButton = "?".toLabel(fontSize = UiTypography.size(TextRole.Display, legacySize = 48))
             .apply { setAlignment(Align.center) }
             .surroundWithCircle(buttonsSize, color = skinStrings.skinConfig.baseColor)
             .apply { actor.y -= Fonts.getDescenderHeight(48) / 2 } // compensate font baseline
@@ -289,7 +291,7 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
         val displayVersion = game.displayBuildNumber
             ?.let { "{Version} ${UncivGame.VERSION.text} ($it)" }
             ?: "{Version} ${UncivGame.VERSION.text}"
-        val versionLabel = displayVersion.toLabel()
+        val versionLabel = displayVersion.toLabel(TextRole.Body)
         versionLabel.setAlignment(Align.center)
         val versionTable = Table()
         versionTable.background = skinStrings.getUiBackground("MainMenuScreen/Version",

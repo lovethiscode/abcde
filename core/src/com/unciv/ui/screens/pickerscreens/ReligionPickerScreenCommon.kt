@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -84,17 +87,17 @@ abstract class ReligionPickerScreenCommon(
             when {
                 belief != null -> {
                     if (withTypeLabel)
-                        add(belief.type.name.toLabel(fontColor = Color.valueOf(belief.type.color))).row()
-                    val nameLabel = WrappableLabel(belief.name, labelWidth, fontSize = Constants.headingFontSize)
+                        add(belief.type.name.toLabel(fontColor = Color.valueOf(belief.type.color), role = TextRole.Body)).row()
+                    val nameLabel = WrappableLabel(belief.name, labelWidth,fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize))
                     add(nameLabel.apply { wrap = true }).row()
                     val effectLabel = WrappableLabel(belief.uniqueObjects.filter { !it.isHiddenToUsers() }.map { it.getDisplayText() }
                         .joinToString("\n") { it.tr() }, labelWidth)
                     add(effectLabel.apply { wrap = true })
                 }
                 beliefType == BeliefType.Any ->
-                    add("Choose any belief!".toLabel())
+                    add("Choose any belief!".toLabel(TextRole.Body))
                 beliefType != null ->
-                    add("Choose a [$beliefType] belief!".toLabel())
+                    add("Choose a [$beliefType] belief!".toLabel(TextRole.Body))
                 else -> throw(IllegalArgumentException("getBeliefButton must have one non-null parameter"))
             }
         }
@@ -131,7 +134,7 @@ abstract class ReligionPickerScreenCommon(
     // out all the default-styled Labels on the screen - exact cause and why this does not affect other buttons unknown.
     // Note - only used for "Choose a [$beliefType] belief!"," "Choose an Icon and name..", "Found [$newReligionName]"
     // and displayName, and those are the labels _not_ affected by the quirk!
-    protected fun String.toLabel() = Label(this.tr(), LabelStyle(skin[LabelStyle::class.java]))
+    protected fun String.toLabel(role: TextRole = TextRole.Body) = Label(this.tr(), LabelStyle(skin[LabelStyle::class.java])).apply { setFontSize(UiTypography.size(role)) }
 
     protected companion object {
         val redDisableColor get() = ExpeditionBlueTheme.color(Color.RED.darken(0.25f), ExpeditionBlueTheme.dangerSurface)

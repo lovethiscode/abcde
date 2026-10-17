@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -75,7 +76,7 @@ internal class GameList(
             add(gameDisplay).growX().minWidth(0f).minHeight(appearance.px(62f)).padBottom(appearance.px(4f)).row()
         }
         if (gameDisplays.isEmpty() && games.isNotEmpty()) {
-            add("No games in this filter".toLabel(appearance.muted, fontSize = appearance.font(13)).apply { wrap = true })
+            add("No games in this filter".toLabel(appearance.muted, fontSize = appearance.font(TextRole.Supporting)).apply { wrap = true })
                 .growX().minWidth(0f).pad(appearance.px(16f))
         }
         select(selectedName)
@@ -106,15 +107,15 @@ private class GameDisplay(
     private var hasError = multiplayerGame.error != null
     private var isRefreshing = refreshing
 
-    private val nameLabel = "".toLabel(fontSize = appearance.font(14)).apply { setEllipsis(true) }
-    private val civilizationLabel = "".toLabel(fontSize = appearance.font(14), alignment = Align.center)
+    private val nameLabel = "".toLabel(fontSize = appearance.font(TextRole.Control)).apply { setEllipsis(true) }
+    private val civilizationLabel = "".toLabel(fontSize = appearance.font(TextRole.Supporting), alignment = Align.center)
     private val civilizationBadge = Table().apply {
         add(appearance.image(MultiplayerIcon.Temple, appearance.gold)).size(appearance.px(21f))
     }
-    private val metadataLabel = "".toLabel(appearance.muted, fontSize = appearance.font(11)).apply {
+    private val metadataLabel = "".toLabel(appearance.muted, fontSize = appearance.font(TextRole.Metadata)).apply {
         setEllipsis(true)
     }
-    private val statusLabel = "".toLabel(fontSize = appearance.font(11), alignment = Align.center).apply {
+    private val statusLabel = "".toLabel(fontSize = appearance.font(TextRole.Supporting), alignment = Align.center).apply {
         setEllipsis(true)
     }
     private val statusBadge = Table()

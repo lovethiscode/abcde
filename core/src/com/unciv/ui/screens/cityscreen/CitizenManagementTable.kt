@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.Constants
@@ -23,7 +25,7 @@ class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin
         val topTable = Table() // holds 2 buttons
         // effectively a button, but didn't want to rewrite TextButton style
         // and much more compact and can control backgrounds easily based on settings
-        val resetLabel = "Reset Citizens".toLabel(fontSize = if (cityScreen.usesWorkbench) 13 else Constants.defaultFontSize)
+        val resetLabel = "Reset Citizens".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (cityScreen.usesWorkbench) 13 else Constants.defaultFontSize))
         val resetCell = Table()
         resetCell.name = "ui-city-reset-citizens"
         resetCell.add(resetLabel).pad(5f).minHeight(if (cityScreen.usesWorkbench) 44f else 0f)
@@ -40,7 +42,7 @@ class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin
         )
         topTable.add(resetCell).pad(3f)
 
-        val avoidLabel = "Avoid Growth".toLabel(fontSize = if (cityScreen.usesWorkbench) 13 else Constants.defaultFontSize)
+        val avoidLabel = "Avoid Growth".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (cityScreen.usesWorkbench) 13 else Constants.defaultFontSize))
         val avoidCell = Table()
         avoidCell.name = "ui-city-avoid-growth"
         avoidCell.add(avoidLabel).pad(5f).minHeight(if (cityScreen.usesWorkbench) 44f else 0f)
@@ -59,7 +61,7 @@ class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin
         add(topTable).colspan(numCol).growX()
         row()
 
-        val focusLabel = "Citizen Focus".toLabel(fontSize = if (cityScreen.usesWorkbench) 14 else Constants.defaultFontSize)
+        val focusLabel = "Citizen Focus".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (cityScreen.usesWorkbench) 14 else Constants.defaultFontSize))
         val focusCell = Table()
         focusCell.add(focusLabel).pad(5f)
         add(focusCell).colspan(numCol).growX().pad(3f)
@@ -75,7 +77,7 @@ class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin
                 CityFocus.ProductionGrowthFocus -> "{Production} + {Growth}"
                 else -> focus.stat?.name ?: focus.label
             } else focus.label
-            val label = caption.toLabel(fontSize = if (cityScreen.usesWorkbench) 15 else Constants.defaultFontSize)
+            val label = caption.toLabel(fontSize = UiTypography.size(TextRole.Control, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (cityScreen.usesWorkbench) 15 else Constants.defaultFontSize))
             val cell = Table()
             cell.name = "ui-city-focus:${focus.name}"
             cell.add(label).pad(5f).minHeight(if (cityScreen.usesWorkbench) 44f else 0f)
@@ -117,7 +119,7 @@ class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin
     fun asExpander(onChange: (() -> Unit)?): ExpanderTab {
         return ExpanderTab(
             title = "{Citizen Management}",
-            fontSize = Constants.defaultFontSize,
+            fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = Constants.defaultFontSize),
             persistenceID = "CityStatsTable.CitizenManagement",
             startsOutOpened = false,
             toggleKey = KeyboardBinding.CitizenManagement,

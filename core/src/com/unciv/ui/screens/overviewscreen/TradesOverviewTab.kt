@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
 import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -25,7 +26,7 @@ class TradesOverviewTab(
         defaults().padBottom(pt(1f))
         val diplomaciesWithPendingTrade = viewingPlayer.getCiv().diplomacy.values.filter { it.otherCiv.tradeRequests.any { it.requestingCiv == viewingPlayer.getCiv().civID } }
         if (diplomaciesWithPendingTrade.isNotEmpty())
-            add("Pending trades".toLabel(fontSize = font(13))).left().padTop(pt(6f)).row()
+            add("Pending trades".toLabel(fontSize = font(TextRole.Supporting))).left().padTop(pt(6f)).row()
         for (diplomacy in diplomaciesWithPendingTrade) {
             for (tradeRequest in diplomacy.otherCiv.tradeRequests.filter { it.requestingCiv == viewingPlayer.getCiv().civID })
                 add(createTradeTable(tradeRequest.trade.reverse(), diplomacy.otherCiv)).width(overviewScreen.contentWidth).minHeight(pt(66f)).row()
@@ -54,7 +55,7 @@ class TradesOverviewTab(
         pad(pt(10f), pt(16f), pt(10f), pt(16f))
         add(ImageGetter.getNationPortrait(otherCiv.nation, pt(28f))).size(pt(28f)).padRight(pt(12f))
         val details = Table().apply {
-            add(otherCiv.civName.toLabel(fontSize = font(16), hideIcons = true)).colspan(2).left().padBottom(pt(5f)).row()
+            add(otherCiv.civName.toLabel(fontSize = font(TextRole.Control), hideIcons = true)).colspan(2).left().padBottom(pt(5f)).row()
             val ours = add(createOffersTable("Our offers", trade.ourOffers)).growX().minWidth(0f).top().left()
             if (overviewScreen.compact) ours.colspan(2).padBottom(pt(8f)).row() else ours.padRight(pt(24f))
             add(createOffersTable("Their offers", trade.theirOffers)).growX().minWidth(0f).top().left()
@@ -64,16 +65,16 @@ class TradesOverviewTab(
     }
 
     private fun createOffersTable(title: String, offers: TradeOffersList) = Table().apply {
-        add(title.toLabel(fontColor = OverviewUi.muted, fontSize = font(13), hideIcons = true))
+        add(title.toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting), hideIcons = true))
             .left().top().padRight(pt(12f)).minHeight(pt(22f))
         if (overviewScreen.compact) row()
         val entries = Table().apply {
             top().left()
             for (offer in offers) {
-                add(OverviewUi.plainLabel(offer.copy(duration = -1).getOfferText(), 13).apply { wrap = true })
+                add(OverviewUi.plainLabel(offer.copy(duration = -1).getOfferText(), TextRole.Supporting).apply { wrap = true })
                     .growX().minWidth(0f).left().minHeight(pt(22f)).padBottom(pt(4f))
                 if (offer.duration > 0)
-                    add(OverviewUi.plainLabel("[${offer.duration}] turns", 12, OverviewUi.muted))
+                    add(OverviewUi.plainLabel("[${offer.duration}] turns", TextRole.Supporting, OverviewUi.muted))
                         .right().top().padLeft(pt(12f)).minHeight(pt(22f)).padBottom(pt(4f))
                 else add()
                 row()

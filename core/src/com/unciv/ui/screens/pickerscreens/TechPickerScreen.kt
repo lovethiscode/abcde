@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
@@ -93,9 +95,9 @@ class TechPickerScreen(
         }
     }
     override val screenClearColor: Color get() = appearance.background
-    private fun makeStyle() = TechnologyAtlasStyle(UiNavigation.minimumTouchSize() / 44f, 1f)
+    private fun makeStyle() = TechnologyAtlasStyle(UiTypography.unitsPerPoint(stage))
     private fun u(value: Float) = appearance.u(value)
-    private fun label(text: String, size: Int = 13, color: Color = appearance.text, wrap: Boolean = false) =
+    private fun label(text: String, size: TextRole = TextRole.Body, color: Color = appearance.text, wrap: Boolean = false) =
         appearance.label(text, size, color, wrap)
     private fun action(caption: String, name: String, primary: Boolean = false, outlined: Boolean = false,
                        block: () -> Unit) = appearance.button(caption, primary, outlined).apply {
@@ -182,7 +184,7 @@ class TechPickerScreen(
         header.add(closeButton).minSize(u(44f)).padRight(u(12f))
         val identity = Table().apply {
             left()
-            add(label(if (freeTechPick) "Free technology" else "Technology", if (metrics.compact) 20 else 23))
+            add(label(if (freeTechPick) "Free technology" else "Technology", TextRole.PageTitle))
                 .growX().minWidth(0f).left().row()
             val current = civTech.currentTechnology()
             val summary = when {
@@ -191,7 +193,7 @@ class TechPickerScreen(
                 current == null -> "No research selected".tr()
                 else -> current.name.tr(hideIcons = true) + " · " + "[${civTech.turnsToTech(current.name)}] turns".tr()
             }
-            add(label(summary, 11, appearance.muted).apply { setEllipsis(true) }).growX().minWidth(0f).left()
+            add(label(summary, TextRole.Supporting, appearance.muted).apply { setEllipsis(true) }).growX().minWidth(0f).left()
             if (current != null && !freeTechPick && GUI.isAllowedChangeState()) {
                 row()
                 val cost = civTech.costOfTech(current.name).coerceAtLeast(1)
@@ -206,7 +208,7 @@ class TechPickerScreen(
             header.add(zoomMenuButton).minWidth(u(58f)).height(u(44f)).padRight(u(8f))
         } else {
             header.add(buildZoomTools()).height(u(44f)).padRight(u(8f))
-            header.add(label("${Fonts.science} +${civInfo.stats.statsForNextTurn.science.roundToInt()}", 13, appearance.gold)).padRight(u(8f))
+            header.add(label("${Fonts.science} +${civInfo.stats.statsForNextTurn.science.roundToInt()}", TextRole.Supporting, appearance.gold)).padRight(u(8f))
         }
         header.add(action(if (metrics.stacked) "" else "Search", "ui-tech-search") { openOverlay("search") }).minSize(u(44f))
         if (!freeTechPick)
@@ -235,7 +237,7 @@ class TechPickerScreen(
         left()
         listOf("Researched" to appearance.good, "Research / queue" to appearance.gold, "Available" to appearance.muted).forEach { (text, color) ->
             add(ImageGetter.getImage("OtherIcons/Circle", color)).size(u(6f)).padRight(u(8f))
-            add(label(text, 13, appearance.text)).left().padTop(u(8f)).padBottom(u(8f)).row()
+            add(label(text, TextRole.Supporting, appearance.text)).left().padTop(u(8f)).padBottom(u(8f)).row()
         }
     }
 
@@ -290,7 +292,7 @@ class TechPickerScreen(
         tree.addActor(bands)
         for (era in eras) {
             val first = if (militaryImprovements) 0 else (displayedTechs.filter { it.era() == era }.minOfOrNull { it.column?.columnNumber ?: 0 } ?: minCol) - minCol
-            tree.addActor(label(if (militaryImprovements) "Military improvements" else era, 12, appearance.muted).apply {
+            tree.addActor(label(if (militaryImprovements) "Military improvements" else era, TextRole.Supporting, appearance.muted).apply {
                 setBounds(u(first*graph.columnStep+graph.inset), canvasHeight-u(36f), u(graph.columnStep-graph.inset*2), u(24f))
             })
         }
@@ -355,15 +357,15 @@ class TechPickerScreen(
         val identity = techDisc(tech, 30f)
         add(identity).size(u(30f)).center().padRight(u(8f))
         val info = Table().apply {
-            add(label(tech.name, 14).apply { setEllipsis(true) }).growX().minWidth(0f).left().row()
-            add(label(nodeState(tech), 11, stateColor(tech)).apply { name = "state"; setEllipsis(true) })
+            add(label(tech.name, TextRole.Control).apply { setEllipsis(true) }).growX().minWidth(0f).left().row()
+            add(label(nodeState(tech), TextRole.CompactData, stateColor(tech)).apply { name = "state"; setEllipsis(true) })
                 .growX().minWidth(0f).left().padTop(u(2f)).row()
             val all = TechnologyDescriptions.getTechEnabledIcons(tech, civInfo, u(16f), iconsIndex).toList()
             val icons = Table().apply {
                 left()
                 all.take(3).forEach { add(pictogram(it)).size(u(16f)).padRight(u(5f)) }
-                if (all.size > 3) add(label("+${all.size-3}", 11, appearance.muted))
-                if (all.isEmpty()) add(label(if (tech.isContinuallyResearchable()) "Repeatable" else "Technology effects", 11, appearance.muted))
+                if (all.size > 3) add(label("+${all.size-3}", TextRole.Supporting, appearance.muted))
+                if (all.isEmpty()) add(label(if (tech.isContinuallyResearchable()) "Repeatable" else "Technology effects", TextRole.Supporting, appearance.muted))
             }
             add(icons).growX().height(u(18f)).padTop(u(3f))
         }
@@ -462,7 +464,7 @@ class TechPickerScreen(
             val badge = Table().apply {
                 name = "order"
                 background = appearance.surface(appearance.gold, 11f)
-                add(label((draft.indexOf(tech.name)+1).toString(), 12, appearance.ink))
+                add(label((draft.indexOf(tech.name)+1).toString(), TextRole.Supporting, appearance.ink))
                 setBounds(u(TechnologyAtlasGraph.nodeWidth-14f), u(TechnologyAtlasGraph.nodeHeight-14f), u(22f), u(22f))
                 touchable = Touchable.disabled
             }
@@ -571,12 +573,12 @@ class TechPickerScreen(
         selectedTech?.let { tech ->
             add(techDisc(tech,38f)).size(u(38f)).padRight(u(10f))
             val caption = Table().apply {
-                add(label(tech.name,16).apply { setEllipsis(true) }).growX().minWidth(0f).left().row()
-                add(label(nodeState(tech),11,appearance.muted).apply { setEllipsis(true) }).growX().minWidth(0f).left()
+                add(label(tech.name,TextRole.Control).apply { setEllipsis(true) }).growX().minWidth(0f).left().row()
+                add(label(nodeState(tech),TextRole.CompactData,appearance.muted).apply { setEllipsis(true) }).growX().minWidth(0f).left()
             }
             add(caption).growX().minWidth(0f)
             add(action("View details", "ui-tech-details", outlined = true) { openOverlay("details") }).height(u(44f)).padLeft(u(8f))
-        } ?: add(label("No technologies available",13,appearance.muted))
+        } ?: add(label("No technologies available",TextRole.Supporting,appearance.muted))
         row()
         prepareConfirm()
         add(rightSideButton).growX().minWidth(0f).height(u(44f)).colspan(3).padTop(u(8f))
@@ -615,7 +617,7 @@ class TechPickerScreen(
         stage.scrollFocus = treeScroll
     }
     private fun overlayHeader(title: String): Table = Table().apply {
-        add(label(title,20)).growX().minWidth(0f).left()
+        add(label(title,TextRole.SectionTitle)).growX().minWidth(0f).left()
         val close = if (UiNavigation.isIos) UiNavigation.dismissButton().apply {
             name = "ui-tech-overlay-back"
             onActivation { closeOverlay() }
@@ -627,7 +629,7 @@ class TechPickerScreen(
         detailsView.clearChildren()
         detailsView.background = appearance.surface(appearance.panel, 0f)
         val tech = selectedTech
-        if (tech == null) { detailsView.add(label("No technologies available",14,appearance.muted,true)).growX().pad(u(20f)); return }
+        if (tech == null) { detailsView.add(label("No technologies available",TextRole.Supporting,appearance.muted,true)).growX().pad(u(20f)); return }
         if (overlay == "details") detailsView.add(overlayHeader("Technology details")).growX().pad(u(10f)).row()
         val content = Table().apply {
             top().left(); pad(u(if (metrics.compact) 12f else 22f)); defaults().growX().minWidth(0f).left()
@@ -635,19 +637,19 @@ class TechPickerScreen(
         val title = Table().apply {
             add(techDisc(tech, if (metrics.compact) 36f else 50f)).size(u(if (metrics.compact) 36f else 50f)).padRight(u(12f))
             val names = Table().apply {
-                add(label(tech.name,if(metrics.compact)19 else 21,wrap=true)).growX().minWidth(0f).left().row()
-                add(label(tech.era(),11,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(4f))
+                add(label(tech.name,TextRole.PageTitle,wrap=true)).growX().minWidth(0f).left().row()
+                add(label(tech.era(),TextRole.Supporting,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(4f))
             }
             add(names).growX().minWidth(0f)
         }
         content.add(title).padBottom(u(if(metrics.compact)6f else 12f)).row()
         if (metrics.compact) {
-            content.add(label("${civTech.costOfTech(tech.name).tr()} ${Fonts.science} · ${nodeState(tech)}",11,stateColor(tech),true)).row()
+            content.add(label("${civTech.costOfTech(tech.name).tr()} ${Fonts.science} · ${nodeState(tech)}",TextRole.Supporting,stateColor(tech),true)).row()
         } else {
-            content.add(label("{Research cost}  ${civTech.costOfTech(tech.name).tr()} ${Fonts.science}",14)).row()
-            content.add(label(nodeState(tech),12,stateColor(tech),true)).padTop(u(5f)).row()
+            content.add(label("{Research cost}  ${civTech.costOfTech(tech.name).tr()} ${Fonts.science}",TextRole.Supporting)).row()
+            content.add(label(nodeState(tech),TextRole.Supporting,stateColor(tech),true)).padTop(u(5f)).row()
         }
-        fun heading(text: String) { content.add(label(text,if(metrics.compact)12 else 14)).padTop(u(if(metrics.compact)8f else 20f)).padBottom(u(if(metrics.compact)4f else 7f)).row() }
+        fun heading(text: String) { content.add(label(text,TextRole.SectionTitle)).padTop(u(if(metrics.compact)8f else 20f)).padBottom(u(if(metrics.compact)4f else 7f)).row() }
         fun chips(technologies: List<Technology>): Table = Table().apply {
             left()
             technologies.forEachIndexed { i,related ->
@@ -663,14 +665,14 @@ class TechPickerScreen(
         val prerequisites = tech.prerequisites.mapNotNull { ruleset.technologies[it] }
         if (metrics.compact && prerequisites.size <= 1) {
             val required = Table().apply {
-                add(label("Prerequisite technologies",11,appearance.muted)).padRight(u(6f))
-                if(prerequisites.isEmpty()) add(label("None",12,appearance.muted)) else add(chips(prerequisites)).minWidth(0f)
+                add(label("Prerequisite technologies",TextRole.Supporting,appearance.muted)).padRight(u(6f))
+                if(prerequisites.isEmpty()) add(label("None",TextRole.Supporting,appearance.muted)) else add(chips(prerequisites)).minWidth(0f)
                 add().expandX()
             }
             content.add(required).padTop(u(6f)).row()
         } else {
             heading("Prerequisite technologies")
-            if (prerequisites.isEmpty()) content.add(label("None",12,appearance.muted)).row()
+            if (prerequisites.isEmpty()) content.add(label("None",TextRole.Supporting,appearance.muted)).row()
             else content.add(chips(prerequisites)).row()
         }
         heading("Unlocks")
@@ -688,7 +690,7 @@ class TechPickerScreen(
                 }
                 add(pictogram(portrait)).size(u(26f)).padRight(u(10f))
                 val info = Table().apply {
-                    add(label(name,13,wrap=true)).growX().minWidth(0f).left().row()
+                    add(label(name,TextRole.Supporting,wrap=true)).growX().minWidth(0f).left().row()
                     val alreadyBuilt = kind == "Wonder" && !civTech.isResearched(tech.name) && civInfo.gameInfo.getCities().any { it.cityConstructions.isBuilt(name) }
                     val summary = when (kind) {
                         "Unit" -> ruleset.units[name]?.getShortDescription(uniqueExclusionFilter=tech::uniqueIsRequirementForThisTech)
@@ -696,7 +698,7 @@ class TechPickerScreen(
                         else -> null
                     }
                     val meta = if(alreadyBuilt) "{Wonder} · {Already built}".tr() else if(kind=="Resource") "Reveals [$name] on the map".tr() else kind.tr()
-                    add(label(meta + if(summary.isNullOrBlank()) "" else " · " + summary.tr(),11,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(3f))
+                    add(label(meta + if(summary.isNullOrBlank()) "" else " · " + summary.tr(),TextRole.Supporting,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(3f))
                 }
                 add(info).growX().minWidth(0f)
                 add(maskIcon(ImageGetter.getImage("OtherIcons/ForwardArrow"))).size(u(12f)).padLeft(u(8f))
@@ -712,7 +714,7 @@ class TechPickerScreen(
             "道路与铁路维修耗时减少 50%，向上取整且至少 1 回合。已有铁路及其连接收益开局可用；研究本身不增加产能奖励。".tr()
         if(description.isNotBlank()) {
             heading("Technology effects")
-            content.add(label(description,12,appearance.muted,true)).row()
+            content.add(label(description,TextRole.Body,appearance.muted,true)).row()
         }
         val next = displayedTechs.filter { tech.name in it.prerequisites }
         if (next.isNotEmpty()) {
@@ -732,7 +734,7 @@ class TechPickerScreen(
         val block = researchBlock(tech)
         val path = if(block==null) civTech.getRequiredTechsToDestination(tech).map { it.name } else emptyList()
         val message = block ?: if(freeTechPick) "No science cost" else "[${routeTurns(path)}] turns for the full route (including overflow)"
-        actions.add(label(message,11,if(block==null)appearance.muted else appearance.danger,true)).growX().colspan(2).padBottom(u(8f)).row()
+        actions.add(label(message,TextRole.Body,if(block==null)appearance.muted else appearance.danger,true)).growX().colspan(2).padBottom(u(8f)).row()
         if (!freeTechPick) {
             val research = action("Research this route", "ui-tech-research", outlined=true) { previewResearch() }
             research.isDisabled = block != null
@@ -751,7 +753,7 @@ class TechPickerScreen(
     }
 
     private fun prepareConfirm() {
-        appearance.decorate(rightSideButton, primary = true, size = 14)
+        appearance.decorate(rightSideButton, primary = true, size = TextRole.Control)
         updateConfirm()
     }
     private fun updateConfirm() {
@@ -851,7 +853,7 @@ class TechPickerScreen(
             results.clearChildren()
             val query = searchQuery.trim().lowercase()
             val found = displayedTechs.filter { query.isEmpty() || searchableNames[it.name].orEmpty().contains(query) }
-            if(found.isEmpty()) results.add(label("No matching technologies",14,appearance.muted,true)).pad(u(24f)).row()
+            if(found.isEmpty()) results.add(label("No matching technologies",TextRole.Supporting,appearance.muted,true)).pad(u(24f)).row()
             found.forEach { tech ->
                 val b = action("${tech.name.tr(hideIcons = true)}\n${nodeState(tech)}","ui-tech-search-result:${tech.name}",outlined=true) {
                     selectTechnology(tech,true)
@@ -879,12 +881,12 @@ class TechPickerScreen(
         background = appearance.surface(appearance.panel,12f)
         pad(u(16f))
         add(overlayHeader("Research queue")).growX().colspan(2).row()
-        add(label("[${routeTurns(draft)}] turns for the full route (including overflow)",12,appearance.muted,true)).growX().colspan(2).padTop(u(8f)).padBottom(u(12f)).row()
+        add(label("[${routeTurns(draft)}] turns for the full route (including overflow)",TextRole.Supporting,appearance.muted,true)).growX().colspan(2).padTop(u(8f)).padBottom(u(12f)).row()
         val rows = Table().apply { top(); defaults().growX().minWidth(0f) }
         draft.forEachIndexed { index,name ->
             val tech = ruleset.technologies[name] ?: return@forEachIndexed
             val row = Table().apply {
-                add(label((index+1).toString(),13,appearance.gold)).width(u(22f))
+                add(label((index+1).toString(),TextRole.Supporting,appearance.gold)).width(u(22f))
                 add(action("${name.tr(hideIcons = true)}\n${"[${civTech.turnsToTech(name)}] turns".tr()}","ui-tech-queue-select:$name") {
                     selectTechnology(tech,true); overlay=if(metrics.stacked)"details" else null; showBody()
                 }).growX().minWidth(0f).height(u(58f))
@@ -901,10 +903,10 @@ class TechPickerScreen(
             }
             rows.add(row).padBottom(u(7f)).row()
         }
-        if(draft.isEmpty()) rows.add(label("No research selected",14,appearance.muted,true)).pad(u(24f)).row()
+        if(draft.isEmpty()) rows.add(label("No research selected",TextRole.Supporting,appearance.muted,true)).pad(u(24f)).row()
         val scroll = ScrollPane(rows,BaseScreen.skin).apply { setScrollingDisabled(true,false);setOverscroll(false,false) }
         add(scroll).grow().minWidth(0f).minHeight(0f).colspan(2).row()
-        add(label("Removing a prerequisite also removes plans that depend on it",12,appearance.muted,true)).growX().colspan(2).padTop(u(12f)).padBottom(u(12f)).row()
+        add(label("Removing a prerequisite also removes plans that depend on it",TextRole.Supporting,appearance.muted,true)).growX().colspan(2).padTop(u(12f)).padBottom(u(12f)).row()
         add(action("Restore original plan","ui-tech-queue-restore",outlined=true) {
             if(GUI.isAllowedChangeState()) { draft.clear();draft.addAll(savedPlan);refreshPlan() }
         }.apply { isDisabled = !GUI.isAllowedChangeState() || draft==savedPlan }).growX().height(u(44f)).padRight(u(8f))

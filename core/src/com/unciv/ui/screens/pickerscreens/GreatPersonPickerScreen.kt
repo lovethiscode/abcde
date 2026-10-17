@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -29,7 +30,7 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
     private val detailHeader = Table()
     private val abilities = Table().apply { top().left() }
     private val abilityScroll = OverviewUi.scroll(abilities)
-    private val status = OverviewUi.plainLabel("", 13, OverviewUi.danger).apply { wrap = true }
+    private val status = OverviewUi.plainLabel("", TextRole.Supporting, OverviewUi.danger).apply { wrap = true }
     private val closeSlot = Table()
 
     init {
@@ -37,7 +38,7 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
         closeButton.isVisible = false
         pickerPane.remove()
         rightSideButton.setText("Choose a Great Person".tr(hideIcons = true))
-        rightSideButton.label.setFontSize(font(15))
+        rightSideButton.label.setFontSize(font(TextRole.Control))
         rightSideButton.label.wrap = true
         rightSideButton.style = TextButton.TextButtonStyle(rightSideButton.style).apply {
             up = OverviewUi.rounded(OverviewUi.accent)
@@ -62,10 +63,10 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
                 pad(pt(10f), pt(14f), pt(10f), pt(14f))
                 add(ImageGetter.getUnitIcon(unit, if (available) ExpeditionBlueTheme.text else OverviewUi.muted))
                     .size(pt(24f)).padRight(pt(12f))
-                add(OverviewUi.plainLabel(unit.name, 16,
+                add(OverviewUi.plainLabel(unit.name, TextRole.Control,
                     if (available) ExpeditionBlueTheme.text else OverviewUi.muted).apply { wrap = true })
                     .growX().minWidth(0f).left()
-                if (!available) add(OverviewUi.plainLabel("Unavailable", 12, OverviewUi.muted)).padLeft(pt(8f))
+                if (!available) add(OverviewUi.plainLabel("Unavailable", TextRole.Supporting, OverviewUi.muted)).padLeft(pt(8f))
                 add(ImageGetter.getImage("OtherIcons/Checkmark").apply {
                     color = OverviewUi.accent
                     isVisible = false
@@ -87,7 +88,7 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
             add(detailHeader).growX().minHeight(OverviewUi.touch).padBottom(pt(12f)).row()
             add(abilityScroll).grow().minWidth(0f).minHeight(0f)
         }
-        detailHeader.add(OverviewUi.plainLabel("Select a Great Person to view its abilities", 18, OverviewUi.muted)
+        detailHeader.add(OverviewUi.plainLabel("Select a Great Person to view its abilities", TextRole.Body, OverviewUi.muted)
             .apply { wrap = true }).growX().minWidth(0f).left()
 
         val screenWidth = stage.width
@@ -102,8 +103,8 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
             }
         }
         val header = Table().apply {
-            add(OverviewUi.plainLabel("Choose a Great Person", 22).apply { wrap = true }).growX().minWidth(0f).left()
-            add(OverviewUi.plainLabel("[${civInfo.greatPeople.freeGreatPeople}] free Great People remaining", 14, OverviewUi.accent)
+            add(OverviewUi.plainLabel("Choose a Great Person", TextRole.SectionTitle).apply { wrap = true }).growX().minWidth(0f).left()
+            add(OverviewUi.plainLabel("[${civInfo.greatPeople.freeGreatPeople}] free Great People remaining", TextRole.Supporting, OverviewUi.accent)
                 .apply { wrap = true }).width(pt(180f).coerceAtMost(screenWidth * .3f)).right().padLeft(pt(16f))
         }
         val footer = Table().apply {
@@ -116,7 +117,7 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
             background = OverviewUi.surface(OverviewUi.background)
             pad(pt(16f))
             add(header).growX().minHeight(OverviewUi.touch).row()
-            add(OverviewUi.plainLabel("You have an unclaimed free Great Person. Select one to review its abilities, then confirm.", 14, OverviewUi.muted)
+            add(OverviewUi.plainLabel("You have an unclaimed free Great Person. Select one to review its abilities, then confirm.", TextRole.Supporting, OverviewUi.muted)
                 .apply { wrap = true }).growX().minWidth(0f).left().padBottom(pt(16f)).row()
             add(content).grow().minHeight(0f).row()
             add(footer).growX().padTop(pt(12f))
@@ -137,7 +138,7 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
         pick("Get [${unit.name}]".tr(hideIcons = true, hideStats = true))
         detailHeader.clear()
         detailHeader.add(ImageGetter.getUnitIcon(unit, OverviewUi.accent)).size(pt(32f)).padRight(pt(12f))
-        detailHeader.add(OverviewUi.plainLabel(unit.name, 22).apply { wrap = true }).growX().minWidth(0f).left()
+        detailHeader.add(OverviewUi.plainLabel(unit.name, TextRole.SectionTitle).apply { wrap = true }).growX().minWidth(0f).left()
         detailHeader.add(OverviewUi.iconButton("OtherIcons/Book", "Civilopedia") {
             openCivilopedia(unit.makeLink())
         }.apply { keyShortcuts.add(KeyboardBinding.Civilopedia) }).size(OverviewUi.touch).padLeft(pt(8f))
@@ -145,12 +146,12 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
         abilities.clear()
         val stats = Table().apply {
             left()
-            add(OverviewUi.plainLabel("{Movement} ${unit.movement}", 13, OverviewUi.muted)).left()
-            if (unit.strength != 0) add(OverviewUi.plainLabel("{Strength} ${unit.strength}", 13, OverviewUi.muted)).padLeft(pt(16f))
-            if (unit.rangedStrength != 0) add(OverviewUi.plainLabel("{Ranged strength} ${unit.rangedStrength}", 13, OverviewUi.muted)).padLeft(pt(16f))
+            add(OverviewUi.plainLabel("{Movement} ${unit.movement}", TextRole.Supporting, OverviewUi.muted)).left()
+            if (unit.strength != 0) add(OverviewUi.plainLabel("{Strength} ${unit.strength}", TextRole.Supporting, OverviewUi.muted)).padLeft(pt(16f))
+            if (unit.rangedStrength != 0) add(OverviewUi.plainLabel("{Ranged strength} ${unit.rangedStrength}", TextRole.Supporting, OverviewUi.muted)).padLeft(pt(16f))
         }
         abilities.add(stats).growX().left().padBottom(pt(16f)).row()
-        abilities.add(OverviewUi.plainLabel("Great Person abilities", 14, OverviewUi.muted)).growX().left().padBottom(pt(8f)).row()
+        abilities.add(OverviewUi.plainLabel("Great Person abilities", TextRole.Supporting, OverviewUi.muted)).growX().left().padBottom(pt(8f)).row()
         if (unit.replacementTextForUniques.isNotEmpty()) addAbility(unit.replacementTextForUniques)
         else {
             val metadataTypes = setOf(UniqueType.GreatPerson, UniqueType.GPPointPool,
@@ -159,7 +160,7 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
             for (unique in visible.filterNot { it.type in metadataTypes }) addAbility(unique.getDisplayText())
             val metadata = visible.filter { it.type in metadataTypes }
             if (metadata.isNotEmpty()) {
-                abilities.add(OverviewUi.plainLabel("Great Person details", 14, OverviewUi.muted))
+                abilities.add(OverviewUi.plainLabel("Great Person details", TextRole.Supporting, OverviewUi.muted))
                     .growX().left().padTop(pt(12f)).padBottom(pt(8f)).row()
                 for (unique in metadata) addAbility(unique.getDisplayText(), secondary = true)
             }
@@ -170,7 +171,7 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
     }
 
     private fun addAbility(text: String, secondary: Boolean = false) {
-        abilities.add(OverviewUi.plainLabel(text, if (secondary) 13 else 16,
+        abilities.add(OverviewUi.plainLabel(text, if (secondary) TextRole.Supporting else TextRole.Control,
             if (secondary) OverviewUi.muted else ExpeditionBlueTheme.text).apply { wrap = true })
             .growX().minWidth(0f).left().padBottom(pt(12f)).row()
     }

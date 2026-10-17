@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Image
@@ -335,7 +336,7 @@ class CityScreen(
 
         val canAnnex = !cityView.viewingCiv().hasUnique(UniqueType.MayNotAnnexCities)
         if (cityView.isPuppet() && canAnnex) {
-            val annexCityButton = "Annex city".toTextButton()
+            val annexCityButton = "Annex city".toTextButton(unit = if (usesWorkbench) 1f else UiTypography.unitsPerPoint(stage))
             annexCityButton.name = "ui-city-annex"
             annexCityButton.labelCell.pad(10f)
             annexCityButton.onClick {
@@ -345,7 +346,7 @@ class CityScreen(
             if (!canChangeState) annexCityButton.disable()
             razeCityButtonHolder.add(annexCityButton) //.colspan(cityPickerTable.columns)
         } else if (!cityView.isBeingRazed()) {
-            val razeCityButton = "Raze city".toTextButton()
+            val razeCityButton = "Raze city".toTextButton(unit = if (usesWorkbench) 1f else UiTypography.unitsPerPoint(stage))
             razeCityButton.name = "ui-city-raze"
             razeCityButton.labelCell.pad(10f)
             razeCityButton.onClick { cityView.trySetRazing(true); updateAsync() }
@@ -355,7 +356,7 @@ class CityScreen(
 
             razeCityButtonHolder.add(razeCityButton) //.colspan(cityPickerTable.columns)
         } else {
-            val stopRazingCityButton = "Stop razing city".toTextButton()
+            val stopRazingCityButton = "Stop razing city".toTextButton(unit = if (usesWorkbench) 1f else UiTypography.unitsPerPoint(stage))
             stopRazingCityButton.labelCell.pad(10f)
             stopRazingCityButton.onClick { cityView.trySetRazing(false); updateAsync() }
             if (!canChangeState) stopRazingCityButton.disable()

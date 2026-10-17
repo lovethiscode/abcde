@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.diplomacyscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.SplitPane
@@ -226,7 +227,7 @@ class DiplomacyScreen(
                 questIcon.x = floor(civIndicator.width - questIcon.width)
             }
 
-            val civNameLabel = civ.civName.toLabel(hideIcons = true)
+            val civNameLabel = civ.civName.toLabel(hideIcons = true, role = TextRole.Body)
 
             // The wrapper serves only to highlight the selected civ better
             val civButton = Table().apply {
@@ -342,8 +343,8 @@ class DiplomacyScreen(
         val relationshipColor: Color = getHumanRelationshipColor(otherCivDiplomacyManager)
         val relationshipText: String = getHumanRelationshipText(otherCivDiplomacyManager)
 
-        relationshipTable.add("{Our relationship}: ".toLabel())
-        relationshipTable.add(relationshipText.toLabel(relationshipColor)).row()
+        relationshipTable.add("{Our relationship}: ".toLabel(TextRole.Body))
+        relationshipTable.add(relationshipText.toLabel(fontColor = relationshipColor, role = TextRole.Body)).row()
         return relationshipTable
     }
 
@@ -354,7 +355,7 @@ class DiplomacyScreen(
             if (otherCivDiplomacyManager.civInfo.isCityState) otherCivDiplomacyManager.getInfluence().toInt()
             else otherCivDiplomacyManager.opinionOfOtherCiv().toInt()
 
-        relationshipTable.add("{Our relationship}: ".toLabel())
+        relationshipTable.add("{Our relationship}: ".toLabel(TextRole.Body))
         val relationshipLevel = otherCivDiplomacyManager.relationshipLevel()
         val relationshipText = relationshipLevel.name.tr() + " ($opinionOfUs)"
         val relationshipColor = when (relationshipLevel) {
@@ -365,7 +366,7 @@ class DiplomacyScreen(
             else -> Color.RED
         }
 
-        relationshipTable.add(relationshipText.toLabel(relationshipColor)).row()
+        relationshipTable.add(relationshipText.toLabel(fontColor = relationshipColor, role = TextRole.Body)).row()
         if (otherCivDiplomacyManager.civInfo.isCityState)
             relationshipTable.add(
                 InfluenceTable(
@@ -448,7 +449,7 @@ class DiplomacyScreen(
         diplomacyTable.defaults().pad(10f)
         diplomacyTable.add(LeaderIntroTable(otherCiv))
         diplomacyTable.addSeparator()
-        diplomacyTable.add(flavorText.toLabel()).row()
+        diplomacyTable.add(flavorText.toLabel(TextRole.Body)).row()
 
         val responseButton = response.toTextButton()
         responseButton.onActivation { updateRightSide(otherCiv) }

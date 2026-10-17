@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.topbar
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -30,17 +32,17 @@ import kotlin.math.roundToInt
 
 internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableWrapper() {
 
-    private val goldLabel = "0".toLabel(colorFromRGB(225, 217, 71)) // #ed1947
+    private val goldLabel = "0".toLabel(fontColor = colorFromRGB(225, 217, 71), role = TextRole.Body) // #ed1947
     private val goldPerTurnLabel = "+0"
-        .toLabel(colorFromRGB(225, 217, 71), 14)
+        .toLabel(colorFromRGB(225, 217, 71), UiTypography.size(TextRole.Supporting, legacySize = 14))
 
-    private val scienceLabel = "0".toLabel(ExpeditionBlueTheme.color(colorFromRGB(78, 140, 151), ExpeditionBlueTheme.text)).apply { name = "ui-tech-stat-open" } // #4e8c97
-    private val happinessLabel = "0".toLabel()
-    private val cultureLabel = "0".toLabel(ExpeditionBlueTheme.color(colorFromRGB(210, 94, 210), ExpeditionBlueTheme.text)) // #d25ed2
+    private val scienceLabel = "0".toLabel(fontColor = ExpeditionBlueTheme.color(colorFromRGB(78, 140, 151), ExpeditionBlueTheme.text), role = TextRole.Body).apply { name = "ui-tech-stat-open" } // #4e8c97
+    private val happinessLabel = "0".toLabel(TextRole.Body)
+    private val cultureLabel = "0".toLabel(fontColor = ExpeditionBlueTheme.color(colorFromRGB(210, 94, 210), ExpeditionBlueTheme.text), role = TextRole.Body) // #d25ed2
 
-    private val faithLabel = "0".toLabel(colorFromRGB(168, 196, 241)) // #a8c4f1
+    private val faithLabel = "0".toLabel(fontColor = colorFromRGB(168, 196, 241), role = TextRole.Body) // #a8c4f1
     private val faithPerTurnLabel = "+0"
-        .toLabel(colorFromRGB(168, 196, 241), 14)
+        .toLabel(colorFromRGB(168, 196, 241), UiTypography.size(TextRole.Supporting, legacySize = 14))
 
     private val happinessContainer = Group()
 
@@ -153,7 +155,7 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
         if (worldScreen.gameInfo.isReligionEnabled()) {
             addStat("Faith", faithLabel, EmpireOverviewCategories.Religion, true)
             addPerTurnLabel(faithPerTurnLabel)
-        } else add("Religion: Off".toLabel())
+        } else add("Religion: Off".toLabel(TextRole.Body))
 
 
     }
@@ -188,9 +190,9 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
 
         if (BattlefieldHud.enabled) {
             for (label in listOf(goldLabel, scienceLabel, happinessLabel, cultureLabel, faithLabel))
-                label.setFontSize(BattlefieldHud.font(14f))
-            goldPerTurnLabel.setFontSize(BattlefieldHud.font(11f))
-            faithPerTurnLabel.setFontSize(BattlefieldHud.font(11f))
+                label.setFontSize(BattlefieldHud.font(TextRole.Supporting))
+            goldPerTurnLabel.setFontSize(BattlefieldHud.font(TextRole.CompactData))
+            faithPerTurnLabel.setFontSize(BattlefieldHud.font(TextRole.CompactData))
             happinessContainer.children.firstOrNull()?.setSize(BattlefieldHud.points(16f), BattlefieldHud.points(16f))
             clearContent()
             val perTurnCell = nativeStats.first().getCell(goldPerTurnLabel)

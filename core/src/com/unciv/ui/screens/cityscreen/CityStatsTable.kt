@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
@@ -37,7 +39,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
     private val lowerPane = AutoScrollPane(lowerTable)
     private var lowerCell: Cell<AutoScrollPane>? = null
 
-    private val detailedStatsButton = "Stats".toTextButton().apply {
+    private val detailedStatsButton = "Stats".toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply {
         labelCell.pad(10f)
         onActivation(binding = KeyboardBinding.ShowStats) {
             DetailedStatsPopup(cityScreen).open()
@@ -121,17 +123,17 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
                 addText(includeStatus = false)
                 lowerTable.add(CitizenManagementTable(cityScreen).apply { update() }).row()
                 if (cityView.getMaxSpecialists().isNotEmpty()) {
-                    lowerTable.add("Specialists".toLabel(fontSize = 18)).left().padTop(16f).row()
+                    lowerTable.add("Specialists".toLabel(fontSize = UiTypography.size(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 18))).left().padTop(16f).row()
                     lowerTable.add(SpecialistAllocationTable(cityScreen).apply { update() }).row()
                 }
             }
             "Great People" -> addGreatPersonPointInfo()
-            "Religion" -> lowerTable.add(CityReligionInfoTable(cityView, showMajority = true)).row()
+            "Religion" -> lowerTable.add(CityReligionInfoTable(cityView, showMajority = true, unit = 1f)).row()
             "Buildings" -> addBuildingsInfo()
             else -> {
-                if (cityView.isCapital()) lowerTable.add("Capital".toLabel()).row()
-                if (cityView.isPuppet()) lowerTable.add("Puppet".toLabel()).row()
-                if (cityView.isBeingRazed()) lowerTable.add("Raze city".toLabel()).row()
+                if (cityView.isCapital()) lowerTable.add("Capital".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).row()
+                if (cityView.isPuppet()) lowerTable.add("Puppet".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).row()
+                if (cityView.isBeingRazed()) lowerTable.add("Raze city".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).row()
                 cityView.getGarrison()?.let { lowerTable.add(com.unciv.ui.components.widgets.UnitIconGroup(it, 30f)).row() }
                 addText(includePopulation = false)
             }
@@ -157,7 +159,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
     private fun addText(includePopulation: Boolean = true, includeStatus: Boolean = true) {
         val unassignedPopString = "{Unassigned population}: ".tr() +
                 cityView.getFreePopulation().tr() + "/" + cityView.getPopulationCount().tr()
-        val unassignedPopLabel = unassignedPopString.toLabel(fontSize = if (cityScreen.usesWorkbench) 14 else Constants.defaultFontSize)
+        val unassignedPopLabel = unassignedPopString.toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (cityScreen.usesWorkbench) 14 else Constants.defaultFontSize))
         if (cityScreen.canChangeState)
             unassignedPopLabel.onClick { 
                 cityView.tryReassignPopulation()
@@ -189,7 +191,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
         if (includePopulation) {
         lowerTable.add(unassignedPopLabel).minHeight(if (cityScreen.usesWorkbench) 44f else 0f).row()
         for (text in listOf(turnsToExpansionString, turnsToPopString)) {
-            val label = text.toLabel(fontSize = if (cityScreen.usesWorkbench) 13 else Constants.defaultFontSize)
+            val label = text.toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (cityScreen.usesWorkbench) 13 else Constants.defaultFontSize))
             if (cityScreen.usesWorkbench) label.wrap = true
             lowerTable.add(label).apply {
                 if (cityScreen.usesWorkbench) width(cityScreen.workbenchManagementWidth)
@@ -203,7 +205,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
         if (cityView.isInResistance()) {
             tableWithIcons.add(Table().apply {
                 add(ImageGetter.getImage("StatIcons/Resistance")).size(20f).padRight(if (cityScreen.usesWorkbench) 8f else 2f)
-                add("In resistance for another [${cityView.getFlag(CityFlags.Resistance)}] turns".toLabel())
+                add("In resistance for another [${cityView.getFlag(CityFlags.Resistance)}] turns".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)))
             }).row()
         }
 
@@ -228,7 +230,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
                 resourceIcon.addTooltip(resource.name, targetAlign = Align.bottom)
                 resourceIcon.onClick { cityScreen.openCivilopedia(resource.makeLink()) }
                 resourceIcon.add(ImageGetter.getResourcePortrait(resource.name, 20f)).padRight(if (cityScreen.usesWorkbench) 8f else 5f)
-                resourceIcon.add(amount.toLabel())
+                resourceIcon.add(amount.toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)))
                 resourceTable.add(resourceIcon).apply {
                     // Only add right padding if it's not the last one in the list
                     if (resourceCounter.keys.last() != resource) padRight(10f)
@@ -242,16 +244,16 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
         val (wltkIcon: Actor?, wltkLabel: Label?) = when {
             cityView.isWeLoveTheKingDayActive() ->
                 ImageGetter.getStatIcon("Food") to
-                "We Love The King Day for another [${cityView.getFlag(CityFlags.WeLoveTheKing)}] turns".toLabel(Color.LIME)
+                "We Love The King Day for another [${cityView.getFlag(CityFlags.WeLoveTheKing)}] turns".toLabel(fontColor = Color.LIME, role = TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))
             cityView.demandedResource.isNotEmpty() ->
                 ImageGetter.getResourcePortrait(cityView.demandedResource, 20f) to
-                "Demanding [${cityView.demandedResource}]".toLabel(Color.CORAL, hideIcons = true)
+                "Demanding [${cityView.demandedResource}]".toLabel(fontColor = Color.CORAL, hideIcons = true, role = TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))
             else -> null to null
         }
         if (wltkLabel != null) {
             tableWithIcons.add(Table().apply {
                 add(wltkIcon!!).size(20f).padRight(if (cityScreen.usesWorkbench) 8f else 5f)
-                add(wltkLabel.apply { if (cityScreen.usesWorkbench) { setFontSize(14); wrap = true } }).apply {
+                add(wltkLabel.apply { if (cityScreen.usesWorkbench) { setFontSize(UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 14)); wrap = true } }).apply {
                     if (cityScreen.usesWorkbench) width(cityScreen.workbenchManagementWidth - 30f)
                 }.row()
             })
@@ -303,7 +305,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
             val specialistBuildingsTable = Table()
             totalTable.add().row()
             totalTable.addSeparator(color = Color.LIGHT_GRAY)
-            totalTable.add("Specialist Buildings".toLabel().apply { setAlignment(Align.center) }).growX()
+            totalTable.add("Specialist Buildings".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply { setAlignment(Align.center) }).growX()
             totalTable.addSeparator(color = Color.LIGHT_GRAY)
             for (building in specialistBuildings) addBuildingButton(building, specialistBuildingsTable)
             totalTable.add(specialistBuildingsTable).growX().right().row()
@@ -312,7 +314,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
         if (wonders.isNotEmpty()) {
             val wondersTable = Table()
             totalTable.addSeparator(color = Color.LIGHT_GRAY)
-            totalTable.add("Wonders".toLabel().apply { setAlignment(Align.center) }).growX()
+            totalTable.add("Wonders".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply { setAlignment(Align.center) }).growX()
             totalTable.addSeparator(color = Color.LIGHT_GRAY)
             for (building in wonders) addBuildingButton(building, wondersTable)
             totalTable.add(wondersTable).growX().right().row()
@@ -321,7 +323,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
         if (otherBuildings.isNotEmpty()) {
             val regularBuildingsTable = Table()
             totalTable.addSeparator(color = Color.LIGHT_GRAY)
-            totalTable.add("Other".toLabel().apply { setAlignment(Align.center) }).growX()
+            totalTable.add("Other".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply { setAlignment(Align.center) }).growX()
             totalTable.addSeparator(color = Color.LIGHT_GRAY)
             for (building in otherBuildings) addBuildingButton(building, regularBuildingsTable)
             totalTable.add(regularBuildingsTable).growX().right().row()
@@ -339,12 +341,12 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
         val isFree = cityScreen.hasFreeBuilding(building)
         val displayName = if (isFree) "{${building.name}} ({Free})" else building.name
 
-        info.add(displayName.toLabel(fontSize = Constants.defaultFontSize, hideIcons = true)).padBottom(5f).right().row()
+        info.add(displayName.toLabel(fontSize = UiTypography.size(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = Constants.defaultFontSize), hideIcons = true)).padBottom(5f).right().row()
 
         val stats = cityView.getBuildingStats(building).joinToString(separator = " ") {
             "" + it.value.toInt() + it.key.character
         }
-        statsAndSpecialists.add(stats.toLabel(fontSize = Constants.defaultFontSize)).right()
+        statsAndSpecialists.add(stats.toLabel(fontSize = UiTypography.size(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = Constants.defaultFontSize))).right()
 
         if (building.newSpecialists().any()) {
             val assignedSpec = cityView.getNewSpecialists().clone()
@@ -387,7 +389,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
     ) : ExpanderTab {
         val expanderTab = ExpanderTab(
             title = category,
-            fontSize = Constants.defaultFontSize,
+            fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = Constants.defaultFontSize),
             persistenceID = if (cityScreen.usesWorkbench) null else "CityInfo.$category",
             startsOutOpened = if (cityScreen.usesWorkbench) true else startsOpened,
             toggleKey = toggleKey,
@@ -417,7 +419,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
             val greatPerson = cityView.getRuleset().units[greatPersonName] ?: continue
             info.add(ImageGetter.getUnitIcon(greatPerson, Color.GOLD).toGroup(20f))
                 .left().padBottom(4f).padRight(if (cityScreen.usesWorkbench) 8f else 5f)
-            info.add("{$greatPersonName} (+$gppPerTurn)".toLabel(hideIcons = true)).left().padBottom(4f).expandX().row()
+            info.add("{$greatPersonName} (+$gppPerTurn)".toLabel(hideIcons = true, role = TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).left().padBottom(4f).expandX().row()
 
             val gppCurrent = cityView.viewingCiv().getGreatPersonPoints(greatPersonName)
             val gppNeeded = cityView.viewingCiv().getPointsRequiredForGreatPerson(greatPersonName)
@@ -435,7 +437,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
                 addActor(bar)
                 bar.toBack()
             }
-            progressBar.setLabel(Color.WHITE, "$gppCurrent/$gppNeeded", fontSize = 14)
+            progressBar.setLabel(Color.WHITE, "$gppCurrent/$gppNeeded", fontSize = UiTypography.size(TextRole.CompactData, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 14))
 
             info.add(progressBar).colspan(2).left().expandX().row()
             info.onClick {
@@ -484,7 +486,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
                 }
                 add(icon).size(27f).padRight(3f)
                 val valueToDisplay = if (stat == Stat.Happiness) cityView.getHappinessList().values.sum() else amount
-                add((valueToDisplay.roundToInt()).toLabel()).padRight(5f)
+                add((valueToDisplay.roundToInt()).toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).padRight(5f)
                 if (cityScreen.isCrampedPortrait() && (expanderIsOpen == null || !expanderIsOpen) && stat == Stat.Gold) {
                     row()
                 }

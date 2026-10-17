@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
@@ -26,15 +28,15 @@ class TechButton(
     private val techIconsIndex: TechnologyDescriptions.TechIconsIndex? = null
 ) : Table(BaseScreen.skin) {
 
-    internal val text = "".toLabel().apply {
+    internal val text = "".toLabel(TextRole.Body).apply {
         wrap = false
-        setFontSize(14)
+        setFontSize(UiTypography.size(TextRole.Control, legacySize = 14))
         setAlignment(Align.left)
         setEllipsis(true)
     }
 
-    internal val turns = "".toLabel().apply {
-        setFontSize(14)
+    internal val turns = "".toLabel(TextRole.Body).apply {
+        setFontSize(UiTypography.size(TextRole.Supporting, legacySize = 14))
         setAlignment(Align.right)
     }
 

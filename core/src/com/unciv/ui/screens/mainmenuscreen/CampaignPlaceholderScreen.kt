@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.mainmenuscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
@@ -30,9 +32,9 @@ class CampaignPlaceholderScreen : BaseScreen(), RecreateOnResize {
             add(ImageGetter.getImage("OtherIcons/Scenarios", ExpeditionBlueTheme.color(Color.valueOf("24536b"), ExpeditionBlueTheme.gold)))
                 .size(90f).padBottom(24f).row()
             add("Original campaigns".toLabel(ExpeditionBlueTheme.color(Color.valueOf("1b3542"), ExpeditionBlueTheme.text), 44)).row()
-            add("Campaigns are being prepared".toLabel(ExpeditionBlueTheme.color(Color.valueOf("5c737c"), ExpeditionBlueTheme.muted), 26).apply { wrap = true })
+            add("Campaigns are being prepared".toLabel(ExpeditionBlueTheme.color(Color.valueOf("5c737c"), ExpeditionBlueTheme.muted), UiTypography.size(TextRole.PageTitle, legacySize = 26)).apply { wrap = true })
                 .width(this@CampaignPlaceholderScreen.stage.width * .72f).padTop(18f).row()
-            add("Return home to continue your game or start free play.".toLabel(ExpeditionBlueTheme.color(Color.valueOf("5c737c"), ExpeditionBlueTheme.muted), 22).apply { wrap = true })
+            add("Return home to continue your game or start free play.".toLabel(ExpeditionBlueTheme.color(Color.valueOf("5c737c"), ExpeditionBlueTheme.muted), UiTypography.size(TextRole.SectionTitle, legacySize = 22)).apply { wrap = true })
                 .width(this@CampaignPlaceholderScreen.stage.width * .72f).padTop(12f).row()
             add().expandY()
         }

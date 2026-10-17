@@ -1,5 +1,6 @@
 package com.unciv.ui.popups
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
@@ -39,7 +40,7 @@ class AskTextPopup(
     init {
         val wrapper = Table()
         wrapper.add(icon).padRight(10f)
-        wrapper.add(label.toLabel())
+        wrapper.add(label.toLabel(TextRole.Body))
         add(wrapper).colspan(2).row()
 
         val nameField = UncivTextField(label, defaultText)
@@ -48,7 +49,7 @@ class AskTextPopup(
 
         add(nameField).growX().colspan(2).row()
 
-        val errorLabel = errorText.toLabel()
+        val errorLabel = errorText.toLabel(TextRole.Body)
         errorLabel.color = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
 
         addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.cancel else com.unciv.Constants.close)

@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.chat
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.Gdx
@@ -132,7 +134,7 @@ class ChatPopup(
     private val chatHeaderRow = Table(skin)
     private val composer = Table(skin)
     private val inputFont by lazy {
-        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(15f * iosScale / Fonts.ORIGINAL_FONT_SIZE) }
+        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(UiTypography.size(TextRole.Control, iosScale).toFloat() / Fonts.ORIGINAL_FONT_SIZE) }
     }
 
     init {
@@ -148,7 +150,7 @@ class ChatPopup(
          */
 
         val chatHeader = Table(skin)
-        val chatLabel = "Chat".toLabel(fontSize = if (UiNavigation.isIos) (18f * iosScale).toInt() else 30, alignment = Align.center)
+        val chatLabel = "Chat".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, iosScale, legacySize = 30), alignment = Align.center)
         val chatIcon = ImageGetter.getImage("OtherIcons/Chat")
 
         chatHeader.add(chatIcon).size(chatLabel.height * 1.6f)
@@ -258,9 +260,9 @@ class ChatPopup(
         passwordReminder.clearChildren()
         if (ChatStore.passwordRequired) {
             passwordReminder.add(
-                "To use chat, set or check your password in Options → Multiplayer.".toLabel().apply {
+                "To use chat, set or check your password in Options → Multiplayer.".toLabel(TextRole.Body).apply {
                     wrap = true
-                    if (UiNavigation.isIos) setFontSize((13f * iosScale).toInt())
+                    if (UiNavigation.isIos) setFontSize(UiTypography.size(TextRole.Metadata, iosScale))
                 }
             ).growX().padBottom(5f)
         }
@@ -292,7 +294,7 @@ class ChatPopup(
         scroll: Boolean = true
     ) {
         val line = createChatMessageLine(worldScreen.gameInfo, senderCivName, message, suffix)
-        if (UiNavigation.isIos) line.children.filterIsInstance<Label>().forEach { it.setFontSize((15f * iosScale).toInt()) }
+        if (UiNavigation.isIos) line.children.filterIsInstance<Label>().forEach { it.setFontSize(UiTypography.size(TextRole.Body, iosScale)) }
         chatTable.add(line).minWidth(0f).growX().left().row()
         if (scroll) scrollToBottom()
     }

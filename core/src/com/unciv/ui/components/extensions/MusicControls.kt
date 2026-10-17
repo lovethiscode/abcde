@@ -1,5 +1,7 @@
 package com.unciv.ui.components.extensions
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -98,7 +100,7 @@ interface MusicControls {
 
     fun Table.addMusicCurrentlyPlaying(music: MusicController) {
         val expectedWidth = if (width == 0f) prefWidth else width
-        val label = WrappableLabel("", expectedWidth - 10f, Color(0xffd0afff.toInt()), 16, true)
+        val label = WrappableLabel("", expectedWidth - 10f, Color(0xffd0afff.toInt()),UiTypography.size(TextRole.Control, legacySize = 16), true)
         label.wrap = true
         add(label).padTop(20f).colspan(2).fillX().row()
         music.onChange {

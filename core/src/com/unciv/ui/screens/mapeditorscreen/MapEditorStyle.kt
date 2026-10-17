@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.mapeditorscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable
@@ -10,7 +12,6 @@ import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
-import kotlin.math.roundToInt
 
 /** Page-scoped colors; the rest of the game retains its theme. */
 object MapEditorStyle {
@@ -37,7 +38,7 @@ object MapEditorStyle {
             override fun getMinHeight() = 44 * unit
             override fun getMinWidth() = maxOf(super.getMinWidth(), 44 * unit)
         }.apply {
-            label.setFontSize((16*unit).roundToInt())
+            label.setFontSize(UiTypography.size(TextRole.Control, unit))
             labelCell.pad(8*unit)
             onActivation { action() }
         }

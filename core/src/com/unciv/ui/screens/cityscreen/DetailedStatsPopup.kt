@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
@@ -116,7 +118,7 @@ class DetailedStatsPopup(
         headerTable.add(getToggleButton(isDetailed)).minWidth(if (embedded) 110f else 150f).grow()
 
         for (stat in stats) {
-            val label = stat.name.toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
+            val label = stat.name.toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize))
             label.onClick {
                 onlyWithStat = if (onlyWithStat == null) stat else null
                 update()
@@ -127,19 +129,19 @@ class DetailedStatsPopup(
         headerTable.row()
         headerTable.addSeparator().padBottom(2f)
 
-        totalTable.add("Base values".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize).apply { setAlignment(Align.center) })
+        totalTable.add("Base values".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize)).apply { setAlignment(Align.center) })
             .colspan(columnCount).growX().row()
         totalTable.addSeparator(colSpan = columnCount).padTop(2f)
         traverseTree(totalTable, stats, cityView.getBaseStatTree(), mergeHappiness = true, percentage = false)
 
         totalTable.addSeparator().padBottom(2f)
-        totalTable.add("Bonuses".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize).apply { setAlignment(Align.center) })
+        totalTable.add("Bonuses".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize)).apply { setAlignment(Align.center) })
             .colspan(columnCount).growX().row()
         totalTable.addSeparator().padTop(2f)
         traverseTree(totalTable, stats, cityView.getStatPercentBonusTree(), percentage = true)
 
         totalTable.addSeparator().padBottom(2f)
-        totalTable.add("Final".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize).apply { setAlignment(Align.center) })
+        totalTable.add("Final".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize)).apply { setAlignment(Align.center) })
             .colspan(columnCount).growX().row()
         totalTable.addSeparator().padTop(2f)
 
@@ -162,7 +164,7 @@ class DetailedStatsPopup(
             if (onlyWithStat != null && finalStats[onlyWithStat!!] == 0f)
                 continue
 
-            val label = source.toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize, hideIcons = true).apply {
+            val label = source.toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize), hideIcons = true).apply {
                 setAlignment(Align.left)
                 onClick {
                     sourceHighlighted = if (sourceHighlighted == source) null else source
@@ -176,7 +178,7 @@ class DetailedStatsPopup(
             for (stat in stats) {
                 val value = finalStats[stat]
                 val cell = when (value) {
-                    0f -> "-".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
+                    0f -> "-".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize))
                     else -> value.toOneDecimalLabel()
                 }
 
@@ -192,29 +194,31 @@ class DetailedStatsPopup(
             totalTable.row()
         }
 
-        totalTable.add(wrapInTable("Total".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize), colorTotal)).grow()
+        totalTable.add(wrapInTable("Total".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize)), colorTotal)).grow()
         for (stat in stats) {
             totalTable.add(wrapInTable(final[stat]?.toOneDecimalLabel(), colorTotal))
                 .minWidth(statColMinWidth).grow()
         }
         totalTable.row()
 
-        // Mini version of Scene2dExtensions.equalizeColumns - the number columns work thanks to statColMinWidth
+        // Measure after spacing icon glyphs, then share every column width with the header.
         if (embedded) {
             spaceCityWorkbenchIcons(headerTable)
             spaceCityWorkbenchIcons(totalTable)
         }
         headerTable.packIfNeeded()
         totalTable.packIfNeeded()
-        val firstColumnWidth = max(totalTable.getColumnWidth(0), headerTable.getColumnWidth(0))
-        headerTable.cells.first().minWidth(firstColumnWidth)
-        totalTable.cells.first().minWidth(firstColumnWidth)
+        for (column in 0 until columnCount) {
+            val columnWidth = max(totalTable.getColumnWidth(column), headerTable.getColumnWidth(column))
+            headerTable.cells.filter { it.column == column && it.colspan == 1 }.forEach { it.width(columnWidth) }
+            totalTable.cells.filter { it.column == column && it.colspan == 1 }.forEach { it.width(columnWidth) }
+        }
         headerTable.invalidate()
         totalTable.invalidate()
     }
 
     private fun getToggleButton(showDetails: Boolean): IconCircleGroup {
-        val label = (if (showDetails) "-" else "+").toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
+        val label = (if (showDetails) "-" else "+").toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize))
         label.setAlignment(Align.center)
         val button = label
             .surroundWithCircle(25f, color = BaseScreen.skinStrings.skinConfig.baseColor)
@@ -264,7 +268,7 @@ class DetailedStatsPopup(
                 continue
             }
 
-            val label = text.toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize, hideIcons = true).apply {
+            val label = text.toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize), hideIcons = true).apply {
                 setAlignment(Align.left)
                 onClick {
                     sourceHighlighted = if (sourceHighlighted == text) null else text
@@ -282,7 +286,7 @@ class DetailedStatsPopup(
             for (stat in stats) {
                 val value = child.totalStats[stat]
                 val cell = when {
-                    value == 0f -> "-".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
+                    value == 0f -> "-".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize))
                     percentage ->  value.toPercentLabel()
                     else -> value.toOneDecimalLabel()
                 }
@@ -304,7 +308,7 @@ class DetailedStatsPopup(
         }
 
         if (indentation == 0) {
-            table.add(wrapInTable("Total".toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize), colorTotal)).grow()
+            table.add(wrapInTable("Total".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize)), colorTotal)).grow()
             for (stat in stats) {
                 if (percentage)
                     table.add(wrapInTable(total[stat]?.toPercentLabel(), colorTotal)).grow()
@@ -327,6 +331,6 @@ class DetailedStatsPopup(
         return tbl
     }
 
-    private fun Float.toPercentLabel() = percentFormatter.format(this).toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
-    private fun Float.toOneDecimalLabel() = decimalFormatter.format(this).toLabel(fontSize = if (embedded) 13 else Constants.defaultFontSize)
+    private fun Float.toPercentLabel() = percentFormatter.format(this).toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize))
+    private fun Float.toOneDecimalLabel() = decimalFormatter.format(this).toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize))
 }

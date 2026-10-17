@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.diplomacyscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -10,23 +12,19 @@ import com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toLabel
-import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.screens.basescreen.BaseScreen
-import kotlin.math.roundToInt
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
 /** Approved A composition, using the game's shared palette and existing bitmap font. */
-internal class DiplomacyScreenStyle(private val textScale: Float = 1f) {
+internal class DiplomacyScreenStyle(val unit: Float = UiTypography.unitsPerPoint()) {
     companion object {
         fun forScreen(screen: BaseScreen): DiplomacyScreenStyle {
-            val pointWidth = screen.stage.width / (UiNavigation.minimumTouchSize() / 44f)
-            return DiplomacyScreenStyle(if (pointWidth >= 1100f) 1.3f else 1f)
+            return DiplomacyScreenStyle(UiTypography.unitsPerPoint(screen.stage))
         }
     }
-    val unit = UiNavigation.minimumTouchSize() / 44f
     val background = ExpeditionBlueTheme.background
     val panel = ExpeditionBlueTheme.panel
     val raised = ExpeditionBlueTheme.raised
@@ -36,8 +34,8 @@ internal class DiplomacyScreenStyle(private val textScale: Float = 1f) {
     val positive = ExpeditionBlueTheme.success
     val danger = ExpeditionBlueTheme.danger
     fun px(n: Float) = n * unit
-    fun font(n: Int) = (n * unit * textScale).roundToInt().coerceAtLeast(1)
-    fun label(value: String, size: Int = 14, color: Color = text, wrap: Boolean = false, hideIcons: Boolean = false) =
+    fun font(n: TextRole) = UiTypography.size(n, unit)
+    fun label(value: String, size: TextRole = TextRole.Body, color: Color = text, wrap: Boolean = false, hideIcons: Boolean = false) =
         value.toLabel(color, font(size), hideIcons = hideIcons).apply { this.wrap = wrap }
     fun surface(color: Color, radius: Float = 12f): BaseDrawable {
         val dot = ImageGetter.getWhiteDotDrawable().tint(color)
@@ -64,7 +62,7 @@ internal class DiplomacyScreenStyle(private val textScale: Float = 1f) {
             fontColor = if (primary) ExpeditionBlueTheme.primaryInk else if(destructive) danger else text
             downFontColor = fontColor; overFontColor = fontColor; checkedFontColor = gold; disabledFontColor = muted
         }
-        button.label.setFontSize(font(14)); button.label.setEllipsis(true)
+        button.label.setFontSize(font(TextRole.Control)); button.label.setEllipsis(true)
         button.pad(px(8f), px(12f), px(8f), px(12f))
         if(icon != null) {
             button.clearChildren()
@@ -86,7 +84,7 @@ internal class DiplomacyScreenStyle(private val textScale: Float = 1f) {
             checked = up
             this.disabled = up
         }
-        button.label.setFontSize(font(14))
+        button.label.setFontSize(font(TextRole.Control))
         button.label.wrap = true
         button.label.setEllipsis(false)
         if (disabled) button.label.color = muted

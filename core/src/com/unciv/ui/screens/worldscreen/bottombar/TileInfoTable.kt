@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen.bottombar
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -72,7 +73,7 @@ class TileInfoTable(private val worldScreen: WorldScreen) : Table(BaseScreen.ski
                 add(tileView.position().toPrettyString()).colspan(2).pad(5f) // No toLabel() to avoid tr(), eats comma
             if (DebugUtils.SHOW_TILE_IMAGE_LOCATIONS){
                 val imagesString = "Images: " + worldScreen.mapHolder.tileGroups[tileView]!!.layerTerrain.tileBaseImages.joinToString{"\n"+it.name}
-                add(imagesString.toLabel())
+                add(imagesString.toLabel(TextRole.Body))
             }
         }
 
@@ -90,7 +91,7 @@ class TileInfoTable(private val worldScreen: WorldScreen) : Table(BaseScreen.ski
         val terrain = description.filter { it.link.startsWith("Terrain/") }
         val headingWidth = contentWidth - touch
         val title = terrain.joinToString(" · ") { it.text.tr() }
-            .toLabel(fontSize = BattlefieldHud.font(14f), hideIcons = true).apply {
+            .toLabel(fontSize = BattlefieldHud.font(TextRole.Supporting), hideIcons = true).apply {
                 color = ExpeditionBlueTheme.text
                 touchable = Touchable.disabled
             }
@@ -116,7 +117,7 @@ class TileInfoTable(private val worldScreen: WorldScreen) : Table(BaseScreen.ski
         // Keep all upstream fields, including production, units, research requirements,
         // pillaging, construction progress, defence and fresh water. Do not open another UI.
         val details = description.filterNot { it in terrain }.map {
-            it.copy(link = "", size = BattlefieldHud.font(13f), padding = BattlefieldHud.points(2f))
+            it.copy(link = "", size = BattlefieldHud.font(TextRole.Supporting), padding = BattlefieldHud.points(2f))
         }
         if (details.isEmpty()) pad(0f) // Basic terrain/yields are already visible in the heading.
         else {
@@ -134,7 +135,7 @@ class TileInfoTable(private val worldScreen: WorldScreen) : Table(BaseScreen.ski
         var usedWidth = 0f
         for ((key, value) in tileView.getTileStats(civView)) {
             val label = (key.character + value.toInt().toString()).toLabel(
-                fontSize = if (compactWidth != null) BattlefieldHud.font(13f) else 18)
+                fontSize = if (compactWidth != null) BattlefieldHud.font(TextRole.Supporting) else 18)
             val itemWidth = label.prefWidth + spacing + BattlefieldHud.points(4f)
             if (compactWidth != null && usedWidth > 0f && usedWidth + itemWidth > compactWidth) {
                 table.row()
@@ -151,7 +152,7 @@ class TileInfoTable(private val worldScreen: WorldScreen) : Table(BaseScreen.ski
         table.onClick {
             Popup(worldScreen).apply {
                 for ((name, stats) in tileView.getTileStatsBreakdown(civView))
-                    add("${name.tr()}: {${stats.clone()}}".toLabel()).row()
+                    add("${name.tr()}: {${stats.clone()}}".toLabel(TextRole.Body)).row()
                 addCloseButton()
             }.open()
         }

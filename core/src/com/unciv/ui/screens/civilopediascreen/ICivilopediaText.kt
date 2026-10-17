@@ -51,7 +51,7 @@ interface ICivilopediaText {
 
     /** Build a Gdx [Table] showing our [formatted][FormattedLine] [content][civilopediaText]. */
     fun renderCivilopediaText (labelWidth: Float, linkAction: ((id: String)->Unit)? = null): Table {
-        return MarkupRenderer.render(civilopediaText, labelWidth, linkAction = linkAction)
+        return MarkupRenderer.render(civilopediaText, labelWidth, useUiTypography = false, linkAction = linkAction)
     }
 
     /** Assemble json-supplied lines with automatically generated ones.

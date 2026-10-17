@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.diplomacyscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
@@ -31,14 +33,14 @@ class LeaderIntroTable (
         defaults().align(Align.center)
         val nation = civInfo.nation
         val leaderPortraitFile = "LeaderIcons/" + nation.leaderName
-        val leaderLabel = civInfo.getLeaderDisplayName().toLabel(fontSize = Constants.headingFontSize, hideIcons = true)
+        val leaderLabel = civInfo.getLeaderDisplayName().toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize), hideIcons = true)
         val nationIndicator = ImageGetter.getNationPortrait(nation, 24f)
         if (nation.leaderName.isNotEmpty() && ImageGetter.imageExists(leaderPortraitFile)) {
             val nameTable = Table()
             nameTable.add(leaderLabel)
             nameTable.add(nationIndicator).pad(0f, 10f, 5f, 0f).row()
             if (hello.isNotEmpty())
-                nameTable.add(hello.toLabel()).colspan(2)
+                nameTable.add(hello.toLabel(TextRole.Body)).colspan(2)
             add(ImageGetter.getImage(leaderPortraitFile)).size(100f)
                 .padRight(10f)
             add(nameTable)
@@ -46,7 +48,7 @@ class LeaderIntroTable (
             add(nationIndicator).pad(0f, 0f, 5f, 10f)
             add(leaderLabel).row()
             if (hello.isNotEmpty())
-                add(hello.toLabel()).colspan(2)
+                add(hello.toLabel(TextRole.Body)).colspan(2)
         }
 
         onClick {

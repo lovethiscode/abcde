@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.civilopediascreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -36,11 +38,13 @@ object MarkupRenderer {
         iconDisplay: FormattedLine.IconDisplay = FormattedLine.IconDisplay.All,
         minimumLinkHeight: Float = 0f,
         fitToWidth: Boolean = false,
+        useUiTypography: Boolean = false,
+        unit: Float = UiTypography.unitsPerPoint(),
         linkAction: ((id: String) -> Unit)? = null
     ): Table {
         val skin = BaseScreen.skin
         val table = Table(skin).apply { defaults().pad(padding).align(Align.left) }
-        renderTo(table, lines, labelWidth, iconDisplay, minimumLinkHeight, fitToWidth, linkAction)
+        renderTo(table, lines, labelWidth, iconDisplay, minimumLinkHeight, fitToWidth, useUiTypography, unit, linkAction)
         return table
     }
 
@@ -58,11 +62,13 @@ object MarkupRenderer {
         iconDisplay: FormattedLine.IconDisplay = FormattedLine.IconDisplay.All,
         minimumLinkHeight: Float = 0f,
         fitToWidth: Boolean = false,
+        useUiTypography: Boolean = false,
+        unit: Float = UiTypography.unitsPerPoint(),
         linkAction: ((id: String) -> Unit)? = null
     ) {
         for (line in lines) {
             if (line.isEmpty()) {
-                table.add().padTop(emptyLineHeight).row()
+                table.add().padTop(if (useUiTypography) UiTypography.size(TextRole.Body, unit) * 0.7f else emptyLineHeight).row()
                 continue
             }
             if (line.separator) {
@@ -70,7 +76,7 @@ object MarkupRenderer {
                     .pad(separatorTopPadding, 0f, separatorBottomPadding, 0f)
                 continue
             }
-            val actor = line.render(labelWidth, iconDisplay, fitToWidth)
+            val actor = line.render(labelWidth, iconDisplay, fitToWidth, useUiTypography, unit)
             if (line.linkType == FormattedLine.LinkType.Internal && linkAction != null)
                 actor.onClick {
                     linkAction(line.link)

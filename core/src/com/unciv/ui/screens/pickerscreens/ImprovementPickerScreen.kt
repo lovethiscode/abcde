@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.images.IconTextButton
@@ -106,20 +107,20 @@ class ImprovementPickerScreen(
 
         val ownerTable = Table()
         if (tile.getOwner() == null) {
-            ownerTable.add("Unowned tile".toLabel()).pad(10f)
+            ownerTable.add("Unowned tile".toLabel(TextRole.Body)).pad(10f)
         } else if (tile.getOwner()!!.isCurrentPlayer()) {
             val button = tile.getCity()!!.name.toTextButton(hideIcons = true)
             button.onClick {
                 val cityView = GUI.getWorldScreen().selectedGameView.getCityView(tile.getCity()!!)
                 game.pushScreen{ CityScreen(cityView, null, cityView.tileView(tile)) }
             }
-            val label = "Tile owned by [${tile.getOwner()!!.civName}] (You)".toLabel()
+            val label = "Tile owned by [${tile.getOwner()!!.civName}] (You)".toLabel(TextRole.Body)
             label.onClick { openCivilopedia(tile.getOwner()!!.nation.makeLink()) }
             ownerTable.add(label)
             ownerTable.add(button).padLeft(20f)
             ownerTable.padTop(2.5f) // The button causes the label to have ample padding, just unglue the button from the window border a little
         } else {
-            val label = "Tile owned by [${tile.getOwner()!!.civName}] - [${tile.getCity()!!.name}]".toLabel()
+            val label = "Tile owned by [${tile.getOwner()!!.civName}] - [${tile.getCity()!!.name}]".toLabel(TextRole.Body)
             label.onClick { openCivilopedia(tile.getOwner()!!.nation.makeLink()) }
             ownerTable.add(label).pad(10f)
         }
@@ -306,7 +307,7 @@ class ImprovementPickerScreen(
 
             statsTable.add(ImageGetter.getStatIcon(key.name)).size(20f).padRight(3f)
 
-            val valueLabel = statValue.tr().toLabel()
+            val valueLabel = statValue.tr().toLabel(TextRole.Body)
             valueLabel.color = if (statValue < 0) Color.RED else Color.WHITE
 
             statsTable.add(valueLabel).padRight(13f)
@@ -379,7 +380,7 @@ class ImprovementPickerScreen(
             // Formerly: "Pick now!".toLabel().onClick(action), with later fillY() to make it easier to hit (#3989)
 
         if (report.isEmpty()) return when {
-            tile.improvementInProgress == improvement.name -> "Current construction".toLabel()
+            tile.improvementInProgress == improvement.name -> "Current construction".toLabel(TextRole.Body)
             tileMarkedForCreatesOneImprovement -> null
             else -> getPickNowButton { accept(improvement) }
         }
@@ -387,7 +388,7 @@ class ImprovementPickerScreen(
         return Table().apply {
             defaults().center()
             for ((text, link) in report.proposedSolutions) {
-                val label = text.toLabel()
+                val label = text.toLabel(TextRole.Body)
                 if (!link.isNullOrEmpty()) label.onClick { openCivilopedia(link) }
                 add(label).padBottom(5f).row()
             }

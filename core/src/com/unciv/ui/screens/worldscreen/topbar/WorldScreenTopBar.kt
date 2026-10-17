@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen.topbar
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.graphics.g2d.Batch
@@ -274,11 +275,11 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
         // Instead of allowing tr() to insert the nation icon - we don't want it scaled with fontSizeMultiplier
         private var selectedCivIcon = Group()
         private val selectedCivIconCell: Cell<Group>
-        private val selectedCivLabel = "".toLabel()
+        private val selectedCivLabel = "".toLabel(TextRole.Body)
         private val turnHolder = Container<Label>().minWidth(0f).fillX().left()
 
         fun attachTurnLabel(label: Label) {
-            label.setFontSize(BattlefieldHud.font(11f))
+            label.setFontSize(BattlefieldHud.font(TextRole.CompactData))
             label.setEllipsis(true)
             label.setAlignment(Align.left)
             turnHolder.actor = label
@@ -301,7 +302,7 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
             val onNationClick = {
                 worldScreen.openCivilopedia(worldScreen.selectedCiv.nation.makeLink())
             }
-            selectedCivLabel.setFontSize(if (BattlefieldHud.enabled) BattlefieldHud.font(13f) else Constants.headingFontSize)
+            selectedCivLabel.setFontSize(if (BattlefieldHud.enabled) BattlefieldHud.font(TextRole.Supporting) else Constants.headingFontSize)
             if (BattlefieldHud.enabled) selectedCivLabel.setEllipsis(true)
             if (!BattlefieldHud.enabled) {
                 selectedCivLabel.onClick(onNationClick)

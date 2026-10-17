@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.modmanager
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.ui.Image
@@ -38,8 +40,8 @@ internal object ModManagementStyle {
         tintColor = color
     )
 
-    fun label(value: String, size: Int = 22, color: Color = text): Label =
-        value.toLabel(color, fontSize = size).apply { wrap = true }
+    fun label(value: String, size: TextRole = TextRole.Body, color: Color = text): Label =
+        value.toLabel(size, color).apply { wrap = true }
 
     fun control(color: Color) = if (ExpeditionBlueTheme.enabled)
         ExpeditionBlueTheme.outlinedControl(rounded(color),
@@ -59,7 +61,7 @@ internal object ModManagementStyle {
             overFontColor = text
             disabledFontColor = muted
         }
-        button.label.setFontSize(22)
+        button.label.setFontSize(UiTypography.size(TextRole.Control, legacySize = 22))
         button.label.wrap = true
         button.labelCell.minWidth(0f).growX()
         button.pad(13f, 18f, 13f, 18f)

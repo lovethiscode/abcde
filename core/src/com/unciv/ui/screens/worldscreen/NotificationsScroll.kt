@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -59,7 +61,7 @@ class NotificationsScroll(
         /** Logical size of the notification icons */
         const val iconSize = 30f
         /** Logical font size used in notification and category labels */
-        const val fontSize = 30
+        val fontSize get() = UiTypography.size(TextRole.Supporting, unit = UiTypography.unitsPerPoint() * inverseScaleFactor, legacySize = 30)
         /** This is the spacing between categories and also the spacing between the next turn button and the first header */
         const val categoryTopPad = 15f
         /** Spacing between rightmost Label edge and right Screen limit */
@@ -81,7 +83,7 @@ class NotificationsScroll(
         /** The outer size of the number+circle within the restore button */
         const val restoreButtonNumbersSize = 0.5f * restoreButtonSize
         /** Font size for the "count" number label overlaid on the restore button */
-        const val restoreButtonNumberFontSize = 13
+        val restoreButtonNumberFontSize get() = UiTypography.size(TextRole.CompactData, legacySize = 13)
         /** The x/y coords of the center of the number+circle within the restore button */
         const val restoreButtonNumbersCenter = restoreButtonSize - restoreButtonNumbersSize / 2
         /** Background tint for [oneTimeNotification] */

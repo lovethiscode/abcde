@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.GUI
 import com.unciv.ui.components.extensions.toLabel
@@ -91,9 +92,9 @@ class UnitOverviewTab(
             val inspect = OverviewUi.button(unit.id == persistableData.selectedUnitId, flat = true) { selectUnit(unit) }
             inspect.name = "unit-${unit.id}"
             val text = Table().apply {
-                add(unit.displayName().toLabel(fontSize = font(15), hideIcons = true).apply { setEllipsis(true) }).growX().minWidth(0f).left().row()
+                add(unit.displayName().toLabel(fontSize = font(TextRole.Control), hideIcons = true).apply { setEllipsis(true) }).growX().minWidth(0f).left().row()
                 val city = UnitOverviewTabColumn.ClosestCity.getEntryString(unit) ?: "—"
-                add("$city · {Movement} ${unit.getMovementString()}".toLabel(fontColor = OverviewUi.muted, fontSize = font(12), hideIcons = true).apply { setEllipsis(true) })
+                add("$city · {Movement} ${unit.getMovementString()}".toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting), hideIcons = true).apply { setEllipsis(true) })
                     .growX().minWidth(0f).left().padTop(pt(7f))
             }
             inspect.add(text).grow().minWidth(0f).pad(pt(10f), pt(12f), pt(10f), pt(8f))
@@ -110,7 +111,7 @@ class UnitOverviewTab(
         val selected = units.firstOrNull { it.id == persistableData.selectedUnitId } ?: units.firstOrNull()
         if (selected != null) selectUnit(selected, resetScroll = false) else {
             detail.clear()
-            detail.add("No units".toLabel()).pad(20f)
+            detail.add("No units".toLabel(TextRole.Body)).pad(20f)
         }
         listScroll.layout()
         listScroll.scrollY = scrollY
@@ -128,7 +129,7 @@ class UnitOverviewTab(
         detail.background = OverviewUi.rounded(OverviewUi.panel, 10f)
         val title = Table().apply {
             add(ImageGetter.getImage("UnitIcons/${unit.getBaseUnit().getIconName()}")).size(pt(19f)).padRight(pt(10f))
-            add(unit.displayName().toLabel(fontSize = font(22), hideIcons = true).apply { wrap = true }).growX().minWidth(0f).left()
+            add(unit.displayName().toLabel(fontSize = font(TextRole.SectionTitle), hideIcons = true).apply { wrap = true }).growX().minWidth(0f).left()
 
         }
         detail.add(title).colspan(2).growX().minHeight(pt(28f)).padBottom(pt(12f)).row()
@@ -140,7 +141,7 @@ class UnitOverviewTab(
                 overviewScreen.game.resetToWorldScreen().mapHolder.setCenterPosition(city.getCity().getCenterTile().position, selectUnit = false)
             }.apply {
                 right()
-                add(city.name.toLabel(fontSize = font(14), hideIcons = true)).right()
+                add(city.name.toLabel(fontSize = font(TextRole.Supporting), hideIcons = true)).right()
                 name = "unit-city-${city.getCity().id}"
             }
             detail.detailRow("Closest city", cityButton)

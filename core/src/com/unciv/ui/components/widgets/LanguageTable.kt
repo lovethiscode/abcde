@@ -1,5 +1,8 @@
 package com.unciv.ui.components.widgets
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.extensions.setFontSize
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -39,7 +42,7 @@ internal class LanguageTable(val language: String, val percentComplete: Int) : T
             add(Actor()).minWidth(40f)
 
         val nativeName = LocaleCode.find(language)?.nativeName ?: language.replace("_"," ")
-        add(Label(nativeNameDiacritics.remapDiacritics("$nativeName ($percentComplete%)"), BaseScreen.skin))
+        add(Label(nativeNameDiacritics.remapDiacritics("$nativeName ($percentComplete%)"), BaseScreen.skin).apply { setFontSize(UiTypography.size(TextRole.Control)) })
         update("")
         touchable =
             Touchable.enabled // so click listener is activated when any part is clicked, not only children

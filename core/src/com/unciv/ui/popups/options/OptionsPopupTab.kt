@@ -1,5 +1,6 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.ui.components.widgets.ExpanderTab
 import com.unciv.ui.components.widgets.TabbedPager
@@ -41,7 +42,7 @@ internal abstract class OptionsPopupTab(
             block()
             return
         }
-        val card = ExpanderTab(title, fontSize = OptionsPopupStyle.fontSize(18f), startsOutOpened = opened,
+        val card = ExpanderTab(title, fontSize = OptionsPopupStyle.fontSize(TextRole.Body), startsOutOpened = opened,
             defaultPad = OptionsPopupStyle.points(4f), topPad = 0f,
             headerPad = OptionsPopupStyle.points(12f), expanderWidth = 1f) {
             it.defaults().pad(OptionsPopupStyle.points(4f)).expand(0, 0).fill(false, false)

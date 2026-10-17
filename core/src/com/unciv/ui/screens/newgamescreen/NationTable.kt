@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -37,7 +39,7 @@ class NationTable(val nation: Nation, width: Float, minHeight: Float, ruleset: R
         val titleText = if (ruleset == null || nation.name == Constants.random || nation.name == Constants.spectator)
             nation.name else nation.getLeaderDisplayName()
         val leaderDisplayNameMaxWidth = internalWidth - 70f // for the nation indicator with padding
-        val leaderDisplayLabel = WrappableLabel(titleText, leaderDisplayNameMaxWidth, innerColor, Constants.headingFontSize, hideIcons = true)
+        val leaderDisplayLabel = WrappableLabel(titleText, leaderDisplayNameMaxWidth, innerColor,UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize), hideIcons = true)
         if (leaderDisplayLabel.prefWidth > leaderDisplayNameMaxWidth - 2f) {
             leaderDisplayLabel.wrap = true
             titleTable.add(leaderDisplayLabel).width(leaderDisplayNameMaxWidth)

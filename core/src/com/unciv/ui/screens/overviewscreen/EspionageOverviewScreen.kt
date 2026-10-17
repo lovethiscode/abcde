@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Button
@@ -91,19 +92,19 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
 
     //region Update
     private fun initSpyHeader() = spySelectionTable.apply {
-        add("Spy".toLabel())
-        add("Rank".toLabel())
+        add("Spy".toLabel(TextRole.Body))
+        add("Rank".toLabel(TextRole.Body))
         add() // icon column
-        add("Location".toLabel()).left()
-        add("Action".toLabel())
+        add("Location".toLabel(TextRole.Body)).left()
+        add("Action".toLabel(TextRole.Body))
         // button column: No header cell
         row()
     }
 
     private fun initLocationHeader() = locationSelectionTable.apply {
         add() // Empty column for location icon
-        add("City".toLabel()).left()
-        add("Spy present".toLabel())
+        add("City".toLabel(TextRole.Body)).left()
+        add("Spy present".toLabel(TextRole.Body))
         // button column: no header cell
         row()
     }
@@ -125,19 +126,19 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
 
     private fun addSpyToSelectionTable(spy: Spy) {
         // "Spy" column
-        spySelectionTable.add(spy.name.toLabel(hideIcons = true))
+        spySelectionTable.add(spy.name.toLabel(hideIcons = true, role = TextRole.Body))
         // "Rank" column — show effective rank (includes counter-intel building bonuses)
-        spySelectionTable.add(spy.getEffectiveRank().toLabel())
+        spySelectionTable.add(spy.getEffectiveRank().toLabel(TextRole.Body))
         // icon column
         val spyLocation = spy.getCityOrNull()
         spySelectionTable.add(spyLocation.getIcon()).padRight(5f)
         // "Location" column
-        spySelectionTable.add(spy.getLocationName().toLabel(hideIcons = true)).left()
+        spySelectionTable.add(spy.getLocationName().toLabel(hideIcons = true, role = TextRole.Body)).left()
         // "Action" column
         val actionString = if (spy.action.showTurns)
             "[${spy.action.displayString}] ${spy.turnsRemainingForAction}${Fonts.turn}"
         else spy.action.displayString
-        spySelectionTable.add(actionString.toLabel())
+        spySelectionTable.add(actionString.toLabel(TextRole.Body))
         // Move button column
         val moveSpyButton = "Move".toTextButton()
         moveSpyButton.onClick {
@@ -182,7 +183,7 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
 
     private fun addLocationToSelectionTable(location: Location) {
         locationSelectionTable.add(location.getIcon()).padLeft(20f).padRight(10f)
-        val label = location.getLocationName().toLabel(hideIcons = true)
+        val label = location.getLocationName().toLabel(hideIcons = true, role = TextRole.Body)
         if (location != null) {
             label.onClick {
                 worldScreen.game.popScreen() // If a detour to this screen (i.e. not directly from worldScreen) is made possible, use resetToWorldScreen instead

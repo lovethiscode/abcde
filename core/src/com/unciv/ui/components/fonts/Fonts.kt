@@ -43,12 +43,54 @@ object Fonts {
 
     lateinit var fontImplementation: FontImplementation
     lateinit var font: BitmapFont
-    
+    private var fontGeneration = 0
+    private data class UiFontKey(val generation: Int, val family: String, val filePath: String?, val glyphSize: Int,
+                                 val size: Int, val reading: Boolean) {
+        // RoboVM does not expose java.lang.Boolean.hashCode(boolean).
+        override fun hashCode(): Int {
+            var result = 31 * generation + family.hashCode()
+            result = 31 * result + (filePath?.hashCode() ?: 0)
+            result = 31 * result + glyphSize
+            result = 31 * result + size
+            return 31 * result + if (reading) 1 else 0
+        }
+    }
+    private val uiFonts = HashMap<UiFontKey, BitmapFont>()
+
+    /** Skin rebuilds can leave live editor controls behind. Reuse fonts until game shutdown. */
+    private fun cachedUiFont(size: Int, reading: Boolean): BitmapFont {
+        val settings = GUI.getSettings()
+        val family = settings.fontFamilyData
+        val key = UiFontKey(fontGeneration, family.invariantName, family.filePath, settings.getFontSize(), size, reading)
+        return uiFonts.getOrPut(key) {
+            // Keep the renderer bound to this family even after the main renderer changes settings.
+            val renderer = fontImplementation.javaClass.getDeclaredConstructor().newInstance()
+            renderer.setFontFamily(family, key.glyphSize)
+            renderer.getBitmapFont().apply {
+                data.setScale(size / ORIGINAL_FONT_SIZE)
+                if (reading) {
+                    data.markupEnabled = true
+                    data.lineHeight *= 1.45f
+                    data.down *= 1.45f
+                }
+            }
+        }
+    }
+
+    fun getUiFont(size: Int): BitmapFont = cachedUiFont(size, reading = false)
+    fun getReadingFont(): BitmapFont = cachedUiFont(com.unciv.Constants.defaultFontSize, reading = true)
+
+    fun disposeUiFonts() {
+        uiFonts.values.forEach { it.dispose() }
+        uiFonts.clear()
+    }
 
     /** This resets all cached font data in object Fonts.
      *  Do not call from normal code - reset the Skin instead: `BaseScreen.setSkin()`
      */
     fun resetFont() {
+        // Ruleset-icon code points are reassigned when the skin/ruleset is rebuilt.
+        fontGeneration++
         val settings = GUI.getSettings()
         fontImplementation.setFontFamily(settings.fontFamilyData, settings.getFontSize())
         font = fontImplementation.getBitmapFont()

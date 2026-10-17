@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -271,7 +273,7 @@ class GlobalPoliticsDiagramGroup(
         override fun createContentTable(): Table {
             val legend = Table()
             legend.background = ImageGetter.getDrawable("OtherIcons/Politics-diagram-bg")
-            legend.add(ShadowedLabel("Diagram line colors", Constants.headingFontSize)).colspan(3).row()
+            legend.add(ShadowedLabel("Diagram line colors",UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize))).colspan(3).row()
             for (relation in Relation.entries) {
                 legend.addLegendRow(relation)
             }

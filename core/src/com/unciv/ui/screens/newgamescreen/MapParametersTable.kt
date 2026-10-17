@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -170,7 +172,7 @@ class MapParametersTable(
             for (check in listOf(strategicBalanceCheckbox, legendaryStartCheckbox, noRuinsCheckbox,
                 noNaturalWondersCheckbox, worldWrapCheckbox)) table.add(check).row()
             table.add("World wrap maps are very memory intensive - creating large world wrap maps on Android can lead to crashes!"
-                .toLabel(fontSize = 18).apply { wrap = true }).row()
+                .toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18)).apply { wrap = true }).row()
             if (this::mirrorSelectBox.isInitialized)
                 table.add(SinglePlayerSetup.field("Map mirroring", mirrorSelectBox, width - 24f)).growX().row()
             addAdvancedControls(table)
@@ -202,7 +204,7 @@ class MapParametersTable(
                 generateExampleMap()
             }
 
-            add ("{Map Shape}:".toLabel()).left()
+            add ("{Map Shape}:".toLabel(TextRole.Body)).left()
             add(mapShapeSelectBox).fillX().row()
         }
     }
@@ -228,7 +230,7 @@ class MapParametersTable(
                 mapTypeExample.clear()
                 val mapPreview = LoadMapPreview(exampleMap, maxMapSize, maxMapSize)
                 if (!forMapEditor) {
-                    val label = "Example map".toLabel()
+                    val label = "Example map".toLabel(TextRole.Body)
                     label.centerX(mapPreview)
                     label.y = mapPreview.height - label.height - 10f
                     mapPreview.addActor(label)
@@ -263,7 +265,7 @@ class MapParametersTable(
         val preview = overviewPreview ?: return
         preview.clear()
         val map = lastExampleMap
-        if (map == null) preview.add("Loading...".toLabel())
+        if (map == null) preview.add("Loading...".toLabel(TextRole.Body))
         else if (UiNavigation.isIos && directLayoutWidth != null) {
             val tileSet = com.unciv.ui.components.tilegroups.TileSetStrings()
             val view = com.unciv.view.TileMapView(map, null)
@@ -294,7 +296,7 @@ class MapParametersTable(
         val previewWidth = if (stacked) width else (width - 18f) * 0.46f
         val optionsWidth = if (stacked) width else width - previewWidth - 18f
         val previewCard = GameSetupOverview.card().apply {
-            add("Example map".toLabel(fontSize = 24)).left().padBottom(14f).row()
+            add("Example map".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24))).left().padBottom(14f).row()
             roomPreview = Table()
             add(roomPreview).width(previewWidth - 36f).height(190f).padBottom(12f).row()
             add(Table().apply {
@@ -335,7 +337,7 @@ class MapParametersTable(
         val stacked = width < 700f
         preview.clear()
         val map = lastExampleMap
-        if (map == null) preview.add("Loading...".toLabel())
+        if (map == null) preview.add("Loading...".toLabel(TextRole.Body))
         else preview.add(LoadMapPreview(map, (if (stacked) width else (width - 18f) * 0.46f) - 36f,
             190f))
     }
@@ -370,7 +372,7 @@ class MapParametersTable(
                 generateExampleMap()
             }
 
-            add("{Map Generation Type}:".toLabel()).left()
+            add("{Map Generation Type}:".toLabel(TextRole.Body)).left()
             add(mapTypeSelectBox).fillX().row()
             add(mapTypeExample).colspan(2).grow().row()
         }
@@ -397,7 +399,7 @@ class MapParametersTable(
             addHexagonalSizeTable()
             addRectangularSizeTable()
 
-            add("{World Size}:".toLabel()).left()
+            add("{World Size}:".toLabel(TextRole.Body)).left()
             add(worldSizeSelectBox).fillX().row()
             add(customWorldSizeTable).colspan(2).grow().row()
 
@@ -412,8 +414,8 @@ class MapParametersTable(
             mapParameters.mapSize = MapSize(customMapSizeRadius.intValue ?: 0)
             updateHexagonalWarnings()
         }
-        hexWarningLabel = "".toLabel(Color.RED).apply { wrap = true }
-        hexagonalSizeTable.add("{Radius}:".toLabel()).grow().left()
+        hexWarningLabel = "".toLabel(fontColor = Color.RED, role = TextRole.Body).apply { wrap = true }
+        hexagonalSizeTable.add("{Radius}:".toLabel(TextRole.Body)).grow().left()
         hexagonalSizeTable.add(customMapSizeRadius).right().row()
         hexagonalSizeTable.add(hexWarningLabel).fillX().colspan(hexagonalSizeTable.columns).row()
         updateHexagonalWarnings()
@@ -441,12 +443,12 @@ class MapParametersTable(
             updateRectangularWarnings()
         }
 
-        rectWarningLabel = "".toLabel(Color.RED).apply { wrap = true }
+        rectWarningLabel = "".toLabel(fontColor = Color.RED, role = TextRole.Body).apply { wrap = true }
 
         rectangularSizeTable.defaults().pad(5f)
-        rectangularSizeTable.add("{Width}:".toLabel()).grow().left()
+        rectangularSizeTable.add("{Width}:".toLabel(TextRole.Body)).grow().left()
         rectangularSizeTable.add(customMapWidth).right().row()
-        rectangularSizeTable.add("{Height}:".toLabel()).grow().left()
+        rectangularSizeTable.add("{Height}:".toLabel(TextRole.Body)).grow().left()
         rectangularSizeTable.add(customMapHeight).right().row()
         rectangularSizeTable.add(rectWarningLabel).fillX().colspan(hexagonalSizeTable.columns).row()
         updateRectangularWarnings()
@@ -496,12 +498,12 @@ class MapParametersTable(
             if (forMapEditor) {
                 val comment = "This is used for painting resources, not in map generator steps:"
                 val expectedWidth = (UncivGame.Current.screen?.stage?.width ?: 1200f) * 0.4f
-                val label = WrappableLabel(comment, expectedWidth, Color.GOLD, 14)
+                val label = WrappableLabel(comment, expectedWidth, Color.GOLD,UiTypography.size(TextRole.Supporting, legacySize = 14))
                 label.setAlignment(Align.center)
                 label.wrap = true
                 add(label).colspan(2).row()
             }
-            add("{Resource Setting}:".toLabel()).left()
+            add("{Resource Setting}:".toLabel(TextRole.Body)).left()
             add(resourceSelectBox).fillX().row()
         }
     }
@@ -522,7 +524,7 @@ class MapParametersTable(
             mapParameters.mirroring = mirrorSelectBox.selected.value
         }
 
-        add("{Mirroring Type}:".toLabel()).left()
+        add("{Mirroring Type}:".toLabel(TextRole.Body)).left()
         add(mirrorSelectBox).fillX().row()
     }
 
@@ -572,7 +574,7 @@ class MapParametersTable(
                     it.addNoRuinsCheckbox()
                     it.addNoNaturalWondersCheckbox()
                     it.addWorldWrapCheckbox()
-                    it.add(worldWrapWarning.toLabel(fontSize = 18).apply { wrap = true }).minWidth(0f).row()
+                    it.add(worldWrapWarning.toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18)).apply { wrap = true }).minWidth(0f).row()
                 }).width(directLayoutWidth!!).padTop(8f).growX().row()
                 return
             }
@@ -585,7 +587,7 @@ class MapParametersTable(
                 it.addNoRuinsCheckbox()
                 it.addNoNaturalWondersCheckbox()
                 it.addWorldWrapCheckbox()
-                it.add(worldWrapWarning.toLabel(fontSize = 14).apply { wrap=true }).colspan(2).fillX().row()
+                it.add(worldWrapWarning.toLabel(fontSize = UiTypography.size(TextRole.Supporting, legacySize = 14)).apply { wrap=true }).colspan(2).fillX().row()
             }).pad(10f).padTop(10f).colspan(2).growX().row()
         } else {
             add(Table(skin).apply {
@@ -596,7 +598,7 @@ class MapParametersTable(
                 addNoNaturalWondersCheckbox()
                 addWorldWrapCheckbox()
             }).colspan(2).center().row()
-            add(worldWrapWarning.toLabel(fontSize = 14).apply { wrap=true }).colspan(2).fillX().row()
+            add(worldWrapWarning.toLabel(fontSize = UiTypography.size(TextRole.Supporting, legacySize = 14)).apply { wrap=true }).colspan(2).fillX().row()
         }
     }
 
@@ -618,13 +620,13 @@ class MapParametersTable(
             mapParameters.seed = seedTextField.value?.toLong() ?: 0L
         }
 
-        table.add("RNG Seed".toLabel()).left()
+        table.add("RNG Seed".toLabel(TextRole.Body)).left()
         if (roomLayoutWidth != null || directLayoutWidth != null) table.row()
         table.add(seedTextField).fillX().padBottom(10f).row()
 
         fun addSlider(text: String, getValue:()->Float, min: Float, max: Float, step: Float, onChange: (value: Float)->Unit): UncivSlider {
             val slider = UncivSlider(min, max, step, onChange = {onChange(it); generateExampleMap()}, initial = getValue())
-            table.add(text.toLabel()).left()
+            table.add(text.toLabel(TextRole.Body)).left()
             if (roomLayoutWidth != null || directLayoutWidth != null) table.row()
             table.add(slider).fillX().row()
             advancedSliders[slider] = getValue

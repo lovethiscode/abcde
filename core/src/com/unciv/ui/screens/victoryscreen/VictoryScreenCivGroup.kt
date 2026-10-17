@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -72,7 +73,7 @@ internal class VictoryScreenCivGroup(
         val labelColor = civInfo.third
 
         background = BaseScreen.skinStrings.getUiBackground("VictoryScreen/CivGroup", BaseScreen.skinStrings.roundedEdgeRectangleShape, backgroundColor)
-        val label = labelText.toLabel(labelColor, hideIcons = true)
+        val label = labelText.toLabel(fontColor = labelColor, hideIcons = true, role = TextRole.Body)
         label.setAlignment(Align.center)
 
         add(label).padLeft(10f)

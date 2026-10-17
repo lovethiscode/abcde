@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
@@ -38,7 +40,7 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
 
     private val techButtonHolder = Container<Table?>()
     private val pickTechButton = Table(skin)
-    private val pickTechLabel = "".toLabel(Color.WHITE, 30)
+    private val pickTechLabel = "".toLabel(Color.WHITE, UiTypography.size(TextRole.PageTitle, legacySize = 30))
 
     private val policyButtonHolder = Container<Button?>()
     private val policyScreenButton = Button(skin)
@@ -65,7 +67,7 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
         add(undoButtonHolder).padTop(10f).padRight(10f)
         add().growX()  // Allows Policy and Diplo buttons to keep to the left
 
-        fogOfWarButton.label.setFontSize(30)
+        fogOfWarButton.label.setFontSize(UiTypography.size(TextRole.PageTitle, legacySize = 30))
         fogOfWarButton.labelCell.pad(10f)
         fogOfWarButton.pack()
         fogOfWarButtonHolder.onActivation(UncivSound.Paper) {
@@ -163,7 +165,7 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
                 val turns = researchCiv.turnsToTech(currentTech)
                 techButtonHolder.actor = battlefieldTechButton(currentTech.tr(true), icon, "ui-tech-current").apply {
                     // Keep the turn count visible even when a long technology name is ellipsized.
-                    add("$turns${Fonts.turn}".toLabel(fontSize = BattlefieldHud.font(12f)))
+                    add("$turns${Fonts.turn}".toLabel(fontSize = BattlefieldHud.font(TextRole.Supporting)))
                         .padLeft(BattlefieldHud.points(3f))
                 }
                 return
@@ -195,7 +197,7 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
 
     /** All map research states share one compact geometry and the holder's existing activation. */
     private fun battlefieldTechButton(text: String, icon: Actor, buttonName: String, needsResearch: Boolean = false) =
-        IconTextButton(text, BattlefieldGeometry.icon(icon), BattlefieldHud.font(14f)).apply {
+        IconTextButton(text, BattlefieldGeometry.icon(icon), BattlefieldHud.font(TextRole.Supporting), labelFontSize = UiTypography.size(TextRole.Control)).apply {
             name = buttonName
             BattlefieldGeometry.fitControl(this)
             label.wrap = false

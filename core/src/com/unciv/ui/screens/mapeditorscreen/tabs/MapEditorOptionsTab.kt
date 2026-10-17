@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.mapeditorscreen.tabs
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
@@ -34,7 +35,7 @@ import com.unciv.utils.Log
 class MapEditorOptionsTab(
     private val editorScreen: MapEditorScreen
 ): Table(BaseScreen.skin), TabbedPager.IPageExtensions {
-    private val seedLabel = "".toLabel(Color.GOLD)
+    private val seedLabel = "".toLabel(fontColor = Color.GOLD, role = TextRole.Body)
     private val copySeedButton = "Copy to clipboard".toTextButton()
     private val tileMatchGroup = ButtonGroup<CheckBox>()
     private val copyMapButton = "Copy to clipboard".toTextButton()
@@ -58,7 +59,7 @@ class MapEditorOptionsTab(
         top()
         defaults().pad(10f)
 
-        add("Tile Matching Criteria".toLabel(Color.GOLD)).row()
+        add("Tile Matching Criteria".toLabel(fontColor = Color.GOLD, role = TextRole.Body)).row()
         for (option in TileMatchFuzziness.entries) {
             val check = option.label.toCheckBox(option == tileMatchFuzziness)
             { tileMatchFuzziness = option }
@@ -74,7 +75,7 @@ class MapEditorOptionsTab(
         }
         addSeparator(Color.GRAY)
 
-        add("Map copy and paste".toLabel(Color.GOLD)).row()
+        add("Map copy and paste".toLabel(fontColor = Color.GOLD, role = TextRole.Body)).row()
         copyMapButton.onActivation { copyHandler() }
         copyMapButton.keyShortcuts.add(KeyCharAndCode.ctrl('c'))
         pasteMapButton.onActivation { pasteHandler() }
@@ -103,7 +104,7 @@ class MapEditorOptionsTab(
         add(worldWrapCheckBox).growX().row()
         addSeparator(Color.GRAY)
 
-        add("Overlay image".toLabel(Color.GOLD)).row()
+        add("Overlay image".toLabel(fontColor = Color.GOLD, role = TextRole.Body)).row()
         overlayFileButton.style = TextButton.TextButtonStyle(overlayFileButton.style)
         showOverlayFileName()
         overlayFileButton.onClick {
@@ -127,7 +128,7 @@ class MapEditorOptionsTab(
             editorScreen.overlayAlpha = it
         }
         add(Table().apply {
-            add("Overlay opacity:".toLabel(alignment = Align.left)).left()
+            add("Overlay opacity:".toLabel(alignment = Align.left, role = TextRole.Body)).left()
             add(overlayAlphaSlider).right()
         }).row()
     }

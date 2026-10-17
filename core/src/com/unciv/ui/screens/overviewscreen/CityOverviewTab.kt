@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.utils.Align
 import com.unciv.models.ruleset.PerpetualConstruction
@@ -76,7 +78,7 @@ class CityOverviewTab(
         val civ = viewingPlayer.getCiv()
         val header = Table().apply {
             pad(0f, pt(12f), 0f, pt(12f))
-            add(OverviewUi.plainLabel("[${civ.cities.size}] cities · [${civ.cities.sumOf { it.population.population }}] population", 13, OverviewUi.muted)
+            add(OverviewUi.plainLabel("[${civ.cities.size}] cities · [${civ.cities.sumOf { it.population.population }}] population", TextRole.Supporting, OverviewUi.muted)
                 .apply { setEllipsis(true) }).growX().minWidth(0f).left()
             add(ImageGetter.getImage("OtherIcons/Search").apply { color = OverviewUi.muted })
                 .size(pt(16f)).padLeft(pt(16f)).padRight(pt(8f))
@@ -147,16 +149,16 @@ class CityOverviewTab(
         val arrow = if (persistableData.sortedBy != column || persistableData.direction == SortableGrid.SortDirection.None) ""
             else if (persistableData.direction == SortableGrid.SortDirection.Descending) " ↓" else " ↑"
         if (column == CityOverviewTabColumn.CityColumn) {
-            add(OverviewUi.plainLabel(title, 13, OverviewUi.muted).apply {
+            add(OverviewUi.plainLabel(title, TextRole.Supporting, OverviewUi.muted).apply {
                 setText(text.toString() + arrow)
                 setAlignment(Align.left)
             }).growX().pad(0f, pt(12f), 0f, pt(12f))
         } else {
             add().width(pt(12f)).padRight(pt(4f))
             add(column.getHeaderActor(pt(28f))).size(pt(28f))
-            add(OverviewUi.plainLabel(arrow.trim(), 13, OverviewUi.accent)).width(pt(12f)).padLeft(pt(4f))
+            add(OverviewUi.plainLabel(arrow.trim(), TextRole.Supporting, OverviewUi.accent)).width(pt(12f)).padLeft(pt(4f))
             pad(0f, pt(2f), 0f, pt(2f))
-            addTooltip(title, font(13).toFloat(), hideIcons = true)
+            addTooltip(title, font(TextRole.Supporting).toFloat(), hideIcons = true)
         }
         name = "city-sort-$title"
     }
@@ -181,11 +183,11 @@ class CityOverviewTab(
         nameHeading.add(sortButton(CityOverviewTabColumn.CityColumn, "Cities")).grow()
         for (column in columns) {
             headings.add(sortButton(column)).width(width(column)).height(OverviewUi.touch)
-            val total = if (column == CityOverviewTabColumn.Construction) "City production total".toLabel() else column.getTotalsActor(cities)
+            val total = if (column == CityOverviewTabColumn.Construction) "City production total".toLabel(TextRole.Body) else column.getTotalsActor(cities)
             if (total is Label) {
                 total.color = OverviewUi.accent
                 total.setAlignment(Align.center)
-                total.setFontScale(pt(14f) / com.unciv.ui.components.fonts.Fonts.ORIGINAL_FONT_SIZE)
+                total.setFontScale(font(TextRole.CompactData) / com.unciv.ui.components.fonts.Fonts.ORIGINAL_FONT_SIZE)
             }
             totals.add(Table().apply { add(total).growX().minWidth(0f).pad(0f, pt(8f), 0f, pt(8f)) })
                 .width(width(column)).height(pt(36f))
@@ -194,7 +196,7 @@ class CityOverviewTab(
         totals.background = OverviewUi.surface(OverviewUi.raised)
         nameTotal.left()
         nameTotal.background = OverviewUi.surface(OverviewUi.raised)
-        nameTotal.add("{Total} ${cities.size} {Cities}".toLabel(fontColor = OverviewUi.accent, fontSize = font(14), hideIcons = true)).left().padLeft(pt(12f))
+        nameTotal.add("{Total} ${cities.size} {Cities}".toLabel(fontColor = OverviewUi.accent, fontSize = font(TextRole.Supporting), hideIcons = true)).left().padLeft(pt(12f))
         for (city in cities) {
             val identity = Table().apply {
                 background = OverviewUi.surface(if (city.id == persistableData.selectedCityId) OverviewUi.selected else OverviewUi.panel)
@@ -205,7 +207,7 @@ class CityOverviewTab(
             }.apply {
                 name = "city-${city.id}"
                 if (city.isCapital()) add(ImageGetter.getImage("OtherIcons/Capital").apply { color = OverviewUi.accent }).size(pt(14f)).padRight(pt(8f))
-                add(city.name.toLabel(fontSize = font(15), hideIcons = true).apply { setEllipsis(true) }).minWidth(0f).growX().left()
+                add(city.name.toLabel(fontSize = font(TextRole.Control), hideIcons = true).apply { setEllipsis(true) }).minWidth(0f).growX().left()
                 pad(0f, pt(12f), 0f, 0f)
             }
             identity.add(cityName).grow().minWidth(0f)
@@ -228,10 +230,10 @@ class CityOverviewTab(
                         construction in PerpetualConstruction.perpetualConstructionsMap -> construction.tr(hideIcons = true)
                         else -> construction.tr(hideIcons = true) + "  " + "[${city.cityConstructions.turnsToConstruction(construction)}] turns".tr()
                     }
-                    text.toLabel(hideIcons = true)
+                    text.toLabel(hideIcons = true, role = TextRole.Body)
                 } else column.getEntryActor(city, pt(20f), overviewScreen)
                 if (actor is Label) {
-                    actor.setFontScale(pt(15f) / com.unciv.ui.components.fonts.Fonts.ORIGINAL_FONT_SIZE)
+                    actor.setFontScale(font(TextRole.Control) / com.unciv.ui.components.fonts.Fonts.ORIGINAL_FONT_SIZE)
                     actor.setEllipsis(true)
                     actor.setAlignment(Align.center)
                     if (column == CityOverviewTabColumn.Happiness && column.getEntryValue(city) < 0) actor.color = OverviewUi.danger
@@ -245,7 +247,7 @@ class CityOverviewTab(
             }
             values.row()
         }
-        if (cities.isEmpty()) cityNames.add("No matching cities".toLabel(fontSize = 18)).width(nameWidth).pad(12f)
+        if (cities.isEmpty()) cityNames.add("No matching cities".toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18))).width(nameWidth).pad(12f)
         bodyScroll.layout()
         bodyScroll.scrollY = y
         bodyScroll.updateVisualScroll()
@@ -263,12 +265,12 @@ class CityOverviewTab(
             rebuildRows()
         }
         val title = Table().apply {
-            add(city.name.toLabel(fontColor = OverviewUi.accent, fontSize = font(18), hideIcons = true).apply { setEllipsis(true) })
+            add(city.name.toLabel(fontColor = OverviewUi.accent, fontSize = font(TextRole.Body), hideIcons = true).apply { setEllipsis(true) })
                 .growX().minWidth(0f).left().height(OverviewUi.touch)
             add(close).size(OverviewUi.touch)
         }
         inspector.add(title).colspan(2).growX().row()
-        inspector.add("{Population} ${city.population.population}".toLabel(fontColor = OverviewUi.muted, fontSize = font(13), hideIcons = true))
+        inspector.add("{Population} ${city.population.population}".toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting), hideIcons = true))
             .colspan(2).left().padBottom(pt(12f)).row()
         val yields = Table()
         for ((index, column) in listOf(CityOverviewTabColumn.Food, CityOverviewTabColumn.Production,
@@ -277,8 +279,8 @@ class CityOverviewTab(
             yields.add(Table().apply {
                 add(ImageGetter.getStatIcon(column.name)).size(pt(23f)).padRight(pt(8f))
                 add(Table().apply {
-                    add(column.getEntryValue(city).toString().toLabel(fontSize = font(19))).left().row()
-                    add(OverviewUi.plainLabel(column.name, 12, OverviewUi.muted)).left()
+                    add(column.getEntryValue(city).toString().toLabel(fontSize = font(TextRole.SectionTitle))).left().row()
+                    add(OverviewUi.plainLabel(column.name, TextRole.Supporting, OverviewUi.muted)).left()
                 }).left()
             }).expandX().left().padBottom(pt(16f))
             if (index % 3 == 2) yields.row()
@@ -286,7 +288,7 @@ class CityOverviewTab(
         inspector.add(yields).colspan(2).growX().row()
         val construction = CityOverviewTabColumn.Construction.getEntryActor(city, pt(20f), overviewScreen).apply {
             if (this is Label) {
-                setFontScale(pt(14f) / com.unciv.ui.components.fonts.Fonts.ORIGINAL_FONT_SIZE)
+                setFontScale(font(TextRole.CompactData) / com.unciv.ui.components.fonts.Fonts.ORIGINAL_FONT_SIZE)
                 wrap = true
             }
         }

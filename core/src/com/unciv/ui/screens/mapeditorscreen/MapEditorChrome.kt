@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.mapeditorscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -24,9 +26,9 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
     private val controlButtons = ArrayList<TextButton>()
     private val brushBar = Table()
     private val panel = Table()
-    private val panelTitle = "".toLabel(fontSize = (20*u).toInt())
-    private val title = "".toLabel(fontSize = (18*u).toInt(), fontColor = MapEditorStyle.text)
-    private val status = "".toLabel(fontSize = (12*u).toInt(), fontColor = MapEditorStyle.muted)
+    private val panelTitle = "".toLabel(fontSize = UiTypography.size(TextRole.SectionTitle, unit = u))
+    private val title = "".toLabel(fontSize = UiTypography.size(TextRole.Body, unit = u), fontColor = MapEditorStyle.text)
+    private val status = "".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = u), fontColor = MapEditorStyle.muted)
     private val brush = MapEditorStyle.button("Brush") { editor.tabs.edit.openBrushHelp() }
     private val range = MapEditorStyle.button("Brush ([1]):") { rangePopup() }
     private val undo = MapEditorStyle.button("Undo") { editor.undo() }
@@ -165,7 +167,7 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
     }
     private fun rangePopup() {
         Popup(editor).apply {
-            add("Brush size".toLabel(fontSize = (18*u).toInt())).row()
+            add("Brush size".toLabel(fontSize = UiTypography.size(TextRole.Body, unit = u))).row()
             val popup = this
             val sizes = Table().apply {
                 for (size in 1..5) add(MapEditorStyle.button(size.toString()) {
@@ -176,7 +178,7 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
             add(MapEditorStyle.button("Floodfill") {
                 editor.tabs.edit.brushSize = -1; close()
             }).growX().height(44*u).pad(4*u).row()
-            add("Floodfill follows the matching rule in Options.".toLabel(fontSize = (14*u).toInt()).apply { wrap = true })
+            add("Floodfill follows the matching rule in Options.".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = u)).apply { wrap = true })
                 .width(minOf(340*u, editor.stage.width-80*u)).row()
             addCloseButton(); open()
         }

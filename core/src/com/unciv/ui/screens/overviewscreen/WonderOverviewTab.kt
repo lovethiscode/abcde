@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
 import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.graphics.Color
@@ -42,18 +43,18 @@ class WonderOverviewTab(
                 add(image).size(pt(28f)).padRight(pt(12f))
                 val identity = Table().apply {
                     left()
-                    add(wonder.getNameColumn().toLabel(fontSize = font(16), hideIcons = true).apply { wrap = true })
+                    add(wonder.getNameColumn().toLabel(fontSize = font(TextRole.Control), hideIcons = true).apply { wrap = true })
                         .growX().minWidth(0f).left().row()
                     val location = wonder.getLocationColumn()
                     val context = if (location.isEmpty()) wonder.groupName else "{${wonder.groupName}} · {$location}"
-                    add(context.toLabel(fontColor = OverviewUi.muted, fontSize = font(13), hideIcons = true).apply { wrap = true })
+                    add(context.toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting), hideIcons = true).apply { wrap = true })
                         .growX().minWidth(0f).left().padTop(6f)
                 }
                 if (wonder.location != null) identity.onClick {
                     UncivGame.Current.resetToWorldScreen().mapHolder.setCenterPosition(wonder.location.position)
                 }
                 add(identity).minWidth(0f).growX().left()
-                add(wonder.getStatusColumn().toLabel(fontSize = font(14))).padLeft(16f).right()
+                add(wonder.getStatusColumn().toLabel(fontSize = font(TextRole.Supporting))).padLeft(16f).right()
             }
             add(entry).width(overviewScreen.contentWidth).minHeight(pt(66f)).padBottom(pt(1f)).row()
         }

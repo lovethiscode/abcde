@@ -1,10 +1,11 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Group
-import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.ui.Button
@@ -15,7 +16,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextField
 import com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable
 import com.badlogic.gdx.scenes.scene2d.utils.TransformDrawable
 import com.unciv.models.skins.ExpeditionBlueTheme
-import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.widgets.ExpanderTab
 import com.unciv.ui.images.ImageGetter
@@ -37,10 +37,9 @@ internal object SinglePlayerSetup {
 
     fun style(actor: Actor, font: BitmapFont) {
         when (actor) {
-            is Label -> actor.setFontSize(18)
             is CheckBox -> actor.style = CheckBox.CheckBoxStyle(actor.style).apply {
                 actor.align(com.badlogic.gdx.utils.Align.left)
-                this.font = font
+                this.font = com.unciv.ui.components.fonts.Fonts.font
                 checkedFontColor = ExpeditionBlueTheme.text
                 checkboxOff = ExpeditionBlueTheme.outlinedControl(
                     ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.panel),
@@ -60,7 +59,7 @@ internal object SinglePlayerSetup {
                 checkboxOnOver = checkboxOn
             }
             is TextButton -> actor.style = TextButton.TextButtonStyle(actor.style).apply {
-                this.font = font
+                this.font = com.unciv.ui.components.fonts.Fonts.font
                 up = surface()
                 down = surface(ExpeditionBlueTheme.hero, ExpeditionBlueTheme.controlBorder)
                 over = down
@@ -121,7 +120,7 @@ internal object SinglePlayerSetup {
         }
         add(Table().apply {
             if (captionIcon != null) add(ImageGetter.getImage(captionIcon, ExpeditionBlueTheme.text)).size(18f).padRight(7f)
-            add(caption.toLabel(ExpeditionBlueTheme.text, 18).apply { wrap = true }).minWidth(0f).growX().left()
+            add(caption.toLabel(ExpeditionBlueTheme.text, UiTypography.size(TextRole.Control, legacySize = 18)).apply { wrap = true }).minWidth(0f).growX().left()
         }).width(labelWidth).left().padRight(8f)
         add(control).minWidth(0f).width(width - labelWidth - 20f).height(36f).fillX()
     }
@@ -140,7 +139,7 @@ internal object SinglePlayerSetup {
     fun group(title: String, width: Float, id: String, opened: Boolean = false,
               content: (Table) -> Unit): ExpanderTab {
         lateinit var expander: ExpanderTab
-        expander = ExpanderTab(title, fontSize = 18,
+        expander = ExpanderTab(title, fontSize = UiTypography.size(TextRole.Body, legacySize = 18),
         icon = ImageGetter.getImage(when (title) {
             "Advanced Settings" -> "OtherIcons/Options"
             "Extension mods" -> "OtherIcons/Mods"

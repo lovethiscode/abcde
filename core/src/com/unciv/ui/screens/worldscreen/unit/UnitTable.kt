@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.unit
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.g2d.Batch
@@ -52,9 +54,9 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
         IdleUnitButton(this, worldScreen.mapHolder, false, KeyboardBinding.NextIdleButton)
     internal val battlefieldPreviousUnitButton get() = prevIdleUnitButton
     internal val hasBattlefieldSelection get() = selectedUnit != null || selectedCity != null || selectedSpy != null
-    private val battlefieldSummary = "".toLabel()
+    private val battlefieldSummary = "".toLabel(TextRole.Body)
     internal val unitIconHolder = Table()
-    internal val unitNameLabel = "".toLabel(fontSize = 24).apply { setAlignment(Align.center) }
+    internal val unitNameLabel = "".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24)).apply { setAlignment(Align.center) }
     internal val unitIconNameGroup = Table()
     internal val promotionsTable = Table().apply { defaults().padRight(5f) }
     internal val descriptionTable = Table(BaseScreen.skin)
@@ -244,9 +246,9 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
         if (!BattlefieldHud.enabled) return
         val touch = UiNavigation.minimumTouchSize()
         unitNameLabel.setAlignment(Align.left)
-        unitNameLabel.setFontSize(BattlefieldHud.font(14f))
+        unitNameLabel.setFontSize(BattlefieldHud.font(TextRole.Supporting))
         unitNameLabel.setEllipsis(true)
-        battlefieldSummary.setFontSize(BattlefieldHud.font(11f))
+        battlefieldSummary.setFontSize(BattlefieldHud.font(TextRole.CompactData))
         battlefieldSummary.color = com.unciv.models.skins.ExpeditionBlueTheme.muted
         battlefieldSummary.setEllipsis(true)
         val unit = selectedUnit
@@ -271,7 +273,7 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
         // Keep the full touch target while removing the large outlined close tile.
         (closeButton as? Group)?.children?.forEach { child ->
             if (child is Button) BattlefieldGeometry.fitControl(child, flat = true)
-            if (child is TextButton) child.label.setFontSize(BattlefieldHud.font(16f))
+            if (child is TextButton) child.label.setFontSize(BattlefieldHud.font(TextRole.Control))
         }
         closeButton.setPosition(width - touch, (height - touch) / 2f)
         closeButton.toFront()
@@ -281,9 +283,9 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
     private fun openBattlefieldDetails() {
         val details = Popup(worldScreen)
         val detailWidth = minOf(BattlefieldHud.points(340f), worldScreen.safeAreaBoundsInWorld().width - BattlefieldHud.points(32f))
-        details.add(nameLabelText.toLabel(fontSize = BattlefieldHud.font(16f))).width(detailWidth).row()
+        details.add(nameLabelText.toLabel(fontSize = BattlefieldHud.font(TextRole.Control))).width(detailWidth).row()
         for (label in descriptionTable.children.filterIsInstance<Label>())
-            label.setFontSize(BattlefieldHud.font(13f))
+            label.setFontSize(BattlefieldHud.font(TextRole.Control))
         details.add(descriptionTable).minWidth(0f).width(detailWidth).pad(BattlefieldHud.points(8f)).row()
         details.add(promotionsTable).width(detailWidth).row()
         if (worldScreen.canChangeState && (selectedUnit != null || selectedCity != null)) {

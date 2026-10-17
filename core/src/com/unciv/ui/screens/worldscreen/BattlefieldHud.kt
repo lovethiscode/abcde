@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Button
@@ -21,14 +23,13 @@ import com.unciv.ui.popups.popups
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.status.MultiplayerStatusButton
 import com.unciv.utils.Display
-import kotlin.math.roundToInt
 
 /** B: commands at the left, turn navigation at the right, and an independent combat preview. */
 internal class BattlefieldHud(private val world: WorldScreen) {
     companion object {
         val enabled get() = ExpeditionBlueTheme.enabled
         fun points(value: Float) = value * UiNavigation.minimumTouchSize() / 44f
-        fun font(value: Float) = points(value).roundToInt()
+        fun font(value: TextRole) = UiTypography.size(value)
 
         private fun usesLandscapeEdgeLayout(world: WorldScreen) =
             UiNavigation.isIos && Display.isEdgeToEdgeEnabled() && !world.isPortrait() &&
@@ -67,13 +68,13 @@ internal class BattlefieldHud(private val world: WorldScreen) {
     private val contextBackground = Image(BaseScreen.skinStrings.getUiBackground("WorldScreen/UnitTable"))
     private val events = BattlefieldEvents(world)
     private val urgent = Table()
-    private val eventCount = "0".toLabel(fontSize = font(12f))
+    private val eventCount = "0".toLabel(fontSize = font(TextRole.Supporting))
     private val allEvents = Button(BaseScreen.skin).apply {
         name = "ui-notifications-open"
         BattlefieldGeometry.fitControl(this)
         pad(points(4f))
         add(ImageGetter.getImage("OtherIcons/Notifications")).size(points(18f)).row()
-        add("All".toLabel(fontSize = font(11f))).row()
+        add("All".toLabel(fontSize = font(TextRole.CompactData))).row()
         add(eventCount)
         onActivation { eventsExpanded = true; world.shouldUpdate = true }
     }
@@ -198,7 +199,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
                 notification.addNotificationIconsTo(icons, world.gameInfo.ruleset, points(17f))
                 icons.touchable = Touchable.disabled
                 add(icons).padRight(points(5f))
-                val label = notification.text.toLabel(fontSize = font(12f), hideIcons = true).apply {
+                val label = notification.text.toLabel(fontSize = font(TextRole.Supporting), hideIcons = true).apply {
                     wrap = true
                     setAlignment(Align.left)
                     color = if (notification.category == NotificationCategory.War) ExpeditionBlueTheme.danger else ExpeditionBlueTheme.gold
@@ -207,7 +208,8 @@ internal class BattlefieldHud(private val world: WorldScreen) {
                 add(label).minWidth(0f).growX()
                 onActivation { execute(notification) }
             }
-            urgent.add(row).width(width).height(touch)
+            row.width = width
+            urgent.add(row).width(width).minHeight(touch)
                 .padBottom(if (index < entries.lastIndex) gap else 0f).row()
         }
         eventCount.setText(notifications.size.toString())
@@ -368,7 +370,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
             if (events.isVisible) {
                 val eventWidth = if (portrait) width else points(304f)
                 eventHeader.clearChildren()
-                eventHeader.add("Notifications".toLabel(fontSize = font(14f))).minWidth(0f).growX().left()
+                eventHeader.add("Notifications".toLabel(fontSize = font(TextRole.Supporting))).minWidth(0f).growX().left()
                 eventHeader.add(iconButton("OtherIcons/Close", "ui-notifications-close") {
                     eventsExpanded = false; world.shouldUpdate = true
                 }).size(touch)
@@ -468,7 +470,7 @@ private class BattlefieldEvents(private val world: WorldScreen) : ScrollPane(Tab
         list.clearChildren()
         list.top().left()
         if (entries.isEmpty()) {
-            list.add("No notifications".toLabel(fontSize = BattlefieldHud.font(13f))).left()
+            list.add("No notifications".toLabel(fontSize = BattlefieldHud.font(TextRole.Supporting))).left()
                 .pad(BattlefieldHud.points(8f)).minHeight(touch).row()
         }
         for ((index, notification) in entries.withIndex()) {
@@ -481,7 +483,7 @@ private class BattlefieldEvents(private val world: WorldScreen) : ScrollPane(Tab
             notification.addNotificationIconsTo(icons, world.gameInfo.ruleset, BattlefieldHud.points(17f))
             icons.touchable = Touchable.disabled
             row.add(icons).padRight(BattlefieldHud.points(5f))
-            val label = notification.text.toLabel(fontSize = BattlefieldHud.font(13f), hideIcons = true)
+            val label = notification.text.toLabel(fontSize = BattlefieldHud.font(TextRole.Supporting), hideIcons = true)
             label.wrap = true
             label.setAlignment(Align.left)
             label.touchable = Touchable.disabled

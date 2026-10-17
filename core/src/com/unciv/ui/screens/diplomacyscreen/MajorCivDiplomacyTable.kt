@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.diplomacyscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -213,12 +214,12 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             if (otherCivDiplomacyManager.hasFlag(demand.agreedToDemand)) {
                 val turnsLeft = otherCivDiplomacyManager.getFlag(demand.agreedToDemand)
                 val text = demand.wePromisedText.fillPlaceholders(turnsLeft.toString())
-                promisesTable.add(text.toLabel(Color.LIGHT_GRAY)).row()
+                promisesTable.add(text.toLabel(fontColor = Color.LIGHT_GRAY, role = TextRole.Body)).row()
             }
             if (diplomacyManager.hasFlag(demand.agreedToDemand)) {
                 val turnsLeft = diplomacyManager.getFlag(demand.agreedToDemand)
                 val text = demand.theyPromisedText.fillPlaceholders(turnsLeft.toString())
-                promisesTable.add(text.toLabel(Color.LIGHT_GRAY)).row()
+                promisesTable.add(text.toLabel(fontColor = Color.LIGHT_GRAY, role = TextRole.Body)).row()
             }
         }
 
@@ -241,7 +242,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             val roundedValue = modifier.value.roundToInt()
             text += roundedValue
             val color = ModifierColor.getColor(roundedValue)
-            diplomacyModifiersTable.add(text.toLabel(color)).row()
+            diplomacyModifiersTable.add(text.toLabel(fontColor = color, role = TextRole.Body)).row()
         }
         return diplomacyModifiersTable
     }

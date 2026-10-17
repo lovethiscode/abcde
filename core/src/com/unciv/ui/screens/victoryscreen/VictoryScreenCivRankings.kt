@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -31,7 +32,7 @@ class VictoryScreenCivRankings(
             if (columnImage != null)
                 textAndIcon.add(columnImage).size(Constants.defaultFontSize.toFloat() * 0.75f)
                     .padRight(2f).padTop(-2f)
-            textAndIcon.add(category.label.toLabel()).row()
+            textAndIcon.add(category.label.toLabel(TextRole.Body)).row()
             header.add(textAndIcon).pad(10f)
 
             val column = Table().apply { defaults().space(10f) }

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.input.onActivation
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
@@ -166,12 +167,12 @@ class VictoryScreen private constructor(
             val topRightPanel = VerticalGroup().apply {
                 space(5f)
                 align(Align.right)
-                addActor("{Game Speed}: {${gameInfo.gameParameters.speed}}".toLabel())
+                addActor("{Game Speed}: {${gameInfo.gameParameters.speed}}".toLabel(TextRole.Body))
                 if ("Time" in gameInfo.gameParameters.victoryTypes)
-                    addActor("{Max Turns}: ${gameInfo.gameParameters.maxTurns.tr()}".toLabel())
+                    addActor("{Max Turns}: ${gameInfo.gameParameters.maxTurns.tr()}".toLabel(TextRole.Body))
                 pack()
             }
-            val difficultyLabel = "{Difficulty}: {${gameInfo.difficulty}}".toLabel()
+            val difficultyLabel = "{Difficulty}: {${gameInfo.difficulty}}".toLabel(TextRole.Body)
             val neededSpace = topRightPanel.width.coerceAtLeast(difficultyLabel.width) * 2 + tabs.getHeaderPrefWidth()
             if (UiNavigation.isIos || neededSpace > stage.width) {
                 // Let additions take part in TabbedPager's header scrolling
@@ -201,10 +202,10 @@ class VictoryScreen private constructor(
 
     private fun buildNativeChrome() {
         pickerPane.remove()
-        descriptionLabel.setFontSize(font(13))
+        descriptionLabel.setFontSize(font(TextRole.Supporting))
         descriptionLabel.wrap = true
         for (button in listOf(closeButton, rightSideButton)) {
-            button.label.setFontSize(font(14))
+            button.label.setFontSize(font(TextRole.Control))
             button.style = com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle(button.style).apply {
                 up = OverviewUi.rounded(if (button == rightSideButton) OverviewUi.accent else OverviewUi.panel)
                 down = OverviewUi.rounded(OverviewUi.selected)
@@ -224,7 +225,7 @@ class VictoryScreen private constructor(
                 val button = OverviewUi.button(flat = true) { tabs.selectPage(caption) }.apply {
                     style = Button.ButtonStyle(style).apply { checked = OverviewUi.rounded(OverviewUi.raised) }
                     if (!compact) add(ImageGetter.getImage("VictoryScreenIcons/${tab.name}")).size(pt(18f)).padRight(pt(7f))
-                    add(OverviewUi.plainLabel(caption, 15))
+                    add(OverviewUi.plainLabel(caption, TextRole.Control))
                     pad(0f, pt(12f), 0f, pt(12f))
                     name = "victory-tab-${tab.name}"
                 }
@@ -239,22 +240,22 @@ class VictoryScreen private constructor(
         val back = UiNavigation.backButton("Map").apply { onActivation { game.popScreen() } }
         val header = Table().apply {
             add(back).height(OverviewUi.touch).padRight(pt(16f))
-            add(OverviewUi.plainLabel("Victory status", 20).apply { setEllipsis(true) }).growX().minWidth(0f).left()
+            add(OverviewUi.plainLabel("Victory status", TextRole.SectionTitle).apply { setEllipsis(true) }).growX().minWidth(0f).left()
             val context = Table().apply {
                 add(ImageGetter.getNationPortrait(playerCiv.nation, pt(24f))).size(pt(24f)).padRight(pt(7f))
-                add(OverviewUi.plainLabel(playerCiv.civName, 14).apply { setEllipsis(true) }).minWidth(0f).padRight(pt(12f))
+                add(OverviewUi.plainLabel(playerCiv.civName, TextRole.Supporting).apply { setEllipsis(true) }).minWidth(0f).padRight(pt(12f))
                 val year = YearTextUtil.toYearText(gameInfo.getYear(), playerCiv.isLongCountDisplay())
-                add(OverviewUi.plainLabel("${gameInfo.turns} {Turn} · $year", 13, OverviewUi.muted))
+                add(OverviewUi.plainLabel("${gameInfo.turns} {Turn} · $year", TextRole.Supporting, OverviewUi.muted))
             }
             if (compact) { row(); add(context).colspan(2).left().growX().minWidth(0f) } else add(context)
         }
         val metadata = Table().apply {
             val info = "{Difficulty}: {${gameInfo.difficulty}} · {Game Speed}: {${gameInfo.gameParameters.speed}}" +
                 if ("Time" in gameInfo.gameParameters.victoryTypes) " · {Max Turns}: ${gameInfo.gameParameters.maxTurns.tr()}" else ""
-            add(OverviewUi.plainLabel(info, 12, OverviewUi.muted).apply { wrap = true }).growX().minWidth(0f).left()
+            add(OverviewUi.plainLabel(info, TextRole.Supporting, OverviewUi.muted).apply { wrap = true }).growX().minWidth(0f).left()
             if (compact) row()
             val status = if (gameInfo.victoryData != null || playerCiv.isDefeated()) "Game ended" else "Game in progress"
-            add(OverviewUi.plainLabel(status, 12, OverviewUi.muted)).left().padLeft(if (compact) 0f else pt(12f))
+            add(OverviewUi.plainLabel(status, TextRole.Supporting, OverviewUi.muted)).left().padLeft(if (compact) 0f else pt(12f))
         }
         val root = object : Table() {
             override fun act(delta: Float) {

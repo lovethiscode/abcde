@@ -1,5 +1,7 @@
 package com.unciv.ui.components
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.unciv.Constants
 import com.unciv.UncivGame
@@ -98,9 +100,9 @@ object MayaCalendar {
         Popup(previousScreen).apply {
             name = "MayaCalendar"
             if (UiNavigation.isIos) addTitleWithCloseButton(
-                "The Mayan Long Count".toLabel(fontSize = Constants.headingFontSize, fontColor = civInfo.nation.getOuterColor())
+                "The Mayan Long Count".toLabel(fontSize = UiTypography.size(TextRole.PageTitle), fontColor = civInfo.nation.getOuterColor())
             )
-            else addGoodSizedLabel("The Mayan Long Count", Constants.headingFontSize).apply {
+            else addGoodSizedLabel("The Mayan Long Count",UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize)).apply {
                 actor.color = civInfo.nation.getOuterColor()
             }.row()
             addSeparator(color = Color.DARK_GRAY)
@@ -108,7 +110,7 @@ object MayaCalendar {
             val yearText = ("[" + abs(year) + "] " + (if (year < 0) "BC" else "AD")).tr()
             addGoodSizedLabel("While the rest of the world calls the current year [$yearText], in the Maya Calendar that is:").padTop(10f).row()
             val mayaYear = MayaYear(year)
-            addGoodSizedLabel(mayaYear.toString(), 42).row()
+            addGoodSizedLabel(mayaYear.toString(),UiTypography.size(TextRole.Display, legacySize = 42)).row()
             addGoodSizedLabel("[${mayaYear.baktuns}] b'ak'tun, [${mayaYear.katuns}] k'atun, [${mayaYear.tuns}] tun").padBottom(10f).row()
             if (!UiNavigation.isIos) addCloseButton()
         }.open(true)

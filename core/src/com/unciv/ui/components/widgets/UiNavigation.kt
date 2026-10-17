@@ -1,5 +1,7 @@
 package com.unciv.ui.components.widgets
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
@@ -22,7 +24,6 @@ import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.utils.Display
 import kotlin.math.atan2
-import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /** Navigation changes presentation only; callers retain their actions and keyboard bindings. */
@@ -109,7 +110,7 @@ object UiNavigation {
         style = buttonStyle(unit)
         clearChildren()
         pad(0f, 13f * unit, 0f, 13f * unit)
-        label.setFontSize((16f * unit).roundToInt().coerceAtLeast(1))
+        label.setFontSize(UiTypography.size(TextRole.Control, unit))
         add(label).minWidth(0f)
     }
 

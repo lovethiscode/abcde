@@ -1,5 +1,7 @@
 package com.unciv.ui.components.widgets
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.unciv.Constants
@@ -20,7 +22,7 @@ class WrappableLabel(
     text: String,
     private val expectedWidth: Float,
     fontColor: Color = Color.WHITE,
-    private val fontSize: Int = Constants.defaultFontSize,
+    private val fontSize: Int = UiTypography.size(TextRole.Body),
     hideIcons: Boolean = false
 ) : Label(text.tr(hideIcons, hideIcons), BaseScreen.skin) {
     private var _measuredWidth = 0f

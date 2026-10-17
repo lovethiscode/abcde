@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.campaign
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.logic.challenges.ChallengeTelemetry
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -63,12 +65,12 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     private val margin get() = px(if (stacked) 16f else 24f)
     private val contentWidth get() = this@CampaignScreen.stage.width - margin * 2f
     private val artwork = CampaignMapArtwork()
-    private fun label(text: String, size: Int = 14, color: Color = Theme.text) =
-        text.toLabel(color, (size * unit).roundToInt()).apply { wrap = true }
+    private fun label(text: String, size: TextRole = TextRole.Body, color: Color = Theme.text) =
+        text.toLabel(color, if (size == TextRole.Display) UiTypography.displaySize(compact, unit = unit) else UiTypography.size(size, unit)).apply { wrap = true }
     private fun control(text: String, id: String = "", primary: Boolean = false, quiet: Boolean = false, action: () -> Unit): TextButton =
         text.toTextButton().apply {
             if (id.isNotEmpty()) name = id
-            label.setFontSize((14 * unit).roundToInt())
+            label.setFontSize(UiTypography.size(TextRole.Control, unit))
             label.wrap = false
             val copyWidth = label.prefWidth.coerceAtMost(px(260f))
             label.wrap = true
@@ -147,7 +149,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 padLeft(px(24f))
             }
             val title = if (historical) "历史战役" else if (chapter >= 0) CampaignCatalog.chapters[chapter] else "文明的诞生"
-            val titleLabel = label(title, if (compact) 18 else 22)
+            val titleLabel = label(title, TextRole.PageTitle)
             titleLabel.wrap = false
             val titleWidth = titleLabel.prefWidth
             titleLabel.wrap = true
@@ -161,7 +163,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             syncButton.apply {
                 clearChildren()
                 add(artwork.icon("cloud", Theme.muted)).size(px(18f))
-                if (!stacked) add(label(syncCaption(), 12, Theme.muted).apply { wrap = false }).padLeft(px(6f))
+                if (!stacked) add(label(syncCaption(), TextRole.Supporting, Theme.muted).apply { wrap = false }).padLeft(px(6f))
             }
             if (backButton.prefWidth + titleWidth + syncButton.prefWidth + px(20f) > contentWidth) {
                 add(titleLabel).colspan(2).growX().minWidth(0f).left().padBottom(px(8f)).row()
@@ -217,7 +219,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             historicalScrollPane?.apply { scrollY = historicalScrollY; updateVisualScroll() }
         } catch (ex: Exception) {
             com.unciv.utils.Log.error("Cannot open campaign catalog", ex)
-            root.add("战役暂时无法读取，已有存档与成绩仍保留。".toLabel()).grow()
+            root.add("战役暂时无法读取，已有存档与成绩仍保留。".toLabel(TextRole.Body)).grow()
         }
     }
 
@@ -232,7 +234,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         }
         val content = Table().apply { top() }
         val stars = historicalDefinitions.sumOf { store.stars(it, progress) }
-        content.add(label("[${historicalDefinitions.size}] 个战役 · 当前版本 [$stars] / [${historicalDefinitions.size * 3}] 星", 14, Theme.muted))
+        content.add(label("[${historicalDefinitions.size}] 个战役 · 当前版本 [$stars] / [${historicalDefinitions.size * 3}] 星", TextRole.Supporting, Theme.muted))
             .width(contentWidth).left().padBottom(px(16f)).row()
         for (d in historicalDefinitions) {
             val copyWidth = contentWidth - px(40f)
@@ -240,8 +242,8 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 selected = d.id; detailTab = 0; rebuild()
             }.apply {
                 clearChildren(); pad(px(20f)); left()
-                add(label(d.title, 24, Theme.gold)).width(copyWidth).left().row()
-                add(label(d.description, 14)).width(copyWidth).left().padTop(px(12f)).row()
+                add(label(d.title, TextRole.PageTitle, Theme.gold)).width(copyWidth).left().row()
+                add(label(d.description, TextRole.Supporting)).width(copyWidth).left().padTop(px(12f)).row()
                 val saved = store.saved(d.id)?.campaign
                 val status = when {
                     saved?.failed == true -> "本次挑战失败"
@@ -249,7 +251,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                     d.id in progress.cleared -> if (store.stars(d, progress) == 0) "已通关 · 新版待挑战" else "已通关"
                     else -> "未挑战"
                 }
-                add(label(status, 13, Theme.muted)).width(copyWidth).left().padTop(px(12f)).row()
+                add(label(status, TextRole.Supporting, Theme.muted)).width(copyWidth).left().padTop(px(12f)).row()
                 add(campaignStars(store.stars(d, progress), px(18f))).left().padTop(px(12f))
             }).width(contentWidth).minHeight(px(210f)).padBottom(px(12f)).row()
         }
@@ -276,13 +278,13 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             CampaignSyncState.WaitingForNetwork -> "成绩已保存在本机 · 等待重试 iCloud 同步"
             CampaignSyncState.Failed -> "iCloud 同步失败，本机成绩仍保留；可点击重试"
         }
-        syncPanel.add(label(message, 14, Theme.muted).apply { setWrap(true) })
+        syncPanel.add(label(message, TextRole.Supporting, Theme.muted).apply { setWrap(true) })
             .growX().minWidth(0f).left()
         if (status.state == CampaignSyncState.LocalOnly) return
         syncPanel.row()
         val changed = status.state == CampaignSyncState.AccountChanged
         syncPanel.add((if (changed) "合并到当前 iCloud" else "同步成绩").toTextButton().apply {
-            label.setFontSize((14 * unit).roundToInt())
+            label.setFontSize(UiTypography.size(TextRole.Control, unit))
             isDisabled = status.state == CampaignSyncState.Syncing
             onActivation {
                 val account = status.accountToConfirm
@@ -298,20 +300,20 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     private fun shareButton(title: String, id: String, snapshot: () -> CampaignShareData?) = title.toTextButton().apply {
         name = id
         label.wrap = true
-        label.setFontSize((14 * unit).roundToInt())
+        label.setFontSize(UiTypography.size(TextRole.Control, unit))
         onActivation { showCampaignShare(this@CampaignScreen, { rebuild(recoverResults = false) }, snapshot) }
     }
 
-    private fun score(earned: Int, total: Int, size: Int) = Table().apply {
+    private fun score(earned: Int, total: Int, size: TextRole) = Table().apply {
         add(artwork.icon("star", Theme.gold)).size(px(20f)).padRight(px(6f))
         add(label("$earned", size, Theme.text).apply { wrap = false })
-        add(label("/ $total 星", 12, Theme.muted).apply { wrap = false }).padLeft(px(4f))
+        add(label("/ $total 星", TextRole.Supporting, Theme.muted).apply { wrap = false }).padLeft(px(4f))
     }
 
     private fun exploreButton(text: String, id: String, action: () -> Unit) = control("", id, true, action = action).apply {
         clearChildren()
         add(artwork.icon("flag", Theme.primaryInk)).size(px(18f)).padRight(px(8f))
-        add(label(text, 13, Theme.primaryInk)).growX().minWidth(0f).left()
+        add(label(text, TextRole.Supporting, Theme.primaryInk)).growX().minWidth(0f).left()
         add(artwork.icon("arrow", Theme.primaryInk)).size(px(18f)).padLeft(px(8f))
     }
 
@@ -325,19 +327,19 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             top(); left()
             val stars = definitions.sumOf { store.stars(it, progress) }
             val heading = Table().apply {
-                add(label("文明，从这里\n开始生长。", if (compact) 26 else 30)).growX().minWidth(0f).left()
-                if (stacked) add(score(stars, 48, 22)).top().right()
+                add(label("文明，从这里\n开始生长。", TextRole.Display)).growX().minWidth(0f).left()
+                if (stacked) add(score(stars, 48, TextRole.SectionTitle)).top().right()
             }
             add(heading).width(introWidth).left().row()
-            add(label("沿河谷出发，穿过未知边境。\n四个章节，十六次策略抉择。", if (compact) 11 else 12, Theme.muted))
+            add(label("沿河谷出发，穿过未知边境。\n四个章节，十六次策略抉择。", TextRole.Supporting, Theme.muted))
                 .width(introWidth).left().padTop(px(12f)).row()
-            if (!stacked) add(score(stars, 48, if (compact) 22 else 28)).left().padTop(px(16f)).row()
+            if (!stacked) add(score(stars, 48, if (compact) TextRole.SectionTitle else TextRole.PageTitle)).left().padTop(px(16f)).row()
             val recent = progress.lastPlayed.takeIf { id -> definitions.any { it.id == id } }?.let(store::saved)
             if (recent?.campaign?.let { it.resultStars == 0 && !it.failed } == true) {
                 val d = recent.campaign!!.definition
                 add(exploreButton("继续探索", "ui-campaign-recent") { enter(d.id, false) })
                     .width(introWidth).minHeight(px(44f)).padTop(px(22f)).row()
-                add(label("继续最近挑战：[${d.title}] · 第 [${recent.campaign!!.completedRounds + 1}] 回合", 12, Theme.muted))
+                add(label("继续最近挑战：[${d.title}] · 第 [${recent.campaign!!.completedRounds + 1}] 回合", TextRole.Supporting, Theme.muted))
                     .width(introWidth).left().padTop(px(8f)).row()
             } else {
                 val next = definitions.firstOrNull { store.isUnlocked(it, progress) && store.stars(it, progress) < 3 } ?: definitions.first()
@@ -352,7 +354,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 }
             }).left().minHeight(px(44f)).padTop(px(24f)).row()
             val oldMedals = progress.medals.count { key -> (0..3).none { key == store.medalKey(it, definitions.subList(it * 4, it * 4 + 4)) } }
-            if (oldMedals > 0) add(label("历史精通勋章：[$oldMedals]（旧评分版本）", 12, Theme.muted)).width(introWidth).padTop(px(12f)).row()
+            if (oldMedals > 0) add(label("历史精通勋章：[$oldMedals]（旧评分版本）", TextRole.Supporting, Theme.muted)).width(introWidth).padTop(px(12f)).row()
         }
         val map = Group().apply { name = "ui-campaign-overview-map"; setSize(mapWidth, mapHeight) }
         map.addActor(artwork.image(px(14f)).apply { setSize(mapWidth, mapHeight) })
@@ -394,7 +396,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         for ((i, title) in CampaignCatalog.chapters.withIndex()) navigation.add(
             control("${(i + 1).toString().padStart(2, '0')}  ${title.tr()}", "ui-campaign-chapter:$i", quiet = true) { openChapter(i) }.apply {
                 isChecked = i == chapter
-                label.setFontSize(((if (narrowPortrait) 10 else if (compact) 12 else 14) * unit).roundToInt())
+                label.setFontSize(UiTypography.size(TextRole.Control, unit))
                 if (narrowPortrait) { padLeft(px(4f)); padRight(px(4f)); label.wrap = false; labelCell.prefWidth(label.prefWidth) }
                 if (!narrowPortrait && !store.isUnlocked(definitions[i * 4], progress)) add(artwork.icon("lock", Theme.muted)).size(px(14f)).padLeft(px(8f))
             }
@@ -403,11 +405,11 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             .height(px(52f * game.settings.fontSizeMultiplier)).padTop(px(6f)).row()
         if (!compact) root.add(Table().apply {
             val heading = Table().apply {
-                add(label(CampaignCatalog.chapters[chapter], 23)).growX().left().row()
-                add(label(listOf("让第一座城，在河谷中生根。", "越过边境，建立繁荣的国家。", "从第一场交锋，到夺取要塞。", "把你的策略，连成完整的胜利。")[chapter], 12, Theme.muted)).growX().left().padTop(px(5f))
+                add(label(CampaignCatalog.chapters[chapter], TextRole.PageTitle)).growX().left().row()
+                add(label(listOf("让第一座城，在河谷中生根。", "越过边境，建立繁荣的国家。", "从第一场交锋，到夺取要塞。", "把你的策略，连成完整的胜利。")[chapter], TextRole.Supporting, Theme.muted)).growX().left().padTop(px(5f))
             }
             add(heading).growX()
-            add(score(levels.sumOf { store.stars(it, progress) }, 12, 18)).padLeft(px(16f)).right()
+            add(score(levels.sumOf { store.stars(it, progress) }, 12, TextRole.Body)).padLeft(px(16f)).right()
         }).growX().padBottom(px(16f)).row()
         val gap = px(16f)
         val detailWidth = if (stacked) contentWidth else px(if (compact) (if (this@CampaignScreen.stage.height / unit < 420f) 260f else 300f) else 360f)
@@ -445,7 +447,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
 
     private fun mapAnnotations(map: Group, overview: Boolean) {
         fun caption(text: String, x: Float, y: Float, width: Float, color: Color = Theme.muted) {
-            map.addActor(label(text, 11, color).apply {
+            map.addActor(label(text, TextRole.Supporting, color).apply {
                 setBounds(x, y, width, px(24f)); touchable = Touchable.disabled
             })
         }
@@ -522,14 +524,14 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         val copy = Table().apply {
             background = campaignSurface(if (selected) Theme.gold else Theme.background, px(5f))
             pad(px(6f))
-            if (stars < 0) add(label(index, if (compact) 10 else 11, Theme.muted).apply { setAlignment(Align.center) })
+            if (stars < 0) add(label(index, TextRole.CompactData, Theme.muted).apply { setAlignment(Align.center) })
                 .width(width - px(12f)).row()
             val titleRow = Table().apply {
-                if (stars >= 0) add(label(index, 10, ink).apply { wrap = false }).padRight(px(4f))
-                add(label(title, if (compact) 11 else if (stars < 0) 16 else 13, ink).apply { wrap = false; setAlignment(Align.center) })
+                if (stars >= 0) add(label(index, TextRole.CompactData, ink).apply { wrap = false }).padRight(px(4f))
+                add(label(title, TextRole.Control, ink).apply { wrap = false; setAlignment(Align.center) })
             }
             add(titleRow).width(width - px(12f)).row()
-            add(label(status, if (compact) 10 else 11, if (selected) Theme.primaryInk else Theme.muted).apply { setAlignment(Align.center) })
+            add(label(status, TextRole.Supporting, if (selected) Theme.primaryInk else Theme.muted).apply { setAlignment(Align.center) })
                 .width(width - px(12f)).padTop(px(3f)).row()
             if (stars >= 0) {
                 add(campaignStars(stars, px(12f), selected)).padTop(px(4f))
@@ -564,14 +566,14 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         }).minHeight(px(44f)).row()
         val titleRow = Table().apply {
             val titleCopy = Table().apply {
-                add(label(if (historical) "独立战役" else "第 ${d.number} 关", 11, Theme.muted)).growX().left().row()
-                add(label(d.title, if (compact) 20 else 25)).growX().minWidth(0f).padTop(px(3f)).left()
+                add(label(if (historical) "独立战役" else "第 ${d.number} 关", TextRole.Metadata, Theme.muted)).growX().left().row()
+                add(label(d.title, TextRole.PageTitle)).growX().minWidth(0f).padTop(px(3f)).left()
             }
             add(titleCopy).growX().minWidth(0f)
             add(campaignStars(store.stars(d, progress), px(12f))).top().padLeft(px(8f))
         }
         add(titleRow).width(copyWidth).row()
-        if (!compact) add(label(d.description, 14, Theme.muted)).width(copyWidth).padTop(px(8f)).row()
+        if (!compact) add(label(d.description, TextRole.Supporting, Theme.muted)).width(copyWidth).padTop(px(8f)).row()
         val saved = store.saved(d.id)
         val terminal = saved?.campaign
         val unfinished = terminal?.let { it.resultStars == 0 && !it.failed } == true
@@ -581,7 +583,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             d.id in progress.cleared -> "已通关"
             else -> "可挑战"
         }
-        add(label(state, 11, Theme.muted)).width(copyWidth).padTop(px(8f)).row()
+        add(label(state, TextRole.Supporting, Theme.muted)).width(copyWidth).padTop(px(8f)).row()
         val tabs = Table()
         for ((index, key) in listOf("星级目标", "初始配置", "提示与规则").withIndex()) {
             val title = key
@@ -589,18 +591,18 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 add(control(title, "ui-campaign-detail-tab:$index", quiet = true) {
                 detailTab = index; detailScrollPane?.scrollY = 0f; rebuild()
                 if (stacked) { root.validate(); mapScrollPane?.apply { scrollY = detailTop.coerceAtMost(maxY); updateVisualScroll() } }
-            }.apply { label.setFontSize(((if (compact) 11 else 12) * unit).roundToInt()); pad(0f) }).width(copyWidth / 3f).minHeight(px(44f)).row()
+            }.apply { label.setFontSize(UiTypography.size(TextRole.Control, unit)); pad(0f) }).width(copyWidth / 3f).minHeight(px(44f)).row()
                 add(ImageGetter.getWhiteDot().apply { color = if (detailTab == index) Theme.gold else Theme.border }).growX().height(px(if (detailTab == index) 2f else 1f))
             }).width(copyWidth / 3f)
         }
         add(tabs).width(copyWidth).padTop(px(8f)).row()
         val content = Table().apply { top(); defaults().left() }
-        fun text(value: String, color: Color = Theme.text, size: Int = 14) {
+        fun text(value: String, color: Color = Theme.text, size: TextRole = TextRole.Body) {
             content.add(label(value, size, color)).width(copyWidth).padTop(px(10f)).row()
         }
         when (detailTab) {
             0 -> {
-                if (compact && this@CampaignScreen.stage.height / unit >= 420f) text(d.description, Theme.muted, 12)
+                if (compact && this@CampaignScreen.stage.height / unit >= 420f) text(d.description, Theme.muted, TextRole.Supporting)
                 if (d.id in progress.cleared && store.stars(d, progress) == 0) text("已通关 · 新版待挑战", Theme.gold)
                 val columns = stacked && contentWidth / unit >= 700f
                 val goals = Table().apply { top() }
@@ -610,8 +612,8 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                         top(); left()
                         add(artwork.icon("star", Theme.gold)).size(px(16f)).top().padRight(px(10f))
                         add(Table().apply {
-                            add(label(if (i == 0) "通关目标" else "挑战 ${if (i == 1) "A" else "B"}", 12, Theme.gold)).width(goalWidth - px(26f)).left().row()
-                            add(label(goal, if (compact) 12 else 14)).width(goalWidth - px(26f)).left().padTop(px(5f))
+                            add(label(if (i == 0) "通关目标" else "挑战 ${if (i == 1) "A" else "B"}", TextRole.Supporting, Theme.gold)).width(goalWidth - px(26f)).left().row()
+                            add(label(goal, TextRole.Body)).width(goalWidth - px(26f)).left().padTop(px(5f))
                         }).width(goalWidth - px(26f))
                     }
                     goals.add(row).width(goalWidth).top().padTop(px(10f)).padBottom(px(10f))
@@ -622,7 +624,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                     }
                 }
                 content.add(goals).width(copyWidth).row()
-                text(if (d.automatic) "达成条件后自动结算" else "主目标达成后主动结算；可继续争取挑战星", Theme.muted, 12)
+                text(if (d.automatic) "达成条件后自动结算" else "主目标达成后主动结算；可继续争取挑战星", Theme.muted, TextRole.Supporting)
                 if (game.campaignSharingAvailable && progressReadable && store.stars(d, progress) > 0)
                     content.add(shareButton("Share: [${"Best result".tr()}]", "ui-campaign-share-best:${d.id}") {
                         CampaignShareData.best(store.progress(), d.id, d.scoringVersion)
@@ -644,7 +646,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 text(if (d.id == CivilWarCampaign.id) "已具备本时期基础科技；可研究：军制整编、炮兵改良、野战医疗、军事运输。"
                     else "科技：".tr() + player.tech.techsResearched.joinToString(", ") { it.tr() })
                 content.add(initialPreview(scene, copyWidth)).size(copyWidth, px(180f)).padTop(px(12f)).row()
-                text("地图预览仅显示开局已探索地形；金色标记为任务区域。", Theme.muted, 12)
+                text("地图预览仅显示开局已探索地形；金色标记为任务区域。", Theme.muted, TextRole.Supporting)
             }
             else -> {
                 text("失败条件：玩家文明被消灭。".tr() + (if (d.id == CivilWarCampaign.id) "华盛顿失守或第 [${d.hardTurnLimit}] 个完整回合结束。" else when (d.number) {
@@ -653,12 +655,12 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                     13, 14 -> "目标城市永久摧毁后无法继续完成本关。"
                     15, 16 -> "对手获得征服胜利。"
                     else -> "普通教学关没有硬性时间限制。"
-                }).tr(), Theme.muted, 13)
-                for (restriction in d.restrictions) text(restriction, Theme.muted, 13)
-                for (hint in d.hints) text("提示 · [$hint]", Theme.muted, 13)
+                }).tr(), Theme.muted, TextRole.Supporting)
+                for (restriction in d.restrictions) text(restriction, Theme.muted, TextRole.Supporting)
+                for (hint in d.hints) text("提示 · [$hint]", Theme.muted, TextRole.Supporting)
                 val history = progress.bestStars.filterKeys { it.startsWith("${d.id}:") && it != "${d.id}:${d.scoringVersion}" }
                 for ((key, value) in history) {
-                    text("历史评分版本 [${key.substringAfter(':')}]：[$value] / 3 星", Theme.muted, 12)
+                    text("历史评分版本 [${key.substringAfter(':')}]：[$value] / 3 星", Theme.muted, TextRole.Supporting)
                     val version = key.substringAfter(':').toIntOrNull()
                     if (game.campaignSharingAvailable && progressReadable && value > 0 && version != null && version > 0)
                         content.add(shareButton("Share: [${"Best result".tr()}]", "ui-campaign-share-best:$key") {
@@ -686,7 +688,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 if (saved == null) enter(d.id, true) else confirmRestart(d, saved)
             }.apply { add(artwork.icon("arrow", Theme.primaryInk)).size(px(18f)).padLeft(px(10f)) }).growX().minHeight(px(44f))
         } else {
-            actions.add(label("上一关至少获得一星后解锁。", 12, Theme.muted)).width(copyWidth).minHeight(px(44f))
+            actions.add(label("上一关至少获得一星后解锁。", TextRole.Supporting, Theme.muted)).width(copyWidth).minHeight(px(44f))
         }
         add(actions).width(copyWidth).padTop(px(10f)).row()
     }

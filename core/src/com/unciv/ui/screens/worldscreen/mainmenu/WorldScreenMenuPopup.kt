@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen.mainmenu
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -55,7 +56,7 @@ class WorldScreenMenuPopup(
 
         val resume = "Continue playing".toTextButton(ui.buttonStyle(primary = true)).apply {
             name = "world-menu-resume"
-            label.setFontSize(ui.font(17))
+            label.setFontSize(ui.font(TextRole.Control))
             label.setAlignment(Align.center)
             labelCell.minWidth(0f).growX()
             pad(ui.px(10f), ui.px(16f), ui.px(10f), ui.px(16f))
@@ -63,10 +64,10 @@ class WorldScreenMenuPopup(
             keyShortcuts.add(KeyCharAndCode.BACK)
         }
         val title = Table().apply {
-            add("Game menu".toLabel(ui.text, ui.font(24)).apply { wrap = true })
+            add("Game menu".toLabel(ui.text, ui.font(TextRole.PageTitle)).apply { wrap = true })
                 .minWidth(0f).growX().left().row()
             add("[${worldScreen.viewingCiv.civName}] · Turn [${worldScreen.gameInfo.turns}]"
-                .toLabel(ui.muted, ui.font(14)).apply { wrap = true })
+                .toLabel(ui.muted, ui.font(TextRole.Supporting)).apply { wrap = true })
                 .minWidth(0f).growX().padTop(ui.px(4f))
         }
         val stackedHeader = portrait && resume.prefWidth > contentWidth * .46f
@@ -93,7 +94,7 @@ class WorldScreenMenuPopup(
         fun action(text: String, binding: KeyboardBinding? = null, quiet: Boolean = false,
                    run: () -> Unit): TextButton = text.toTextButton(ui.buttonStyle(outline = quiet)).apply {
             name = "world-menu-$text"
-            label.setFontSize(ui.font(17))
+            label.setFontSize(ui.font(TextRole.Control))
             label.setAlignment(Align.left)
             labelCell.minWidth(0f).growX()
             pad(ui.px(10f), ui.px(12f), ui.px(10f), ui.px(12f))
@@ -156,7 +157,7 @@ class WorldScreenMenuPopup(
             val columns = if (portrait && buttons.all { naturalWidths.getValue(it) <= (groupWidth - ui.px(8f)) / 2 }) 2 else 1
             val buttonWidth = (groupWidth - ui.px(8f) * (columns - 1)) / columns
             val group = Table().apply {
-                add(heading.toLabel(ui.muted, ui.font(13)).apply { wrap = true })
+                add(heading.toLabel(ui.muted, ui.font(TextRole.Supporting)).apply { wrap = true })
                     .width(groupWidth).colspan(columns).left().padBottom(ui.px(10f)).row()
                 for ((i, button) in buttons.withIndex()) {
                     // Measure at the actual width so wrapped text grows the row instead of clipping.

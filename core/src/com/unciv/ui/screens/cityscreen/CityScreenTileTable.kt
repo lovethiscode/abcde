@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -58,7 +60,8 @@ class CityScreenTileTable(private val cityScreen: CityScreen) : Table() {
             hideUnits = cityScreen.isSpying,
             spyCity = if (cityScreen.isSpying) cityView else null
         ), labelWidth = if (cityScreen.usesWorkbench) cityScreen.workbenchManagementWidth - 20f else 0f,
-            fitToWidth = cityScreen.usesWorkbench, iconDisplay = IconDisplay.None) {
+            fitToWidth = cityScreen.usesWorkbench, iconDisplay = IconDisplay.None,
+            unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)) {
             cityScreen.openCivilopedia(it)
         })
         innerTable.row()
@@ -66,7 +69,7 @@ class CityScreenTileTable(private val cityScreen: CityScreen) : Table() {
 
         if (cityView.canBuyTile(tileView)) {
             val goldCostOfTile = cityView.getGoldCostOfTile(tileView)
-            val buyTileButton = "Buy for [$goldCostOfTile] gold".toTextButton().apply { name = "ui-buy-tile" }
+            val buyTileButton = "Buy for [$goldCostOfTile] gold".toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply { name = "ui-buy-tile" }
             buyTileButton.onActivation(binding = KeyboardBinding.BuyTile) {
                 buyTileButton.disable()
                 cityScreen.askToBuyTile(tileView)
@@ -78,15 +81,15 @@ class CityScreenTileTable(private val cityScreen: CityScreen) : Table() {
 
         val owningCity = tileView.owningCity()
         if (owningCity != null)
-            innerTable.add("Owned by [${owningCity.name}]".toLabel()).row()
+            innerTable.add("Owned by [${owningCity.name}]".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).row()
 
         val workingCity = tileView.getWorkingCity()
         if (workingCity != null)
-            innerTable.add("Worked by [${workingCity.name}]".toLabel()).row()
+            innerTable.add("Worked by [${workingCity.name}]".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).row()
 
         if (cityView.isWorked(tileView)) {
             if (tileView.isLocked()) {
-                val unlockButton = "Unlock".toTextButton()
+                val unlockButton = "Unlock".toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))
                 unlockButton.onClick {
                     cityView.tryUnlockTile(tileView)
                     update(tileView)
@@ -95,7 +98,7 @@ class CityScreenTileTable(private val cityScreen: CityScreen) : Table() {
                 if (!cityScreen.canChangeState) unlockButton.disable()
                 innerTable.add(unlockButton).padTop(5f).row()
             } else {
-                val lockButton = "Lock".toTextButton()
+                val lockButton = "Lock".toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))
                 lockButton.onClick {
                     cityView.tryLockTile(tileView)
                     update(tileView)
@@ -109,7 +112,7 @@ class CityScreenTileTable(private val cityScreen: CityScreen) : Table() {
         if (tileView.isCityCenter()) {
             val otherCityView = tileView.owningCity()?.tryGetCityView()
             if (otherCityView != null && otherCityView != cityView)
-                innerTable.add("Move to city".toTextButton().onClick {
+                innerTable.add("Move to city".toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).onClick {
                     cityScreen.game.replaceCurrentScreen { CityScreen(otherCityView) }
                 })
         }
@@ -123,7 +126,7 @@ class CityScreenTileTable(private val cityScreen: CityScreen) : Table() {
         statsTable.defaults().pad(2f)
         for ((key, value) in stats) {
             statsTable.add(ImageGetter.getStatIcon(key.name)).size(20f).padRight(if (cityScreen.usesWorkbench) 8f else 2f)
-            statsTable.add(value.roundToInt().toLabel()).padRight(5f)
+            statsTable.add(value.roundToInt().toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).padRight(5f)
         }
         return statsTable
     }
@@ -134,7 +137,7 @@ class CityScreenTileTable(private val cityScreen: CityScreen) : Table() {
             val counts = IntArray(maxRing + 1) { countBuyableInRing(it) }
             if (counts.sum() < 2) return null
             return super.createContentTable()!!.apply {
-                add("Currently you have [${cityView.viewingCiv().gold}] [Gold].".toLabel(alignment = Align.center)).growX().row()
+                add("Currently you have [${cityView.viewingCiv().gold}] [Gold].".toLabel(alignment = Align.center, role = TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).growX().row()
                 for (ring in 0..maxRing) {
                     val count = counts[ring]
                     if (count == 0 || ring > 0 && count == counts[ring - 1]) continue

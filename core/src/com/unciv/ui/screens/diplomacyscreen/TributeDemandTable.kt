@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.diplomacyscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -29,10 +30,10 @@ internal class TributeDemandTable(
         name = "ui-tribute-content"
         top().left()
         val summary = Table()
-        summary.add(ui.label("Tribute Willingness", 16)).growX().left()
-        summary.add(ui.label(signed(willingness), 22, if (willingness < 0) ui.danger else ui.positive)).padLeft(ui.px(12f))
+        summary.add(ui.label("Tribute Willingness", TextRole.Control)).growX().left()
+        summary.add(ui.label(signed(willingness), TextRole.SectionTitle, if (willingness < 0) ui.danger else ui.positive)).padLeft(ui.px(12f))
         add(summary).width(contentWidth).left().padBottom(ui.px(if (shortLandscape) 8f else 10f)).row()
-        if (!shortLandscape) add(ui.label("Tribute lowers your Influence and may anger its protectors.", 13, ui.muted, true))
+        if (!shortLandscape) add(ui.label("Tribute lowers your Influence and may anger its protectors.", TextRole.Supporting, ui.muted, true))
             .width(contentWidth).left().padBottom(ui.px(20f)).row()
         val split = contentWidth / ui.unit >= 540f
         val column = if (split) (contentWidth - ui.px(28f)) / 2 else contentWidth
@@ -73,10 +74,10 @@ internal class TributeDemandTable(
         val cost = if (worker) 50 else 15
         val title = if (worker) "Worker tribute" else "Gold tribute"
         val gap = ui.px(if (shortLandscape) 4f else 8f)
-        add(ui.label(title, 16)).width(width).left().padBottom(gap).row()
+        add(ui.label(title, TextRole.Control)).width(width).left().padBottom(gap).row()
         val requirement = if (worker) "Requires [30] willingness and a capital of size [4]" else "Requires [0] willingness"
-        add(ui.label(requirement, 13, ui.muted, true)).width(width).left().padBottom(gap).row()
-        add(ui.label("Influence: [$influence] → [${influence - cost}]", 13, ui.danger, true))
+        add(ui.label(requirement, TextRole.Supporting, ui.muted, true)).width(width).left().padBottom(gap).row()
+        add(ui.label("Influence: [$influence] → [${influence - cost}]", TextRole.Supporting, ui.danger, true))
             .width(width).left().padBottom(gap).row()
         val reasons = ArrayList<String>()
         if (screen.isNotPlayersTurn()) reasons.add("Not your turn")
@@ -88,7 +89,7 @@ internal class TributeDemandTable(
         val enabled = canDemand(worker)
         // A rule/mod may add a restriction not represented by the standard threshold copy.
         if (!enabled && reasons.isEmpty()) reasons.add("Unavailable")
-        for (reason in reasons) add(ui.label(reason, 13, ui.muted, true))
+        for (reason in reasons) add(ui.label(reason, TextRole.Supporting, ui.muted, true))
             .width(width).left().padBottom(gap).row()
         val action = if (worker) "Take worker (-50 Influence)" else "Take [${functions.goldGainedByTribute()}] gold (-15 Influence)"
         val button = ui.decorate(action.toTextButton(), primary = enabled).apply {
@@ -106,12 +107,12 @@ internal class TributeDemandTable(
     private fun breakdown(width: Float) = Table().apply {
         top().left()
         separator(this, width)
-        add(ui.label("Willingness breakdown", 16)).width(width).left().padBottom(ui.px(14f)).row()
+        add(ui.label("Willingness breakdown", TextRole.Control)).width(width).left().padBottom(ui.px(14f)).row()
         val values = Table().apply { top().left() }
         for ((factor, value) in modifiers) {
-            val number = ui.label(signed(value), 14, if (value < 0) ui.danger else ui.positive)
+            val number = ui.label(signed(value), TextRole.Supporting, if (value < 0) ui.danger else ui.positive)
             val valueWidth = maxOf(ui.px(46f), number.prefWidth)
-            values.add(ui.label(factor, 14, ui.muted, true)).width(width - valueWidth - ui.px(12f))
+            values.add(ui.label(factor, TextRole.Supporting, ui.muted, true)).width(width - valueWidth - ui.px(12f))
                 .left().padBottom(ui.px(12f))
             values.add(number).width(valueWidth).right().top().padLeft(ui.px(12f)).padBottom(ui.px(12f)).row()
         }

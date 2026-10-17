@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -62,7 +63,7 @@ class MapFileSelectTable(
     private val miniMapWrapper = Container<Group?>()
     private var mapPreviewJob: Job? = null
     private var preselectedName = mapParameters.name
-    private val descriptionLabel = "".toLabel()
+    private val descriptionLabel = "".toLabel(TextRole.Body)
     private val descriptionLabelCell: Cell<Label>
 
     // The SelectBox auto displays the text a object.toString(), which on the FileHandle itself includes the folder path.
@@ -84,8 +85,8 @@ class MapFileSelectTable(
         // Take care that this class can be instantiated cheaply and does not do heavy lifting right away - it may not be displayed at all.
         add(Table().apply {
             defaults().pad(5f, 10f)  // Must stay same as in MapParametersTable
-            val mapCategoryLabel = "{Map Mod}:".toLabel()
-            val mapFileLabel = "{Map file}:".toLabel()
+            val mapCategoryLabel = "{Map Mod}:".toLabel(TextRole.Body)
+            val mapFileLabel = "{Map file}:".toLabel(TextRole.Body)
             // because SOME people gotta give the hugest names to their maps
             val selectBoxWidth = columnWidth - 80f -
                 mapFileLabel.prefWidth.coerceAtLeast(mapCategoryLabel.prefWidth)

@@ -1,5 +1,6 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
 import com.unciv.GUI
@@ -82,7 +83,7 @@ internal class DebugTab(
     private fun addSimulationControls() {
         val simulateButton = "Simulate until turn:".toTextButton()
         val simulateTextField = UncivTextField.Numeric("Turn", DebugUtils.SIMULATE_UNTIL_TURN, integerOnly = true)
-        val invalidInputLabel = "This is not a valid integer!".toLabel().also { it.isVisible = false }
+        val invalidInputLabel = "This is not a valid integer!".toLabel(TextRole.Body).also { it.isVisible = false }
         simulateButton.onClick {
             val simulateUntilTurns = simulateTextField.value?.toInt()
             if (simulateUntilTurns == null) {

@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.status
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
 import com.unciv.ui.components.extensions.isEnabled
@@ -17,7 +19,7 @@ const val skipLabel = "Skip"
 class SmallUnitButton(
     private val worldScreen: WorldScreen,
     private val statusButtons: StatusButtons
-) : IconTextButton("", null, fontColor = NextTurnAction.NextUnit.color) {
+) : IconTextButton("", null, fontColor = NextTurnAction.NextUnit.color, labelFontSize = UiTypography.size(TextRole.Control)) {
 
     private var isSkip = worldScreen.game.settings.checkForDueUnitsCycles
     

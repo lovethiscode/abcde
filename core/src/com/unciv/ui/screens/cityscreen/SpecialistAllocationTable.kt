@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -32,13 +34,13 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
         // Auto/Manual Specialists Toggle
         if (cityScreen.canCityBeChanged()) {
             val toggleButton = if (cityView.manualSpecialists) {
-                "Manual Specialists".toTextButton(smallButtonStyle)
+                "Manual Specialists".toTextButton(smallButtonStyle, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))
                    .onActivation {
                        cityView.tryDisableManualSpecialists()
                        cityScreen.updateAsync()
                    }
             } else {
-                "Auto Specialists".toTextButton(smallButtonStyle)
+                "Auto Specialists".toTextButton(smallButtonStyle, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))
                     .onActivation {
                         cityView.tryEnableManualSpecialists()
                         update()
@@ -57,9 +59,9 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
 
             if (cityScreen.usesWorkbench) {
                 val row = Table()
-                row.add(specialistName.toLabel(fontSize = 15)).minWidth(0f).growX()
+                row.add(specialistName.toLabel(fontSize = UiTypography.size(TextRole.Control, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 15))).minWidth(0f).growX()
                 row.add(getUnassignButton(assignedSpecialists, specialistName)).size(44f)
-                row.add("$assignedSpecialists/$maxSpecialists".toLabel(fontSize = 16)).pad(6f)
+                row.add("$assignedSpecialists/$maxSpecialists".toLabel(fontSize = UiTypography.size(TextRole.Control, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 16))).pad(6f)
                 row.add(getAssignButton(assignedSpecialists, maxSpecialists, specialistName)).size(44f)
                 add(row).colspan(5).growX().padTop(12f).row()
                 add(getSpecialistStatsTable(specialistName)).colspan(5).left().row()
@@ -132,7 +134,7 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
         var itemsInRow = 0
 
         fun addWrapping(value: Int, labelColor: Color, icon: Actor) {
-            specialistStatTable.add(value.tr().toLabel(labelColor))
+            specialistStatTable.add(value.tr().toLabel(fontColor = labelColor, role = TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)))
             specialistStatTable.add(icon).size(20f).padRight(10f)
 
             itemsInRow++
@@ -163,7 +165,7 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
     fun asExpander(onChange: (() -> Unit)?): ExpanderTab {
         return ExpanderTab(
             title = "{Specialists}:",
-            fontSize = Constants.defaultFontSize,
+            fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = Constants.defaultFontSize),
             persistenceID = "CityStatsTable.Specialists",
             startsOutOpened = true,
             toggleKey = KeyboardBinding.SpecialistDetail,

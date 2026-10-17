@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.devconsole
 
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
@@ -58,7 +61,7 @@ class DevConsolePopup(val screen: WorldScreen) : Popup(screen, Scrollability.Dev
     private var currentHistoryEntry = history.size
 
     internal val textField = UncivTextField("") // always has focus, so a hint won't show
-    private val responseLabel = "".toLabel(Color.RED).apply { wrap = true }
+    private val responseLabel = "".toLabel(fontColor = Color.RED, role = TextRole.Body).apply { wrap = true }
     private val inputWrapper = Table()
     private val uniqueBuilderButton = "OtherIcons/Settings".toImageButton(32f, 40f, Color.GRAY, Color.GOLD)
 
@@ -69,7 +72,7 @@ class DevConsolePopup(val screen: WorldScreen) : Popup(screen, Scrollability.Dev
         // Use untranslated text here! The entire console, including messages, should stay English.
         // But "Developer Console" *has* a translation from KeyboardBinding.DeveloperConsole.
         // The extensions still help, even with a "don't translate" kludge
-        add("Developer Console {}".toLabel(fontSize = Constants.headingFontSize)).growX()
+        add("Developer Console {}".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize))).growX()
         add("Keep open {}".toCheckBox(keepOpen) { keepOpen = it }).right().row()
 
         textField.maxLength = 1000
@@ -211,7 +214,7 @@ class DevConsolePopup(val screen: WorldScreen) : Popup(screen, Scrollability.Dev
         val popup = object : Popup(stageToShowOn) {
             init {
                 for ((index, entry) in history.withIndex()) {
-                    val label = Label(entry, skin)
+                    val label = Label(entry, skin).apply { setFontSize(UiTypography.size(TextRole.Body)) }
                     label.onClick {
                         currentHistoryEntry = index
                         navigateHistory(0)

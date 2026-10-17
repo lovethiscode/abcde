@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -80,19 +82,19 @@ class NewGameScreen(
     private var startingGame = false
     private var setupStatus = ""
     private val setupFont = lazy {
-        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(18f / Fonts.ORIGINAL_FONT_SIZE) }
+        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(UiTypography.size(TextRole.Control, UiTypography.unitsPerPoint(stage)) / Fonts.ORIGINAL_FONT_SIZE) }
     }
     internal val formFont get() = setupFont.value
     internal val directSetupWidth get() = if (stackedLayout) stage.width - 72f else (stage.width - 96f) / 3f
     private val headingFont = lazy {
         val renderer = Fonts.fontImplementation.javaClass.getDeclaredConstructor().newInstance() as FontImplementation
-        renderer.setFontFamily(FontFamilyData("Hiragino Mincho ProN"), Fonts.ORIGINAL_FONT_SIZE.toInt())
+        renderer.setFontFamily(FontFamilyData("Hiragino Mincho ProN"), game.settings.getFontSize())
         renderer.getBitmapFont()
     }
 
-    internal fun councilHeading(text: String, size: Int = 24) = text.toLabel(ExpeditionBlueTheme.text, size, hideIcons = true).apply {
+    internal fun councilHeading(text: String, role: TextRole = TextRole.PageTitle) = text.toLabel(role, ExpeditionBlueTheme.text, hideIcons = true).apply {
         style = Label.LabelStyle(style).apply { font = headingFont.value }
-        setFontScale(size / Fonts.ORIGINAL_FONT_SIZE)
+        setFontScale(UiTypography.size(role, UiTypography.unitsPerPoint(stage)) / Fonts.ORIGINAL_FONT_SIZE)
     }
 
     val useInviteRoom = false
@@ -135,8 +137,8 @@ class NewGameScreen(
         }
         closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
 
-        val heading = "Singleplayer".toLabel(fontSize = 28)
-        val roomHint = "Choose the rules, map and civilizations for your game.".toLabel(Color.LIGHT_GRAY,18).apply { setWrap(true) }
+        val heading = "Singleplayer".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 28))
+        val roomHint = "Choose the rules, map and civilizations for your game.".toLabel(Color.LIGHT_GRAY, UiTypography.size(TextRole.Body, legacySize = 18)).apply { setWrap(true) }
         val banner = Table().apply {
             if (!UiNavigation.isIos) {
                 background = skinStrings.getUiBackground("NewGameScreen/RoomHeader",skinStrings.roundedEdgeRectangleSmallShape,Color.valueOf("0d2140"))
@@ -217,20 +219,34 @@ class NewGameScreen(
             }).size(20f).padRight(10f)
             startGameButton.add(startLabel)
             horizontalGroup.addActor(rightSideButton)
-            descriptionLabel.setFontSize(16)
+            descriptionLabel.setFontSize(UiTypography.size(TextRole.Control, legacySize = 16))
             bottomTable.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel, ExpeditionBlueTheme.border)
             val summaryTitle = Table().apply {
                 add(ImageGetter.getImage("OtherIcons/Scenarios", ExpeditionBlueTheme.text)).size(26f).padRight(8f)
-                add("Game settings summary".toLabel(fontSize = 18))
+                add("Game settings summary".toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18)))
             }
             bottomTable.clear()
             if (stackedLayout) {
-                bottomTable.add(pickerPane.descriptionScroll).minWidth(0f).grow().row()
+                val actions = Table()
+                val buttons = horizontalGroup.children.toList()
+                rightSideGroup.clearChildren()
+                for ((index, actor) in buttons.withIndex()) {
+                    val button = actor as TextButton
+                    button.label.wrap = true
+                    button.getCell(button.label).minWidth(0f).growX()
+                    actions.add(button).width((pickerPane.width - 30f) / buttons.size)
+                        .growY().padRight(if (index < buttons.lastIndex) 10f else 0f)
+                }
+                rightSideGroup.addActor(actions)
+                pickerPane.useContentSizedFooter = true
+                bottomTable.add(pickerPane.descriptionScroll).minWidth(0f)
+                    .minHeight(descriptionLabel.style.font.data.lineHeight * descriptionLabel.fontScaleY * 2f + 20f)
+                    .grow().row()
             } else {
                 bottomTable.add(summaryTitle).pad(12f)
                 bottomTable.add(pickerPane.descriptionScroll).minWidth(0f).grow()
             }
-            bottomTable.add(rightSideGroup).pad(10f).right()
+            bottomTable.add(rightSideGroup).minWidth(0f).pad(10f).right()
         } else {
             horizontalGroup.addActor(startGameButton)
             pickerPane.rightSideButton.remove()
@@ -245,21 +261,22 @@ class NewGameScreen(
         scrollPane.setScrollingDisabled(true, true)
         val header = Table().apply {
             if (stackedLayout) {
-                add(councilHeading("Singleplayer", 28).apply { setEllipsis(true) })
+                add(councilHeading("Singleplayer", TextRole.PageTitle).apply { wrap = true })
                     .growX().minWidth(0f).left()
             } else {
                 add().width((190f - closeButton.prefWidth).coerceAtLeast(0f))
                 add(Table().apply {
                     add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX()
-                    add("◇".toLabel(ExpeditionBlueTheme.gold, 14)).padRight(22f)
-                    add(councilHeading("Singleplayer", 28)).pad(0f, 14f, 0f, 14f)
-                    add("◇".toLabel(ExpeditionBlueTheme.gold, 14)).padLeft(22f)
+                    add("◇".toLabel(ExpeditionBlueTheme.gold, UiTypography.size(TextRole.Supporting, legacySize = 14))).padRight(22f)
+                    add(councilHeading("Singleplayer", TextRole.PageTitle)).pad(0f, 14f, 0f, 14f)
+                    add("◇".toLabel(ExpeditionBlueTheme.gold, UiTypography.size(TextRole.Supporting, legacySize = 14))).padLeft(22f)
                     add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX()
                 }).growX().pad(0f, 30f, 0f, 30f)
             }
             newGameOptionsTable.createBaseRulesetSelector()?.let {
                 SinglePlayerSetup.style(it, formFont)
-                add(it).width(190f).minHeight(44f).padLeft(16f)
+                add(it).width(if (stackedLayout) minOf(190f, (this@NewGameScreen.stage.width - closeButton.prefWidth - 64f) * .42f) else 190f)
+                    .minHeight(44f).padLeft(16f)
             }
         }
         UiNavigation.styleBackButton(closeButton)
@@ -277,7 +294,7 @@ class NewGameScreen(
                     "Game Options" -> "Game options"
                     "Map Options" -> "Map options"
                     else -> title
-                }, 22)).left().growX()
+                }, TextRole.SectionTitle)).left().growX()
             }).growX().padBottom(6f).row()
             if (!ownsScroll) SinglePlayerSetup.style(editor, formFont)
             if (ownsScroll) add(editor).grow()
@@ -460,11 +477,11 @@ class NewGameScreen(
         scrollPane.setScrollingDisabled(true,true)
         val columnWidth = getColumnWidth()
 
-        topTable.add("Game Options".toLabel(fontSize = Constants.headingFontSize)).pad(20f, 0f)
+        topTable.add("Game Options".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize))).pad(20f, 0f)
         topTable.addSeparatorVertical(ImageGetter.CHARCOAL, 1f)
-        topTable.add("Map Options".toLabel(fontSize = Constants.headingFontSize)).pad(20f,0f)
+        topTable.add("Map Options".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize))).pad(20f,0f)
         topTable.addSeparatorVertical(ImageGetter.CHARCOAL, 1f)
-        topTable.add("Civilizations".toLabel(fontSize = Constants.headingFontSize)).pad(20f,0f)
+        topTable.add("Civilizations".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize))).pad(20f,0f)
         topTable.addSeparator(Color.CLEAR, height = 1f)
 
         topTable.add(ScrollPane(newGameOptionsTable)

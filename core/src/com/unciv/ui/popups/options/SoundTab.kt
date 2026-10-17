@@ -1,5 +1,6 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.models.UncivSound
@@ -39,7 +40,7 @@ internal class SoundTab(
             }
             if (!music.isDefaultFileAvailable()) {
                 if (game.platformCapabilities.defaultMusicDownload) addDownloadMusic()
-                else add(DEFAULT_MUSIC_DOWNLOAD_UNAVAILABLE.toLabel(Color.GRAY).apply { wrap = true })
+                else add(DEFAULT_MUSIC_DOWNLOAD_UNAVAILABLE.toLabel(fontColor = Color.GRAY, role = TextRole.Body).apply { wrap = true })
                     .colspan(2).minWidth(0f).growX().padTop(20f).row()
             }
         }
@@ -49,14 +50,14 @@ internal class SoundTab(
 
     override fun Table.addVolumeSlider(text: String, initial: Float, silent: Boolean, onChange: (Float) -> Unit) {
         val valueLabel = if (optionsPopup.useSidebar)
-            UncivSlider.formatPercent(initial).toLabel(OptionsPopupStyle.accent, OptionsPopupStyle.fontSize(17f)) else null
+            UncivSlider.formatPercent(initial).toLabel(OptionsPopupStyle.accent, OptionsPopupStyle.fontSize(TextRole.Body)) else null
         if (valueLabel != null) {
             val heading = Table().apply {
-                add(text.toLabel()).minWidth(0f).growX().left()
+                add(text.toLabel(TextRole.Body)).minWidth(0f).growX().left()
                 add(valueLabel).right().padLeft(OptionsPopupStyle.points(12f))
             }
             add(heading).colspan(2).growX().pad(OptionsPopupStyle.points(8f), OptionsPopupStyle.points(12f), 0f, OptionsPopupStyle.points(12f)).row()
-        } else add(text.toLabel()).left()
+        } else add(text.toLabel(TextRole.Body)).left()
         val slider = UncivSlider(0f, 1f, 0.05f, initial = initial,
             sound = if (silent) UncivSound.Silent else UncivSound.Slider,
             tipType = if (optionsPopup.useSidebar) UncivSlider.TipType.None else UncivSlider.TipType.Permanent,
@@ -79,7 +80,7 @@ internal class SoundTab(
         downloadMusicButton.onClick {
             downloadMusicButton.disable()
             errorTable.clear()
-            errorTable.add("Downloading...".toLabel())
+            errorTable.add("Downloading...".toLabel(TextRole.Body))
 
             // So the whole game doesn't get stuck while downloading the file
             Concurrency.run("MusicDownload") {
@@ -92,7 +93,7 @@ internal class SoundTab(
                 } catch (_: Exception) {
                     launchOnGLThread {
                         errorTable.clear()
-                        errorTable.add("Could not download music!".toLabel(Color.RED))
+                        errorTable.add("Could not download music!".toLabel(fontColor = Color.RED, role = TextRole.Body))
                     }
                 }
             }

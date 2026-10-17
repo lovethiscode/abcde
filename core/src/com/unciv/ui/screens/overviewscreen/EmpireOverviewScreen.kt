@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.input.keyShortcuts
@@ -65,7 +66,7 @@ class EmpireOverviewScreen(
             val button = OverviewUi.button(flat = true) { tabbedPager.selectPage(category.name) }.apply {
                 style = Button.ButtonStyle(style).apply { checked = OverviewUi.rounded(OverviewUi.raised); over = checked; down = checked }
                 if (category.iconName.isNotEmpty()) add(ImageGetter.getImage(category.iconName)).size(pt(19f)).padRight(pt(6f))
-                add(category.name.toLabel(fontSize = font(15), hideIcons = true))
+                add(category.name.toLabel(fontSize = font(TextRole.Control), hideIcons = true))
                 pad(0f, pt(10f), 0f, pt(10f))
                 isDisabled = tabState != EmpireOverviewTabState.Normal
                 if (isDisabled) color.a = .5f
@@ -91,7 +92,7 @@ class EmpireOverviewScreen(
             onActivation { game.popScreen() }
         } else OverviewUi.button(flat = true) { game.popScreen() }.apply {
             add(ImageGetter.getImage("OtherIcons/BackArrow").apply { color = OverviewUi.accent }).size(pt(18f)).padRight(pt(7f))
-            add("Map".toLabel(fontColor = OverviewUi.accent, fontSize = font(16), hideIcons = true))
+            add("Map".toLabel(fontColor = OverviewUi.accent, fontSize = font(TextRole.Control), hideIcons = true))
         }).apply {
             keyShortcuts.add(KeyCharAndCode.BACK)
             name = "ui-overview-close"
@@ -99,15 +100,15 @@ class EmpireOverviewScreen(
         val header = Table().apply {
             padRight(pt(12f))
             add(closeButton).minWidth(pt(74f)).height(OverviewUi.touch).padRight(pt(14f))
-            add("Empire Overview".toLabel(fontSize = font(20), hideIcons = true).apply { setEllipsis(true) })
+            add("Empire Overview".toLabel(fontSize = font(TextRole.SectionTitle), hideIcons = true).apply { setEllipsis(true) })
                 .left().growX().minWidth(0f)
             val info = viewingPlayer.getCiv().gameInfo
             val year = com.unciv.ui.components.YearTextUtil.toYearText(info.getYear(), viewingPlayer.getCiv().isLongCountDisplay())
             val context = Table().apply {
                 add(ImageGetter.getNationPortrait(viewingPlayer.getCiv().nation, pt(24f))).size(pt(24f)).padRight(pt(7f))
-                add(viewingPlayer.getCiv().civName.toLabel(fontSize = font(15), hideIcons = true).apply { setEllipsis(true) })
+                add(viewingPlayer.getCiv().civName.toLabel(fontSize = font(TextRole.Control), hideIcons = true).apply { setEllipsis(true) })
                     .minWidth(0f).padRight(pt(14f))
-                add("${info.turns} {Turn} · $year".toLabel(fontColor = OverviewUi.muted, fontSize = font(14), hideIcons = true)
+                add("${info.turns} {Turn} · $year".toLabel(fontColor = OverviewUi.muted, fontSize = font(TextRole.Supporting), hideIcons = true)
                     .apply { setEllipsis(true) }).minWidth(0f)
             }
             if (compact) { row(); add(context).colspan(2).growX().minWidth(0f).left().padLeft(pt(12f)) }

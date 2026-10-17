@@ -1,5 +1,6 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
@@ -112,12 +113,12 @@ internal class MultiplayerTab(
         }
         val serverIpTable = Table()
 
-        serverIpTable.add("Server address".toLabel().onClick {
+        serverIpTable.add("Server address".toLabel(TextRole.Body).onClick {
             if (!connectionCheckInFlight)
                 multiplayerServerTextField.text = Gdx.app.clipboard.contents
         }).colspan(2).padBottom(Constants.defaultFontSize / 2.0f).row()
 
-        val errorTextField = "".toLabel(Color.RED)
+        val errorTextField = "".toLabel(fontColor = Color.RED, role = TextRole.Body)
         errorTextField.isVisible = false
 
         serverIpTable.add(errorTextField).colspan(2).row()
@@ -204,11 +205,11 @@ internal class MultiplayerTab(
             setPasswordButton = passwordButton
             passwordButton.isEnabled = validatedServerUrl != null
 
-            serverIpTable.add("Set password".toLabel()).padTop(16f).colspan(2).row()
+            serverIpTable.add("Set password".toLabel(TextRole.Body)).padTop(16f).colspan(2).row()
             serverIpTable.add(passwordField).colspan(2).growX().padBottom(8f).row()
 
             // initially assume no password
-            val authStatusLabel = "Set a password to secure your userId".toLabel().apply { wrap = true }
+            val authStatusLabel = "Set a password to secure your userId".toLabel(TextRole.Body).apply { wrap = true }
 
             val validationServerUrl = mpSettings.getServer()
             val password = mpSettings.getPassword(validationServerUrl)

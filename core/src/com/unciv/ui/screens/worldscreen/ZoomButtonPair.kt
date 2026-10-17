@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -22,7 +24,7 @@ class ZoomButtonPair(private val mapHolder: ZoomableScrollPane) : Table(BaseScre
 
     private fun addButton(text: String, action: () -> Unit): Cell<TextButton> {
         val button = TextButton(text, skin)
-        button.label.setFontSize(30)
+        button.label.setFontSize(UiTypography.size(TextRole.PageTitle, legacySize = 30))
         button.label.setAlignment(Align.center)
         button.onClick(action)
         return add(button)

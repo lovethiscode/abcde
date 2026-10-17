@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.diplomacyscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -97,7 +99,7 @@ class OffersListScroll(
                         ImageGetter.getNationPortrait(ourCiv.ruleset.nations[offer.name]!!, 30f)
                     else -> null
                 }
-                val tradeButton = IconTextButton(tradeLabel, tradeIcon).apply {
+                val tradeButton = IconTextButton(tradeLabel, tradeIcon, labelFontSize = UiTypography.size(TextRole.Control)).apply {
                     name = "ui-trade-offer:$persistenceID:$offerType:${offer.name}"
                     if (tradeIcon != null)
                         iconCell.size(30f)

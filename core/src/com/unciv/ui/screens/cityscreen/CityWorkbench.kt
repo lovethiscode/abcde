@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -94,8 +96,8 @@ internal class CityWorkbench(
             checked = down
             fontColor = Color.valueOf("f1f1e7")
             checkedFontColor = gold
-        }).apply {
-            label.setFontSize(15)
+        }, unit = 1f).apply {
+            label.setFontSize(UiTypography.size(TextRole.Control, unit = 1f, legacySize = 15))
             name = id
             label.setEllipsis(true)
             labelCell.minWidth(0f).pad(4f)
@@ -107,7 +109,7 @@ internal class CityWorkbench(
         screen.clearSelection(); updatePanels()
     }
 
-    private fun title(text: String) = text.toLabel(fontSize = 18, fontColor = gold)
+    private fun title(text: String) = text.toLabel(fontSize = UiTypography.size(TextRole.SectionTitle, unit = 1f, legacySize = 18), fontColor = gold)
 
     private fun navigationIcon(image: String, text: String, id: String, action: () -> Unit) =
         button("", id, action).apply {
@@ -151,8 +153,8 @@ internal class CityWorkbench(
                 val focus = CityFocus.safeValueOf(stat)
                 if (focus == city.getCityFocus()) background = ImageGetter.getWhiteDotDrawable().tint(Color.valueOf("496269"))
                 add(ImageGetter.getStatIcon(stat.name)).size(20f).padRight(8f)
-                add(amount.roundToInt().toString().toLabel(fontSize = 17)).padRight(4f)
-                add("".toLabel(fontSize = 11).apply {
+                add(amount.roundToInt().toString().toLabel(fontSize = UiTypography.size(TextRole.Body, unit = 1f, legacySize = 17))).padRight(4f)
+                add("".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = 1f, legacySize = 11)).apply {
                     setText(stat.name.tr(hideIcons = true, hideStats = true))
                 }).minWidth(0f)
                 if (screen.canCityBeChanged()) onActivation(binding = if (city.getCityFocus() == focus) CityFocus.NoFocus.binding else focus.binding) {
@@ -248,7 +250,7 @@ internal class CityWorkbench(
     }
 
     private fun productionContent(): Actor {
-        if (screen.isSpying) return "Production information is not available".toLabel().apply { wrap = true }
+        if (screen.isSpying) return "Production information is not available".toLabel(TextRole.Body, unit = 1f).apply { wrap = true }
         if (geometry.tablet && screen.selectedConstruction != null && !city.constructions.isBuilt(screen.selectedConstruction!!.name)) {
             val table = Table().apply { top().pad(12f) }
             table.add(UiNavigation.backButton(unit = 1f).apply {
@@ -270,10 +272,10 @@ internal class CityWorkbench(
         if (changed) map.resizeViewport(Rectangle(bounds.x * unit, bounds.y * unit, bounds.width * unit, bounds.height * unit))
         else map.setPosition(bounds.x * unit, bounds.y * unit)
         mapHeader.clear()
-        mapHeader.add(city.name.toLabel(fontSize = 14).apply { setEllipsis(true) }).minWidth(0f).growX()
+        mapHeader.add(city.name.toLabel(fontSize = UiTypography.size(TextRole.PageTitle, unit = 1f, legacySize = 14)).apply { setEllipsis(true) }).minWidth(0f).growX()
         mapHeader.setBounds(bounds.x + 10f, bounds.y + bounds.height - 54f, bounds.width - 20f, 44f)
         mapControls.clear()
-        mapControls.add("Click to assign population".toLabel(fontSize = 11, hideIcons = true).apply { wrap = true }).growX().minWidth(0f)
+        mapControls.add("Click to assign population".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = 1f, legacySize = 11), hideIcons = true).apply { wrap = true }).growX().minWidth(0f)
         mapControls.add(button("Buy tile", "ui-city-buy-mode") {
             city.chooseNewTileToOwn()?.let { screen.selectWorkbenchTile(it); screen.updateAsync() }
         }).minWidth(0f).height(44f).padLeft(8f)
@@ -296,9 +298,11 @@ internal class CityWorkbench(
 internal fun cityWorkbenchSelectBox(): com.badlogic.gdx.scenes.scene2d.ui.SelectBox<String> {
     val style = com.badlogic.gdx.scenes.scene2d.ui.SelectBox.SelectBoxStyle(
         BaseScreen.skin.get(com.badlogic.gdx.scenes.scene2d.ui.SelectBox.SelectBoxStyle::class.java))
+    style.font = UiTypography.controlFont(unit = 1f)
     style.listStyle = com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(style.listStyle)
+    style.listStyle.font = UiTypography.controlFont()
     style.listStyle.selection = ImageGetter.getWhiteDotDrawable().tint(Color.valueOf("496269")).apply {
-        val padding = maxOf(0f, (UiNavigation.minimumTouchSize() - style.font.capHeight + style.font.descent * 2) / 2)
+        val padding = maxOf(0f, (UiNavigation.minimumTouchSize() - style.listStyle.font.capHeight + style.listStyle.font.descent * 2) / 2)
         topHeight = padding
         bottomHeight = padding
     }

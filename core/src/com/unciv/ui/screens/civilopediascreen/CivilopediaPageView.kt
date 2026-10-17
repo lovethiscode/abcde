@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.civilopediascreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
@@ -17,6 +19,7 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 /** The iOS reading layout. Rules, entry selection and search remain owned by CivilopediaScreen. */
 internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Table() {
     private val content = Table()
+    private var builtinArticle = false
     val scroll = AutoScrollPane(content).apply {
         setScrollingDisabled(true, false)
         setOverscroll(false, false)
@@ -38,7 +41,7 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
         right.add(button("", "OtherIcons/Search", "civilopedia-search") { screen.openSearch() }).minSize(touchSize).padRight(8f)
         right.add(UiNavigation.dismissButton().apply { onActivation { screen.game.popScreen() } })
             .minSize(touchSize)
-        val title = "Civilopedia".toLabel(ExpeditionBlueTheme.text, 25)
+        val title = "Civilopedia".toLabel(ExpeditionBlueTheme.text, UiTypography.size(TextRole.PageTitle, legacySize = 25))
         val header = Table().apply { pad(10f, 20f, 10f, 20f) }
         if (screen.stage.width < screen.stage.height) {
             header.add(title).colspan(2).padBottom(8f).row()
@@ -55,7 +58,7 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
     }
 
     private fun button(text: String, icon: String, actorName: String, wrap: Boolean = false, action: () -> Unit) =
-        IconTextButton(text, icon.takeIf { it.isNotEmpty() }?.let { ImageGetter.getImage(it) }, 20).apply {
+        IconTextButton(text, icon.takeIf { it.isNotEmpty() }?.let { ImageGetter.getImage(it) }, 20, labelFontSize = UiTypography.size(TextRole.Control)).apply {
             name = actorName
             label.wrap = wrap
             if (wrap) labelCell.minWidth(0f).growX()
@@ -78,7 +81,7 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
 
     fun categories() {
         begin()
-        content.add("Category:".toLabel(fontSize = 30)).padBottom(20f).row()
+        content.add("Category:".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 30))).padBottom(20f).row()
         val grid = Table()
         val columns = (contentWidth / 220f).toInt().coerceIn(2, 5)
         val cellWidth = (contentWidth - 12f * (columns - 1)) / columns
@@ -96,7 +99,7 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
 
     fun browse() {
         begin()
-        content.add(screen.selectedCategory.label.toLabel(fontSize = 30)).padBottom(16f).row()
+        content.add(screen.selectedCategory.label.toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 30))).padBottom(16f).row()
         val columns = (contentWidth / 280f).toInt().coerceIn(1, 3)
         val cellWidth = (contentWidth - 12f * (columns - 1)) / columns
         var subCategory: String? = null
@@ -115,7 +118,7 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
                 if (subCategory != null)
                     content.add(SubCategoryTable(subCategory)).width(contentWidth).padBottom(12f).row()
             }
-            val actor = IconTextButton(entry.name, entry.image, 22).apply {
+            val actor = IconTextButton(entry.name, entry.image, 22, labelFontSize = UiTypography.size(TextRole.Control)).apply {
                 name = "civilopedia-entry-${entry.name}"
                 label.wrap = true
                 labelCell.minWidth(0f).growX()
@@ -133,11 +136,13 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
 
     private fun render(lines: List<FormattedLine>, width: Float): Table =
         MarkupRenderer.render(lines, width, padding = 6f, minimumLinkHeight = touchSize,
-            fitToWidth = true, linkAction = screen::openLink)
+            fitToWidth = true, useUiTypography = builtinArticle, linkAction = screen::openLink)
 
     fun detail(entry: CivilopediaScreen.CivilopediaEntry) {
         begin()
         val flavour = entry.flavour ?: return finish()
+        val source = (flavour as? com.unciv.models.ruleset.IRulesetObject)?.originRuleset
+        builtinArticle = source != null && (source.isEmpty() || com.unciv.models.ruleset.RulesetCache[source]?.let { it.folderLocation == null } == true)
         val article = CivilopediaArticle(flavour.assembleCivilopediaText(screen.ruleset).civilopediaText)
         val width = contentWidth
         val art = article.sections["art"].orEmpty()
@@ -165,12 +170,12 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
                 val cell = Table().apply {
                     pad(8f, 12f, 8f, 12f)
                     val caption = Table()
-                    caption.add(stat.icon.toString().toLabel(fontSize = 20)).padRight(8f)
+                    caption.add(stat.icon.toString().toLabel(fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = 20))).padRight(8f)
                     val text = stat.label.tr(hideIcons = true).replace(stat.icon.toString(), "")
-                    caption.add(text.toLabel(ExpeditionBlueTheme.muted, 17).apply { wrap = true })
+                    caption.add(text.toLabel(ExpeditionBlueTheme.muted, UiTypography.size(TextRole.Body, legacySize = 17)).apply { wrap = true })
                         .minWidth(0f).growX()
                     add(caption).width(cellWidth - 24f).left().row()
-                    add(stat.value.toString().toLabel(fontSize = 34)).left().padTop(4f)
+                    add(stat.value.toString().toLabel(fontSize = UiTypography.size(TextRole.Display, legacySize = 34))).left().padTop(4f)
                 }
                 grid.add(cell).width(cellWidth).top()
                 if (index % columns == columns - 1) grid.row()
@@ -198,7 +203,7 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
                     "upgrades" -> "Upgrade"
                     else -> "" // The generated see-also header is already part of the original content.
                 }
-                if (title.isNotEmpty()) column.add(title.toLabel(ExpeditionBlueTheme.gold, 20))
+                if (title.isNotEmpty()) column.add(title.toLabel(ExpeditionBlueTheme.gold, UiTypography.size(TextRole.SectionTitle, legacySize = 20)))
                     .left().padTop(8f).padBottom(4f).row()
                 column.add(render(lines, sectionWidth)).width(sectionWidth).padBottom(12f).row()
             }

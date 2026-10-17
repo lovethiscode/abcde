@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -89,7 +91,7 @@ class AlertPopup(
 
     private fun addInformationTitle(text: String) {
         if (UiNavigation.isIos)
-            addTitleWithCloseButton(text.toLabel(), KeyboardBindings[KeyboardBinding.NextTurnAlternate])
+            addTitleWithCloseButton(text.toLabel(TextRole.Body), KeyboardBindings[KeyboardBinding.NextTurnAlternate])
                 .name = "ui-alert-close"
         else addGoodSizedLabel(text)
     }
@@ -379,7 +381,7 @@ class AlertPopup(
 
     private fun addDiplomaticMarriage() {
         val city = getCity(popupAlert.value)
-        addGoodSizedLabel(city.name.tr() + ": " + "What would you like to do with the city?".tr(), Constants.headingFontSize) // Add name because there might be several cities
+        addGoodSizedLabel(city.name.tr() + ": " + "What would you like to do with the city?".tr(),UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize)) // Add name because there might be several cities
             .padBottom(20f).row()
         val marryingCiv = gameInfo.getCurrentPlayerCivilization()
 
@@ -497,9 +499,9 @@ class AlertPopup(
         addInformationTitle(tech.name)
         addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
         val centerTable = Table()
-        centerTable.add(tech.quote.toLabel().apply { wrap = true }).width(stageWidth / 3)
+        centerTable.add(tech.quote.toLabel(TextRole.Body).apply { wrap = true }).width(stageWidth / 3)
         centerTable.add(ImageGetter.getTechIconPortrait(tech.name, 100f)).pad(20f)
-        val descriptionScroll = ScrollPane(tech.getDescription(viewingCiv).toLabel().apply { wrap = true })
+        val descriptionScroll = ScrollPane(tech.getDescription(viewingCiv).toLabel(TextRole.Body).apply { wrap = true })
         centerTable.add(descriptionScroll).width(stageWidth / 3).maxHeight(stageHeight / 2)
         add(centerTable).row()
         if (!UiNavigation.isIos) addCloseButton()
@@ -552,11 +554,11 @@ class AlertPopup(
         val centerTable = Table()
         val centerTableColumnWidth = stageWidth / if (wonder.quote.isEmpty()) 2 else 3
         if (wonder.quote.isNotEmpty()) {
-            centerTable.add(wonder.quote.toLabel().apply { wrap = true })
+            centerTable.add(wonder.quote.toLabel(TextRole.Body).apply { wrap = true })
                 .width(centerTableColumnWidth)
                 .pad(10f)
         }
-        centerTable.add(wonder.getShortDescription().toLabel().apply { wrap = true })
+        centerTable.add(wonder.getShortDescription().toLabel(TextRole.Body).apply { wrap = true })
             .width(centerTableColumnWidth)
             .pad(10f)
         add(centerTable).row()
@@ -573,8 +575,7 @@ class AlertPopup(
     }
 
     private fun addQuestionAboutTheCity(cityName: String) {
-        addGoodSizedLabel("What would you like to do with the city of [$cityName]?",
-            Constants.headingFontSize, hideIcons = true).padBottom(20f).row()
+        addGoodSizedLabel("What would you like to do with the city of [$cityName]?",UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize), hideIcons = true).padBottom(20f).row()
     }
 
     private fun addDestroyOption(destroyAction: () -> Unit) {

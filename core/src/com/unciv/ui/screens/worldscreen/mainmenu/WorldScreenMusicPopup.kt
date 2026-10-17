@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.mainmenu
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.extensions.toLabel
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -68,7 +70,7 @@ class WorldScreenMusicPopup(
             bottomTable.addMusicPauseSlider(settings, musicController)
             bottomTable.addMusicCurrentlyPlaying(musicController)
             bottomTable.addSimplePlayerControls(musicController).colspan(2)
-            addTitleWithCloseButton("Music".toLabel())
+            addTitleWithCloseButton("Music".toLabel(TextRole.Body))
         } else {
             bottomTable.addMusicControls(settings, musicController)
             addCloseButton().colspan(2)
@@ -82,7 +84,7 @@ class WorldScreenMusicPopup(
 
     private fun String.toSmallUntranslatedButton(rightSide: Boolean = false) =
         TextButton(this, trackStyle).apply {
-            label.setFontScale(14 / Fonts.ORIGINAL_FONT_SIZE)
+            label.setFontScale(UiTypography.size(TextRole.Supporting) / Fonts.ORIGINAL_FONT_SIZE)
             label.setAlignment(if (rightSide) Align.right else Align.left)
             labelCell.pad(5f)
             isDisabled = rightSide

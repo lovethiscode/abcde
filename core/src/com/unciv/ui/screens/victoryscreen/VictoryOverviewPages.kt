@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -51,7 +52,7 @@ internal fun victoryCivIdentity(civ: Civilization, viewer: Civilization): Table 
     val icon = VictoryScreenCivGroup.getCivImageAndColors(civ, viewer,
         VictoryScreenCivGroup.DefeatedPlayerStyle.GREYED_OUT, pt(24f)).first
     add(icon).size(pt(24f)).padRight(pt(9f))
-    add(U.plainLabel(if (victoryCivKnown(civ, viewer)) civ.civName else Constants.unknownNationName, 14)
+    add(U.plainLabel(if (victoryCivKnown(civ, viewer)) civ.civName else Constants.unknownNationName, TextRole.Supporting)
         .apply { wrap = true }).growX().minWidth(0f).left()
 }
 
@@ -100,11 +101,11 @@ internal class VictoryProgressPage(
                 pad(pt(8f), pt(12f), pt(8f), pt(12f))
                 add(ImageGetter.getImage("VictoryTypeIcons/${victory.name}")).size(pt(26f)).padRight(pt(12f))
                 val text = Table().apply {
-                    add(U.plainLabel("[${victory.name}] Victory", 15, if (victory == selected) U.accent else com.unciv.models.skins.ExpeditionBlueTheme.text)
+                    add(U.plainLabel("[${victory.name}] Victory", TextRole.Control, if (victory == selected) U.accent else com.unciv.models.skins.ExpeditionBlueTheme.text)
                         .apply { wrap = true }).growX().minWidth(0f).left().row()
                     val next = viewer.victoryManager.getNextMilestone(victory)
                         ?.getVictoryScreenButtonHeaderText(false, viewer) ?: "Done!"
-                    add(U.plainLabel(next, 12, U.muted).apply { wrap = true }).growX().minWidth(0f).left().padTop(pt(2f))
+                    add(U.plainLabel(next, TextRole.Supporting, U.muted).apply { wrap = true }).growX().minWidth(0f).left().padTop(pt(2f))
                 }
                 add(text).growX().minWidth(0f)
                 name = "victory-type-${victory.name}"
@@ -121,15 +122,15 @@ internal class VictoryProgressPage(
                 it.getVictoryScreenButtonHeaderText(it.hasBeenCompletedBy(viewer), viewer).substringAfterLast(" (").contains('/')
         }
         val heading = Table().apply {
-            add(U.plainLabel("[${selected.name}] Victory", 19).apply { wrap = true }).growX().minWidth(0f).left()
+            add(U.plainLabel("[${selected.name}] Victory", TextRole.SectionTitle).apply { wrap = true }).growX().minWidth(0f).left()
             if (!global && progress != null) {
                 val count = progress.getVictoryScreenButtonHeaderText(progress.hasBeenCompletedBy(viewer), viewer)
                     .substringAfterLast(" (").removeSuffix(")")
-                add(U.plainLabel(count, 16, U.accent)).right().padLeft(pt(12f))
+                add(U.plainLabel(count, TextRole.Control, U.accent)).right().padLeft(pt(12f))
             }
         }
         body.add(heading).growX().minWidth(0f).row()
-        body.add(U.plainLabel(selected.victoryScreenHeader, 13, U.muted).apply { wrap = true })
+        body.add(U.plainLabel(selected.victoryScreenHeader, TextRole.Supporting, U.muted).apply { wrap = true })
             .left().padTop(pt(3f)).padBottom(pt(14f)).row()
         if (global) addGlobal(body, selected) else addOur(body, selected, progress)
         val scroll = U.scroll(body)
@@ -143,8 +144,8 @@ internal class VictoryProgressPage(
         add(ImageGetter.getImage(if (complete) "OtherIcons/Checkmark" else "OtherIcons/Circle").apply {
             color = if (complete) U.accent else U.muted
         }).size(pt(18f)).padRight(pt(12f))
-        add(U.plainLabel(text, 14).apply { wrap = true }).growX().minWidth(0f).left()
-        add(U.plainLabel(if (complete) "Completed" else "Not completed", 12, if (complete) U.accent else U.muted)).padLeft(pt(12f))
+        add(U.plainLabel(text, TextRole.Supporting).apply { wrap = true }).growX().minWidth(0f).left()
+        add(U.plainLabel(if (complete) "Completed" else "Not completed", TextRole.Supporting, if (complete) U.accent else U.muted)).padLeft(pt(12f))
         padTop(pt(8f)); padBottom(pt(8f))
     }
 
@@ -159,8 +160,8 @@ internal class VictoryProgressPage(
             val buttons = milestone.getVictoryScreenButtons(completion, viewer)
             val rows = Table()
             val bodyWidth = contentWidth - pt(if (tablet) 330f else 264f)
-            val statusWidth = maxOf(U.plainLabel("Completed", 12).prefWidth, U.plainLabel("Not completed", 12).prefWidth)
-            val rowWidth = buttons.drop(1).maxOfOrNull { U.plainLabel(it.text.toString(), 14).prefWidth + statusWidth + pt(42f) } ?: 0f
+            val statusWidth = maxOf(U.plainLabel("Completed", TextRole.Supporting).prefWidth, U.plainLabel("Not completed", TextRole.Supporting).prefWidth)
+            val rowWidth = buttons.drop(1).maxOfOrNull { U.plainLabel(it.text.toString(), TextRole.Supporting).prefWidth + statusWidth + pt(42f) } ?: 0f
             val columns = !compact && milestone.type == MilestoneType.CompletePolicyBranches && buttons.size > 1 &&
                 bodyWidth >= rowWidth * 2 + pt(20f)
             for ((index, button) in buttons.withIndex()) {
@@ -189,7 +190,7 @@ internal class VictoryProgressPage(
                 add(victoryCivIdentity(civ, viewer)).growX().minWidth(0f).row()
                 if (victoryCivKnown(civ, viewer)) {
                     val next = civ.victoryManager.getNextMilestone(victory)?.getVictoryScreenButtonHeaderText(false, civ) ?: "Done!"
-                    add(U.plainLabel(next, 13, U.muted).apply { wrap = true }).growX().minWidth(0f).padLeft(pt(33f)).padTop(pt(3f))
+                    add(U.plainLabel(next, TextRole.Supporting, U.muted).apply { wrap = true }).growX().minWidth(0f).padLeft(pt(33f)).padTop(pt(3f))
                 }
                 padTop(pt(10f)); padBottom(pt(10f))
             }
@@ -220,7 +221,7 @@ internal class VictoryStatisticsPage(
                 update()
             }
             val toolbar = Table().apply {
-                add(U.plainLabel(if (demographics) "Demographic" else "Rankings", 14, U.muted)).padRight(pt(12f))
+                add(U.plainLabel(if (demographics) "Demographic" else "Rankings", TextRole.Supporting, U.muted)).padRight(pt(12f))
                 add(select).height(U.touch).minWidth(pt(160f))
                 add().growX()
             }
@@ -232,7 +233,7 @@ internal class VictoryStatisticsPage(
     }
 
     private fun cell(text: String, numeric: Boolean = false, muted: Boolean = false): Actor =
-        U.plainLabel(text, if (muted) 12 else 14, if (muted) U.muted else com.unciv.models.skins.ExpeditionBlueTheme.text).apply {
+        U.plainLabel(text, TextRole.Supporting, if (muted) U.muted else com.unciv.models.skins.ExpeditionBlueTheme.text).apply {
             if (!numeric) wrap = true
             setAlignment(if (numeric) Align.right else Align.left)
         }

@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.endless
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.logic.endless.EndlessRules
 import com.unciv.logic.endless.EndlessShareData
@@ -30,9 +32,9 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
             mode.ended -> "Defense result"
             mode.offer != null -> "Choose your resupply"
             else -> "Defense status"
-        }).toLabel(Theme.gold, 26))
+        }).toLabel(Theme.gold, UiTypography.size(TextRole.PageTitle, legacySize = 26)))
         fun text(value: String, muted: Boolean = false) {
-            add(value.toLabel(if (muted) Theme.muted else Theme.text, 18).apply { wrap = true }).width(width).left().padBottom(10f).row()
+            add(value.toLabel(if (muted) Theme.muted else Theme.text, UiTypography.size(TextRole.Body, legacySize = 18)).apply { wrap = true }).width(width).left().padBottom(10f).row()
         }
         text("Action round [${mode.round}] · completed [${mode.completedRounds}] rounds")
         if (mode.stageState == null) text("Legacy rules",true)
@@ -64,9 +66,9 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
                 val card = Table().apply {
                     background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.raised)
                     pad(14f); top(); defaults().left()
-                    add(title.toLabel(Theme.gold, 21)).width(cardWidth - 28f).row()
-                    add(detail.toLabel(Theme.text, 17).apply { wrap = true }).width(cardWidth - 28f).padTop(9f).row()
-                    if (!enabled) add(reason.toLabel(Theme.muted, 15).apply { wrap = true }).width(cardWidth - 28f).padTop(9f).row()
+                    add(title.toLabel(Theme.gold, UiTypography.size(TextRole.PageTitle, legacySize = 21))).width(cardWidth - 28f).row()
+                    add(detail.toLabel(Theme.text, UiTypography.size(TextRole.Body, legacySize = 17)).apply { wrap = true }).width(cardWidth - 28f).padTop(9f).row()
+                    if (!enabled) add(reason.toLabel(Theme.muted, UiTypography.size(TextRole.Control, legacySize = 15)).apply { wrap = true }).width(cardWidth - 28f).padTop(9f).row()
                     add("Choose reward".toTextButton().apply {
                         name = "ui-endless-reward:$key"; isDisabled = !enabled
                         onActivation { claim(key) }

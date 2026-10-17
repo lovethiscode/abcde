@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
 import com.unciv.ui.screens.overviewscreen.OverviewUi.font
 import com.badlogic.gdx.graphics.Color
@@ -34,7 +35,7 @@ class ReligionOverviewTab(
 
     private val civStatsTable = Table()
     private val religionButtons = Table().apply { top() }
-    private val religionButtonLabel = "Click an icon to see the stats of this religion".toLabel()
+    private val religionButtonLabel = "Click an icon to see the stats of this religion".toLabel(TextRole.Body)
     private val statsTable = Table()
     private val beliefsTable = Table()
 
@@ -81,14 +82,14 @@ class ReligionOverviewTab(
             if (viewingPlayer.getCiv().shouldHideCivCount()) "Religions to be founded: [?]"
             else "Religions to be founded: [${manager.remainingFoundableReligions()}]"
         val religionCountExpander = ExpanderTab(
-            headerText, fontSize = font(14), headerPad =  5f,
+            headerText, fontSize = font(TextRole.Supporting), headerPad =  5f,
             startsOutOpened = false, defaultPad =  0f, expanderWidth = minWidth,
             onChange = { overviewScreen.resizePage(this@ReligionOverviewTab) }
         ) {
             it.defaults().padTop(10f)
             for ((text, num) in manager.remainingFoundableReligionsBreakdown()) {
-                it.add(text.toLabel())
-                it.add(num.tr().toLabel(alignment = Align.right)).right().row()
+                it.add(text.toLabel(TextRole.Body))
+                it.add(num.tr().toLabel(alignment = Align.right, role = TextRole.Body)).right().row()
             }
         }
         add(religionCountExpander).colspan(2).growX().row()
@@ -96,16 +97,16 @@ class ReligionOverviewTab(
         if (manager.canGenerateProphet(ignoreFaithAmount = true)) {
             add("Minimal Faith required for\nthe next [great prophet equivalent]:"
                 .fillPlaceholders(manager.getGreatProphetEquivalent()!!.name)
-                .toLabel()
+                .toLabel(TextRole.Body)
             )
             add(
                 (manager.faithForNextGreatProphet() + 1)
-                .toLabel()
+                .toLabel(TextRole.Body)
             ).right().row()
         }
 
-        add("Religious status:".toLabel()).left()
-        add(manager.religionState.toString().toLabel()).right().row()
+        add("Religious status:".toLabel(TextRole.Body)).left()
+        add(manager.religionState.toString().toLabel(TextRole.Body)).right().row()
     }
 
     private fun loadReligionButtons() {
@@ -126,7 +127,7 @@ class ReligionOverviewTab(
                 loadReligion(religion)
             }.apply {
                 add(image).size(28f).padRight(10f)
-                add(religion.getReligionDisplayName().toLabel(fontSize = font(14)).apply { wrap = true }).minWidth(0f).growX().left()
+                add(religion.getReligionDisplayName().toLabel(fontSize = font(TextRole.Supporting)).apply { wrap = true }).minWidth(0f).growX().left()
                 pad(12f)
             }
 
@@ -152,7 +153,7 @@ class ReligionOverviewTab(
         statsTable.clear()
         beliefsTable.clear()
         religionButtonLabel.setText(religion.getReligionDisplayName().tr())
-        religionButtonLabel.setFontSize(font(18))
+        religionButtonLabel.setFontSize(font(TextRole.Body))
         religionButtonLabel.color = com.unciv.models.skins.ExpeditionBlueTheme.text
 
         for (belief in religion.getAllBeliefsOrdered()) {

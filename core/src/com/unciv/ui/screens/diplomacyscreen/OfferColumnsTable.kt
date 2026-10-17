@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.diplomacyscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -70,7 +71,7 @@ class OfferColumnsTable(
         if (ui != null) {
             defaults().pad(ui.px(4f)).minSize(0f)
             fun heading(text: String, span: Int = 1) {
-                add(ui.label(text, 12, ui.muted, wrap = true)).growX().colspan(span)
+                add(ui.label(text, TextRole.Supporting, ui.muted, wrap = true)).growX().colspan(span)
             }
             if (isPortraitMode) {
                 heading("Our items", 2); row()

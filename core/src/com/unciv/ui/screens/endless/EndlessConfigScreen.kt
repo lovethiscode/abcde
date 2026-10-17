@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.endless
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.logic.challenges.ChallengeTelemetry
@@ -43,17 +45,17 @@ class EndlessConfigScreen(
         val inner = width - 36f
         root.add(Table().apply {
             add(UiNavigation.backButton().apply { onActivation { game.popScreen() } }).minHeight(UiNavigation.minimumTouchSize())
-            add("Endless settings".toLabel(Theme.gold, 28).apply { wrap = true }).expandX().fillX().left().padLeft(14f)
+            add("Endless settings".toLabel(Theme.gold, UiTypography.size(TextRole.PageTitle, legacySize = 28)).apply { wrap = true }).expandX().fillX().left().padLeft(14f)
         }).growX().pad(12f, 18f, 10f, 18f).row()
         val content = Table().apply {
             background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.panel)
             pad(18f); top(); defaults().left().spaceBottom(12f)
-            fun text(value: String, muted: Boolean = false, size: Int = 18) {
-                add(value.toLabel(if (muted) Theme.muted else Theme.text, size).apply { wrap = true }).width(inner).row()
+            fun text(value: String, muted: Boolean = false, size: TextRole = TextRole.Body) {
+                add(value.toLabel(size, if (muted) Theme.muted else Theme.text).apply { wrap = true }).width(inner).row()
             }
             fun action(value: String, id: String, primary: Boolean = false, run: () -> Unit) {
                 add(value.toTextButton().apply {
-                    name = id; label.setFontSize(20)
+                    name = id; label.setFontSize(UiTypography.size(TextRole.Control, legacySize = 20))
                     if (primary) style = TextButton.TextButtonStyle(style).apply {
                         up = ImageGetter.getWhiteDotDrawable().tint(Theme.gold)
                         down = ImageGetter.getWhiteDotDrawable().tint(Theme.muted)
@@ -62,9 +64,9 @@ class EndlessConfigScreen(
                     onActivation { run() }
                 }).width(inner).minHeight(maxOf(48f, UiNavigation.minimumTouchSize())).row()
             }
-            text(if (savedState == null) "New defense" else "Current defense", size = 24)
+            text(if (savedState == null) "New defense" else "Current defense", size = TextRole.PageTitle)
             text("Settings cannot be changed after the defense starts.", muted = true)
-            text("Defense pace", size = 22)
+            text("Defense pace", size = TextRole.SectionTitle)
             val selected = savedState?.stageState?.pace ?: pace
             if (savedState != null) {
                 text(if (savedState.stageState == null) "Legacy rules" else if (selected == "wild") "Wild" else "Casual")

@@ -1,5 +1,7 @@
 package com.unciv.ui.popups.options
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.graphics.g2d.BitmapFont
@@ -18,7 +20,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable
 import com.badlogic.gdx.scenes.scene2d.utils.TransformDrawable
 import com.unciv.models.skins.ExpeditionBlueTheme
-import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.center
 import com.unciv.ui.images.IconCircleGroup
 import com.unciv.ui.images.ImageGetter
@@ -27,7 +28,6 @@ import com.unciv.ui.components.extensions.setFontColor
 import com.unciv.ui.components.widgets.ExpanderTab
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.widgets.UncivSlider
-import kotlin.math.roundToInt
 
 /** Local styles for the options panel; other checkboxes keep their existing appearance. */
 internal object OptionsPopupStyle {
@@ -42,7 +42,7 @@ internal object OptionsPopupStyle {
 
     /** Options use iOS points so their reading size is consistent on phones and tablets. */
     fun points(value: Float) = value * UiNavigation.minimumTouchSize() / 44f
-    fun fontSize(value: Float) = points(value).roundToInt().coerceAtLeast(11)
+    fun fontSize(value: TextRole) = UiTypography.size(value)
 
     fun surface(color: Color): Drawable {
         val source = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", color)
@@ -110,7 +110,6 @@ internal object OptionsPopupStyle {
                 (actor.parent as? Table)?.getCell(actor)?.minHeight(points(44f))
             }
             is Label -> {
-                actor.setFontSize(fontSize(17f))
                 when (actor.style.fontColor) {
                     ExpeditionBlueTheme.text -> actor.setFontColor(text)
                     ExpeditionBlueTheme.muted -> actor.setFontColor(muted)

@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.graphics.g2d.NinePatch
@@ -10,7 +12,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.SelectBox
 import com.badlogic.gdx.scenes.scene2d.ui.TextField
 import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable
-import kotlin.math.roundToInt
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Button
@@ -30,7 +31,7 @@ internal object OverviewUi {
     val touch get() = UiNavigation.minimumTouchSize()
     // The approved landscape prototype is measured in phone points, not game world units.
     fun pt(value: Float) = value * touch / 44f
-    fun font(value: Int) = pt(value.toFloat()).roundToInt()
+    fun font(value: TextRole) = UiTypography.size(value)
     val rowHeight get() = pt(46f)
     val background get() = ExpeditionBlueTheme.color(BaseScreen.skinStrings.skinConfig.baseColor, ExpeditionBlueTheme.background)
     val panel get() = ExpeditionBlueTheme.color(BaseScreen.skinStrings.skinConfig.baseColor, ExpeditionBlueTheme.panel)
@@ -62,7 +63,7 @@ internal object OverviewUi {
 
     fun primaryButton(title: String, action: () -> Unit) = button(action = action).apply {
         style = Button.ButtonStyle(style).apply { up = rounded(accent); down = rounded(muted); over = down }
-        add(title.toLabel(fontColor = ExpeditionBlueTheme.primaryInk, fontSize = font(14), hideIcons = true)).pad(0f, pt(16f), 0f, pt(16f))
+        add(title.toLabel(fontColor = ExpeditionBlueTheme.primaryInk, fontSize = font(TextRole.Control), hideIcons = true)).pad(0f, pt(16f), 0f, pt(16f))
     }
 
     private fun selectBackground(color: Color): BaseDrawable {
@@ -100,7 +101,7 @@ internal object OverviewUi {
         }
     }
 
-    fun plainLabel(text: String, size: Int, color: Color = com.unciv.models.skins.ExpeditionBlueTheme.text) =
+    fun plainLabel(text: String, size: TextRole, color: Color = com.unciv.models.skins.ExpeditionBlueTheme.text) =
         "".toLabel(fontColor = color, fontSize = font(size)).apply { setText(text.tr(hideIcons = true, hideStats = true)) }
 
     fun iconButton(path: String, label: String, action: () -> Unit) = button(flat = true, action = action).apply {
@@ -158,7 +159,7 @@ internal object OverviewUi {
             value.setAlignment(Align.right)
         }
         val entry = Table().apply {
-            add(plainLabel(label, 14, muted).apply { wrap = true }).minWidth(0f).growX().left()
+            add(plainLabel(label, TextRole.Supporting, muted).apply { wrap = true }).minWidth(0f).growX().left()
             add(value).minWidth(0f).growX().right()
         }
         add(entry).colspan(2).growX().minHeight(pt(39f)).row()
@@ -167,5 +168,5 @@ internal object OverviewUi {
     }
 
     fun Table.detailRow(label: String, value: String) =
-        detailRow(label, value.toLabel(fontSize = font(14), alignment = Align.right, hideIcons = true).apply { wrap = true })
+        detailRow(label, value.toLabel(fontSize = font(TextRole.Supporting), alignment = Align.right, hideIcons = true).apply { wrap = true })
 }

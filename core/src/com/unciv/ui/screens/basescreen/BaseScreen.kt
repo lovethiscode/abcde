@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.basescreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Screen
 import com.badlogic.gdx.graphics.Color
@@ -30,6 +31,7 @@ import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.isNarrowerThan4to3
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.fonts.Fonts
+import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.utils.DebugUtils
 import com.unciv.ui.components.input.DispatcherVetoer
 import com.unciv.ui.components.input.KeyShortcutDispatcher
@@ -75,7 +77,7 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
     // any uncaught throwable, including ones raised during early startup - so it must be excluded
     // too, or toLabel() here would throw UninitializedPropertyAccessException inside the crash
     // handler itself, turning a handled crash into a crash loop.
-    private val fpsLabel: Label? = if (this !is GameStartScreen && this !is CrashScreen) "".toLabel() else null
+    private val fpsLabel: Label? = if (this !is GameStartScreen && this !is CrashScreen) "".toLabel(TextRole.Metadata) else null
     private val fpsLabelContainer: Table? = fpsLabel?.let {
         Table().apply {
             background = ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.color(Color(0f, 0f, 0.4f, 1f), ExpeditionBlueTheme.panel))
@@ -91,6 +93,20 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
         /** The ExtendViewport sets the _minimum_(!) world size - the actual world size will be larger, fitted to screen/window aspect ratio. */
         stage = UncivStage(SafeAreaViewport(height, useFullScreenLayout))
         applySafeArea()
+        UiTypography.useStage(stage)
+        if (this !is GameStartScreen && this !is CrashScreen) {
+            val inputFont = UiTypography.controlFont(UiTypography.unitsPerPoint(stage))
+            skin.add("default", com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(skin.get(com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle::class.java)).apply {
+                font = inputFont
+            }, com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle::class.java)
+            skin.add("default", TextField.TextFieldStyle(skin.get(TextField.TextFieldStyle::class.java)).apply {
+                font = inputFont
+            }, TextField.TextFieldStyle::class.java)
+            skin.add("default", SelectBox.SelectBoxStyle(skin.get(SelectBox.SelectBoxStyle::class.java)).apply {
+                font = inputFont
+                listStyle = com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(listStyle).apply { font = inputFont }
+            }, SelectBox.SelectBoxStyle::class.java)
+        }
 
         if (enableSceneDebug.active && this !is CrashScreen && this !is GameStartScreen)
             stage.setSceneDebugMode()
@@ -118,7 +134,7 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
         return KeyShortcutDispatcherVeto.createPopupBasedDispatcherVetoer(activePopup)
     }
 
-    override fun show() {}
+    override fun show() { UiTypography.useStage(stage) }
 
     /** A screen-local surface may also fill the area outside the safe layout viewport. */
     protected open val screenClearColor: Color get() = clearColor
@@ -192,6 +208,7 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
      */
     override fun dispose() {
         // FYI - This is a method of Gdx [Screen], not of Gdx [Disposable], but the one below _is_.
+        UiTypography.releaseStage(stage)
         stage.dispose()
         // glProfiler.enable() replaces Gdx.gl with a delegating interceptor wrapping whatever GL
         // instance was current at the time. If the GL context is destroyed and recreated (e.g.
@@ -251,10 +268,11 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
                 font = Fonts.font
                 fontColor = ExpeditionBlueTheme.labelColor(Color.WHITE)
             }
-            skin.get(TextField.TextFieldStyle::class.java).font = Fonts.font
+            skin.get(com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle::class.java).font = UiTypography.controlFont()
+            skin.get(TextField.TextFieldStyle::class.java).font = UiTypography.controlFont()
             skin.get(SelectBox.SelectBoxStyle::class.java).apply {
-                font = Fonts.font
-                listStyle.font = Fonts.font
+                font = UiTypography.controlFont()
+                listStyle.font = font
             }
             if (skinStrings.usesExpeditionBlue) ExpeditionBlueTheme.finishSkin(skin)
         }

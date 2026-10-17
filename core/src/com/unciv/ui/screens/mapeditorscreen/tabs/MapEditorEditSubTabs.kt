@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.mapeditorscreen.tabs
 
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
@@ -333,7 +336,7 @@ class MapEditorEditStartsTab(
         val defaultUsage = TileMap.StartingLocation.Usage.default
         val button = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.button(usageCaption(defaultUsage)) { popup.open() }
         for (usage in TileMap.StartingLocation.Usage.entries) {
-            val checkBox = CheckBox(usageCaption(usage).tr(), skin)
+            val checkBox = CheckBox(usageCaption(usage).tr(), skin).apply { label.setFontSize(UiTypography.size(TextRole.Control)) }
             popup.add(checkBox).minHeight(com.unciv.ui.components.widgets.UiNavigation.minimumTouchSize()).row()
             usageOptionGroup.add(checkBox)
             checkBox.isChecked = usage == defaultUsage
@@ -367,7 +370,7 @@ class MapEditorEditRiversTab(
         defaults().pad(4f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).left()
         val removeLine = Table().apply {
             add(getRemoveRiverIcon()).size(iconSize).row()
-            add("Remove rivers".toLabel(fontSize = (14f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).toInt()))
+            add("Remove rivers".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit)))
             onClick {
                 editTab.setBrush(BrushHandlerType.River,"Remove rivers", getRemoveRiverIcon(), pediaLink) { tile ->
                     tile.hasBottomLeftRiver = false
@@ -388,7 +391,7 @@ class MapEditorEditRiversTab(
 
         val leftRiverLine = Table().apply {
             add(getRiverIcon(RiverEdge.Left)).size(iconSize).row()
-            add("Bottom left river".toLabel(fontSize = (14f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).toInt()))
+            add("Bottom left river".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit)))
             onClick {
                 editTab.setBrush(BrushHandlerType.Direct,"Bottom left river", getTileGroupWithRivers(
                     RiverEdge.Left
@@ -403,7 +406,7 @@ class MapEditorEditRiversTab(
 
         val bottomRiverLine = Table().apply {
             add(getRiverIcon(RiverEdge.Bottom)).size(iconSize).row()
-            add("Bottom river".toLabel(fontSize = (14f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).toInt()))
+            add("Bottom river".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit)))
             onClick {
                 editTab.setBrush(BrushHandlerType.Direct,"Bottom river", getTileGroupWithRivers(
                     RiverEdge.Bottom
@@ -418,7 +421,7 @@ class MapEditorEditRiversTab(
 
         val rightRiverLine = Table().apply {
             add(getRiverIcon(RiverEdge.Right)).size(iconSize).row()
-            add("Bottom right river".toLabel(fontSize = (14f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).toInt()))
+            add("Bottom right river".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit)))
             onClick {
                 editTab.setBrush(BrushHandlerType.Direct,"Bottom right river", getTileGroupWithRivers(
                     RiverEdge.Right
@@ -434,7 +437,7 @@ class MapEditorEditRiversTab(
         //todo this needs a better icon
         val spawnRiverLine = Table().apply {
             add(getRiverIcon(RiverEdge.All)).size(iconSize).row()
-            add("Spawn river from/to".toLabel(fontSize = (14f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).toInt()))
+            add("Spawn river from/to".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit)))
             onClick {
                 editTab.setBrush(
                     BrushHandlerType.RiverFromTo,
@@ -501,7 +504,7 @@ class MapEditorEditUnitsTab(
     init {
         top()
         defaults().pad(4f * com.unciv.ui.screens.mapeditorscreen.MapEditorStyle.unit).left()
-        add("Work in progress".toLabel(Color.FIREBRICK, 24))
+        add("Work in progress".toLabel(Color.FIREBRICK, UiTypography.size(TextRole.PageTitle, legacySize = 24)))
     }
 
     override fun isDisabled() = true

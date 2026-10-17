@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.math.Interpolation
@@ -302,7 +304,7 @@ class VictoryScreenIllustrations(
     }
 
     private fun getWonOrLostStack(image: Image?, text: String?, color: Color): List<Actor> {
-        val label = text?.toLabel(color, 24, Align.bottom)?.apply { wrap = true }
+        val label = text?.toLabel(color, UiTypography.size(TextRole.PageTitle, legacySize = 24), Align.bottom)?.apply { wrap = true }
         return listOfNotNull(image, label)
     }
 

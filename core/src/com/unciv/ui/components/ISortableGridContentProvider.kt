@@ -1,5 +1,6 @@
 package com.unciv.ui.components
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
@@ -70,7 +71,7 @@ interface ISortableGridContentProvider<IT, ACT> {
      * - [actionContext] can be used to define `onClick` actions.
      */
     fun getEntryActor(item: IT, iconSize: Float, actionContext: ACT): Actor? =
-        getEntryValue(item).toLabel().apply { setAlignment(Align.center) }
+        getEntryValue(item).toLabel(TextRole.CompactData).apply { setAlignment(Align.center) }
 
     /** Factory for totals cell [Actor]
      * - By default displays the sum over [getEntryValue].
@@ -80,7 +81,7 @@ interface ISortableGridContentProvider<IT, ACT> {
      *   the total empty override to return `null`.
      */
     fun getTotalsActor(items: Iterable<IT>): Actor? =
-        items.sumOf { getEntryValue(it) }.toLabel().apply { setAlignment(Align.center) }
+        items.sumOf { getEntryValue(it) }.toLabel(TextRole.CompactData).apply { setAlignment(Align.center) }
 
     companion object {
         val collator by lazy {UncivGame.Current.settings.getCollatorFromLocale()}
@@ -93,6 +94,6 @@ interface ISortableGridContentProvider<IT, ACT> {
 
         @JvmStatic
         fun Int.toCenteredLabel(): Label =
-            this.toLabel().apply { setAlignment(Align.center) }
+            this.toLabel(TextRole.CompactData).apply { setAlignment(Align.center) }
     }
 }

@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.cityscreen
 
+import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.fonts.UiTypography
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.Constants
@@ -49,7 +51,7 @@ class BuyButtonFactory(val cityScreen: CityScreen) {
             return null
 
         val cityView = cityScreen.cityView
-        val button = "".toTextButton().apply { name = "ui-buy:${stat.name}:${construction.name}" }
+        val button = "".toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply { name = "ui-buy:${stat.name}:${construction.name}" }
 
         if (!isConstructionPurchaseShown(construction, stat)) {
             // This can't ever be bought with the given currency.
@@ -137,7 +139,7 @@ class BuyButtonFactory(val cityScreen: CityScreen) {
                 fun Religion?.getName() = this?.getReligionDisplayName() ?: Constants.unknownCityName
                 addGoodSizedLabel("You are buying a religious unit in a city that doesn't follow the religion you founded ([${yourReligion.getName()}]). " +
                     "This means that the unit is tied to that foreign religion ([${majorityReligion.getName()}]) and will be less useful.").row()
-                addGoodSizedLabel("Are you really sure you want to purchase this unit?", Constants.headingFontSize).run {
+                addGoodSizedLabel("Are you really sure you want to purchase this unit?",UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize)).run {
                     actor.color = Color.FIREBRICK
                     padBottom(10f)
                     row()

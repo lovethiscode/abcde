@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.screens.overviewscreen.OverviewUi as U
 import com.unciv.ui.screens.overviewscreen.OverviewUi.pt
 import com.badlogic.gdx.graphics.Color
@@ -44,7 +45,7 @@ class VictoryScreenCharts internal constructor(
     }
 
     private var lineChart = LineChart(viewingCiv, state != null)
-    private val chartContext = if (state == null) null else U.plainLabel("", 12, U.muted).apply { wrap = true }
+    private val chartContext = if (state == null) null else U.plainLabel("", TextRole.Supporting, U.muted).apply { wrap = true }
 
     /** if it is negative - no zoom, if positive - zoom at turn X */
     private var zoomAtX : IntRange? = state?.chartZoom
@@ -62,7 +63,7 @@ class VictoryScreenCharts internal constructor(
         } else {
             styleVictorySelect(rankingTypeSelect)
             val toolbar = Table().apply {
-                add(U.plainLabel("Charts", 14, U.muted)).padRight(pt(12f))
+                add(U.plainLabel("Charts", TextRole.Supporting, U.muted)).padRight(pt(12f))
                 add(rankingTypeSelect).height(U.touch).minWidth(pt(160f))
                 add().growX()
             }
@@ -72,7 +73,7 @@ class VictoryScreenCharts internal constructor(
                 pad(pt(12f))
                 add(lineChart).grow().minWidth(0f).minHeight(0f).row()
                 val reset = U.button(flat = true) { zoomAtX = null; update() }.apply {
-                    add(U.plainLabel("Reset zoom", 12, U.accent)); name = "victory-chart-reset"
+                    add(U.plainLabel("Reset zoom", TextRole.Supporting, U.accent)); name = "victory-chart-reset"
                 }
                 add(Table().apply {
                     add(chartContext).growX().minWidth(0f).left().padRight(pt(8f))
@@ -131,7 +132,7 @@ class VictoryScreenCharts internal constructor(
                     add(victoryCivIdentity(civEntry.civ, viewingCiv)).growX().minWidth(0f)
                     val value = if (civEntry.civ.isDefeated() || !victoryCivKnown(civEntry.civ, viewingCiv)) "—"
                         else civEntry.value.toString()
-                    add(U.plainLabel(value, 12, U.muted)).right().padLeft(pt(8f))
+                    add(U.plainLabel(value, TextRole.Supporting, U.muted)).right().padLeft(pt(8f))
                     pad(pt(8f))
                 }
                 civButtonsTable.add(button).width(pt(if (compact) 150f else 166f)).minHeight(U.touch).padBottom(pt(5f))

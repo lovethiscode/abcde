@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.multiplayerscreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.ui.Image
@@ -14,7 +16,6 @@ import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
 import kotlin.math.atan2
-import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /** Approved multiplayer layout using the shared iOS surface palette. */
@@ -35,7 +36,7 @@ internal class MultiplayerScreenStyle(val unit: Float) {
     val danger = Color.valueOf("ffc2c1")
     val dangerSurface = Color.valueOf("553b46")
     fun px(value: Float) = value * unit
-    fun font(value: Int) = (value * unit).roundToInt().coerceAtLeast(1)
+    fun font(value: TextRole) = UiTypography.size(value, unit)
     fun surface(color: Color, radius: Float = 10f): Drawable {
         val dot = ImageGetter.getWhiteDotDrawable().tint(color)
         val circle = ImageGetter.getCircleDrawable().tint(color)
@@ -77,7 +78,7 @@ internal class MultiplayerScreenStyle(val unit: Float) {
         }
 
     fun decorate(button: TextButton, icon: MultiplayerIcon? = null, primary: Boolean = false,
-                 outlined: Boolean = false, ghost: Boolean = false, fontSize: Int = 14): TextButton {
+                 outlined: Boolean = false, ghost: Boolean = false, fontSize: TextRole = TextRole.Control): TextButton {
         button.style = buttonStyle(primary, outlined, ghost)
         button.label.setFontSize(font(fontSize))
         button.label.setEllipsis(true)
@@ -89,7 +90,7 @@ internal class MultiplayerScreenStyle(val unit: Float) {
     }
 
     fun button(caption: String, icon: MultiplayerIcon? = null, primary: Boolean = false,
-               outlined: Boolean = false, ghost: Boolean = false, fontSize: Int = 14) =
+               outlined: Boolean = false, ghost: Boolean = false, fontSize: TextRole = TextRole.Control) =
         decorate(TextButton(caption.tr(), buttonStyle()), icon, primary, outlined, ghost, fontSize)
 
     fun image(icon: MultiplayerIcon, tint: Color = text) = Image(object : BaseDrawable() {

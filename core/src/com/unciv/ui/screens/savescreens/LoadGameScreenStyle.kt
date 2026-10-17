@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.savescreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.ui.Image
@@ -16,7 +18,6 @@ import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
 import kotlin.math.atan2
-import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /** Page-local realization of approved prototype A, expressed in safe-area points. */
@@ -32,8 +33,8 @@ internal class LoadGameScreenStyle(val unit: Float) {
     val ink = ExpeditionBlueTheme.color(Color.BLACK, ExpeditionBlueTheme.primaryInk)
     val danger = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
     fun px(value: Float) = unit * value
-    fun font(value: Int) = (value * unit).roundToInt().coerceAtLeast(1)
-    fun label(value: String, size: Int = 14, color: Color = text, wrap: Boolean = false): Label =
+    fun font(value: TextRole) = UiTypography.size(value, unit)
+    fun label(value: String, size: TextRole = TextRole.Body, color: Color = text, wrap: Boolean = false): Label =
         value.toLabel(color, font(size)).apply { this.wrap = wrap }
 
     fun surface(color: Color, radius: Float = 12f): Drawable {
@@ -68,7 +69,7 @@ internal class LoadGameScreenStyle(val unit: Float) {
             downFontColor = fontColor; overFontColor = fontColor; checkedFontColor = gold; disabledFontColor = muted
         }
     fun decorate(button: TextButton, icon: SaveIcon? = null, primary: Boolean = false,
-                 outline: Boolean = false, ghost: Boolean = false, size: Int = 14, tint: Color? = null): TextButton {
+                 outline: Boolean = false, ghost: Boolean = false, size: TextRole = TextRole.Control, tint: Color? = null): TextButton {
         button.style = buttonStyle(primary, outline, ghost)
         button.touchable = Touchable.enabled
         tint?.let { button.style.fontColor = it; button.style.downFontColor = it; button.style.overFontColor = it }
@@ -79,7 +80,7 @@ internal class LoadGameScreenStyle(val unit: Float) {
         return button
     }
     fun button(value: String, icon: SaveIcon? = null, primary: Boolean = false,
-               outline: Boolean = false, ghost: Boolean = false, size: Int = 14) =
+               outline: Boolean = false, ghost: Boolean = false, size: TextRole = TextRole.Control) =
         decorate(TextButton(value.tr(), buttonStyle()), icon, primary, outline, ghost, size)
 
     fun checkboxStyle() = CheckBox.CheckBoxStyle(BaseScreen.skin.get(CheckBox.CheckBoxStyle::class.java)).apply {

@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.savescreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox
@@ -52,8 +55,8 @@ abstract class LoadOrSaveScreen(
     protected val savesScrollPane = VerticalFileListScrollPane(buttonFontSize = saveButtonFontSize)
     protected val rightSideTable = Table()
     protected val deleteSaveButton = "Delete save".toTextButton(skin.get("negative", TextButton.TextButtonStyle::class.java))
-    protected val showAutosavesCheckbox = CheckBox("Show autosaves".tr(), skin)
-    protected val errorLabel = "".toLabel(Color.RED, alignment = Align.center)
+    protected val showAutosavesCheckbox = CheckBox("Show autosaves".tr(), skin).apply { label.setFontSize(UiTypography.size(TextRole.Control)) }
+    protected val errorLabel = "".toLabel(fontColor = Color.RED, alignment = Align.center, role = TextRole.Body)
 
     companion object : Helpers {
         internal const val saveToClipboardErrorMessage = "Could not save game to clipboard!"
@@ -80,7 +83,7 @@ abstract class LoadOrSaveScreen(
         deleteSaveButton.addTooltip(KeyCharAndCode.DEL)
 
         if (fileListHeaderText != null)
-            topTable.add(fileListHeaderText.toLabel()).pad(10f).row()
+            topTable.add(fileListHeaderText.toLabel(TextRole.Body)).pad(10f).row()
 
         updateShownSaves(showAutosavesCheckbox.isChecked)
 

@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.civilopediascreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.widgets.UiNavigation
@@ -252,7 +254,7 @@ class CivilopediaScreen(
                 else
                     entryButton.add(entry.image).padLeft(10f)
             entryButton.left().add(entry.name
-                .toLabel(Color.WHITE, 25, hideIcons = true)).pad(10f)
+                .toLabel(Color.WHITE, UiTypography.size(TextRole.PageTitle, legacySize = 25), hideIcons = true)).pad(10f)
             entryButton.onClick { selectEntry(entry) }
             entryButton.name = entry.name               // make button findable
 
@@ -355,7 +357,7 @@ class CivilopediaScreen(
         for ((categoryKey, entries) in categoryToEntries) {
             if (entries.isEmpty()) continue
             val icon = if (categoryKey.headerIcon.isNotEmpty()) ImageGetter.getImage(categoryKey.headerIcon) else null
-            val button = IconTextButton(categoryKey.label, icon)
+            val button = IconTextButton(categoryKey.label, icon, labelFontSize = UiTypography.size(TextRole.Control))
             button.onActivation(binding = categoryKey.binding) { selectCategory(categoryKey) }
             val cell = buttonTable.add(button)
             categoryToButtons[categoryKey] = CategoryButtonInfo(button, currentX, cell.prefWidth)

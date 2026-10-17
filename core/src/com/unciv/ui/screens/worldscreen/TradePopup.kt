@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.UncivGame
@@ -50,10 +51,10 @@ class TradePopup(worldScreen: WorldScreen) : Popup(worldScreen) {
         addSeparator()
 
         val tradeOffersTable = Table().apply { defaults().pad(10f) }
-        tradeOffersTable.add("[${nation.name}]'s trade offer".toLabel())
+        tradeOffersTable.add("[${nation.name}]'s trade offer".toLabel(TextRole.Body))
         // empty column to separate offers columns better
         tradeOffersTable.add().pad(0f, 15f)
-        tradeOffersTable.add("Our trade offer".toLabel())
+        tradeOffersTable.add("Our trade offer".toLabel(TextRole.Body))
         tradeOffersTable.row()
 
         
@@ -67,10 +68,10 @@ class TradePopup(worldScreen: WorldScreen) : Popup(worldScreen) {
 
         for (i in 0..max(trade.theirOffers.lastIndex, trade.ourOffers.lastIndex)) {
             if (trade.theirOffers.lastIndex < i) tradeOffersTable.add()
-            else tradeOffersTable.add(getOfferText(trade.theirOffers[i]).toLabel())
+            else tradeOffersTable.add(getOfferText(trade.theirOffers[i]).toLabel(TextRole.Body))
             tradeOffersTable.add()
             if (trade.ourOffers.lastIndex < i) tradeOffersTable.add()
-            else tradeOffersTable.add(getOfferText(trade.ourOffers[i]).toLabel())
+            else tradeOffersTable.add(getOfferText(trade.ourOffers[i]).toLabel(TextRole.Body))
             tradeOffersTable.row()
         }
         tradeOffersTable.pack()

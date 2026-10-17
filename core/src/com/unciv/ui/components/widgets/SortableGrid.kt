@@ -1,6 +1,7 @@
 @file:Suppress("MemberVisibilityCanBePrivate") // A generic Widget has public members not necessarily used elsewhere
 package com.unciv.ui.components.widgets
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -146,8 +147,8 @@ class SortableGrid<IT, ACT, CT: ISortableGridContentProvider<IT, ACT>> (
     private fun initHeader() {
         // Note: These will scale with GameSettings.fontSizeMultiplier - could be *partly* countered
         // with `toLabel(fontSize = (Constants.defaultFontSize / GUI.getSettings().fontSizeMultiplier).toInt())`
-        sortSymbols[false] = Fonts.sortUpArrow.toString().toLabel()
-        sortSymbols[true] = Fonts.sortDownArrow.toString().toLabel()
+        sortSymbols[false] = Fonts.sortUpArrow.toString().toLabel(TextRole.CompactData)
+        sortSymbols[true] = Fonts.sortDownArrow.toString().toLabel(TextRole.CompactData)
 
         for (column in columns) {
             if (!column.isVisible(viewingPlayer)) continue

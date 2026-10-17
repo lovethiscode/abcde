@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.newgamescreen
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -22,7 +24,7 @@ class FriendTable(val friend: FriendList.Friend, width: Float, minHeight: Float)
 
         val titleText = friend.name
         val friendDisplayNameMaxWidth = internalWidth - 70f // for the friend indicator with padding
-        val friendDisplayLabel = WrappableLabel(titleText, friendDisplayNameMaxWidth, innerColor, Constants.headingFontSize)
+        val friendDisplayLabel = WrappableLabel(titleText, friendDisplayNameMaxWidth, innerColor,UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize))
         if (friendDisplayLabel.prefWidth > friendDisplayNameMaxWidth - 2f) {
             friendDisplayLabel.wrap = true
             titleTable.add(friendDisplayLabel).width(friendDisplayNameMaxWidth)

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.utils.Align
@@ -51,7 +52,7 @@ enum class CityOverviewTabColumn : ISortableGridContentProvider<City, EmpireOver
                 .onClick {
                     actionContext.game.pushScreen{ CityScreen(GUI.getWorldScreen().selectedGameView.getCityView(item)) }
                 }
-        override fun getTotalsActor(items: Iterable<City>) = "{Total} ${items.count()}".toLabel()
+        override fun getTotalsActor(items: Iterable<City>) = "{Total} ${items.count()}".toLabel(TextRole.Body)
     },
 
     Status {
@@ -100,7 +101,7 @@ enum class CityOverviewTabColumn : ISortableGridContentProvider<City, EmpireOver
                 getCircledIcon("OtherIcons/Settings", iconSize)
         override fun getEntryValue(item: City) = 0
         override fun getEntryActor(item: City, iconSize: Float, actionContext: EmpireOverviewScreen) =
-            getCityProductionText(item).toLabel()
+            getCityProductionText(item).toLabel(TextRole.Body)
         override fun getTotalsActor(items: Iterable<City>) = null  // an intended empty space
     },
 
@@ -179,7 +180,7 @@ enum class CityOverviewTabColumn : ISortableGridContentProvider<City, EmpireOver
         override fun getHeaderActor(iconSize: Float) = getCircledIcon("BuildingIcons/Walls", iconSize)
         override fun getEntryValue(item: City) = CityCombatant(item).getDefendingStrength()
         override fun getEntryActor(item: City, iconSize: Float, actionContext: EmpireOverviewScreen) =
-            "${getEntryValue(item)}/${item.getMaxHealth()}".toLabel()
+            "${getEntryValue(item)}/${item.getMaxHealth()}".toLabel(TextRole.Body)
         override fun getTotalsActor(items: Iterable<City>) = null  // an intended empty space
     },
 
@@ -204,7 +205,7 @@ enum class CityOverviewTabColumn : ISortableGridContentProvider<City, EmpireOver
             val faithfulCitiesCount = items.count { city->
                 city.religion.getMajorityReligion() == ourReligion
             }
-            return faithfulCitiesCount.toLabel()
+            return faithfulCitiesCount.toLabel(TextRole.Body)
         }
     },
     ;

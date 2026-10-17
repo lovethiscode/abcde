@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.endless
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.logic.challenges.ChallengeTelemetry
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -45,8 +47,8 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
         root.clearChildren()
         val header = Table().apply {
             add(UiNavigation.backButton().apply { onActivation { game.popScreen() } }).minHeight(UiNavigation.minimumTouchSize())
-            add("Defense hall".toLabel(Theme.gold, 28)).expandX().left().padLeft(14f)
-            add("Standard".toLabel(Theme.muted, 17)).right().padRight(10f)
+            add("Defense hall".toLabel(Theme.gold, UiTypography.size(TextRole.PageTitle, legacySize = 28))).expandX().left().padLeft(14f)
+            add("Standard".toLabel(Theme.muted, UiTypography.size(TextRole.Body, legacySize = 17))).right().padRight(10f)
         }
         root.add(header).growX().pad(12f, 18f, 10f, 18f).row()
         try {
@@ -61,16 +63,16 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
             val statusWidth = if (wide) width - mapWidth - 18f else width
             val content = Table().apply { top(); defaults().left() }
             val mapPanel = panel(mapWidth).apply {
-                text("Border Bastion", mapWidth - 36f, Theme.gold, 25)
+                text("Border Bastion", mapWidth - 36f, Theme.gold, TextRole.PageTitle)
                 text("Five waves per stage. Clear the stage before its deadline; queued enemies do not extend it.", mapWidth - 36f, Theme.muted)
                 val height = (mapWidth * .60f).coerceIn(200f, 380f)
                 add(mapPreview(scene, mapWidth - 36f, height)).size(mapWidth - 36f, height).padTop(10f).row()
-                text("Explored terrain · enemy units remain under fog of war", mapWidth - 36f, Theme.muted, 14)
-                text("Up to 3 cities. Clear stages 2 and 4 to unlock city slots; side cities are destroyed when captured.", mapWidth - 36f, Theme.text, 16)
+                text("Explored terrain · enemy units remain under fog of war", mapWidth - 36f, Theme.muted, TextRole.Supporting)
+                text("Up to 3 cities. Clear stages 2 and 4 to unlock city slots; side cities are destroyed when captured.", mapWidth - 36f, Theme.text, TextRole.Control)
             }
             val status = panel(statusWidth).apply {
                 val inner = statusWidth - 36f
-                text(if (state?.ended == false) "Current defense" else "Ready the garrison", inner, Theme.gold, 24)
+                text(if (state?.ended == false) "Current defense" else "Ready the garrison", inner, Theme.gold, TextRole.PageTitle)
                 if (state == null) {
                     text("No active defense. Your first record starts here.", inner, Theme.muted)
                     text("Population [4] · [160] Gold · [4] military units", inner)
@@ -78,7 +80,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                 } else {
                     text(if (state.stageState == null) "Legacy rules".tr() + " · " + endlessStatus(state).tr() else endlessStatus(state), inner)
                     text("Completed [${state.completedRounds}] rounds · cleared [${state.clearedWaves}] waves", inner)
-                    if (!compatible) text("This endless save needs a compatibility update. Your save and records have been kept.", inner, Theme.danger, 16)
+                    if (!compatible) text("This endless save needs a compatibility update. Your save and records have been kept.", inner, Theme.danger, TextRole.Control)
                     if (state.ended) text(if (state.stageState?.endReason == "StageTimeout") "The stage deadline was missed." else if (state.status == "Defeated") "The bastion has fallen." else if (state.status == "Quit") "Defense ended voluntarily." else "Defense paused by a rules error.", inner, Theme.muted)
                 }
                 if (state?.ended == false && compatible) {
@@ -95,7 +97,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                 if (game.endlessSharingAvailable) state?.let(EndlessShareData::fromState)?.let { data ->
                     action("Share defense", "ui-endless-share-current", inner, false) { game.showEndlessShare(data) }
                 }
-                text("Saved on this device", inner, Theme.muted, 14)
+                text("Saved on this device", inner, Theme.muted, TextRole.Supporting)
             }
             val hero = Table().apply {
                 add(mapPanel).width(mapWidth).top()
@@ -104,7 +106,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
             }
             content.add(hero).width(width).row()
             content.add(panel(width).apply {
-                text("Defense records", width - 36f, Theme.gold, 23)
+                text("Defense records", width - 36f, Theme.gold, TextRole.PageTitle)
                 for (option in listOf("casual","wild")) {
                     val title = (if (option == "casual") "Casual" else "Wild").tr() + if (option == recordsPace) " ✓" else ""
                     action(title,"ui-endless-records-pace:$option",width - 36f,option == recordsPace) { recordsPace = option; build() }
@@ -115,9 +117,9 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                     addAll(records.best.keys.sorted()); addAll(records.recent.map { it.key })
                 }
                 for (key in keys.filter { !newRules || it.split(':').getOrNull(4) == recordsPace }) {
-                    text(if (newRules) if (key.split(':').getOrNull(4) == "wild") "Wild" else "Casual" else "Legacy rules", width - 36f, Theme.gold, 17)
+                    text(if (newRules) if (key.split(':').getOrNull(4) == "wild") "Wild" else "Casual" else "Legacy rules", width - 36f, Theme.gold, TextRole.Body)
                     val version = key.split(':')
-                    text("Map [${version.getOrNull(if (newRules) 2 else 1) ?: "?"}] · rules [${version.getOrNull(if (newRules) 5 else 3) ?: "?"}] · scoring [${version.getOrNull(if (newRules) 6 else 4) ?: "?"}]", width - 36f, Theme.muted, 13)
+                    text("Map [${version.getOrNull(if (newRules) 2 else 1) ?: "?"}] · rules [${version.getOrNull(if (newRules) 5 else 3) ?: "?"}] · scoring [${version.getOrNull(if (newRules) 6 else 4) ?: "?"}]", width - 36f, Theme.muted, TextRole.Supporting)
                     val best = records.best[key]
                     text(if (best == null) "No record yet. Hold the bastion to set your best." else if (newRules)
                         "Best result".tr() + ": " + "[${best.stages}] stages · [${best.partialWaves}] waves · [${best.combatRounds}] combat rounds".tr() else
@@ -127,7 +129,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                     }
                     for (record in records.recent.filter { it.key == key }) {
                         text(if (newRules) "[${record.stages}] stages · [${record.partialWaves}] waves · [${record.combatRounds}] combat rounds" else
-                            "[${record.rounds}] rounds · [${record.waves}] waves · [${record.kills}] kills · [${if (record.status == "Quit") "Ended voluntarily".tr() else "Defeated".tr()}]", width - 36f, Theme.muted, 15)
+                            "[${record.rounds}] rounds · [${record.waves}] waves · [${record.kills}] kills · [${if (record.status == "Quit") "Ended voluntarily".tr() else "Defeated".tr()}]", width - 36f, Theme.muted, TextRole.Control)
                         if (game.endlessSharingAvailable) EndlessShareData.fromRecord(record)?.let { data ->
                             action("Share defense", "ui-endless-share-record:${record.attemptId}", width - 36f, false) { game.showEndlessShare(data) }
                         }
@@ -136,19 +138,19 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                 }
             }).width(width).padTop(16f).row()
             content.add(panel(width).apply {
-                text("Prepare · defend · resupply", width - 36f, Theme.gold, 23)
+                text("Prepare · defend · resupply", width - 36f, Theme.gold, TextRole.PageTitle)
                 text("Five waves per stage. Clear the stage before its deadline; queued enemies do not extend it.", width - 36f)
                 text("Casual: 3 full rest rounds; Gold, repairs or reinforcement.", width - 36f)
                 text("Wild: no rest; Gold or reinforcement.", width - 36f)
                 text("Core loss or a missed deadline ends the defense. Scores compare stages, waves and completed-stage combat time.", width - 36f)
-                text("Starting garrison: 2 Spearmen, 2 Archers and 1 Worker. Palace, Granary and Monument are already built.", width - 36f, Theme.muted, 16)
-                text("Up to 3 cities. Clear stages 2 and 4 to unlock city slots; side cities are destroyed when captured.", width - 36f, Theme.muted, 14)
+                text("Starting garrison: 2 Spearmen, 2 Archers and 1 Worker. Palace, Granary and Monument are already built.", width - 36f, Theme.muted, TextRole.Control)
+                text("Up to 3 cities. Clear stages 2 and 4 to unlock city slots; side cities are destroyed when captured.", width - 36f, Theme.muted, TextRole.Supporting)
             }).width(width).padTop(16f).row()
             root.add(AutoScrollPane(content).apply { name = "ui-endless-hall-scroll"; setScrollingDisabled(true, false) })
                 .grow().minHeight(0f).pad(0f, 22f, 14f, 22f)
         } catch (ex: Exception) {
             com.unciv.utils.Log.error("Cannot read endless hall", ex)
-            root.add("Could not read the endless save. Existing files have been kept.".toLabel(Theme.danger).apply { wrap = true })
+            root.add("Could not read the endless save. Existing files have been kept.".toLabel(fontColor = Theme.danger, role = TextRole.Body).apply { wrap = true })
                 .width(stage.width - 60f).pad(20f)
         }
     }
@@ -176,13 +178,13 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
         this.width = width
     }
 
-    private fun Table.text(value: String, width: Float, color: Color = Theme.text, size: Int = 18) {
-        add(value.toLabel(color, size).apply { wrap = true }).width(width).left().row()
+    private fun Table.text(value: String, width: Float, color: Color = Theme.text, size: TextRole = TextRole.Body) {
+        add(value.toLabel(size, color).apply { wrap = true }).width(width).left().row()
     }
 
     private fun Table.action(value: String, id: String, width: Float, primary: Boolean = false, action: () -> Unit): TextButton {
         val button = value.toTextButton().apply {
-            name = id; label.setFontSize(20)
+            name = id; label.setFontSize(UiTypography.size(TextRole.Control, legacySize = 20))
             if (primary) style = TextButton.TextButtonStyle(style).apply {
                 up = ImageGetter.getWhiteDotDrawable().tint(Theme.gold)
                 down = ImageGetter.getWhiteDotDrawable().tint(Theme.muted)

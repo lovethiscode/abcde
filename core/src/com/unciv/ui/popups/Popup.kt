@@ -1,5 +1,7 @@
 package com.unciv.ui.popups
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Rectangle
@@ -357,7 +359,7 @@ open class Popup(
      * @param text The caption text.
      * @param size The font size for the label.
      */
-    fun addGoodSizedLabel(text: String, size: Int = Constants.defaultFontSize, hideIcons:Boolean = false, color: Color = Color.WHITE): Cell<Label> {
+    fun addGoodSizedLabel(text: String, size: Int = UiTypography.size(TextRole.Body), hideIcons:Boolean = false, color: Color = Color.WHITE): Cell<Label> {
         val label = text.toLabel(fontSize = size, hideIcons = hideIcons, fontColor = color)
         label.wrap = true
         label.setAlignment(Align.center)

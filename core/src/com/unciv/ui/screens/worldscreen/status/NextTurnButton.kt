@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen.status
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
@@ -28,7 +30,7 @@ import yairm210.purity.annotations.Readonly
 
 class NextTurnButton(
     private val worldScreen: WorldScreen
-) : IconTextButton("", null, 30) {
+) : IconTextButton("", null, 30, labelFontSize = UiTypography.size(TextRole.Control)) {
     private var nextTurnAction = Default
     val currentAction: NextTurnAction get() = nextTurnAction
     private val unitsDueLabel = Label("", BaseScreen.skin)
@@ -101,8 +103,8 @@ class NextTurnButton(
 
     internal fun fitBattlefield(targetWidth: Float) {
         BattlefieldGeometry.fitControl(this, primary = nextTurnAction == NextTurnAction.NextTurn && isEnabled)
-        label.setFontSize(BattlefieldHud.font(14f))
-        unitsDueLabel.setFontSize(BattlefieldHud.font(11f))
+        label.setFontSize(BattlefieldHud.font(TextRole.Control))
+        unitsDueLabel.setFontSize(BattlefieldHud.font(TextRole.CompactData))
         label.wrap = true
         labelCell.minWidth(0f).growX()
         iconCell.size(BattlefieldHud.points(20f)).padRight(BattlefieldHud.points(5f))

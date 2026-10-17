@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.modmanager
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
@@ -103,12 +105,12 @@ class ModManagementScreen private constructor(
     private val discoverButton = ModManagementStyle.button("Discover mods")
     private val installedButton = ModManagementStyle.button("Installed")
     private val detailsBackButton = ModManagementStyle.button("Back to mod list")
-    private val modDescriptionLabel = ModManagementStyle.label("", 20, ModManagementStyle.muted)
-    private val actionHint = ModManagementStyle.label("", 18, ModManagementStyle.muted)
+    private val modDescriptionLabel = ModManagementStyle.label("", TextRole.SectionTitle, ModManagementStyle.muted)
+    private val actionHint = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
     private val detailWidth = if (singleColumn) stage.width - 32f else (stage.width - 48f) * 0.54f
     private val listWidth = if (singleColumn) stage.width - 32f else stage.width - 48f - detailWidth
-    private val countLabel = ModManagementStyle.label("", 18, ModManagementStyle.muted)
-    private val sourceLabel = ModManagementStyle.label("", 18, ModManagementStyle.muted)
+    private val countLabel = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
+    private val sourceLabel = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
     private val sortHolder = Table()
     private val queryStatus = Table()
     private var onlineLoading = false
@@ -197,7 +199,7 @@ class ModManagementScreen private constructor(
 
     private fun initLayout() {
         val header = Table()
-        val title = "Mods".toLabel(ModManagementStyle.text, fontSize = 28)
+        val title = "Mods".toLabel(ModManagementStyle.text, fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 28))
         val addButton = ModManagementStyle.button("Add mods")
         addButton.label.wrap = false
         addButton.add(ModIcon.Plus.image(ModManagementStyle.text)).size(24f).padLeft(8f)
@@ -263,7 +265,7 @@ class ModManagementScreen private constructor(
         actionFooter.add(rightSideButton).growX().minWidth(0f).minHeight(ModManagementStyle.touchHeight).row()
         actionFooter.add(actionHint).growX().minWidth(0f).padTop(8f)
         detailPane.add(actionFooter).growX().padTop(12f)
-        modActionTable.add(ModManagementStyle.label("Select a mod to view its details", 22, ModManagementStyle.muted))
+        modActionTable.add(ModManagementStyle.label("Select a mod to view its details", TextRole.SectionTitle, ModManagementStyle.muted))
             .width(detailWidth - 40f).padTop(30f)
         refreshBody()
     }
@@ -314,7 +316,7 @@ class ModManagementScreen private constructor(
             rightSideButton.isVisible = false
             actionHint.setText("")
             modActionTable.clear()
-            modActionTable.add(ModManagementStyle.label("Select a mod to view its details", 22, ModManagementStyle.muted))
+            modActionTable.add(ModManagementStyle.label("Select a mod to view its details", TextRole.SectionTitle, ModManagementStyle.muted))
                 .width(detailWidth - 40f).padTop(30f)
             return
         }
@@ -345,7 +347,7 @@ class ModManagementScreen private constructor(
         sourceLabel.setText((if (showingInstalled) "Current mods" else "Downloadable mods").tr())
         queryStatus.clear()
         if (!showingInstalled && (onlineLoading || onlineFailed)) {
-            queryStatus.add(ModManagementStyle.label(if (onlineFailed) "Could not download mod list" else "Loading...", 18,
+            queryStatus.add(ModManagementStyle.label(if (onlineFailed) "Could not download mod list" else "Loading...", TextRole.Body,
                 if (onlineFailed) ModManagementStyle.danger else ModManagementStyle.muted)).growX().minWidth(0f)
             if (onlineFailed) {
                 val retry = ModManagementStyle.button("Retry")
@@ -359,7 +361,7 @@ class ModManagementScreen private constructor(
     private fun addEmptyState(table: Table) {
         if (onlineLoading && table === onlineModsTable) return
         val empty = Table().apply {
-            add(ModManagementStyle.label("No mods found", 24)).growX().minWidth(0f).padTop(32f).padBottom(16f).row()
+            add(ModManagementStyle.label("No mods found", TextRole.PageTitle)).growX().minWidth(0f).padTop(32f).padBottom(16f).row()
             val clear = ModManagementStyle.button("Clear filters")
             clear.onClick { optionsManager.clearFilter() }
             add(clear).width(minOf(220f * game.settings.fontSizeMultiplier, listWidth))
@@ -370,7 +372,7 @@ class ModManagementScreen private constructor(
 
     private fun openAddMods() {
         val popup = Popup(this)
-        popup.addTitleWithCloseButton("Add mods".toLabel(fontSize = 24))
+        popup.addTitleWithCloseButton("Add mods".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24)))
         val link = getDownloadFromUrlButton { popup.close() }.also {
             it.isEnabled = game.platformCapabilities.onlineModManagement
             ModManagementStyle.styleButton(it)
@@ -501,7 +503,7 @@ class ModManagementScreen private constructor(
     }
 
     private fun markOnlineQueryIncomplete() {
-        val retryLabel = ModManagementStyle.label("Online query result is incomplete", 20, ModManagementStyle.danger)
+        val retryLabel = ModManagementStyle.label("Online query result is incomplete", TextRole.SectionTitle, ModManagementStyle.danger)
         retryLabel.touchable = Touchable.enabled
         retryLabel.onClick {
             reloadOnlineMods()
@@ -622,25 +624,25 @@ class ModManagementScreen private constructor(
                 add(closeButton)
             }).row()
         }
-        popup.addGoodSizedLabel("Open this address on your computer:", size = 20).row()
+        popup.addGoodSizedLabel("Open this address on your computer:",size = UiTypography.size(TextRole.SectionTitle, legacySize = 20)).row()
         val rawLabelStyle = Label.LabelStyle(BaseScreen.skin.get(Label.LabelStyle::class.java)).apply {
             font = Fonts.font
         }
         val urlToken = "UNCIV_RECEIVER_URL_TOKEN"
         val codeToken = "UNCIV_ACCESS_CODE_TOKEN"
         popup.add(Label(receiver.uploadUrl, rawLabelStyle).apply {
-            setFontScale(18f / Fonts.ORIGINAL_FONT_SIZE)
+            setFontScale(UiTypography.size(TextRole.Supporting, legacySize = 18) / Fonts.ORIGINAL_FONT_SIZE)
             setAlignment(Align.center)
             wrap = true
         }).width(stage.width * 0.78f).row()
         val accessCodeLabel = "Access code: [$codeToken]".tr().replace(codeToken, receiver.accessCode)
         popup.add(Label(accessCodeLabel, rawLabelStyle).apply {
-            setFontScale(24f / Fonts.ORIGINAL_FONT_SIZE)
+            setFontScale(UiTypography.size(TextRole.SectionTitle) / Fonts.ORIGINAL_FONT_SIZE)
             setAlignment(Align.center)
             wrap = true
         }).width(stage.width / 2).row()
-        popup.addGoodSizedLabel("Keep the phone and computer on the same Wi-Fi network. Allow local network access if iOS asks.", size = 18).row()
-        popup.addGoodSizedLabel("The receiver stops after one upload or when you close this window.", size = 18).row()
+        popup.addGoodSizedLabel("Keep the phone and computer on the same Wi-Fi network. Allow local network access if iOS asks.",size = UiTypography.size(TextRole.Body, legacySize = 18)).row()
+        popup.addGoodSizedLabel("The receiver stops after one upload or when you close this window.",size = UiTypography.size(TextRole.Body, legacySize = 18)).row()
         popup.addButton("Copy address") {
             Gdx.app.clipboard.contents = receiver.uploadUrl
             ToastPopup("Address copied", this)
@@ -948,7 +950,7 @@ class ModManagementScreen private constructor(
 
         onlineModsTable.clear()
         if (!game.platformCapabilities.onlineModManagement) {
-            onlineModsTable.add(ONLINE_MOD_MANAGEMENT_UNAVAILABLE.toLabel(Color.GRAY)).row()
+            onlineModsTable.add(ONLINE_MOD_MANAGEMENT_UNAVAILABLE.toLabel(fontColor = Color.GRAY, role = TextRole.Body)).row()
             onlineModsTable.pack()
             scrollOnlineMods.actor = onlineModsTable
             return

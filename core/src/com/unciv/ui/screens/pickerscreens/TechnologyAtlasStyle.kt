@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -12,12 +14,11 @@ import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
-import kotlin.math.roundToInt
 import kotlin.math.ceil
 import kotlin.math.sqrt
 
 /** Screen-local tokens from the approved A technology atlas. No change to world-screen TechButton. */
-internal class TechnologyAtlasStyle(val unit: Float, val textScale: Float) {
+internal class TechnologyAtlasStyle(val unit: Float) {
     val background = ExpeditionBlueTheme.background
     val panel = ExpeditionBlueTheme.panel
     val raised = ExpeditionBlueTheme.raised
@@ -31,8 +32,8 @@ internal class TechnologyAtlasStyle(val unit: Float, val textScale: Float) {
     val line = Color.valueOf("557783")
     val quietLine = Color.valueOf("385965")
     fun u(value: Float) = value * unit
-    fun font(value: Int) = (value * unit * textScale).roundToInt().coerceAtLeast(1)
-    fun label(value: String, size: Int = 13, color: Color = text, wrap: Boolean = false): Label =
+    fun font(value: TextRole) = UiTypography.size(value, unit)
+    fun label(value: String, size: TextRole = TextRole.Body, color: Color = text, wrap: Boolean = false): Label =
         value.toLabel(color, font(size), hideIcons = true).apply { setWrap(wrap) }
 
     fun surface(color: Color, radius: Float = 10f): Drawable {
@@ -107,7 +108,7 @@ internal class TechnologyAtlasStyle(val unit: Float, val textScale: Float) {
             disabledFontColor = muted
         }
 
-    fun decorate(button: TextButton, primary: Boolean = false, outlined: Boolean = false, size: Int = 13): TextButton {
+    fun decorate(button: TextButton, primary: Boolean = false, outlined: Boolean = false, size: TextRole = TextRole.Control): TextButton {
         button.style = buttonStyle(primary, outlined)
         button.label.setFontSize(font(size))
         button.label.setEllipsis(true)
@@ -116,7 +117,7 @@ internal class TechnologyAtlasStyle(val unit: Float, val textScale: Float) {
         button.pad(u(7f), u(10f), u(7f), u(10f))
         return button
     }
-    fun button(text: String, primary: Boolean = false, outlined: Boolean = false, size: Int = 13) =
+    fun button(text: String, primary: Boolean = false, outlined: Boolean = false, size: TextRole = TextRole.Control) =
         decorate(TextButton(text.tr(hideIcons = true), buttonStyle()), primary, outlined, size)
 }
 

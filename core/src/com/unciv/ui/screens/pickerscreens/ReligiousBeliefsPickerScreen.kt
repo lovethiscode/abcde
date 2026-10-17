@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.pickerscreens
 
+import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.ui.Button
@@ -97,11 +98,11 @@ class ReligiousBeliefsPickerScreen (
     }
 
     private fun setupChoosableReligionIcons() {
-        val descriptionLabel = "Choose an Icon and name for your Religion".toLabel()
+        val descriptionLabel = "Choose an Icon and name for your Religion".toLabel(TextRole.Body)
 
         fun changeDisplayedReligionName(newReligionName: String) {
             displayName = newReligionName
-            rightSideButton.label = "Found [$newReligionName]".toLabel()
+            rightSideButton.label = "Found [$newReligionName]".toLabel(TextRole.Body)
             descriptionLabel.setText(newReligionName.tr())
         }
 
@@ -147,7 +148,7 @@ class ReligiousBeliefsPickerScreen (
         topReligionIcons.clear()
         religionName = currentReligion.name
         displayName = currentReligion.getReligionDisplayName()
-        val descriptionLabel = displayName!!.toLabel()
+        val descriptionLabel = displayName!!.toLabel(TextRole.Body)
         addIconsScroll { button, _ ->
             button.disable()
         }
