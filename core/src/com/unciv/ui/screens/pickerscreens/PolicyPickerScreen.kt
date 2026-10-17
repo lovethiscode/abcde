@@ -2,696 +2,655 @@ package com.unciv.ui.screens.pickerscreens
 
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
+
+import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.scenes.scene2d.Actor
-import com.badlogic.gdx.scenes.scene2d.Group
+import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.Touchable
-import com.badlogic.gdx.scenes.scene2d.ui.Cell
-import com.badlogic.gdx.scenes.scene2d.ui.Image
-import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.utils.Align
+import com.badlogic.gdx.utils.TimeUtils
+import com.unciv.logic.campaign.CivilWarCampaign
 import com.unciv.logic.civilization.Civilization
 import com.unciv.models.TutorialTrigger
 import com.unciv.models.UncivSound
 import com.unciv.models.ruleset.Policy
 import com.unciv.models.ruleset.Policy.PolicyBranchType
 import com.unciv.models.ruleset.PolicyBranch
+import com.unciv.models.ruleset.unique.GameContext
 import com.unciv.models.ruleset.unique.UniqueType
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.InputDisabling
-import com.unciv.ui.components.extensions.addSeparator
-import com.unciv.ui.components.extensions.center
-import com.unciv.ui.components.extensions.colorFromRGB
-import com.unciv.ui.components.extensions.disable
-import com.unciv.ui.components.extensions.enable
-import com.unciv.ui.components.extensions.pad
-import com.unciv.ui.components.extensions.toGroup
-import com.unciv.ui.components.extensions.toLabel
-import com.unciv.ui.components.input.KeyboardBinding
-import com.unciv.ui.components.input.keyShortcuts
-import com.unciv.ui.components.input.onActivation
-import com.unciv.ui.components.input.onClick
-import com.unciv.ui.components.input.onDoubleClick
-import com.unciv.ui.components.widgets.BorderedTable
-import com.unciv.ui.components.widgets.ColorMarkupLabel
+import com.unciv.ui.components.extensions.*
+import com.unciv.ui.components.input.*
+import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.components.widgets.UncivTextField
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.ConfirmPopup
+import com.unciv.ui.popups.Popup
+import com.unciv.ui.popups.ToastPopup
 import com.unciv.ui.screens.basescreen.BaseScreen
-import com.unciv.ui.screens.basescreen.RecreateOnResize
 import com.unciv.utils.Concurrency
-import yairm210.purity.annotations.Readonly
 import kotlin.math.abs
-import kotlin.math.ceil
 import kotlin.math.max
-import kotlin.math.min
 
-private enum class PolicyColors(
-    val default: Color
-) {
-    // The getUIColor comments are picked up by UiElementDocsWriter, the actual call is not.
-    ButtonBGPickable(colorFromRGB(32,46,64)),             // getUIColor("PolicyScreen/Colors/ButtonBGPickable", colorFromRGB(32,46,64))
-    ButtonBGPickableSelected(colorFromRGB(37,87,82)),     // getUIColor("PolicyScreen/Colors/ButtonBGPickableSelected", colorFromRGB(37,87,82))
-    ButtonBGNotPickable(colorFromRGB(20,20,20)),          // getUIColor("PolicyScreen/Colors/ButtonBGNotPickable", colorFromRGB(20,20,20))
-    ButtonBGNotPickableSelected(colorFromRGB(20,20,20)),  // getUIColor("PolicyScreen/Colors/ButtonBGNotPickableSelected", colorFromRGB(20,20,20))
-    ButtonBGAdopted(colorFromRGB(1,17,19)),               // getUIColor("PolicyScreen/Colors/ButtonBGAdopted", colorFromRGB(1,17,19))
-    ButtonBGAdoptedSelected(colorFromRGB(1,17,19)),       // getUIColor("PolicyScreen/Colors/ButtonBGAdoptedSelected", colorFromRGB(1,17,19))
-
-    ButtonIconPickable(Color.WHITE),                              // getUIColor("PolicyScreen/Colors/ButtonIconPickable", Color.WHITE)
-    ButtonIconPickableSelected(Color.WHITE),                      // getUIColor("PolicyScreen/Colors/ButtonIconPickableSelected", Color.WHITE)
-    ButtonIconNotPickable(Color.valueOf("ffffff33")),         // getUIColor("PolicyScreen/Colors/ButtonIconNotPickable", Color(0xffffff33))
-    ButtonIconNotPickableSelected(Color.valueOf("ffffff33")), // getUIColor("PolicyScreen/Colors/ButtonIconNotPickableSelected", Color(0xffffff33))
-    ButtonIconAdopted(Color.GOLD),                                // getUIColor("PolicyScreen/Colors/ButtonIconAdopted", Color.GOLD)
-    ButtonIconAdoptedSelected(Color.GOLD),                        // getUIColor("PolicyScreen/Colors/ButtonIconAdoptedSelected", Color.GOLD)
-
-    BranchBGCompleted(colorFromRGB(255,205,0)),           // getUIColor("PolicyScreen/Colors/BranchBGCompleted", colorFromRGB(255,205,0))
-    BranchBGNotAdopted(colorFromRGB(5,45,65)),            // getUIColor("PolicyScreen/Colors/BranchBGNotAdopted", colorFromRGB(5,45,65))
-    BranchBGAdopted(colorFromRGB(50,45,5)),               // getUIColor("PolicyScreen/Colors/BranchBGAdopted", colorFromRGB(50,45,5))
-
-    BranchHeaderBG(colorFromRGB(47,90,92)),               // getUIColor("PolicyScreen/Colors/BranchHeaderBG", colorFromRGB(47,90,92))
-
-    BranchLabelAdopted(colorFromRGB(150,70,40)),          // getUIColor("PolicyScreen/Colors/BranchLabelAdopted", colorFromRGB(150,70,40))
-    BranchLabelPickable(Color.WHITE),                              // getUIColor("PolicyScreen/Colors/BranchLabelPickable", Color.WHITE)
-    BranchLabelNotPickable(Color.valueOf("ffffff7f")),        // getUIColor("PolicyScreen/Colors/BranchLabelNotPickable", Color(0xffffff7f))
-
-    ;
-    val color get() = BaseScreen.skinStrings.getUIColor("PolicyScreen/Colors/$name", default)
-}
-
-@Readonly
-private fun Policy.isPickable(viewingCiv: Civilization, canChangeState: Boolean) =
-    viewingCiv.isCurrentPlayer()
-        && canChangeState
-        && !viewingCiv.isDefeated()
-        && !viewingCiv.policies.isAdopted(this.name)
-        && policyBranchType != PolicyBranchType.BranchComplete
-        && viewingCiv.policies.isAdoptable(this)
-        && viewingCiv.policies.canAdoptPolicy()
-
-private class PolicyButton(viewingCiv: Civilization, canChangeState: Boolean, val policy: Policy, size: Float = 30f) : BorderedTable(
-    path = "PolicyScreen/PolicyButton",
-    defaultBgBorder = BaseScreen.skinStrings.roundedEdgeRectangleSmallShape,
-    defaultBgShape = BaseScreen.skinStrings.roundedEdgeRectangleSmallShape,
-) {
-
-    val icon = ImageGetter.getImage("PolicyIcons/" + policy.name)
-
-    private val isPickable = policy.isPickable(viewingCiv, canChangeState)
-    private val isAdopted = viewingCiv.policies.isAdopted(policy.name)
-
-    var isSelected = false
-        set(value) {
-            field = value
-            updateState()
-        }
-
-    init {
-        name = "ui-policy:${policy.name}"
-        borderSize = 2f
-        icon.setSize(size*0.7f, size*0.7f)
-
-        addActor(icon)
-
-        updateState()
-        pack()
-        width = size
-        height = size
-
-        icon.toFront()
-        icon.center(this)
-    }
-
-    fun onClick(function: () -> Unit): PolicyButton {
-        (this as Actor).onClick {
-            function()
-            updateState()
-        }
-        return this
-    }
-
-    private fun updateState() {
-        val colors = when {
-            isSelected && isPickable ->
-                PolicyColors.ButtonBGPickableSelected to PolicyColors.ButtonIconPickableSelected
-            isPickable ->
-                PolicyColors.ButtonBGPickable to PolicyColors.ButtonIconPickable
-            isSelected && isAdopted ->
-                PolicyColors.ButtonBGAdoptedSelected to PolicyColors.ButtonIconAdoptedSelected
-            isAdopted ->
-                PolicyColors.ButtonBGAdopted to PolicyColors.ButtonIconAdopted
-            isSelected ->
-                PolicyColors.ButtonBGNotPickableSelected to PolicyColors.ButtonIconNotPickableSelected
-            else ->
-                PolicyColors.ButtonBGNotPickable to PolicyColors.ButtonIconNotPickable
-        }
-        bgColor = colors.first.color
-        icon.color = colors.second.color
-    }
-}
-
-
+/** C catalog + A contextual detail. Browsing never adopts a policy. */
 class PolicyPickerScreen(
     val viewingCiv: Civilization,
     val canChangeState: Boolean,
     select: String? = null
-) : PickerScreen(), RecreateOnResize {
+) : PickerScreen() {
+    private val ruleset = viewingCiv.gameInfo.ruleset
+    private val policies = viewingCiv.policies
+    private val branches = ruleset.policyBranches.values.toList()
+    private var appearance = PolicyCodexStyle(UiNavigation.minimumTouchSize() / 44f, 1f)
+    private var metrics = PolicyCodexLayout(stage.width / appearance.unit, stage.height / appearance.unit)
+    private var selected = ruleset.policies[select] ?: branches.asSequence()
+        .filter { policies.isAdopted(it.name) }
+        .flatMap { members(it).asSequence() }.firstOrNull { policies.isAdoptable(it) }
+        ?: branches.firstOrNull { policies.isAdoptable(it) } ?: branches.firstOrNull()
+    private val collapsed = mutableSetOf<String>().apply {
+        if (metrics.portrait && metrics.width <= 1000f) addAll(branches.map { it.name }.filter { it != selected?.branch?.name })
+    }
+    private val root = Table()
+    private val header = Table()
+    private val body = Table()
+    private val catalog = Table()
+    private val cards = linkedMapOf<String, Table>()
+    private val nodes = linkedMapOf<String, Table>()
+    private lateinit var catalogScroll: ScrollPane
+    private var detailScroll: ScrollPane? = null
+    private var overlayScroll: ScrollPane? = null
+    private var overlayLayer: Table? = null
+    private var overlay: String? = null
+    private var searchQuery = ""
+    private var initialized = false
+    private var busy = false
+    private var confirming = false
+    private var confirmation: ConfirmPopup? = null
+    private var lastFocus: Actor? = null
+    private var lastTappedPolicy: String? = null
+    private var lastPolicyTapNanos = 0L
 
-    object Sizes {
-        const val paddingVertical = 10f
-        const val paddingHorizontal = 20f
-        const val paddingBetweenHor = 10f
-        const val paddingBetweenVer = 20f
-        const val iconSize = 50f
+    override val screenClearColor: Color get() = appearance.background
+    override fun getCivilopediaRuleset() = ruleset
+    private fun u(value: Float) = appearance.u(value)
+    private fun label(text: String, size: Int = 13, color: Color = appearance.text, wrap: Boolean = false) =
+        appearance.label(text, size, color, wrap)
+    private fun members(branch: PolicyBranch) = branch.policies.filter { it.policyBranchType == PolicyBranchType.Member }
+    private fun reward(branch: PolicyBranch) = branch.policies.lastOrNull { it.policyBranchType == PolicyBranchType.BranchComplete }
+    private fun done(branch: PolicyBranch) = members(branch).count { policies.isAdopted(it.name) }
+    private fun readOnly() = !canChangeState || !viewingCiv.isCurrentPlayer() || viewingCiv.isDefeated() || viewingCiv.isSpectator()
+    private fun modeRestricted() = viewingCiv.gameInfo.endless != null || CivilWarCampaign.isActive(viewingCiv.gameInfo)
+    private fun pickable(policy: Policy) = !busy && !readOnly() && policy.policyBranchType != PolicyBranchType.BranchComplete &&
+        !policies.isAdopted(policy.name) && policies.isAdoptable(policy) && policies.canAdoptPolicy()
+
+    private fun action(caption: String, id: String, primary: Boolean = false, outlined: Boolean = false,
+                       block: () -> Unit): TextButton = appearance.button(caption, primary, outlined, size = UiTypography.size(TextRole.Control, unit = 1f, legacySize = 13)).apply {
+        name = id
+        onActivation { block() }
     }
 
-    private val policyNameToButton = HashMap<String, PolicyButton>()
-    private var selectedPolicyButton: PolicyButton? = null
+    private fun icon(policy: Policy, color: Color = appearance.text): Actor {
+        val path = if (policy.policyBranchType == PolicyBranchType.Member) "PolicyIcons/${policy.name}"
+            else "PolicyBranchIcons/${policy.branch.name}"
+        return ImageGetter.getImage(path).apply { this.color = color }
+    }
+
+    private fun verticalScroll(content: Actor, id: String) = ScrollPane(content, skin).apply {
+        name = id
+        setScrollingDisabled(true, false)
+        setOverscroll(false, false)
+        setFadeScrollBars(false)
+        style = ScrollPane.ScrollPaneStyle(style).apply {
+            vScroll = appearance.surface(appearance.deep, 0f).apply { minWidth = u(3f) }
+            vScrollKnob = appearance.surface(appearance.muted, 2f).apply { minWidth = u(3f); minHeight = u(24f) }
+        }
+    }
 
     init {
-        val branchToGroup = HashMap<String, BranchGroup>()
-
-        val policies = viewingCiv.policies
+        pickerPane.remove()
+        root.name = "policy-codex"
+        root.setFillParent(true)
+        // A detail sheet leaves the visible catalog interactive. Only a tap on its
+        // background dismisses it; scrolling and policy taps keep their own actions.
+        root.addListener(object : UncivActorGestureListener() {
+            override fun tap(event: InputEvent?, x: Float, y: Float, count: Int, button: Int) {
+                if (overlay != "details" || confirming || busy) return
+                var target = event?.target
+                while (target != null && target !== root) {
+                    if (target.name?.startsWith("ui-policy:") == true) return
+                    target = target.parent
+                }
+                closeOverlay()
+            }
+        })
+        stage.addActor(root)
+        closeButton.clearActivationActions(ActivationTypes.Tap)
+        closeButton.keyShortcuts.clear()
+        closeButton.onActivation { back() }
+        globalShortcuts.add(KeyCharAndCode.BACK) { back() }
+        globalShortcuts.add(KeyboardBinding.Civilopedia) { selected?.let { openCivilopedia(it.makeLink()) } }
+        rightSideButton.clearActivationActions(ActivationTypes.Tap)
+        rightSideButton.name = "ui-policy-confirm"
+        rightSideButton.onActivation(UncivSound.Policy) { confirmAction() }
+        build()
+        initialized = true
+        selected?.let { reveal(it) }
         displayTutorial(TutorialTrigger.CultureAndPolicies)
+    }
 
-        rightSideButton.setText(when {
-            policies.allPoliciesAdopted(checkEra = false) ->
-                "All policies adopted"
-            policies.freePolicies > 0 ->
-                "Adopt free policy"
-            else ->
-                "{Adopt policy}\n(${policies.storedCulture}/${policies.getCultureNeededForNextPolicy()})"
-        }.tr())
+    override fun resize(width: Int, height: Int) {
+        if (width <= 0 || height <= 0) return
+        val changed = hasSafeAreaChanged(width, height)
+        if (changed) lastTappedPolicy = null
+        val anchor = if (initialized) captureAnchor() else null
+        val detailY = detailScroll?.scrollY?.div(appearance.unit) ?: 0f
+        val detailWasVisible = metrics.docked || overlay == "details"
+        super.resize(width, height)
+        if (!initialized || !changed) return
+        appearance = PolicyCodexStyle(UiNavigation.minimumTouchSize() / 44f, 1f)
+        metrics = PolicyCodexLayout(stage.width / appearance.unit, stage.height / appearance.unit)
+        if (overlay == "details" && metrics.docked) overlay = null
+        else if (overlay == null && detailWasVisible && !metrics.docked) overlay = "details"
+        confirmation?.wrapPrompt(minOf(stage.width-u(64f),u(460f)))
+        build(anchor)
+        detailScroll?.let { it.scrollY = u(detailY); it.updateVisualScroll() }
+    }
 
-        setDefaultCloseAction()
+    /** Keep the same branch and local offset when column count or safe area changes. */
+    private fun captureAnchor(): Pair<String, Float>? {
+        val top = catalog.height - catalogScroll.scrollY
+        val entry = cards.entries.firstOrNull { it.value.y <= top && it.value.y + it.value.height >= top }
+            ?: cards.entries.firstOrNull { it.value.y + it.value.height <= top } ?: return null
+        return entry.key to ((entry.value.y + entry.value.height - top) / appearance.unit)
+    }
 
-        rightSideButton.onClick(UncivSound.Policy) {
-            confirmAction()
+    private fun build(anchor: Pair<String, Float>? = if (initialized) captureAnchor() else null) {
+        root.clearChildren()
+        root.pad(u(metrics.topInset), u(metrics.padding), u(metrics.bottomInset), u(metrics.padding))
+        buildHeader()
+        buildCatalog()
+        root.add(header).growX().minWidth(0f).padBottom(u(metrics.headerGap)).row()
+        body.clearChildren()
+        val overview = Table().apply {
+            if (!metrics.compact) add(catalogToolbar()).growX().minWidth(0f).padBottom(u(10f)).row()
+            add(catalogScroll).grow().minWidth(0f).minHeight(0f)
         }
+        body.add(overview).grow().minWidth(0f).minHeight(0f)
+        if (metrics.docked) {
+            body.add(ImageGetter.getWhiteDot().apply { color = appearance.line }).width(u(1f)).growY().padLeft(u(12f)).padRight(u(11f))
+            body.add(buildDetails(false)).width(u(metrics.detailWidth)).growY().minHeight(0f)
+        }
+        root.add(body).grow().minWidth(0f).minHeight(0f).row()
+        root.validate()
+        if (anchor != null) cards[anchor.first]?.let {
+            catalogScroll.scrollY = catalog.height - (it.y + it.height) + u(anchor.second)
+            catalogScroll.updateVisualScroll()
+        }
+        showOverlay()
+    }
 
-        if (!canChangeState)
-            rightSideButton.disable()
-
-        topTable.row()
-
-        val branches = viewingCiv.gameInfo.ruleset.policyBranches
-        val branchesPerRow: Int
-
-        // estimate how many branch boxes fit using average size (including pad)
-        // TODO If we'd want to use scene2d correctly, this is supposed to happen inside an overridden layout() method
-        val numBranchesY = scrollPane.height / 305f
-            // Landscape - arrange in as few rows as looks nice
-        branchesPerRow = if (numBranchesY > 1.5f) {
-            val numRows = if (numBranchesY < 2.9f) 2 else (numBranchesY + 0.1f).toInt()
-            (branches.size + numRows - 1) / numRows
-        } else branches.size
-
-
-        // Actually create and distribute the policy branches
-        val numberOfRows = ceil(branches.size / branchesPerRow.toFloat()).toInt()
-
-        val positionToTable = HashMap<String,Table>()
-        val allPoliciesTable = Table()
-        for (rowNum in 0 until numberOfRows){
-            val row = Table()
-            for (columnNum in 0 until branchesPerRow){
-                val branchTable = Table()
-                row.add(branchTable).grow()
-                positionToTable["$rowNum-$columnNum"] = branchTable
+    private fun buildHeader() {
+        header.clearChildren()
+        appearance.decorate(closeButton)
+        closeButton.clearChildren()
+        closeButton.add(ImageGetter.getImage("OtherIcons/BackArrow")).size(u(16f))
+        if (!metrics.portrait && !metrics.compact) closeButton.add(label("Back", 13)).padLeft(u(6f))
+        header.add(closeButton).minSize(u(44f)).padRight(u(if (metrics.compact) 6f else 10f))
+        header.add(label("Social policies", if (metrics.compact) 18 else 23).apply { setEllipsis(true) })
+            .growX().minWidth(0f).left()
+        val progress = Table().apply {
+            val caption = when {
+                branches.isEmpty() -> "No policies available".tr()
+                ruleset.policies.values.all { policies.isAdopted(it.name) } -> "All policies adopted".tr()
+                policies.freePolicies > 0 -> "[${policies.freePolicies}] free policies remaining".tr()
+                else -> "${policies.storedCulture} / ${policies.getCultureNeededForNextPolicy()} ${"Culture".tr()}"
             }
-            allPoliciesTable.add(row).pad(5f,10f)
-            if (rowNum != numberOfRows-1) allPoliciesTable.addSeparator().pad(0f, 10f)
+            add(label(caption, 13, if (policies.freePolicies > 0) appearance.gold else appearance.text, !metrics.compact)
+                .apply { if (metrics.compact) setEllipsis(true) }).growX().minWidth(0f).left().row()
+            val cost = policies.getCultureNeededForNextPolicy().coerceAtLeast(1)
+            add(ImageGetter.ProgressBar(u(180f), u(3f), false).setBackground(appearance.line)
+                .setProgress(appearance.gold, (policies.storedCulture.toFloat() / cost).coerceIn(0f, 1f)))
+                .growX().minWidth(0f).height(u(3f)).padTop(u(if (metrics.compact) 3f else 7f))
         }
-
-        for ((index, branch) in branches.values.withIndex()){
-            val branchGroup = BranchGroup(branch)
-            branchToGroup[branch.name] = branchGroup
-
-            val rowNumber = index / branchesPerRow
-            val isRowLeftToRight = rowNumber % 2 == 0
-            val numberInRow =  index % branchesPerRow // RTL rows
-            val rowPosition = if (isRowLeftToRight) numberInRow else branchesPerRow-1-numberInRow
-            val policyTable = positionToTable["$rowNumber-$rowPosition"]!!
-            policyTable.add(branchGroup).grow()
+        val search = action("", "ui-policy-search") { openOverlay("search") }.apply {
+            clearChildren(); add(ImageGetter.getImage("OtherIcons/Search")).size(u(20f))
         }
-        topTable.add(allPoliciesTable)
-
-
-        // If topTable is larger than available space, scroll in a little - up to top/left
-        // total padding, or up to where the axis is centered, whichever is smaller
-        splitPane.pack()    // packs topTable but also ensures scrollPane.maxXY is calculated
-        if (topTable.height > scrollPane.height) {
-            val vScroll = min(0f, scrollPane.maxY / 2)
-            scrollPane.scrollY = vScroll
-        }
-        if (topTable.width > scrollPane.width) {
-            val hScroll = min(20f, scrollPane.maxX / 2)
-            scrollPane.scrollX = hScroll
-        }
-        scrollPane.updateVisualScroll()
-
-        when (select) {
-            in branches -> branchToGroup[select]?.toggle()
-            in policyNameToButton -> pickPolicy(policyNameToButton[select]!!)
-        }
-    }
-
-    override fun getCivilopediaRuleset() = viewingCiv.gameInfo.ruleset
-
-    private fun pickPolicy(button: PolicyButton) {
-
-        val policy = button.policy
-
-        rightSideButton.isVisible = !viewingCiv.policies.isAdopted(policy.name)
-        if (!policy.isPickable(viewingCiv, canChangeState)) {
-            rightSideButton.disable()
+        if (metrics.compact) {
+            // Share one 44-point navigation row; the policy tree owns the remaining height.
+            header.add(progress).width(u((metrics.width * .2f).coerceIn(112f, 180f))).padLeft(u(8f)).padRight(u(8f))
+            header.add(branchLocator()).minWidth(u(96f)).height(u(44f))
+            header.add(foldAllAction()).minWidth(u(96f)).height(u(44f)).padLeft(u(4f))
+            header.add(search).size(u(44f)).padLeft(u(4f))
+        } else if (metrics.portrait && metrics.width < 700f) {
+            header.add(search).size(u(44f))
+            header.row()
+            header.add(progress).colspan(3).growX().minWidth(0f).padTop(u(12f))
         } else {
-            rightSideButton.enable()
+            header.add(progress).width(u(if (metrics.compact) 210f else 250f)).padLeft(u(12f))
+            header.add(search).size(u(44f)).padLeft(u(12f))
         }
-
-        selectedPolicyButton?.isSelected = false
-        selectedPolicyButton = button
-        selectedPolicyButton?.isSelected = true
-
-        descriptionLabel.setText(policy.getDescription())
-        descriptionLabel.clearListeners()
-        descriptionLabel.onActivation {
-            openCivilopedia(policy.makeLink())
-        }
-        descriptionLabel.keyShortcuts.add(KeyboardBinding.Civilopedia)
     }
 
-    /**
-     * Create a Widget for a complete policy branch including Starter and "complete" buttons.
-     * @param branch the policy branch to display
-     * @return a [Table], with outer padding _zero_
-     */
-    private inner class BranchGroup(branch: PolicyBranch) : BorderedTable(path = "PolicyScreen/PolicyBranchBackground") {
-        private val header = getBranchHeader(branch)
-        private val group = Group()
-        private val groupCell: Cell<Group>
-        private val topBtn = getTopButton(branch)
-        private val topBtnCell: Cell<Table>
-        private val labelTable = Table()
+    private fun branchLocator() = action("Find branch", "ui-policy-branches", outlined = true) { openOverlay("branches") }
 
-        init {
-            // Calculate preferred size
-            val maxCol = max(5, branch.policies.maxOf { it.column })
-            val maxRow = branch.policies.maxOf { it.row }
+    private fun foldAllAction(): TextButton {
+        val allFolded = branches.all { it.name in collapsed }
+        return action(if (allFolded) "Expand all" else "Collapse all", "ui-policy-fold-all") {
+            if (allFolded) collapsed.clear() else collapsed.addAll(branches.map { it.name })
+            build()
+        }
+    }
 
-            val prefWidth = Sizes.paddingHorizontal * 2 + Sizes.iconSize * maxCol - (Sizes.iconSize - Sizes.paddingBetweenHor) * (maxCol - 1) / 2
-            val prefHeight = Sizes.paddingVertical * 2 + Sizes.iconSize * maxRow + Sizes.paddingBetweenVer * (maxRow - 1)
+    private fun catalogToolbar() = Table().apply {
+        add(label("Policy codex", 18)).growX().minWidth(0f).left()
+        add(branchLocator()).height(u(44f)).padLeft(u(8f))
+        add(foldAllAction()).height(u(44f)).padLeft(u(4f))
+    }
 
-            // Main table
-            bgColor = if (viewingCiv.policies.isAdopted(branch.name))
-                PolicyColors.BranchBGAdopted.color else PolicyColors.BranchBGNotAdopted.color
+    private fun branchStatus(branch: PolicyBranch) = when {
+        policies.isAdopted(branch.name) -> "${done(branch)} / ${members(branch).size} ${"Adopted".tr()}"
+        (ruleset.eras[branch.era]?.eraNumber ?: 0) > viewingCiv.getEraNumber() -> branch.era.tr()
+        else -> "Not adopted".tr()
+    }
 
-            // Header
-            add(header).growX().row()
+    private fun buildCatalog() {
+        catalog.clearChildren(); cards.clear(); nodes.clear()
+        catalog.top().left()
+        if (branches.isEmpty()) catalog.add(label("No policies available", 15, appearance.muted, true)).growX().pad(u(20f))
+        branches.forEachIndexed { index, branch ->
+            val card = buildBranch(branch)
+            cards[branch.name] = card
+            catalog.add(card).width(u(metrics.branchWidth)).top()
+                .padRight(if ((index + 1) % metrics.columns == 0) 0f else u(metrics.gap)).padBottom(u(metrics.gap))
+            if ((index + 1) % metrics.columns == 0) catalog.row()
+        }
+        catalogScroll = verticalScroll(catalog, "ui-policy-catalog-scroll")
+    }
 
-            // Description
-            val onAdoption = branch.getDescription()
-            val onCompletion = branch.policies.last().getDescription()
-            var text = ""
-            if (viewingCiv.gameInfo.ruleset.eras[branch.era]!!.eraNumber > viewingCiv.getEraNumber())
-                text += "{Unlocked at} {${branch.era}}" + "\n\n"
-            text += "{On adoption}:" + "\n\n" + onAdoption + "\n\n" +
-                "{On completion}:" + "\n\n" + onCompletion
-
-            val label = text.toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 13))
-            label.setFillParent(false)
-            label.setAlignment(Align.topLeft)
-            label.wrap = true
-            labelTable.add(label).pad(7f, 20f, 10f, 20f).grow().row()
-
-            if (branch.uniqueMap.getUniques(UniqueType.OnlyAvailable).any()) {
-                var warning = UniqueType.OnlyAvailable.text.tr() + ":\n"
-                for (unique in branch.uniqueMap.getUniques(UniqueType.OnlyAvailable))
-                    for (conditional in unique.modifiers) {
-                        warning += "• " + conditional.text.tr() + "\n"
+    private fun buildBranch(branch: PolicyBranch): Table = Table().apply {
+        val active = selected?.branch == branch
+        background = appearance.outline(appearance.deep, if (active) appearance.gold else appearance.line)
+        pad(u(9f))
+        val title = Table().apply {
+            touchable = Touchable.enabled
+            name = "ui-policy-fold:${branch.name}"
+            add(icon(branch)).size(u(if (metrics.compact) 24f else 28f)).padRight(u(10f))
+            val text = Table().apply {
+                add(label(branch.name, UiTypography.size(TextRole.SectionTitle, unit = 1f, legacySize = if (metrics.compact) 14 else 16), wrap = true)).growX().minWidth(0f).left().row()
+                if (!metrics.compact) add(label(branchStatus(branch), 12, appearance.muted, true)).growX().minWidth(0f).left().padTop(u(3f))
+            }
+            add(text).growX().minWidth(0f)
+            add(ImageGetter.getImage("OtherIcons/BackArrow").apply {
+                setSize(u(12f), u(12f))
+                setOrigin(Align.center)
+                rotation = if (branch.name in collapsed) 180f else 90f
+            }).size(u(12f)).padLeft(u(8f))
+            onClick {
+                if (!collapsed.add(branch.name)) collapsed.remove(branch.name)
+                build()
+            }
+        }
+        add(title).growX().minWidth(0f).minHeight(u(if (metrics.compact) 44f else 52f)).row()
+        if (branch.name !in collapsed) {
+            add(ruleLine()).height(u(1f)).growX().padTop(u(6f)).padBottom(u(4f)).row()
+            val opener = action(if (policies.isAdopted(branch.name)) "Branch adopted" else "View adoption effects", "ui-policy:${branch.name}") { selectPolicy(branch) }
+            nodes[branch.name] = opener
+            add(opener).growX().minWidth(0f).height(u(44f)).row()
+            val graph = branchGraph(branch, metrics.branchWidth - 18f)
+            // Nonstandard mod grids may be wider; preserve their coordinates instead of overlapping targets.
+            val wideGraph = graph.prefWidth > u(metrics.branchWidth - 18f) + .1f
+            val graphActor: Actor = if (wideGraph) ScrollPane(graph, BaseScreen.skin).apply {
+                setScrollingDisabled(false, true); setOverscroll(false, false)
+            } else graph
+            add(graphActor).growX().minWidth(0f).height(graph.prefHeight + u(if (wideGraph) 8f else 0f)).row()
+            reward(branch)?.let { completion ->
+                add(ruleLine()).height(u(1f)).growX().padTop(u(4f)).row()
+                val rewardRow = Table().apply {
+                    name = "ui-policy:${completion.name}"; touchable = Touchable.enabled
+                    val copy = Table().apply {
+                        add(label(if (policies.isAdopted(completion.name)) "Completion reward received" else "Completion reward", 12,
+                            if (policies.isAdopted(completion.name)) appearance.gold else appearance.text)).growX().minWidth(0f).left().row()
+                        add(label(effects(completion).lineSequence().firstOrNull().orEmpty(), 12, appearance.muted).apply { setEllipsis(true) })
+                            .growX().minWidth(0f).left().padTop(u(3f))
                     }
-                val warningLabel = ColorMarkupLabel(warning, Color.RED, fontSize = UiTypography.size(TextRole.Body, legacySize = 13))
-                warningLabel.setAlignment(Align.topLeft)
-                warningLabel.wrap = true
-                labelTable.add(warningLabel).pad(0f, 20f, 17f, 20f).grow()
+                    add(copy).growX().minWidth(0f)
+                    add(ImageGetter.getImage("OtherIcons/ForwardArrow")).size(u(12f)).padLeft(u(8f))
+                    onClick { selectPolicy(completion) }
+                }
+                nodes[completion.name] = rewardRow
+                add(rewardRow).growX().minWidth(0f).minHeight(u(if (metrics.compact) 48f else 60f))
             }
+        }
+    }
 
-            // Top button
-            topBtnCell = add(topBtn).growX().pad(10f, 10f, 0f, 10f)
+    private fun ruleLine() = ImageGetter.getWhiteDot().apply { color = appearance.line }
+
+    private fun branchGraph(branch: PolicyBranch, availableWidth: Float): WidgetGroup {
+        val entries = members(branch)
+        val maxCol = max(5, entries.maxOfOrNull { it.column } ?: 5)
+        val maxRow = max(1, entries.maxOfOrNull { it.row } ?: 1)
+        val nodeWidth = if (metrics.branchWidth < 360f)
+            ((availableWidth - 28f) / 3f).coerceIn(64f, 76f) else 88f
+        val nodeHeight = if (metrics.compact) 64f else 94f
+        val rowStep = nodeHeight + 18f
+        val minColumnDistance = entries.groupBy { it.row }.values.flatMap { row ->
+            row.map { it.column }.distinct().sorted().zipWithNext { a, b -> b - a }
+        }.minOrNull()?.coerceAtLeast(1) ?: 2
+        val spacing = (nodeWidth + 8f) / minColumnDistance
+        val graphWidth = max(availableWidth, nodeWidth + 12f + (maxCol - 1) * spacing)
+        val graphHeight = maxRow * rowStep + 4f
+        val graph = object : WidgetGroup() {
+            override fun getPrefWidth() = u(graphWidth)
+            override fun getPrefHeight() = u(graphHeight)
+        }
+        graph.setSize(u(graphWidth), u(graphHeight))
+        val coords = entries.associate { policy ->
+            policy.name to Vector2(u(6f + (policy.column.coerceAtLeast(1) - 1) * (graphWidth - nodeWidth - 12f) / (maxCol - 1)),
+                u(graphHeight - (policy.row.coerceAtLeast(1) - 1) * rowStep - nodeHeight - 4f))
+        }
+        for (policy in entries) for (required in policy.requires.orEmpty()) {
+            val from = coords[required] ?: continue
+            val to = coords[policy.name] ?: continue
+            val x1 = from.x + u(nodeWidth / 2); val y1 = from.y
+            val x2 = to.x + u(nodeWidth / 2); val y2 = to.y + u(nodeHeight)
+            val mid = (y1 + y2) / 2
+            val color = if (selected?.name == policy.name) appearance.gold else Color.valueOf("7d9ba5")
+            fun line(ax: Float, ay: Float, bx: Float, by: Float) {
+                if (abs(ax-bx) + abs(ay-by) < .1f) return
+                graph.addActor(ImageGetter.getLine(ax, ay, bx, by, u(1.5f)).apply { this.color = color; touchable = Touchable.disabled })
+            }
+            line(x1,y1,x1,mid); line(x1,mid,x2,mid); line(x2,mid,x2,y2)
+        }
+        for (policy in entries) {
+            val adopted = policies.isAdopted(policy.name)
+            val chosen = selected?.name == policy.name
+            val node = Table().apply {
+                name = "ui-policy:${policy.name}"; touchable = Touchable.enabled
+                background = appearance.outline(if (chosen) appearance.raised else appearance.panel,
+                    if (chosen) appearance.gold else appearance.line, thickness = if (chosen) 2f else 1f)
+                pad(u(4f))
+                add(icon(policy, if (adopted) appearance.gold else appearance.text)).size(u(if (metrics.compact) 22f else 30f)).row()
+                add(label(policy.name, 12).apply { setAlignment(Align.center); setEllipsis(true) })
+                    .growX().minWidth(0f).padTop(u(3f)).row()
+                add(label(if (adopted) "Adopted" else if (policies.isAdoptable(policy)) "Requirements met" else "Locked", 11,
+                    if (adopted) appearance.gold else appearance.muted).apply { setAlignment(Align.center); setEllipsis(true) })
+                    .growX().minWidth(0f)
+                onClick {
+                    // Selection rebuilds actors. Keep double-tap history on the screen, not the old node listener.
+                    val now = TimeUtils.nanoTime()
+                    val doubleTap = metrics.docked && lastTappedPolicy == policy.name &&
+                        now - lastPolicyTapNanos < (game.settings.multiTapInterval * 1_000_000_000L).toLong()
+                    lastTappedPolicy = if (doubleTap) null else policy.name
+                    lastPolicyTapNanos = now
+                    selectPolicy(policy)
+                    if (doubleTap) confirmAction()
+                }
+            }
+            node.setSize(u(nodeWidth),u(nodeHeight))
+            val position = coords.getValue(policy.name)
+            node.setPosition(position.x,position.y)
+            graph.addActor(node); nodes[policy.name] = node
+        }
+        return graph
+    }
+
+    private fun stateText(policy: Policy): String = when {
+        policies.isAdopted(policy.name) -> (if (policy.policyBranchType == PolicyBranchType.BranchComplete) "Completion reward received" else "Adopted").tr()
+        policy.policyBranchType == PolicyBranchType.BranchComplete -> "Complete the branch to receive this reward".tr()
+        readOnly() -> "View only — policies cannot be changed".tr()
+        modeRestricted() -> "Policies are unavailable in this game mode".tr()
+        (ruleset.eras[policy.branch.era]?.eraNumber ?: 0) > viewingCiv.getEraNumber() -> "{Unlocked at} {${policy.branch.era}}".tr()
+        policy.requires.orEmpty().any { !policies.isAdopted(it) } -> "Prerequisite policies required".tr()
+        !policies.isAdoptable(policy) -> "Policy conditions not met".tr()
+        policies.freePolicies > 0 -> "Adopt free policy".tr()
+        policies.storedCulture < policies.getCultureNeededForNextPolicy() -> "[${policies.getCultureNeededForNextPolicy()-policies.storedCulture}] more Culture needed".tr()
+        else -> "Adopt policy".tr()
+    }
+
+    /** Canonical policy display keeps mod effects, translation and conditional text. */
+    private fun effects(policy: Policy) = policy.getDescription().let {
+        if (policy.policyBranchType == PolicyBranchType.Member) it.substringAfter('\n', "") else it
+    }
+
+    private fun buildDetails(isOverlay: Boolean): Table = Table().apply {
+        if (isOverlay) add(overlayHeader("Policy details")).growX().padBottom(u(10f)).row()
+        else add(label("Policy details", 13, appearance.muted)).growX().left().height(u(44f)).row()
+        val policy = selected
+        if (policy == null) { add(label("Select a policy to view its effects",14,appearance.muted,true)).grow(); return@apply }
+        val content = Table().apply {
+            top().left(); defaults().growX().minWidth(0f).left()
+            val title = Table().apply {
+                add(icon(policy)).size(u(if (metrics.compact) 32f else 42f)).padRight(u(12f))
+                val text = Table().apply {
+                    add(label(if (policy.policyBranchType == PolicyBranchType.BranchComplete) "Completion reward" else policy.name,
+                        if (metrics.compact) 20 else 23, wrap = true)).growX().minWidth(0f).left().row()
+                    add(label(policy.branch.name,12,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(4f))
+                }
+                add(text).growX().minWidth(0f)
+            }
+            add(title).padTop(u(8f)).padBottom(u(14f)).row()
+            add(label(stateText(policy),12,appearance.gold,true)).padBottom(u(16f)).row()
+            add(label(effects(policy),UiTypography.size(TextRole.Body, unit = 1f, legacySize = if(metrics.compact)14 else 15),wrap=true)).row()
+            fun heading(text: String) { add(label(text,12,appearance.muted)).padTop(u(20f)).padBottom(u(8f)).row() }
+            val requires = if (policy.policyBranchType == PolicyBranchType.BranchComplete) members(policy.branch).map { it.name } else policy.requires.orEmpty()
+            if (requires.isNotEmpty()) {
+                heading("Prerequisite policies")
+                for (name in requires) ruleset.policies[name]?.let { required ->
+                    add(action(required.name, "ui-policy-related:${required.name}", outlined = true) { selectPolicy(required) })
+                        .minWidth(0f).height(u(44f)).padBottom(u(6f)).row()
+                }
+            }
+            val constraints = policy.getMatchingUniques(UniqueType.OnlyAvailable, GameContext.IgnoreConditionals).toList() +
+                policy.getMatchingUniques(UniqueType.Unavailable, GameContext.IgnoreConditionals).toList()
+            if (constraints.isNotEmpty()) {
+                heading("Policy conditions")
+                constraints.forEach { add(label(it.getDisplayText().tr(),UiTypography.size(TextRole.Body, unit = 1f, legacySize = 13),appearance.muted,true)).padBottom(u(6f)).row() }
+            }
+            if (policy.policyBranchType != PolicyBranchType.BranchComplete) reward(policy.branch)?.let { completion ->
+                heading("Completion reward")
+                add(label(effects(completion),13,appearance.gold,true)).row()
+                val total = members(policy.branch).size
+                add(label("[${done(policy.branch)}] of [$total] policies adopted",12,appearance.muted,true)).padTop(u(5f)).row()
+            }
+        }
+        val scroll = verticalScroll(content,"ui-policy-detail-scroll")
+        detailScroll = scroll
+        add(scroll).grow().minWidth(0f).minHeight(0f).row()
+        val controls = Table().apply {
+            add(ruleLine()).growX().height(u(1f)).colspan(2).padTop(u(10f)).padBottom(u(10f)).row()
+            appearance.decorate(rightSideButton,primary=true)
+            rightSideButton.setText(when {
+                busy -> "Adopting policy…".tr()
+                pickable(policy) -> (if (policies.freePolicies > 0) "Adopt free policy" else if (policy is PolicyBranch) "Adopt branch" else "Adopt policy").tr()
+                else -> stateText(policy)
+            })
+            rightSideButton.touchable = Touchable.enabled
+            rightSideButton.isDisabled = !pickable(policy)
+            add(rightSideButton).growX().minWidth(0f).height(u(48f))
+            if (!metrics.compact) row()
+            add(action("Civilopedia", "ui-policy-civilopedia") { openCivilopedia(policy.makeLink()) }).minWidth(0f).height(u(44f))
+                .apply { if (!metrics.compact) growX() else padLeft(u(5f)) }
             row()
-
-            // Main grid
-            group.width = prefWidth
-            group.height = prefHeight
-
-            // Calculate grid points coordinates
-            val startX = Sizes.paddingHorizontal
-            val endX = prefWidth - Sizes.paddingHorizontal - Sizes.iconSize
-            val deltaX = (endX - startX) / (maxCol - 1)
-
-            val startY = prefHeight - Sizes.paddingVertical - Sizes.iconSize
-            val endY = Sizes.paddingVertical
-            val deltaY = (startY - endY) / (maxRow - 1)
-
-            val coords = Array(maxRow + 1) { Array(maxCol + 1) { Pair(0f, 0f) } }
-
-            var row = 1
-            var col: Int
-
-            var posX: Float
-            var posY = startY
-
-            while (row <= maxRow) {
-                col = 1
-                posX = startX
-                while (col <= maxCol) {
-                    coords[row][col] = Pair(posX, posY)
-
-                    col += 1
-                    posX += deltaX
-                }
-
-                row += 1
-                posY -= deltaY
+            val cost = when {
+                policies.isAdopted(policy.name) -> "Policy effects remain active".tr()
+                policy.policyBranchType == PolicyBranchType.BranchComplete -> "Completion rewards are granted automatically".tr()
+                policies.freePolicies > 0 -> "Uses 1 free policy — no Culture cost".tr()
+                else -> "Cost: [${policies.getCultureNeededForNextPolicy()}] Culture · Available: [${policies.storedCulture}]".tr()
             }
-
-            // Create policy buttons at calculated coordinates
-            for (policy in branch.policies) {
-                if (policy.policyBranchType == PolicyBranchType.BranchComplete)
-                    continue
-
-                val button = getPolicyButton(policy)
-                group.addActor(button)
-
-                val policyX = coords[policy.row][policy.column].first
-                val policyY = coords[policy.row][policy.column].second
-
-                button.x = policyX
-                button.y = policyY
-
-                policyNameToButton[policy.name] = button
-            }
-
-            // Draw connecting lines
-            drawLines(branch)
-
-            groupCell = add(group).minWidth(prefWidth).expandY().top()
-            row()
-
-            // Setup header clicks
-            header.onClick(::toggle)
-
-            // Ensure dimensions are calculated
-            pack()
+            add(label(cost,11,appearance.muted,true)).colspan(if(metrics.compact)2 else 1).growX().padTop(u(6f))
         }
+        add(controls).growX().minWidth(0f)
+    }
 
-        fun toggle() {
-            val newActor = if (groupCell.actor == group) labelTable else group
-            val rotate = if (groupCell.actor == group) -90f else 90f
+    private fun selectPolicy(policy: Policy) {
+        val anchor = captureAnchor()
+        val wasBrowsing = overlay == null
+        if (wasBrowsing) lastFocus = stage.keyboardFocus
+        selected = policy
+        collapsed.remove(policy.branch.name)
+        overlay = if (metrics.docked) null else "details"
+        Gdx.input.setOnscreenKeyboardVisible(false)
+        stage.keyboardFocus = null
+        build(anchor)
+        if (!wasBrowsing || metrics.docked) reveal(policy)
+    }
 
-            if (groupCell.actor == group)
-                topBtnCell.clearActor()
-            else
-                topBtnCell.setActor(topBtn)
+    private fun reveal(policy: Policy) {
+        root.validate()
+        val actor = nodes[policy.name] ?: cards[policy.branch.name] ?: return
+        val point = actor.localToAscendantCoordinates(catalog, Vector2())
+        catalogScroll.scrollTo(point.x,point.y,actor.width,actor.height,false,false)
+        catalogScroll.updateVisualScroll()
+    }
 
-            groupCell.clearActor()
-            groupCell.setActor(newActor)
+    private fun overlayHeader(title: String) = Table().apply {
+        add(label(title,18,wrap=true)).growX().minWidth(0f).left()
+        add(action("Close", "ui-policy-overlay-close", outlined=true) { closeOverlay() }).height(u(44f)).padLeft(u(8f))
+    }
 
-            //todo resolve kludge by making BranchHeader a proper class
-            ((header.cells[0].actor as Table).cells[0] as Cell<Actor>)
-                .clearActor()
-                .setActor(
-                    ImageGetter.getImage("OtherIcons/BackArrow").apply { rotation = rotate }.toGroup(10f)
-                )
+    private fun openOverlay(kind: String) {
+        lastTappedPolicy = null
+        if (overlay == null) lastFocus = stage.keyboardFocus
+        overlay = kind
+        showOverlay()
+    }
+
+    private fun closeOverlay() {
+        overlay = null
+        Gdx.input.setOnscreenKeyboardVisible(false)
+        showOverlay()
+        if (metrics.docked) build() // Reattach the shared action button if a detail overlay was open before resizing.
+        stage.keyboardFocus = lastFocus?.takeIf { it.stage == stage }
+        stage.scrollFocus = catalogScroll
+    }
+
+    private fun showOverlay() {
+        overlayLayer?.remove(); overlayLayer = null
+        root.touchable = when (overlay) {
+            null -> Touchable.childrenOnly
+            "details" -> Touchable.enabled
+            else -> Touchable.disabled
+        }
+        val kind = overlay ?: return
+        overlayScroll = null
+        val panel = when (kind) {
+            "details" -> buildDetails(true)
+            "search" -> buildSearch()
+            else -> buildBranchLocator()
+        }.apply {
+            touchable = Touchable.enabled
+            background = appearance.surface(appearance.background)
+            pad(u(if(metrics.compact)12f else 20f))
+        }
+        val layer = Table().apply {
+            name = "ui-policy-overlay"
+            setFillParent(true)
+            background = ImageGetter.getWhiteDotDrawable().tint(Color(0f,0f,0f,if (kind == "details") .18f else .55f))
+            touchable = if (kind == "details") Touchable.childrenOnly else Touchable.enabled
+            if (metrics.portrait && metrics.width <= 700f) add(panel).grow().minWidth(0f).minHeight(0f)
+            else { right();pad(u(12f));add(panel).width(u(if(kind=="details")350f else minOf(460f,metrics.contentWidth))).growY().minHeight(0f) }
+        }
+        overlayLayer = layer
+        stage.addActor(layer)
+        layer.validate()
+        stage.scrollFocus = if (kind == "details") detailScroll else overlayScroll
+        // Resizing must never cover a live confirmation/tutorial with the rebuilt detail sheet.
+        stage.actors.filterIsInstance<Popup>().forEach { it.toFront() }
+    }
+
+    private fun buildSearch() = Table().apply {
+        add(overlayHeader("Search policies")).growX().row()
+        val results = Table().apply { top(); defaults().growX().minWidth(0f) }
+        fun updateResults() {
+            results.clearChildren()
+            val query = searchQuery.trim().lowercase()
+            val found = ruleset.policies.values.filter { policy ->
+                query.isEmpty() || listOf(policy.name, policy.name.tr(),policy.branch.name.tr(),policy.getDescription())
+                    .any { it.lowercase().contains(query) }
+            }
+            if (found.isEmpty()) {
+                results.add(label("No matching policies",14,appearance.muted,true)).pad(u(16f)).row()
+            }
+            for (policy in found) results.add(action("${policy.name.tr(hideIcons=true)}\n${stateText(policy)}",
+                "ui-policy-search-result:${policy.name}",outlined=true) { selectPolicy(policy) }).height(u(64f)).padBottom(u(6f)).row()
+        }
+        add(label("Search by name, branch or effect",12,appearance.muted,true)).growX().left().padTop(u(12f)).row()
+        val field = UncivTextField("Search policies",searchQuery).apply {
+            name = "ui-policy-search-input"
+            onChange { searchQuery = text;updateResults() }
+        }
+        add(field).growX().minWidth(0f).height(u(44f)).padTop(u(6f)).padBottom(u(12f)).row()
+        add(verticalScroll(results,"ui-policy-search-results").also { overlayScroll = it }).grow().minWidth(0f).minHeight(0f)
+        updateResults()
+        Concurrency.runOnGLThread {
+            val screenStage = this@PolicyPickerScreen.stage
+            if (overlay == "search" && field.stage === screenStage) screenStage.keyboardFocus = field
         }
     }
 
-
-    private fun drawLines(branch: PolicyBranch) {
-
-        for (policy in branch.policies) {
-
-            if (policy.policyBranchType == PolicyBranchType.BranchComplete)
-                continue
-
-            if (policy.requires == null)
-                continue
-
-            val policyButton = policyNameToButton[policy.name]
-            val group = policyButton!!.parent
-
-            for (prereqName in policy.requires!!) {
-
-                if (prereqName == branch.name)
-                    continue
-
-                val prereqButton = policyNameToButton[prereqName]
-                if (prereqButton != null) {
-                    drawLine(
-                        group,
-                        // Top center
-                        policyButton.x + policyButton.width / 2,
-                        policyButton.y + policyButton.height,
-                        // Bottom center
-                        prereqButton.x + prereqButton.width / 2,
-                        prereqButton.y
-                    )
-                }
-            }
-
+    private fun buildBranchLocator() = Table().apply {
+        add(overlayHeader("Find branch")).growX().row()
+        val list = Table().apply { top();defaults().growX().minWidth(0f) }
+        branches.forEach { branch ->
+            list.add(action("${branch.name.tr(hideIcons=true)}\n${branchStatus(branch)}", "ui-policy-jump:${branch.name}", outlined=true) {
+                collapsed.remove(branch.name)
+                overlay = null
+                build()
+                root.validate()
+                cards[branch.name]?.let { catalogScroll.scrollY = catalog.height - it.y - it.height;catalogScroll.updateVisualScroll() }
+                this@PolicyPickerScreen.stage.scrollFocus = catalogScroll
+            }).height(u(64f)).padBottom(u(6f)).row()
         }
-
-    }
-
-    private fun drawLine(group: Group, policyX: Float, policyY: Float, prereqX: Float, prereqY:Float) {
-
-        val lineColor = Color.WHITE.cpy()
-        val lineSize = 2f
-
-        if (policyX != prereqX) {
-
-            val r = 3f
-
-            val deltaX = policyX - prereqX     // can be > 0 or < 0
-            val deltaY = prereqY - policyY     // always > 0
-
-            val bendingY = Sizes.paddingBetweenVer / 2
-
-            // Top line
-            val line = ImageGetter.getWhiteDot().apply {
-                width = lineSize
-                height = deltaY - bendingY - r
-                x = prereqX - width / 2
-                y = prereqY - height
-            }
-            // Bottom line
-            val line1 = ImageGetter.getWhiteDot().apply {
-                width = lineSize
-                height = bendingY - r
-                x = policyX - width / 2
-                y = policyY
-            }
-            // Middle line
-            val line2 = ImageGetter.getWhiteDot().apply {
-                width = abs(deltaX) - 2*r
-                height = lineSize
-                x = policyX + (if (deltaX > 0f) -width - r else r)
-                y = policyY + bendingY - lineSize/2
-            }
-
-            val line3: Image?  // Top -> Middle
-            val line4: Image?  // Bottom -> Middle
-
-            if (deltaX < 0) {
-                line3 = ImageGetter.getLine(line2.x + line2.width - lineSize/2, line2.y + lineSize/2,
-                    line.x + lineSize/2, line.y + lineSize/2, lineSize)
-                line4 = ImageGetter.getLine(line2.x, line2.y + lineSize/2,
-                    line1.x + lineSize/2, line1.y + line1.height, lineSize)
-            } else {
-                line3 = ImageGetter.getLine(line2.x, line2.y + line2.height/2,
-                    line.x + lineSize/2, line.y, lineSize)
-                line4 = ImageGetter.getLine(line2.x + line2.width - lineSize/2, line2.y + lineSize/2,
-                    line1.x + lineSize/2, line1.y + line1.height - lineSize/2, lineSize)
-            }
-
-            line.color = lineColor
-            line1.color = lineColor
-            line2.color = lineColor
-            line3.color = lineColor
-            line4.color = lineColor
-
-            group.addActor(line)
-            group.addActor(line1)
-            group.addActor(line2)
-            group.addActor(line3)
-            group.addActor(line4)
-        } else {
-
-            val line = ImageGetter.getWhiteDot().apply {
-                width = lineSize
-                height = prereqY - policyY
-                x = policyX - width / 2
-                y = policyY
-            }
-            line.color = lineColor
-            group.addActor(line)
-        }
-
-    }
-
-    private fun getBranchHeader(branch: PolicyBranch): Table {
-        val header = BorderedTable(path = "PolicyScreen/PolicyBranchHeader")
-        header.bgColor = PolicyColors.BranchHeaderBG.color
-        header.borderSize = 5f
-        header.pad(10f)
-
-        val table = Table()
-
-        val iconPath = "PolicyBranchIcons/" + branch.name
-        val icon = if (ImageGetter.imageExists(iconPath)) ImageGetter.getImage(iconPath).apply {
-            setOrigin(Align.center)
-            setOrigin(25f, 25f)
-            align = Align.center
-        }.toGroup(15f) else null
-        val expandIcon = ImageGetter.getImage("OtherIcons/BackArrow").apply { rotation = 90f }.toGroup(10f)
-        table.add(expandIcon).minWidth(15f).expandX().left()
-        table.add(
-            branch.name.tr(hideIcons = true).uppercase().toLabel(fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = 14), alignment = Align.center)
-        ).center()
-        table.add(icon).expandX().left().padLeft(5f)
-
-        header.touchable = Touchable.enabled
-
-        header.add(table).minWidth(150f).growX()
-        header.pack()
-
-        return header
-    }
-
-    private fun getTopButton(branch: PolicyBranch): Table {
-
-        val text: String
-        val isPickable = branch.isPickable(viewingCiv, canChangeState)
-        var isAdoptedBranch = false
-        var percentage = 0f
-
-        val lockIcon = ImageGetter.getImage("OtherIcons/LockSmall")
-            .apply { color = Color.WHITE }.toGroup(15f)
-
-
-        if (viewingCiv.policies.isAdopted(branch.name)) {
-            val amountToDo = branch.policies.count()-1
-            val amountDone =
-                if (viewingCiv.policies.isAdopted(branch.policies.last().name))
-                    amountToDo
-                else
-                    branch.policies.count { viewingCiv.policies.isAdopted(it.name) }
-            percentage = amountDone / amountToDo.toFloat()
-            text = "{Completed} ($amountDone/$amountToDo)"
-            lockIcon.isVisible = false
-            isAdoptedBranch = true
-        } else if (viewingCiv.gameInfo.ruleset.eras[branch.era]!!.eraNumber > viewingCiv.getEraNumber()) {
-            text = branch.era
-        } else {
-            text = "Adopt"
-        }
-
-        val label = text.toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 14))
-        label.setAlignment(Align.center)
-
-        label.color = when {
-            isAdoptedBranch -> PolicyColors.BranchLabelAdopted
-            isPickable -> PolicyColors.BranchLabelPickable
-            else -> PolicyColors.BranchLabelNotPickable
-        }.color
-        lockIcon.isVisible = !isPickable && !isAdoptedBranch
-
-        val table = object : BorderedTable(
-            path="PolicyScreen/PolicyBranchAdoptButton",
-            defaultBgShape = skinStrings.roundedEdgeRectangleSmallShape,
-            defaultBgBorder = skinStrings.roundedEdgeRectangleSmallShape) {
-
-            var progress: Image? = null
-
-            init {
-                if (isAdoptedBranch && percentage > 0) {
-                    progress = Image(
-                        skinStrings.getUiBackground("",
-                            skinStrings.roundedEdgeRectangleSmallShape,
-                            tintColor = PolicyColors.BranchBGCompleted.color
-                        )
-                    )
-                    progress!!.setSize(this.width * percentage, this.height)
-                    this.addActor(progress)
-                    progress!!.toBack()
-                }
-            }
-
-            override fun sizeChanged() {
-                super.sizeChanged()
-                progress?.setSize(this.width * percentage, this.height)
-            }
-
-        }
-        table.name = "ui-policy:${branch.name}"
-        table.bgColor = when {
-            isPickable -> PolicyColors.ButtonBGPickable
-            else -> PolicyColors.ButtonBGNotPickable
-        }.color
-        table.borderSize = 3f
-
-        table.add(label).minHeight(30f).minWidth(150f).growX()
-        table.addActor(lockIcon)
-        table.pack()
-        lockIcon.setPosition(table.width, table.height / 2 - lockIcon.height/2)
-
-        table.onClick {
-            if (branch.isPickable(viewingCiv, canChangeState))
-                ConfirmPopup(
-                    this,
-                    "Are you sure you want to adopt [${branch.name}]?",
-                    "Adopt", true, action = {
-                        viewingCiv.policies.adopt(branch, false)
-                        game.replaceCurrentScreen{ recreate() }
-                    }
-                ).open(force = true)
-        }
-
-        return table
-    }
-
-    private fun getPolicyButton(policy: Policy): PolicyButton {
-        val button = PolicyButton(viewingCiv, canChangeState, policy, size = Sizes.iconSize)
-        button.onClick { pickPolicy(button = button) }
-        if (policy.isPickable(viewingCiv, canChangeState))
-            button.onDoubleClick(UncivSound.Policy) { confirmAction() }
-        return button
+        add(verticalScroll(list,"ui-policy-branch-list").also { overlayScroll = it }).grow().minWidth(0f).minHeight(0f).padTop(u(12f))
     }
 
     private fun confirmAction() {
-        val policy = selectedPolicyButton!!.policy
-
-        // Evil people clicking on buttons too fast to confuse the screen - #4977
-        if (!policy.isPickable(viewingCiv, canChangeState)) return
-
-        // Don't accept more clicking anywhere
-        Concurrency.run {
-            InputDisabling.withInputDisabled {
-                viewingCiv.policies.adopt(policy)
-            }
-            Concurrency.runOnGLThread {
-                // If we've moved to another screen in the meantime (great person pick, victory screen) ignore this
-                // update policies
-                if (game.screen !is PolicyPickerScreen) game.popScreen()
-                else game.replaceCurrentScreen{ recreate() }
-            }
-        }
-
+        val policy = selected ?: return
+        if (confirming || !pickable(policy)) return
+        confirming = true
+        val costText = if (policies.freePolicies > 0) "Uses 1 free policy — no Culture cost".tr()
+            else "Cost: [${policies.getCultureNeededForNextPolicy()}] Culture · Remaining: [${policies.storedCulture-policies.getCultureNeededForNextPolicy()}]".tr()
+        val completion = reward(policy.branch)
+        val completes = policy.policyBranchType == PolicyBranchType.Member && completion != null &&
+            !policies.isAdopted(completion.name) && members(policy.branch).all { it.name == policy.name || policies.isAdopted(it.name) }
+        val question = "Are you sure you want to adopt [${policy.name}]?".tr() + "\n\n" + costText +
+            (if (completes) "\n\n" + "Completes the [${policy.branch.name}] branch and grants its reward".tr() else "")
+        ConfirmPopup(this,question,"Adopt",true,restoreDefault={ confirming=false }) {
+            confirming=false
+            if (pickable(policy)) adopt(policy, completes)
+        }.apply {
+            confirmation = this
+            closeListeners.add { confirming = false; confirmation = null }
+            wrapPrompt(minOf(this@PolicyPickerScreen.stage.width-u(64f),u(460f)))
+        }.open(force=true)
     }
 
-    override fun recreate(): BaseScreen {
-        val newScreen = PolicyPickerScreen(viewingCiv, canChangeState, selectedPolicyButton?.policy?.name)
-        newScreen.scrollPane.scrollPercentX = scrollPane.scrollPercentX
-        newScreen.scrollPane.scrollPercentY = scrollPane.scrollPercentY
-        newScreen.scrollPane.updateVisualScroll()
-        return newScreen
+    private fun adopt(policy: Policy, completes: Boolean) {
+        if (!pickable(policy)) return
+        busy = true
+        rightSideButton.isDisabled = true
+        Concurrency.run {
+            InputDisabling.withInputDisabled { policies.adopt(policy) }
+            Concurrency.runOnGLThread {
+                busy = false
+                // Keep the existing picker handoff for policy side effects that switch screens.
+                if (game.screen !== this@PolicyPickerScreen) {
+                    if (game.screen !is PolicyPickerScreen) game.popScreen()
+                    return@runOnGLThread
+                }
+                if (completes) selected = reward(policy.branch) ?: policy
+                build()
+                if (completes) ToastPopup("[${policy.branch.name}] branch completed".tr(),this@PolicyPickerScreen)
+            }
+        }
+    }
+
+    private fun back() {
+        if (busy) return
+        if (overlay != null) closeOverlay() else game.popScreen()
     }
 }
