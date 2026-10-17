@@ -86,6 +86,10 @@ internal class CampaignHomeMenu(
         header.add(heading).expandX().left()
         val options = button("Options", KeyboardBinding.MainMenuOptions) { screen.openOptionsPopup() }.apply {
             name = "ui-home-options"
+            style = Button.ButtonStyle(style).apply {
+                up = null
+                over = null
+            }
             add(ImageGetter.getImage("OtherIcons/Options", gold)).size(px(22f))
             onLongPress { screen.openOptionsPopup(withDebug = true) }
             addTooltip("Options")

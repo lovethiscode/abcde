@@ -173,12 +173,33 @@ internal class DisplayTab(
     }
 
     private fun Table.addAutoSizeButton() {
-        val autoSizeButton = "Autosize".toTextButton()
+        val useSidebar = optionsPopup.useSidebar
+        val recommendedSizeSelected = useSidebar && settings.screenSize == guessScreenSize()
+        val autoSizeButton = (if (useSidebar) "Use recommended size" else "Autosize").toTextButton()
         autoSizeButton.onClick {
             val newSize = guessScreenSize()
             if (newSize == settings.screenSize) return@onClick
             settings.screenSize = newSize
             reloadWorldAndOptions()
+        }
+        if (useSidebar) {
+            val description = (if (recommendedSizeSelected)
+                "The recommended UI size is already selected."
+            else "Choose a UI size that fits your screen.").toLabel(OptionsPopupStyle.muted).apply {
+                wrap = true
+            }
+            autoSizeButton.apply {
+                isDisabled = recommendedSizeSelected
+                label.setEllipsis(false)
+                label.wrap = true
+                labelCell.minWidth(0f).growX()
+            }
+            add(description).minWidth(0f).growX().left()
+                .padRight(OptionsPopupStyle.points(16f)).spaceBottom(OptionsPopupStyle.points(8f))
+            add(autoSizeButton).width(rightWidgetMinWidth).fillX().right()
+                .minHeight(OptionsPopupStyle.points(44f)).pad(OptionsPopupStyle.points(6f))
+                .spaceBottom(OptionsPopupStyle.points(8f)).row()
+            return
         }
         add(autoSizeButton).center().row()
 
