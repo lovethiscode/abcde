@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.utils.Align
@@ -110,6 +111,19 @@ class PolicyPickerScreen(
         pickerPane.remove()
         root.name = "policy-codex"
         root.setFillParent(true)
+        // A detail sheet leaves the visible catalog interactive. Only a tap on its
+        // background dismisses it; scrolling and policy taps keep their own actions.
+        root.addListener(object : UncivActorGestureListener() {
+            override fun tap(event: InputEvent?, x: Float, y: Float, count: Int, button: Int) {
+                if (overlay != "details" || confirming || busy) return
+                var target = event?.target
+                while (target != null && target !== root) {
+                    if (target.name?.startsWith("ui-policy:") == true) return
+                    target = target.parent
+                }
+                closeOverlay()
+            }
+        })
         stage.addActor(root)
         closeButton.clearActivationActions(ActivationTypes.Tap)
         closeButton.keyShortcuts.clear()
@@ -168,9 +182,6 @@ class PolicyPickerScreen(
             body.add(buildDetails(false)).width(u(metrics.detailWidth)).growY().minHeight(0f)
         }
         root.add(body).grow().minWidth(0f).minHeight(0f).row()
-        if (!metrics.docked) root.add(selectionSummary()).growX().minWidth(0f)
-            .minHeight(u(metrics.summaryHeight)).apply { if (metrics.compact) height(u(metrics.summaryHeight)) }
-            .padTop(u(metrics.summaryGap))
         root.validate()
         if (anchor != null) cards[anchor.first]?.let {
             catalogScroll.scrollY = catalog.height - (it.y + it.height) + u(anchor.second)
@@ -270,7 +281,11 @@ class PolicyPickerScreen(
                 if (!metrics.compact) add(label(branchStatus(branch), 12, appearance.muted, true)).growX().minWidth(0f).left().padTop(u(3f))
             }
             add(text).growX().minWidth(0f)
-            add(ImageGetter.getImage("OtherIcons/BackArrow").apply { rotation = if (branch.name in collapsed) 180f else 90f }).size(u(12f)).padLeft(u(8f))
+            add(ImageGetter.getImage("OtherIcons/BackArrow").apply {
+                setSize(u(12f), u(12f))
+                setOrigin(Align.center)
+                rotation = if (branch.name in collapsed) 180f else 90f
+            }).size(u(12f)).padLeft(u(8f))
             onClick {
                 if (!collapsed.add(branch.name)) collapsed.remove(branch.name)
                 build()
@@ -468,32 +483,10 @@ class PolicyPickerScreen(
         add(controls).growX().minWidth(0f)
     }
 
-    private fun selectionSummary() = Table().apply {
-        name = "ui-policy-details"; touchable = Touchable.enabled
-        background = appearance.outline(appearance.panel)
-        pad(u(if (metrics.compact) 0f else 10f),u(14f),u(if (metrics.compact) 0f else 10f),u(14f))
-        selected?.let { policy ->
-            add(icon(policy)).size(u(if (metrics.compact) 22f else 30f)).padRight(u(if (metrics.compact) 8f else 12f))
-            val title = if (policy.policyBranchType == PolicyBranchType.BranchComplete) "Completion reward" else policy.name
-            if (metrics.compact) {
-                add(label(title,14).apply { setEllipsis(true) }).growX().minWidth(0f).left()
-                add(label(stateText(policy),12,appearance.muted).apply { setEllipsis(true) })
-                    .width(u((metrics.width * .25f).coerceIn(96f, 200f))).padLeft(u(8f)).left()
-            } else {
-                val text = Table().apply {
-                    add(label(title,16).apply { setEllipsis(true) }).growX().minWidth(0f).left().row()
-                    add(label(stateText(policy),12,appearance.muted).apply { setEllipsis(true) }).growX().minWidth(0f).left()
-                }
-                add(text).growX().minWidth(0f)
-            }
-            add(label("View details",13,appearance.gold)).padLeft(u(8f))
-            onClick { openOverlay("details") }
-        } ?: add(label("No policies available",14,appearance.muted,true)).growX()
-    }
-
     private fun selectPolicy(policy: Policy) {
         val anchor = captureAnchor()
         val wasBrowsing = overlay == null
+        if (wasBrowsing) lastFocus = stage.keyboardFocus
         selected = policy
         collapsed.remove(policy.branch.name)
         overlay = if (metrics.docked) null else "details"
@@ -534,7 +527,11 @@ class PolicyPickerScreen(
 
     private fun showOverlay() {
         overlayLayer?.remove(); overlayLayer = null
-        root.touchable = if (overlay == null) Touchable.childrenOnly else Touchable.disabled
+        root.touchable = when (overlay) {
+            null -> Touchable.childrenOnly
+            "details" -> Touchable.enabled
+            else -> Touchable.disabled
+        }
         val kind = overlay ?: return
         overlayScroll = null
         val panel = when (kind) {
@@ -542,14 +539,15 @@ class PolicyPickerScreen(
             "search" -> buildSearch()
             else -> buildBranchLocator()
         }.apply {
+            touchable = Touchable.enabled
             background = appearance.surface(appearance.background)
             pad(u(if(metrics.compact)12f else 20f))
         }
         val layer = Table().apply {
             name = "ui-policy-overlay"
             setFillParent(true)
-            background = ImageGetter.getWhiteDotDrawable().tint(Color(0f,0f,0f,.55f))
-            touchable = Touchable.enabled
+            background = ImageGetter.getWhiteDotDrawable().tint(Color(0f,0f,0f,if (kind == "details") .18f else .55f))
+            touchable = if (kind == "details") Touchable.childrenOnly else Touchable.enabled
             if (metrics.portrait && metrics.width <= 700f) add(panel).grow().minWidth(0f).minHeight(0f)
             else { right();pad(u(12f));add(panel).width(u(if(kind=="details")350f else minOf(460f,metrics.contentWidth))).growY().minHeight(0f) }
         }
