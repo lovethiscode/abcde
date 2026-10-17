@@ -219,8 +219,8 @@ class PolicyPickerScreen(
         if (metrics.compact) {
             // Share one 44-point navigation row; the policy tree owns the remaining height.
             header.add(progress).width(u((metrics.width * .2f).coerceIn(112f, 180f))).padLeft(u(8f)).padRight(u(8f))
-            header.add(branchLocator()).width(u(96f)).height(u(44f))
-            header.add(foldAllAction()).width(u(96f)).height(u(44f)).padLeft(u(4f))
+            header.add(branchLocator()).minWidth(u(96f)).height(u(44f))
+            header.add(foldAllAction()).minWidth(u(96f)).height(u(44f)).padLeft(u(4f))
             header.add(search).size(u(44f)).padLeft(u(4f))
         } else if (metrics.portrait && metrics.width < 700f) {
             header.add(search).size(u(44f))
