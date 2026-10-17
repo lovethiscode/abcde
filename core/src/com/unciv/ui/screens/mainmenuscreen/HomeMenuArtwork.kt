@@ -16,7 +16,7 @@ internal class HomeMenuArtwork : Disposable {
     private val map = Texture(Gdx.files.internal("ExtraImages/MainMenuMap.png")).apply {
         setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear)
     }
-    private val icon = Texture(Gdx.files.internal("ExtraImages/Icons/AppIcon.png")).apply {
+    private val icon = Texture(Gdx.files.internal("ExtraImages/LaunchMarkTransparent@3x.png")).apply {
         setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear)
     }
     private val scrim = Pixmap(2, 1, Pixmap.Format.RGBA8888).let {
