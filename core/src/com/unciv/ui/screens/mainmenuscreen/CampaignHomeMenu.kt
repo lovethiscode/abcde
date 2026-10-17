@@ -47,6 +47,7 @@ internal class CampaignHomeMenu(
     private val compact get() = density > 0
     private val minimal get() = density > 1
     private val artwork = HomeMenuArtwork()
+    private val homeStyle by lazy { HomeMenuStyle(unit) }
     private fun px(value: Float) = value * unit
     private fun label(text: String, size: Int, color: Color = ink) =
         text.toLabel(color, (size * unit).roundToInt()).apply { wrap = true }
@@ -200,7 +201,6 @@ internal class CampaignHomeMenu(
         add(content).width(width + margin * 2f).minHeight(content.prefHeight).expandY().fillY()
     }
 
-    private val homeStyle by lazy { HomeMenuStyle(unit) }
 
     private fun button(text: String, binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Button =
         Button(Button.ButtonStyle().apply {
