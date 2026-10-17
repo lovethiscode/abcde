@@ -2,23 +2,33 @@ package com.unciv.ui.components.widgets
 
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.g2d.Batch
+import com.badlogic.gdx.graphics.g2d.NinePatch
 import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
+import com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable
+import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable
 import com.badlogic.gdx.utils.Align
-import com.unciv.models.skins.ExpeditionBlueTheme
-import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.UncivGame
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
+import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
 import com.unciv.ui.components.extensions.setFontSize
+import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.utils.Display
+import kotlin.math.atan2
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
-/** iOS navigation controls use point-sized targets, independently of the selected UI scale. */
+/** Navigation changes presentation only; callers retain their actions and keyboard bindings. */
 object UiNavigation {
     val isIos get() = Gdx.app?.type == Application.ApplicationType.iOS
-    val backCaption get() = if (isIos) "‹ ${"Back".tr()}" else "Back".tr()
+    val backCaption get() = "Back".tr()
 
     fun minimumTouchSize(): Float {
         if (!isIos) return 44f
@@ -28,36 +38,118 @@ object UiNavigation {
 
     fun touchSize(virtualSize: Float, safePoints: Float) = 44f * virtualSize / safePoints
 
-    private fun style() = if (ExpeditionBlueTheme.enabled)
+    private fun rounded(color: Color, radius: Float, unit: Float) =
+        (BaseScreen.skin.getDrawable("RoundedEdgeRectangle") as NinePatchDrawable).let { source ->
+            NinePatchDrawable(NinePatch(source.patch, color).apply {
+                scale(radius * unit / leftWidth, radius * unit / topHeight)
+                setPadding(0f, 0f, 0f, 0f)
+            }).apply { minWidth = 0f; minHeight = 0f }
+        }
+
+    fun buttonStyle(unit: Float = minimumTouchSize() / 44f): TextButton.TextButtonStyle =
         TextButton.TextButtonStyle(BaseScreen.skin.get(TextButton.TextButtonStyle::class.java)).apply {
-            over = ExpeditionBlueTheme.outlinedControl(
-                BaseScreen.skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.border),
-                BaseScreen.skin.newDrawable("RoundedEdgeRectangle", ExpeditionBlueTheme.controlBorder))
-            down = over
+            if (!ExpeditionBlueTheme.enabled) return@apply
+            fun surface(fill: Color, edge: Color): BaseDrawable {
+                val outside = rounded(edge, 8f, unit)
+                val inside = rounded(fill, 7f, unit)
+                return object : BaseDrawable() {
+                    override fun draw(batch: Batch, x: Float, y: Float, width: Float, height: Float) {
+                        outside.draw(batch, x, y, width, height)
+                        inside.draw(batch, x + unit, y + unit,
+                            (width - 2 * unit).coerceAtLeast(0f), (height - 2 * unit).coerceAtLeast(0f))
+                    }
+                }
+            }
+            up = surface(Color.valueOf("193743"), Color.valueOf("577786"))
+            over = surface(Color.valueOf("2B4B58"), ExpeditionBlueTheme.controlBorder)
+            down = surface(Color.valueOf("355966"), ExpeditionBlueTheme.controlBorder)
             checked = up
-            checkedFontColor = ExpeditionBlueTheme.text
-        } else null
+            checkedOver = over
+            checkedDown = down
+            disabled = surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.border)
+            fontColor = Color.valueOf("ECF2F3")
+            overFontColor = fontColor; downFontColor = fontColor
+            checkedFontColor = fontColor; checkedOverFontColor = fontColor; checkedDownFontColor = fontColor
+            disabledFontColor = ExpeditionBlueTheme.muted
+        }
 
-    private fun button(caption: String): TextButton = object : TextButton(
-        caption, style() ?: BaseScreen.skin.get(TextButton.TextButtonStyle::class.java)
-    ) {
-        override fun getMinWidth() = maxOf(super.getMinWidth(), minimumTouchSize())
-        override fun getMinHeight() = maxOf(super.getMinHeight(), minimumTouchSize())
-        override fun getPrefWidth() = maxOf(super.getPrefWidth(), minimumTouchSize())
-        override fun getPrefHeight() = maxOf(super.getPrefHeight(), minimumTouchSize())
+    private fun button(unit: Float): TextButton = object : TextButton("", buttonStyle(unit)) {
+        override fun getMinWidth() = maxOf(super.getMinWidth(), 44f * unit)
+        override fun getMinHeight() = maxOf(super.getMinHeight(), 44f * unit)
+        override fun getPrefWidth() = maxOf(super.getPrefWidth(), 44f * unit)
+        override fun getPrefHeight() = maxOf(super.getPrefHeight(), 44f * unit)
     }
 
-    fun backButton(): TextButton = button(backCaption).apply {
-        name = "ui-navigation-back"
-        labelCell.pad(8f)
-        setSize(maxOf(prefWidth, minimumTouchSize()), maxOf(prefHeight, minimumTouchSize()))
+    /** [unit] is 1 for parents (such as CityWorkbench) that already apply point scaling. */
+    fun backButton(caption: String = "Back", unit: Float = minimumTouchSize() / 44f): TextButton =
+        button(unit).apply {
+            name = "ui-navigation-back"
+            if (isIos) styleBackButton(this, caption, unit)
+            else {
+                setText(caption.tr())
+                labelCell.pad(8f)
+                setSize(prefWidth, prefHeight)
+            }
+        }
+
+    fun styleBackButton(button: TextButton, caption: String = "Back", unit: Float = minimumTouchSize() / 44f): TextButton {
+        styleTextButton(button, unit)
+        button.setText(caption.tr())
+        if (isIos) {
+            button.clearChildren()
+            button.add(icon(button, close = false)).size(20f * unit).padRight(7f * unit)
+            button.add(button.label).minWidth(0f)
+        }
+        button.setSize(button.prefWidth.coerceAtLeast(44f * unit), button.prefHeight.coerceAtLeast(44f * unit))
+        return button
     }
 
-    fun dismissButton(): TextButton = button("×").apply {
+    /** Remove navigation artwork when a picker repurposes its back button as a workflow action. */
+    fun styleTextButton(button: TextButton, unit: Float = minimumTouchSize() / 44f): TextButton = button.apply {
+        style = buttonStyle(unit)
+        clearChildren()
+        pad(0f, 13f * unit, 0f, 13f * unit)
+        label.setFontSize((16f * unit).roundToInt().coerceAtLeast(1))
+        add(label).minWidth(0f)
+    }
+
+    fun dismissButton(unit: Float = minimumTouchSize() / 44f): TextButton = button(unit).apply {
         name = "ui-popup-close"
-        label.setFontSize((18f * minimumTouchSize() / 44f).roundToInt())
-        val size = maxOf(50f, minimumTouchSize())
-        setSize(size, size)
+        if (!isIos) {
+            setText("×")
+            label.setFontSize(18)
+            setSize(50f, 50f)
+            return@apply
+        }
+        clearChildren()
+        pad(0f)
+        add(icon(this, close = true)).size(20f * unit)
+        setSize(44f * unit, 44f * unit)
+        addTooltip("Close")
+    }
+
+    /** The same two-stroke control geometry is used for every back arrow and dismiss mark. */
+    private fun icon(button: TextButton, close: Boolean): Image {
+        val lines = if (close) arrayOf(floatArrayOf(6f, 6f, 18f, 18f), floatArrayOf(18f, 6f, 6f, 18f))
+            else arrayOf(floatArrayOf(14f, 5f, 7f, 12f), floatArrayOf(7f, 12f, 14f, 19f))
+        val drawable = object : BaseDrawable() {
+            override fun draw(batch: Batch, x: Float, y: Float, width: Float, height: Float) {
+                val region = ImageGetter.getWhiteDotDrawable().region
+                val stroke = width * 1.8f / 24f
+                for (line in lines) {
+                    val dx = (line[2] - line[0]) * width / 24f
+                    val dy = (line[1] - line[3]) * height / 24f
+                    batch.draw(region, x + line[0] * width / 24f, y + (24f - line[1]) * height / 24f - stroke / 2,
+                        0f, stroke / 2, sqrt(dx * dx + dy * dy), stroke, 1f, 1f, atan2(dy, dx) * 180f / Math.PI.toFloat())
+                }
+            }
+        }
+        return object : Image(drawable) {
+            override fun draw(batch: Batch, parentAlpha: Float) {
+                color = (if (button.isDisabled) button.style.disabledFontColor else button.style.fontColor) ?: Color.WHITE
+                super.draw(batch, parentAlpha)
+            }
+        }
     }
 
     fun popupHeader(title: Actor, closeButton: Actor): Table {

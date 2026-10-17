@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.overviewscreen
 
+import com.unciv.ui.components.input.onActivation
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.input.keyShortcuts
 import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.unciv.ui.components.input.KeyCharAndCode
@@ -85,15 +87,18 @@ class EmpireOverviewScreen(
         }
         persistState.update(pageObjects)
 
-        val closeButton = OverviewUi.button(flat = true) { game.popScreen() }.apply {
+        val closeButton = (if (UiNavigation.isIos) UiNavigation.backButton("Map").apply {
+            onActivation { game.popScreen() }
+        } else OverviewUi.button(flat = true) { game.popScreen() }.apply {
             add(ImageGetter.getImage("OtherIcons/BackArrow").apply { color = OverviewUi.accent }).size(pt(18f)).padRight(pt(7f))
             add("Map".toLabel(fontColor = OverviewUi.accent, fontSize = font(16), hideIcons = true))
+        }).apply {
             keyShortcuts.add(KeyCharAndCode.BACK)
             name = "ui-overview-close"
         }
         val header = Table().apply {
             padRight(pt(12f))
-            add(closeButton).width(pt(74f)).height(OverviewUi.touch).padRight(pt(14f))
+            add(closeButton).minWidth(pt(74f)).height(OverviewUi.touch).padRight(pt(14f))
             add("Empire Overview".toLabel(fontSize = font(20), hideIcons = true).apply { setEllipsis(true) })
                 .left().growX().minWidth(0f)
             val info = viewingPlayer.getCiv().gameInfo

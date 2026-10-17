@@ -282,8 +282,8 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
         bottomTable.clear()
         pickerPane.remove()
         val u = appearance::px
-        closeButton.setText("")
-        appearance.decorate(closeButton, MultiplayerIcon.Back, ghost = true)
+        if (UiNavigation.isIos) UiNavigation.styleBackButton(closeButton)
+        else { closeButton.setText(""); appearance.decorate(closeButton, MultiplayerIcon.Back, ghost = true) }
         closeButton.name = "multiplayer-back"
         appearance.decorate(createRoomButton, MultiplayerIcon.Plus, outlined = true)
         createRoomButton.name = "multiplayer-create"
@@ -361,7 +361,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
             }
         }
         return Table().apply {
-            add(closeButton).size(u(44f))
+            add(closeButton).width(if (UiNavigation.isIos) closeButton.prefWidth else u(44f)).height(u(44f))
             add(heading).growX().minWidth(0f).left().padLeft(u(12f))
             if (layout.twoColumns) add(actions).padLeft(u(12f))
             add(playerMenuButton).size(u(44f)).padLeft(u(8f))

@@ -22,7 +22,6 @@ import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.GUI
 import com.unciv.logic.event.EventBus
-import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.addSeparator
 import com.unciv.ui.components.extensions.center
 import com.unciv.ui.components.extensions.darken
@@ -101,7 +100,19 @@ open class Popup(
                         * topTable
                     * bottomTable
     */
-    protected val innerTable = Table(BaseScreen.skin)
+    private var floatingCloseHeader = false
+    private var contentTopPadding = 0f
+    protected val innerTable = object : Table(BaseScreen.skin) {
+        override fun layout() {
+            super.layout()
+            if (floatingCloseHeader) {
+                val unit = UiNavigation.minimumTouchSize() / 44f
+                titleTable.setBounds(8f * unit, height - 52f * unit,
+                    (width - 16f * unit).coerceAtLeast(0f), 44f * unit)
+                titleTable.validate()
+            }
+        }
+    }
 
     /** This contains most of the Popup content.
      *  For [Scrollability.WithoutButtons], that excludes the closing buttons which go in [bottomTable].
@@ -109,6 +120,8 @@ open class Popup(
     private val topTable: Table
     private val topTableCell: Cell<WidgetGroup>
     private val titleTable = Table(BaseScreen.skin)
+    private var headerCloseButton: TextButton? = null
+    private var headerDismissAction: (() -> Unit)? = null
 
     /** This contains the bottom row buttons and does not participate in scrolling
      *  (for [Scrollability.WithoutButtons], otherwise alias for [innerTable]). */
@@ -325,10 +338,14 @@ open class Popup(
     /** Proxy redirects [clear][com.badlogic.gdx.scenes.scene2d.ui.Table.clear] to clear all content:
      *  [innerTable] or if [Scrollability.WithoutButtons] was used [topTable] and [bottomTable] */
     override fun clear() {
+        if (floatingCloseHeader) innerTable.padTop(contentTopPadding)
+        floatingCloseHeader = false
         topTable.clear()
         bottomTable.clear()
         titleTable.clear()
         titleTable.pad(0f)
+        headerCloseButton = null
+        headerDismissAction = null
         clickBehindToClose = false
         onCloseCallback = null
     }
@@ -391,21 +408,49 @@ open class Popup(
     ): Cell<TextButton> {
         clickBehindToClose = true
         onCloseCallback = action
-        val closeStyle = if (UiNavigation.isIos && text == Constants.close)
-            TextButtonStyle(style ?: BaseScreen.skin.get(TextButtonStyle::class.java)).apply {
-                fontColor = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger).cpy()
-                overFontColor = fontColor
-                downFontColor = fontColor
-                checkedFontColor = fontColor
-                checkedOverFontColor = fontColor
-                checkedDownFontColor = fontColor
-            } else style
-        val cell = addButton(text, additionalKey, closeStyle) {
+        fun dismiss() {
             close()
             action?.invoke()
         }
-        if (UiNavigation.isIos && text == Constants.close) cell.actor.name = "ui-popup-close"
+        if (UiNavigation.isIos && text == Constants.close) {
+            val button = headerDismissButton { dismiss() }.apply {
+                keyShortcuts.add(additionalKey)
+                keyShortcuts.add(KeyCharAndCode.BACK)
+            }
+            return addDismissControl(button)
+        }
+        val closeStyle = if (UiNavigation.isIos && text == Constants.cancel) UiNavigation.buttonStyle() else style
+        val cell = addButton(text, additionalKey, closeStyle) { dismiss() }
         cell.actor.keyShortcuts.add(KeyCharAndCode.BACK)
+        if (UiNavigation.isIos && text == Constants.cancel) {
+            UiNavigation.styleTextButton(cell.actor)
+            // Reuse an existing title-bar X, including its cancellation callback.
+            val button = headerDismissButton { if (!cell.actor.isDisabled) dismiss() }
+            if (button.parent == null) addDismissControl(button)
+        }
+        return cell
+    }
+
+    private fun headerDismissButton(action: () -> Unit): TextButton {
+        headerDismissAction = action
+        return headerCloseButton ?: UiNavigation.dismissButton().apply {
+            onActivation { headerDismissAction?.invoke() }
+        }.also { headerCloseButton = it }
+    }
+
+    private fun addDismissControl(button: TextButton): Cell<TextButton> {
+        (button.parent as? Table)?.getCell(button)?.let { return it }
+        val unit = UiNavigation.minimumTouchSize() / 44f
+        titleTable.add().expandX()
+        val cell = titleTable.add(button).size(button.width, button.height).right()
+        if (topTable === bottomTable) {
+            // These modes share their content/button table. Reserve header space without
+            // changing their scrolling mode or moving any existing content cells.
+            if (!floatingCloseHeader) contentTopPadding = innerTable.padTop
+            floatingCloseHeader = true
+            innerTable.padTop(maxOf(contentTopPadding, 60f * unit))
+            innerTable.addActor(titleTable)
+        } else titleTable.pad(12f * unit, 20f * unit, 0f, 20f * unit)
         return cell
     }
 
@@ -417,7 +462,9 @@ open class Popup(
     ): Group {
         clickBehindToClose = true
         onCloseCallback = action
-        val closeButton = getCloseButton { close(); action?.invoke() }
+        val closeButton = if (UiNavigation.isIos) headerDismissButton { close(); action?.invoke() }.apply {
+            keyShortcuts.add(KeyCharAndCode.BACK)
+        } else getCloseButton { close(); action?.invoke() }
         if (additionalKey != null) closeButton.keyShortcuts.add(additionalKey)
         val header = UiNavigation.popupHeader(title, closeButton)
         if (topTable === bottomTable) add(header).growX().row()

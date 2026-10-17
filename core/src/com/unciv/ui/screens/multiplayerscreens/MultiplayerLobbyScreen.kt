@@ -291,7 +291,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private fun leaveRoom() {
         if (busy) return
         ConfirmPopup(this,
-            if (room?.hostId == userId) "Leaving closes the room for everyone." else "Leave this waiting room?","Leave room") {
+            if (room?.hostId == userId) "Leaving closes the room for everyone." else "Leave this waiting room?",
+            if (room?.hostId == userId) "Close room" else "Leave room") {
             runRequest(leaveAfter = true) { client.command(session.gameId,"leave",command()) }
         }.open()
     }
@@ -515,7 +516,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             }
         }
         val leave = (if(r == null) "Cancel" else if(host) "Close room" else "Leave room").toTextButton().apply {
-            if (UiNavigation.isIos) SinglePlayerSetup.style(this,formFont)
+            if (UiNavigation.isIos) UiNavigation.styleTextButton(this)
             onClick {
                 if (r == null || r.state == "CLOSED" || own == null) game.popScreen() else leaveRoom()
             }; setCouncilEnabled(this,!busy)
@@ -560,7 +561,6 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         header.apply {
             add(back).minHeight(UiNavigation.minimumTouchSize()).padRight(16f)
             if (UiNavigation.isIos && this@MultiplayerLobbyScreen.stage.width < 850f) {
-                SinglePlayerSetup.style(back, formFont)
                 add(councilHeading("Multiplayer room", 26).apply { wrap = true }).growX().minWidth(0f).left()
                 add(roomRole).padLeft(8f)
                 row()
@@ -569,7 +569,6 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     add(copyInvitationButton).growX().minWidth(0f).height(44f)
                 }).colspan(3).growX().padTop(8f)
             } else if (UiNavigation.isIos) {
-                SinglePlayerSetup.style(back, formFont)
                 add(Table().apply {
                     add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX().padRight(18f)
                     add(councilHeading("Multiplayer room", 28))

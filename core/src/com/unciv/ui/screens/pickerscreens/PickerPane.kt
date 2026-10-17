@@ -128,6 +128,7 @@ class PickerPane(
 
     fun useCloseButtonAsAction() {
         if (!UiNavigation.isIos) return
+        UiNavigation.styleTextButton(closeButton)
         navigationHeader.clear()
         bottomTable.clear()
         bottomTable.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(10f)

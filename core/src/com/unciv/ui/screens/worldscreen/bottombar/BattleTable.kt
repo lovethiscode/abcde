@@ -148,12 +148,8 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         } else addBorderAllowOpacity(2f, Color.WHITE)
         if (BattlefieldHud.enabled) {
             val touch = UiNavigation.minimumTouchSize()
-            val closeButton = "×".toTextButton(hideIcons = true).apply {
+            val closeButton = UiNavigation.dismissButton().apply {
                 name = "ui-battle-close"
-                BattlefieldGeometry.fitControl(this, flat = true)
-                label.setFontSize(BattlefieldHud.font(24f))
-                label.color = ExpeditionBlueTheme.danger
-                setSize(touch, touch)
                 onActivation { cancelBattlefieldPreview() }
                 keyShortcuts.add(KeyCharAndCode.BACK)
             }

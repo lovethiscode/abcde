@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.victoryscreen
 
+import com.unciv.ui.components.input.onActivation
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Button
@@ -235,10 +236,7 @@ class VictoryScreen private constructor(
                 button.cells.last().actor.color = if (button.isChecked) OverviewUi.accent else com.unciv.models.skins.ExpeditionBlueTheme.text
             }
         }
-        val back = OverviewUi.button(flat = true) { game.popScreen() }.apply {
-            add(ImageGetter.getImage("OtherIcons/BackArrow").apply { color = OverviewUi.accent }).size(pt(18f)).padRight(pt(6f))
-            add(OverviewUi.plainLabel("Map", 16, OverviewUi.accent))
-        }
+        val back = UiNavigation.backButton("Map").apply { onActivation { game.popScreen() } }
         val header = Table().apply {
             add(back).height(OverviewUi.touch).padRight(pt(16f))
             add(OverviewUi.plainLabel("Victory status", 20).apply { setEllipsis(true) }).growX().minWidth(0f).left()
