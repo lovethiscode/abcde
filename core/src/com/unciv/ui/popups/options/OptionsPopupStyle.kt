@@ -132,6 +132,9 @@ internal object OptionsPopupStyle {
                     backgroundOpen = selectBackground(sectionBackground)
                     backgroundDisabled = selectBackground(OptionsPopupStyle.background)
                 }
+                // SelectBox reads the cached item height before laying out its popup on first open.
+                // Refresh it after changing the font and selection padding so the popup fits its rows.
+                actor.list.validate()
             }
             is TextField -> if (actor.style.font !== formFont)
                 actor.style = TextField.TextFieldStyle(actor.style).apply {
