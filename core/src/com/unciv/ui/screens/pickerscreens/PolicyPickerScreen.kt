@@ -557,7 +557,10 @@ class PolicyPickerScreen(
         add(field).growX().minWidth(0f).height(u(44f)).padTop(u(6f)).padBottom(u(12f)).row()
         add(verticalScroll(results,"ui-policy-search-results").also { overlayScroll = it }).grow().minWidth(0f).minHeight(0f)
         updateResults()
-        Concurrency.runOnGLThread { if (overlay == "search" && field.stage == stage) stage.keyboardFocus = field }
+        Concurrency.runOnGLThread {
+            val screenStage = this@PolicyPickerScreen.stage
+            if (overlay == "search" && field.stage === screenStage) screenStage.keyboardFocus = field
+        }
     }
 
     private fun buildBranchLocator() = Table().apply {
@@ -570,7 +573,7 @@ class PolicyPickerScreen(
                 build()
                 root.validate()
                 cards[branch.name]?.let { catalogScroll.scrollY = catalog.height - it.y - it.height;catalogScroll.updateVisualScroll() }
-                stage.scrollFocus = catalogScroll
+                this@PolicyPickerScreen.stage.scrollFocus = catalogScroll
             }).height(u(64f)).padBottom(u(6f)).row()
         }
         add(verticalScroll(list,"ui-policy-branch-list").also { overlayScroll = it }).grow().minWidth(0f).minHeight(0f).padTop(u(12f))
