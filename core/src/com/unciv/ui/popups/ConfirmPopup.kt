@@ -2,6 +2,7 @@ package com.unciv.ui.popups
 
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
+import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.ui.components.extensions.toLabel
@@ -45,6 +46,13 @@ open class ConfirmPopup(
         val confirmStyle = BaseScreen.skin.get(confirmStyleName, TextButtonStyle::class.java)
         addOKButton(confirmText, KeyboardBinding.Confirm, confirmStyle, action = action).actor.name = "ui-confirm"
         equalizeLastTwoButtonWidths()
+    }
+
+    /** Opt-in wrapping for responsive callers; existing confirmation sizing stays unchanged. */
+    fun wrapPrompt(width: Float) {
+        promptLabel.wrap = true
+        (promptLabel.parent as Table).getCell(promptLabel).width(width.coerceAtLeast(1f))
+        invalidateHierarchy()
     }
 
 }
