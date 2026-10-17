@@ -9,6 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Container
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
@@ -81,6 +82,14 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
     private var baseHeight = 0f
     private val inlineTechSlot = Table()
     private var battlefieldInlineTech = false
+    private val battlefieldInfoRow = Table()
+    private val battlefieldInfoScroll = ScrollPane(battlefieldInfoRow, BaseScreen.skin).apply {
+        name = "ui-map-economy-resources"
+        setScrollingDisabled(false, true)
+        setOverscroll(false, false)
+        setScrollbarsOnTop(true)
+        setFadeScrollBars(false)
+    }
 
     internal fun refitBattlefield(): Rectangle? {
         updateLayout()
@@ -128,9 +137,9 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
     /** Performs the layout tricks mentioned in the class Kdoc */
     private fun updateLayout() {
         if (BattlefieldHud.enabled) {
-            val safe = worldScreen.safeAreaBoundsInWorld()
             val gap = BattlefieldHud.points(6f)
-            val availableWidth = safe.width - gap * 2f
+            val safe = BattlefieldHud.controlBounds(worldScreen, gap, topBar = true)
+            val availableWidth = safe.width
             val portrait = safe.height > safe.width
             val touch = UiNavigation.minimumTouchSize()
             val civWidth = minOf(
@@ -138,31 +147,31 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
                 availableWidth * if (portrait) .72f else .32f
             )
             val techWidth = worldScreen.techPolicyAndDiplomacy.prefWidth
+            val resources = resourceTable.battlefieldResources
+            battlefieldInfoRow.clearChildren()
+            battlefieldInfoRow.add(statsTable).minHeight(touch)
+            if (resources.children.notEmpty())
+                battlefieldInfoRow.add(resources).minHeight(touch).padLeft(gap)
+            val infoWidth = battlefieldInfoRow.prefWidth
             battlefieldInlineTech = !portrait && techWidth > 0f &&
-                civWidth + statsTable.prefWidth + techWidth + overviewButton.prefWidth + gap * 3f <= availableWidth
+                civWidth + infoWidth + techWidth + overviewButton.prefWidth + gap * 3f <= availableWidth
             clear()
             if (portrait) {
                 add(selectedCivTable).width(civWidth).minHeight(touch).left()
                 add().growX()
                 add(overviewButton).minHeight(touch).right().padLeft(gap).row()
-                add(statsTable).colspan(3).minWidth(0f).growX()
+                add(battlefieldInfoScroll).colspan(3).minWidth(0f).growX().height(touch)
             } else {
                 add(selectedCivTable).width(civWidth).minHeight(touch).left()
-                add(statsTable).minWidth(0f).growX().padLeft(gap)
+                add(battlefieldInfoScroll).minWidth(0f).growX().height(touch).padLeft(gap)
                 if (battlefieldInlineTech) add(inlineTechSlot).width(techWidth).height(touch).padLeft(gap)
                 add(overviewButton).minHeight(touch).right().padLeft(gap)
             }
-            // The compact HUD keeps the turn label beside the civilization, but strategic
-            // resources still need their own live row when a resource has been revealed.
-            if (resourceTable.battlefieldResources.children.notEmpty()) {
-                row()
-                add(resourceTable.battlefieldResources)
-                    .colspan(if (!portrait && battlefieldInlineTech) 4 else 3)
-                    .minWidth(0f).growX().minHeight(touch)
-            }
+            // Strategic resources share the economy row. Late-game/mod resource overflow
+            // scrolls horizontally instead of permanently adding another row over the map.
             background = BaseScreen.skinStrings.getUiBackground("WorldScreen/TopBar/StatsTable")
             setSize(availableWidth, prefHeight)
-            setPosition(safe.x + gap, safe.y + safe.height - height - gap)
+            setPosition(safe.x, safe.y + safe.height - height - gap)
             baseHeight = height
             return
         }

@@ -146,7 +146,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
             val gap = BattlefieldHud.points(4f)
             val cellWidth = (battlefieldWidth - gap * (battlefieldColumns - 1)) / battlefieldColumns
             val lastColumn = (visibleButtons + 1) % battlefieldColumns == 0
-            add(button).width(cellWidth).minHeight(UiNavigation.minimumTouchSize()).pad(0f, 0f, gap, if (lastColumn) 0f else gap)
+            add(button).width(cellWidth).minHeight(UiNavigation.minimumTouchSize()).pad(0f, 0f, 0f, if (lastColumn) 0f else gap)
             visibleButtons++
             if (visibleButtons % battlefieldColumns == 0) row()
         }
@@ -225,7 +225,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         fun place(button: Button) {
             val lastColumn = (count + 1) % columns == 0
             add(button).width(commandWidth).minHeight(touch)
-                .pad(0f, 0f, gap, if (lastColumn) 0f else gap)
+                .pad(0f, 0f, 0f, if (lastColumn) 0f else gap)
             count++
             if (lastColumn) row()
         }
@@ -246,7 +246,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
                 BattlefieldGeometry.icon(ImageGetter.getUnitActionPortrait("ShowMore")), BattlefieldHud.font(12f)).apply {
                 name = "ui-unit-more"
                 BattlefieldGeometry.fitControl(this, flat = true)
-                pad(BattlefieldHud.points(6f))
+                pad(BattlefieldHud.points(2f))
                 iconCell.size(BattlefieldHud.points(18f)).padRight(BattlefieldHud.points(5f))
                 label.wrap = true
                 labelCell.minWidth(0f).growX()
@@ -368,7 +368,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
             actionButton.label.wrap = true
             actionButton.labelCell.minWidth(0f).growX()
             actionButton.iconCell.size(BattlefieldHud.points(18f)).padRight(BattlefieldHud.points(5f))
-            actionButton.pad(BattlefieldHud.points(6f))
+            actionButton.pad(BattlefieldHud.points(2f))
         }
 
         if (unitAction.uiType == UiUnitActionType.Promote && unitAction.action != null)
@@ -380,7 +380,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
 
         if (BattlefieldHud.enabled && battlefieldWidth > 0f) {
             val gap = BattlefieldHud.points(4f)
-            actionButton.setSize((battlefieldWidth - gap * battlefieldColumns) / battlefieldColumns,
+            actionButton.setSize((battlefieldWidth - gap * (battlefieldColumns - 1)) / battlefieldColumns,
                 UiNavigation.minimumTouchSize())
             actionButton.validate()
         } else actionButton.pack()

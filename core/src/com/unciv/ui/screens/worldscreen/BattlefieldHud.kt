@@ -20,6 +20,7 @@ import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.popups
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.status.MultiplayerStatusButton
+import com.unciv.utils.Display
 import kotlin.math.roundToInt
 
 /** B: commands at the left, turn navigation at the right, and an independent combat preview. */
@@ -28,6 +29,37 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         val enabled get() = ExpeditionBlueTheme.enabled
         fun points(value: Float) = value * UiNavigation.minimumTouchSize() / 44f
         fun font(value: Float) = points(value).roundToInt()
+
+        private fun usesLandscapeEdgeLayout(world: WorldScreen) =
+            UiNavigation.isIos && Display.isEdgeToEdgeEnabled() && !world.isPortrait() &&
+                Display.getSafeInsets().left >= 40 && world.safeAreaBoundsInWorld().x > 0f
+
+        /** Only short panels fully above/below the cutout may occupy the left edge gutter. */
+        fun leftForPanel(world: WorldScreen, fallback: Float, y: Float, height: Float): Float {
+            if (!usesLandscapeEdgeLayout(world)) return fallback
+            // UIKit exposes a rectangular safe area, not the island's outline. Reserve a
+            // conservative central band; older, wider notches retain the full safe column.
+            if (Display.getSafeInsets().left < 59) return fallback
+            val halfBand = maxOf(points(72f), world.safeAreaBoundsInWorld().x + points(12f))
+            val center = world.stage.height / 2f
+            return if (y + height <= center - halfBand || y >= center + halfBand)
+                points(24f) else fallback
+        }
+
+        /** Map-only horizontal anchors; keep the shared viewport and other screens unchanged. */
+        fun controlBounds(world: WorldScreen, defaultGap: Float, topBar: Boolean = false): Rectangle {
+            val safe = world.safeAreaBoundsInWorld()
+            var left = safe.x + defaultGap
+            var right = safe.x + safe.width - defaultGap
+            // The supported phone landscape layout has its cutout on the left. A lateral
+            // cutout inset excludes iPad, while portrait and non-fullscreen keep their layout.
+            if (usesLandscapeEdgeLayout(world)) {
+                left = if (topBar) points(24f) else safe.x + points(4f)
+                // The header sits beside the rounded corner; the lower rail is below it.
+                right = world.stage.width - points(if (topBar) 24f else 8f)
+            }
+            return Rectangle(left, safe.y, (right - left).coerceAtLeast(0f), safe.height)
+        }
     }
 
     private var eventsExpanded = false
@@ -47,8 +79,10 @@ internal class BattlefieldHud(private val world: WorldScreen) {
     }
     private val auxiliaryControls = Table().apply { name = "ui-battlefield-auxiliary-controls" }
     private val eventHeader = Table(BaseScreen.skin)
+    private val tileHeader get() = world.bottomTileInfoTable.battlefieldHeader
     private val tileInfo = ScrollPane(world.bottomTileInfoTable, BaseScreen.skin).apply {
         name = "ui-battlefield-tile-details"
+        setScrollbarsOnTop(true) // Keep the measured text width; the bar stays in the right inset.
         setScrollingDisabled(true, false)
         setOverscroll(false, false)
         setFadeScrollBars(false)
@@ -56,6 +90,11 @@ internal class BattlefieldHud(private val world: WorldScreen) {
     private val tileClose = iconButton("OtherIcons/Close", "ui-tile-details-close") {
         tileRequested = false
         world.shouldUpdate = true
+    }.apply {
+        BattlefieldGeometry.fitControl(this, flat = true)
+        pad(0f)
+        cells.first().size(points(16f))
+        addTooltip("Close")
     }
     private val tools = Table(BaseScreen.skin).apply {
         name = "ui-battlefield-map-tools"
@@ -101,6 +140,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         contextBackground.name = "ui-battlefield-context"
         world.stage.addActor(contextBackground)
         world.stage.addActor(tileInfo)
+        world.stage.addActor(tileHeader)
         world.stage.addActor(tileClose)
         world.stage.addActor(events)
         world.stage.addActor(eventHeader)
@@ -113,11 +153,16 @@ internal class BattlefieldHud(private val world: WorldScreen) {
     }
 
     fun dismissTileDetails() { tileRequested = false }
-    fun onMapTap() { tileRequested = true; eventsExpanded = false }
+    fun onMapTap() {
+        tileRequested = true
+        eventsExpanded = false
+        tileInfo.scrollY = 0f
+        tileInfo.updateVisualScroll()
+    }
 
     fun setVisible(visible: Boolean) {
         if (visible) { world.shouldUpdate = true; return }
-        for (actor in listOf(contextBackground, tileInfo, tileClose, events, eventHeader, urgent, allEvents, tools, auxiliaryControls,
+        for (actor in listOf(contextBackground, tileInfo, tileHeader, tileClose, events, eventHeader, urgent, allEvents, tools, auxiliaryControls,
             world.bottomUnitTable.battlefieldPreviousUnitButton)) actor.isVisible = visible
     }
 
@@ -170,17 +215,20 @@ internal class BattlefieldHud(private val world: WorldScreen) {
     }
 
     fun layout() {
-        val safe = world.safeAreaBoundsInWorld()
         val gap = points(8f)
-        val left = safe.x + gap
-        val right = safe.x + safe.width - gap
+        val safe = controlBounds(world, gap)
+        val left = safe.x
+        val right = safe.x + safe.width
         val bottom = safe.y + gap
         val width = right - left
         val portrait = safe.height > safe.width
         val touch = UiNavigation.minimumTouchSize()
         val inlineTech = world.topBar.refitBattlefield()
         if (inlineTech != null) world.techPolicyAndDiplomacy.setPosition(inlineTech.x, inlineTech.y)
-        else world.techPolicyAndDiplomacy.setPosition(left, world.topBar.y - gap - world.techPolicyAndDiplomacy.height)
+        else world.techPolicyAndDiplomacy.apply {
+            val panelY = world.topBar.y - gap - height
+            setPosition(leftForPanel(world, left, panelY, height), panelY)
+        }
         val leftTop = if (inlineTech == null) world.techPolicyAndDiplomacy.y - gap else world.topBar.y - gap
         val top = if (portrait) leftTop else world.topBar.y - gap
 
@@ -231,7 +279,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         previous.isVisible = true
         previous.touchable = Touchable.enabled // A disabled arrow must absorb the tap instead of selecting terrain.
 
-        val contextWidth = if (portrait) minOf(width, points(440f)) else minOf(points(200f), width * .28f)
+        val contextWidth = if (portrait) minOf(width, points(440f)) else minOf(points(172f), width * .28f)
         val contextX = left
         val contextY = if (portrait) bottom + status.height + gap else bottom
         val rightWidth = minOf(width, points(236f))
@@ -267,38 +315,33 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         world.bottomUnitTable.isVisible = showUnit
         world.unitActionsTable.isVisible = showActions
         contextBackground.isVisible = showUnit
-        tileInfo.isVisible = !selected && tileRequested && !battle.isVisible && !map.battlefieldExpanded &&
+        tileInfo.isVisible = tileRequested && !map.battlefieldExpanded && !eventsExpanded &&
             world.bottomTileInfoTable.hasBattlefieldContent
         tileClose.isVisible = tileInfo.isVisible
+        tileHeader.isVisible = tileInfo.isVisible
         var contextTop = contextY
         if (showUnit) {
             val actions = world.unitActionsTable
             val unit = world.bottomUnitTable
-            actions.battlefieldWidth = contextWidth - points(8f)
+            actions.battlefieldWidth = contextWidth - points(4f)
             actions.battlefieldColumns = if (portrait) 4 else 2
             actions.update(unit.selectedUnit?.getUnit())
             if (unit.selectedCity != null) actions.updateBattlefieldCity()
             unit.fitBattlefield(contextWidth)
-            actions.setPosition(contextX + points(4f), contextY + points(4f))
+            actions.setPosition(contextX + points(2f), contextY + points(2f))
             unit.setPosition(contextX, if (showActions) actions.y + actions.height else contextY)
             contextTop = unit.y + unit.height
-            contextBackground.setBounds(contextX, contextY, contextWidth, contextTop - contextY)
+            val panelLeft = leftForPanel(world, contextX, contextY, contextTop - contextY)
+            unit.x = panelLeft
+            actions.x = panelLeft + points(2f)
+            contextBackground.setBounds(panelLeft, contextY, contextWidth, contextTop - contextY)
             contextBackground.toFront()
             unit.toFront()
             if (showActions) actions.toFront()
-        } else if (tileInfo.isVisible) {
-            world.bottomTileInfoTable.fitBattlefield(contextWidth - touch - gap)
-            val height = minOf(points(156f), maxOf(touch, top - contextY - gap))
-            tileInfo.setBounds(contextX, contextY, contextWidth - touch, height)
-            tileInfo.invalidate()
-            tileInfo.validate()
-            tileClose.setBounds(contextX + contextWidth - touch, contextY + height - touch, touch, touch)
-            contextTop = contextY + height
-            tileInfo.toFront()
-            tileClose.toFront()
         }
         if (auxiliaryControls.isVisible) {
-            auxiliaryControls.setPosition(contextX, contextTop + gap)
+            val panelY = contextTop + gap
+            auxiliaryControls.setPosition(leftForPanel(world, contextX, panelY, auxiliaryControls.height), panelY)
             contextTop = auxiliaryControls.y + auxiliaryControls.height
             auxiliaryControls.toFront()
         }
@@ -341,6 +384,37 @@ internal class BattlefieldHud(private val world: WorldScreen) {
                 eventHeader.toFront()
             }
         } else world.notificationsScroll.update(world.viewingCiv.notifications, safe.y + safe.height - top, bottom)
+        // Tile inspection is independent of unit selection and stays in the right-hand lane.
+        // In portrait, use the space above the orders/combat area and fold notification previews.
+        if (tileInfo.isVisible) {
+            if (portrait) urgent.isVisible = false
+            val tileWidth = minOf(points(208f), width)
+            val tileBottom = if (portrait) contextTop + gap else status.y + status.height + gap
+            val tileTop = if (urgent.isVisible && urgent.height > 0f) urgent.y - gap else map.y - gap
+            val available = tileTop - tileBottom
+            world.bottomTileInfoTable.fitBattlefield(tileWidth)
+            val headerHeight = maxOf(points(28f), tileHeader.prefHeight)
+            if (available >= headerHeight) {
+                val bodyHeight = minOf(world.bottomTileInfoTable.prefHeight, available - headerHeight)
+                tileInfo.setBounds(right - tileWidth, tileBottom, tileWidth, bodyHeight)
+                tileInfo.invalidate()
+                tileInfo.validate()
+                tileHeader.setBounds(right - tileWidth, tileBottom + bodyHeight, tileWidth, headerHeight)
+                tileHeader.validate()
+                // Keep a 44pt hit target around the 16pt glyph without making the text row 44pt tall.
+                // Its 8pt overhang fits the surrounding HUD gutter.
+                tileClose.setBounds(right - touch, tileHeader.y + headerHeight - points(14f) - touch / 2f,
+                    touch, touch)
+                tileInfo.toFront()
+                tileHeader.toFront()
+                tileClose.toFront()
+            } else {
+                tileInfo.isVisible = false
+                tileHeader.isVisible = false
+                tileClose.isVisible = false
+            }
+        }
+
         if (world.gameInfo.campaign == null && world.gameInfo.endless == null) {
             val tutorialTop = if (portrait && urgent.isVisible) urgent.y - gap else leftTop
             world.tutorialTaskTable.fitBattlefield(Rectangle(left,
@@ -348,7 +422,10 @@ internal class BattlefieldHud(private val world: WorldScreen) {
                 minOf(points(340f), width),
                 minOf(points(190f), maxOf(touch, tutorialTop - contextTop - gap))))
         }
-        world.zoomController.setPosition(left, contextTop + gap)
+        world.zoomController.apply {
+            val panelY = contextTop + gap
+            setPosition(leftForPanel(world, left, panelY, height), panelY)
+        }
         // HUD actors must stay below the popup's full-screen input shield.
         world.popups.forEach { it.toFront() }
     }

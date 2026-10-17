@@ -69,8 +69,10 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
             ?.apply { setScrollingDisabled(true, prefHeight <= height) }
         val bounds = battlefieldBounds
         if (BattlefieldHud.enabled && bounds != null) {
-            x = bounds.x
             y = bounds.y + bounds.height - height
+            // Decide from the final card height, so the collapsed flag can sit above the
+            // cutout while an expanded tutorial remains clear of it on the same update.
+            x = BattlefieldHud.leftForPanel(worldScreen, bounds.x, y, height)
         } else {
             centerX(worldScreen.stage)
             y = worldScreen.topBar.getYForTutorialTask() - height

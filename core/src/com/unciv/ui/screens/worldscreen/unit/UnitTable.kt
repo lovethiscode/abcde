@@ -27,7 +27,8 @@ import com.unciv.ui.screens.worldscreen.BattlefieldGeometry
 import com.unciv.ui.components.extensions.setFontSize
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Button
-import com.badlogic.gdx.scenes.scene2d.ui.Stack
+import com.badlogic.gdx.scenes.scene2d.Group
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.Popup
@@ -131,11 +132,15 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
             background = null
             bg.isVisible = false
             separator = Table()
-            val nameAndSummary = Stack(unitNameLabel, battlefieldSummary)
+            val nameAndSummary = Table().apply {
+                add(unitNameLabel).minWidth(0f).growX().left().row()
+                add(battlefieldSummary).minWidth(0f).growX().left()
+                    .padTop(BattlefieldHud.points(1f))
+            }
             unitIconHolder.touchable = Touchable.enabled
             unitNameLabel.touchable = Touchable.disabled
             battlefieldSummary.touchable = Touchable.disabled
-            battlefieldSummary.setAlignment(Align.bottomLeft)
+            battlefieldSummary.setAlignment(Align.left)
             unitIconNameGroup.add(unitIconHolder).size(UiNavigation.minimumTouchSize())
             unitIconNameGroup.add(nameAndSummary).minWidth(0f).height(UiNavigation.minimumTouchSize()).growX().padLeft(BattlefieldHud.points(4f))
             // The name/summary is the details target; a separate button would squeeze the
@@ -238,8 +243,8 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
     internal fun fitBattlefield(targetWidth: Float) {
         if (!BattlefieldHud.enabled) return
         val touch = UiNavigation.minimumTouchSize()
-        unitNameLabel.setAlignment(Align.topLeft)
-        unitNameLabel.setFontSize(BattlefieldHud.font(15f))
+        unitNameLabel.setAlignment(Align.left)
+        unitNameLabel.setFontSize(BattlefieldHud.font(14f))
         unitNameLabel.setEllipsis(true)
         battlefieldSummary.setFontSize(BattlefieldHud.font(11f))
         battlefieldSummary.color = com.unciv.models.skins.ExpeditionBlueTheme.muted
@@ -256,15 +261,19 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
             cell.size(BattlefieldHud.points(22f)).pad(0f)
         }
         getCell(unitIconNameGroup).minWidth(0f).growX()
-        pad(BattlefieldHud.points(4f))
-        padRight(touch + BattlefieldHud.points(4f))
+        pad(0f, BattlefieldHud.points(2f), 0f, touch)
         width = targetWidth
         invalidateHierarchy()
         validate()
-        height = maxOf(prefHeight, touch + BattlefieldHud.points(8f))
+        height = maxOf(prefHeight, touch)
         validate()
         BattlefieldGeometry.fitClose(closeButton, touch)
-        closeButton.setPosition(width - touch - BattlefieldHud.points(4f), height - touch - BattlefieldHud.points(4f))
+        // Keep the full touch target while removing the large outlined close tile.
+        (closeButton as? Group)?.children?.forEach { child ->
+            if (child is Button) BattlefieldGeometry.fitControl(child, flat = true)
+            if (child is TextButton) child.label.setFontSize(BattlefieldHud.font(16f))
+        }
+        closeButton.setPosition(width - touch, (height - touch) / 2f)
         closeButton.toFront()
     }
 
