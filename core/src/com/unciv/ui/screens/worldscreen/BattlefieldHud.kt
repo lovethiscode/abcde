@@ -449,10 +449,10 @@ private fun notificationLabel(text: String, width: Float): Label {
     var end = fullText.codePointCount(0, fullText.length)
     while (start < end) {
         val middle = (start + end + 1) / 2
-        label.setText(fullText.substring(0, fullText.offsetByCodePoints(0, middle)).trimEnd() + "…")
+        label.setText(fullText.substring(0, fullText.offsetByCodePoints(0, middle)).trimEnd() + "...")
         if (label.prefHeight <= maxHeight + 0.1f) start = middle else end = middle - 1
     }
-    label.setText(fullText.substring(0, fullText.offsetByCodePoints(0, start)).trimEnd() + "…")
+    label.setText(fullText.substring(0, fullText.offsetByCodePoints(0, start)).trimEnd() + "...")
     return label
 }
 
