@@ -86,7 +86,8 @@ class NextTurnButton(
         if (nextTurnAction.icon != null && ImageGetter.imageExists(nextTurnAction.icon!!))
             iconCell.setActor(ImageGetter.getImage(nextTurnAction.icon).apply {
                 setSize(30f)
-                color = foreground
+                color = if (ExpeditionBlueTheme.enabled && nextTurnAction == NextTurnAction.FoundReligion)
+                    ExpeditionBlueTheme.danger else foreground
             })
         else
             iconCell.clearActor()
