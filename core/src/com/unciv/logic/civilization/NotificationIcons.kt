@@ -1,6 +1,8 @@
 package com.unciv.logic.civilization
 
 import com.unciv.models.ruleset.Ruleset
+import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.ui.components.extensions.surroundWithCircle
 import com.unciv.ui.images.ImageGetter
 
 @Suppress("ConstPropertyName") // We want enum-like names
@@ -9,7 +11,7 @@ import com.unciv.ui.images.ImageGetter
  *  which accepts texture paths or some ruleset object names (nation, tech, unit) - this will be translated through [getImage].
  */
 object NotificationIcon {
-    // Remember: The typical white-on-transparency icon will not be visible on Notifications
+    private val darkMonochromeIcons by lazy { setOf(City, War, Death, Crosshair, Spy, Barbarians, Ruins) }
 
     const val Barbarians = "ImprovementIcons/Barbarian encampment"
     const val City = "ImprovementIcons/City center"
@@ -49,12 +51,18 @@ object NotificationIcon {
         ruleset.nations.containsKey(icon) ->
             ImageGetter.getNationPortrait(ruleset.nations[icon]!!, iconSize)
         ruleset.units.containsKey(icon) ->
-            ImageGetter.getUnitIcon(ruleset.units[icon]!!)
+            ImageGetter.getUnitIcon(ruleset.units[icon]!!).let {
+                if (ExpeditionBlueTheme.enabled) it.surroundWithCircle(iconSize, color = ExpeditionBlueTheme.text) else it
+            }
         ruleset.unitPromotions.containsKey(icon) ->
             ImageGetter.getPromotionPortrait(icon, iconSize)
         ruleset.tileResources.containsKey(icon) ->
             ImageGetter.getResourcePortrait(icon, iconSize)
         else ->
-            ImageGetter.getImage(icon)
+            ImageGetter.getImage(icon).let {
+                if (ExpeditionBlueTheme.enabled && icon in darkMonochromeIcons)
+                    it.surroundWithCircle(iconSize, color = ExpeditionBlueTheme.text)
+                else it
+            }
     }
 }

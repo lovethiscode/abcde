@@ -7,6 +7,7 @@ import com.unciv.logic.battle.TargetHelper
 import com.unciv.logic.city.City
 import com.unciv.models.ruleset.unique.UniqueType
 import com.unciv.ui.components.extensions.colorFromRGB
+import com.unciv.ui.screens.worldscreen.BattlefieldHud
 import com.unciv.view.AttackableTileView
 import com.unciv.view.CivView
 import com.unciv.view.MapUnitView
@@ -18,8 +19,10 @@ object WorldMapTileUpdater {
 
      fun WorldMapHolder.updateTiles(civView: CivView) {
         // General update of all tiles
-        for (tileGroup in tileGroups.values)
+        for (tileGroup in tileGroups.values) {
             tileGroup.update(civView)
+            tileGroup.layerYield.dimYields(false)
+        }
 
         // Update tiles according to selected unit/city
         val unitTable = worldScreen.bottomUnitTable
@@ -66,6 +69,10 @@ object WorldMapTileUpdater {
 
                 // Fade out population icons
                 group.layerMisc.dimPopulation(true)
+                if (BattlefieldHud.enabled) {
+                    group.layerResource.dimResource(true)
+                    group.layerYield.dimYields(true)
+                }
 
                 val shownImprovementName = group.tileView.getShownImprovement()
                 val shownImprovement = unit.civ.gameInfo.ruleset.tileImprovements[shownImprovementName]

@@ -4,6 +4,7 @@ import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Interpolation
+import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -26,6 +27,7 @@ import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.*
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
+import com.unciv.ui.screens.basescreen.SafeAreaViewport
 import com.unciv.utils.Concurrency
 
 /**
@@ -200,15 +202,17 @@ open class AnimatedMenuPopup private constructor (stage: Stage) : Popup(stage, S
 
         open(true)  // this only does the screen-covering "click-behind" portion - and ensures this.stage is set
 
-        // Note that coerceIn throws if min>max, so we defend against newInnerTable being bigger than the stage,
+        val bounds = (stage.viewport as? SafeAreaViewport)?.safeAreaBoundsInWorld
+            ?: Rectangle(0f, 0f, stage.width, stage.height)
+        // Note that coerceIn throws if min>max, so we defend against content bigger than the safe area,
         // and padding helps the rounded edges to look more natural:
         val paddedHalfWidth = newInnerTable.width / 2 + 2f
         val paddedHalfHeight = newInnerTable.height / 2 + 2f
         container.setPosition(
-            if (paddedHalfWidth * 2 > stage.width) stage.width / 2
-            else position.x.coerceIn(paddedHalfWidth, stage.width - paddedHalfWidth),
-            if (paddedHalfHeight * 2 > stage.height) stage.height / 2
-            else position.y.coerceIn(paddedHalfHeight, stage.height - paddedHalfHeight)
+            if (paddedHalfWidth * 2 > bounds.width) bounds.x + bounds.width / 2
+            else position.x.coerceIn(bounds.x + paddedHalfWidth, bounds.x + bounds.width - paddedHalfWidth),
+            if (paddedHalfHeight * 2 > bounds.height) bounds.y + bounds.height / 2
+            else position.y.coerceIn(bounds.y + paddedHalfHeight, bounds.y + bounds.height - paddedHalfHeight)
         )
         super.addActor(container)
 

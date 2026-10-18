@@ -123,14 +123,14 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         val checked = listOf(settings.showUnitMovements, settings.showTileYields, settings.showWorkedTiles,
             settings.showResourcesAndImprovements, settings.showPixelImprovements)
         tools.clearChildren()
-        // User-requested compact rail: five borderless glyphs share the minimap's actual height.
-        val rowHeight = world.minimapWrapper.height / layerButtons.size
-        val iconSize = minOf(points(16f), rowHeight)
+        // Keep compact glyphs inside separate, non-overlapping touch targets below the minimap.
+        val touch = UiNavigation.minimumTouchSize()
+        val iconSize = points(16f)
         tools.pad(0f)
         layerButtons.forEachIndexed { index, button ->
             button.isChecked = checked[index]
             button.cells.first().size(iconSize)
-            tools.add(button).width(points(24f)).height(rowHeight).pad(0f).row()
+            tools.add(button).size(touch).pad(0f)
         }
         tools.pack()
     }
@@ -189,7 +189,8 @@ internal class BattlefieldHud(private val world: WorldScreen) {
             .minByOrNull { if (it.icons.any { icon -> icon.endsWith("CrosshairB") }) 0 else 1 }
         val promotion = notifications.firstOrNull { it.actions.any { action -> action is PromoteUnitAction } }
         // Clicking an event must not move its row: a second tap continues its original action cycle.
-        val entries = (listOfNotNull(war, promotion) + notifications).distinct().take(2)
+        val limit = if (world.bottomUnitTable.selectedUnit?.isMilitary() == true) 1 else 2
+        val entries = (listOfNotNull(war, promotion) + notifications).distinct().take(limit)
         for ((index, notification) in entries.withIndex()) {
             val row = Button(BaseScreen.skin).apply {
                 name = "ui-urgent-notification:$index"
@@ -281,7 +282,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         previous.isVisible = true
         previous.touchable = Touchable.enabled // A disabled arrow must absorb the tap instead of selecting terrain.
 
-        val contextWidth = if (portrait) minOf(width, points(440f)) else minOf(points(172f), width * .28f)
+        val contextWidth = if (portrait) minOf(width, points(440f)) else minOf(points(216f), width * .28f)
         val contextX = left
         val contextY = if (portrait) bottom + status.height + gap else bottom
         val rightWidth = minOf(width, points(236f))
@@ -291,9 +292,8 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         map.update(world.getGameViewConsideringForOfWar().civView.getCiv())
         layoutTools()
         tools.isVisible = !map.battlefieldExpanded
-        tools.setPosition(right - tools.width, top - tools.height)
-        map.setPosition(if (map.battlefieldExpanded) right - map.width else tools.x - points(4f) - map.width,
-            top - map.height)
+        tools.setPosition(right - tools.width, top - map.height - gap - tools.height)
+        map.setPosition(right - map.width, top - map.height)
         allEvents.setBounds(map.x - gap - touch, map.y + (map.height - points(64f)) / 2f, touch, points(64f))
         world.chatButton.apply {
             fitBattlefield()
@@ -365,8 +365,9 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         eventHeader.isVisible = events.isVisible
         if (showEvents) {
             world.notificationsScroll.isVisible = false
-            rebuildUrgent(rightWidth - tools.width - points(4f), world.viewingCiv.notifications)
-            urgent.setPosition(right - urgent.width, map.y - gap - urgent.height)
+            rebuildUrgent(rightWidth, world.viewingCiv.notifications)
+            val eventsTop = if (tools.isVisible) tools.y else map.y
+            urgent.setPosition(right - urgent.width, eventsTop - gap - urgent.height)
             if (events.isVisible) {
                 val eventWidth = if (portrait) width else points(304f)
                 eventHeader.clearChildren()
@@ -392,7 +393,8 @@ internal class BattlefieldHud(private val world: WorldScreen) {
             if (portrait) urgent.isVisible = false
             val tileWidth = minOf(points(208f), width)
             val tileBottom = if (portrait) contextTop + gap else status.y + status.height + gap
-            val tileTop = if (urgent.isVisible && urgent.height > 0f) urgent.y - gap else map.y - gap
+            val tileTop = if (urgent.isVisible && urgent.height > 0f) urgent.y - gap
+                else (if (tools.isVisible) tools.y else map.y) - gap
             val available = tileTop - tileBottom
             world.bottomTileInfoTable.fitBattlefield(tileWidth)
             val headerHeight = maxOf(points(28f), tileHeader.prefHeight)
