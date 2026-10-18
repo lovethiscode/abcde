@@ -6,6 +6,7 @@ import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Image
+import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
@@ -123,15 +124,15 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         val checked = listOf(settings.showUnitMovements, settings.showTileYields, settings.showWorkedTiles,
             settings.showResourcesAndImprovements, settings.showPixelImprovements)
         tools.clearChildren()
-        // Keep compact glyphs inside separate, non-overlapping touch targets below the minimap.
-        val touch = UiNavigation.minimumTouchSize()
-        val iconSize = points(16f)
+        // User-requested compact rail: five glyphs share the minimap's actual height.
+        val rowHeight = world.minimapWrapper.height / layerButtons.size
+        val iconSize = minOf(points(16f), rowHeight)
         tools.pad(0f)
         layerButtons.forEachIndexed { index, button ->
             button.isChecked = checked[index]
             button.color.a = if (checked[index]) 1f else 0.4f
             button.cells.first().size(iconSize)
-            tools.add(button).size(touch).pad(0f)
+            tools.add(button).width(points(24f)).height(rowHeight).pad(0f).row()
         }
         tools.pack()
     }
@@ -201,17 +202,14 @@ internal class BattlefieldHud(private val world: WorldScreen) {
                 notification.addNotificationIconsTo(icons, world.gameInfo.ruleset, points(17f))
                 icons.touchable = Touchable.disabled
                 add(icons).padRight(points(5f))
-                val label = notification.text.toLabel(fontSize = font(TextRole.Supporting), hideIcons = true).apply {
-                    wrap = true
-                    setAlignment(Align.left)
+                val label = notificationLabel(notification.text, width - icons.prefWidth - points(15f)).apply {
                     color = if (notification.category == NotificationCategory.War) ExpeditionBlueTheme.danger else ExpeditionBlueTheme.gold
-                    touchable = Touchable.disabled
                 }
                 add(label).minWidth(0f).growX()
                 onActivation { execute(notification) }
             }
             row.width = width
-            urgent.add(row).width(width).minHeight(touch)
+            urgent.add(row).width(width).height(maxOf(touch, row.prefHeight))
                 .padBottom(if (index < entries.lastIndex) gap else 0f).row()
         }
         eventCount.setText(notifications.size.toString())
@@ -293,8 +291,9 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         map.update(world.getGameViewConsideringForOfWar().civView.getCiv())
         layoutTools()
         tools.isVisible = !map.battlefieldExpanded
-        tools.setPosition(right - tools.width, top - map.height - gap - tools.height)
-        map.setPosition(right - map.width, top - map.height)
+        tools.setPosition(right - tools.width, top - tools.height)
+        map.setPosition(if (map.battlefieldExpanded) right - map.width else tools.x - points(4f) - map.width,
+            top - map.height)
         allEvents.setBounds(map.x - gap - touch, map.y + (map.height - points(64f)) / 2f, touch, points(64f))
         world.chatButton.apply {
             fitBattlefield()
@@ -367,8 +366,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         if (showEvents) {
             world.notificationsScroll.isVisible = false
             rebuildUrgent(rightWidth, world.viewingCiv.notifications)
-            val eventsTop = if (tools.isVisible) tools.y else map.y
-            urgent.setPosition(right - urgent.width, eventsTop - gap - urgent.height)
+            urgent.setPosition(right - urgent.width, map.y - gap - urgent.height)
             if (events.isVisible) {
                 val eventWidth = if (portrait) width else points(304f)
                 eventHeader.clearChildren()
@@ -394,8 +392,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
             if (portrait) urgent.isVisible = false
             val tileWidth = minOf(points(208f), width)
             val tileBottom = if (portrait) contextTop + gap else status.y + status.height + gap
-            val tileTop = if (urgent.isVisible && urgent.height > 0f) urgent.y - gap
-                else (if (tools.isVisible) tools.y else map.y) - gap
+            val tileTop = if (urgent.isVisible && urgent.height > 0f) urgent.y - gap else map.y - gap
             val available = tileTop - tileBottom
             world.bottomTileInfoTable.fitBattlefield(tileWidth)
             val headerHeight = maxOf(points(28f), tileHeader.prefHeight)
@@ -434,6 +431,29 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         // HUD actors must stay below the popup's full-screen input shield.
         world.popups.forEach { it.toFront() }
     }
+}
+
+private fun notificationLabel(text: String, width: Float): Label {
+    val label = text.toLabel(fontSize = BattlefieldHud.font(TextRole.Supporting), hideIcons = true).apply {
+        wrap = true
+        setAlignment(Align.left)
+        touchable = Touchable.disabled
+        this.width = (width - 1f).coerceAtLeast(1f)
+    }
+    val maxHeight = with(label.style.font) {
+        (capHeight + lineHeight - descent * 2f) * label.fontScaleY / scaleY
+    }
+    if (label.prefHeight <= maxHeight + 0.1f) return label
+    val fullText = label.text.toString()
+    var start = 0
+    var end = fullText.codePointCount(0, fullText.length)
+    while (start < end) {
+        val middle = (start + end + 1) / 2
+        label.setText(fullText.substring(0, fullText.offsetByCodePoints(0, middle)).trimEnd() + "…")
+        if (label.prefHeight <= maxHeight + 0.1f) start = middle else end = middle - 1
+    }
+    label.setText(fullText.substring(0, fullText.offsetByCodePoints(0, start)).trimEnd() + "…")
+    return label
 }
 
 /** Each row retains the original Notification instance, including its action-cycle cursor. */
@@ -486,10 +506,7 @@ private class BattlefieldEvents(private val world: WorldScreen) : ScrollPane(Tab
             notification.addNotificationIconsTo(icons, world.gameInfo.ruleset, BattlefieldHud.points(17f))
             icons.touchable = Touchable.disabled
             row.add(icons).padRight(BattlefieldHud.points(5f))
-            val label = notification.text.toLabel(fontSize = BattlefieldHud.font(TextRole.Supporting), hideIcons = true)
-            label.wrap = true
-            label.setAlignment(Align.left)
-            label.touchable = Touchable.disabled
+            val label = notificationLabel(notification.text, bounds.width - icons.prefWidth - BattlefieldHud.points(15f))
             row.add(label).minWidth(0f).growX()
             row.onActivation {
                 notification.execute(world)
@@ -498,7 +515,7 @@ private class BattlefieldEvents(private val world: WorldScreen) : ScrollPane(Tab
                 lastEntries = emptyList()
                 world.shouldUpdate = true
             }
-            list.add(row).width(bounds.width).minHeight(touch).growX().padBottom(BattlefieldHud.points(4f)).row()
+            list.add(row).width(bounds.width).height(maxOf(touch, row.prefHeight)).growX().padBottom(BattlefieldHud.points(4f)).row()
         }
         lastEntries = entries.toList()
         lastWidth = width
