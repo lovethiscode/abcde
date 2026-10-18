@@ -15,7 +15,20 @@ object NotificationIcon {
         setOf(City, War, Death, Crosshair, Spy, Barbarians, Ruins, CityState, Diplomacy,
             Question, Quest, "UnitActionIcons/Promote",
             "ImprovementIcons/Farm", "ImprovementIcons/Holy site", "ImprovementIcons/Moai",
-            "ImprovementIcons/Polder", "ImprovementIcons/Terrace farm")
+            "ImprovementIcons/Polder", "ImprovementIcons/Terrace farm",
+            "ImprovementIcons/Academy", "ImprovementIcons/Camp", "ImprovementIcons/Customs house",
+            "ImprovementIcons/Fishing Boats", "ImprovementIcons/Landmark", "ImprovementIcons/Lumber mill",
+            "ImprovementIcons/Manufactory", "ImprovementIcons/Mine", "ImprovementIcons/Offshore Platform",
+            "ImprovementIcons/Oil well", "ImprovementIcons/Pasture", "ImprovementIcons/Plantation",
+            "ImprovementIcons/Quarry", "ImprovementIcons/Trading post", "OtherIcons/Present",
+            "OtherIcons/Sleep", "ResourceIcons/Citrus", "ResourceIcons/Copper",
+            "ResourceIcons/Cotton", "ResourceIcons/Crab", "ResourceIcons/Dyes",
+            "ResourceIcons/Furs", "ResourceIcons/Gems", "ResourceIcons/Gold Ore",
+            "ResourceIcons/Incense", "ResourceIcons/Ivory", "ResourceIcons/Marble",
+            "ResourceIcons/Pearls", "ResourceIcons/Salt", "ResourceIcons/Silk",
+            "ResourceIcons/Silver", "ResourceIcons/Spices", "ResourceIcons/Sugar",
+            "ResourceIcons/Truffles", "ResourceIcons/Whales", "ResourceIcons/Wine",
+            "UnitActionIcons/Upgrade")
     }
 
     const val Barbarians = "ImprovementIcons/Barbarian encampment"
