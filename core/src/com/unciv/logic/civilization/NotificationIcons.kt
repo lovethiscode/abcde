@@ -11,7 +11,10 @@ import com.unciv.ui.images.ImageGetter
  *  which accepts texture paths or some ruleset object names (nation, tech, unit) - this will be translated through [getImage].
  */
 object NotificationIcon {
-    private val darkMonochromeIcons by lazy { setOf(City, War, Death, Crosshair, Spy, Barbarians, Ruins) }
+    private val darkMonochromeIcons by lazy {
+        setOf(City, War, Death, Crosshair, Spy, Barbarians, Ruins, CityState, Diplomacy,
+            Question, Quest, "UnitActionIcons/Promote")
+    }
 
     const val Barbarians = "ImprovementIcons/Barbarian encampment"
     const val City = "ImprovementIcons/City center"

@@ -129,6 +129,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         tools.pad(0f)
         layerButtons.forEachIndexed { index, button ->
             button.isChecked = checked[index]
+            button.color.a = if (checked[index]) 1f else 0.4f
             button.cells.first().size(iconSize)
             tools.add(button).size(touch).pad(0f)
         }
