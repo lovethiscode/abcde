@@ -91,6 +91,16 @@ final class UncivGameplayDriverTests: XCTestCase {
         let action = try XCTUnwrap(parts.first, "Empty UI action")
 
         switch action {
+        case "activateSystem":
+            XCTAssertEqual(parts.count, 2, "activateSystem expects a bundle identifier")
+            XCUIApplication(bundleIdentifier: parts[1]).activate()
+        case "dumpSystem":
+            XCTAssertEqual(parts.count, 2, "dumpSystem expects a bundle identifier")
+            print("UNCIV_UI_SYSTEM_TREE=\(XCUIApplication(bundleIdentifier: parts[1]).debugDescription)")
+        case "tapSystem":
+            XCTAssertEqual(parts.count, 3, "tapSystem expects a bundle identifier and control label")
+            XCUIApplication(bundleIdentifier: parts[1]).descendants(matching: .any)
+                .matching(identifier: parts[2]).firstMatch.tap()
         case "dump":
             XCTAssertEqual(parts.count, 1, "dump expects no arguments")
             print("UNCIV_UI_TREE=\(application.debugDescription)")

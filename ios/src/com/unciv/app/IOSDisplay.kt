@@ -32,9 +32,13 @@ class IOSDisplay : PlatformDisplay {
             else UIInterfaceOrientationMask.Landscape
     }
 
+    private val windowingIPad = UIDevice.getCurrentDevice().userInterfaceIdiom == UIUserInterfaceIdiom.Pad &&
+        NSProcessInfo.getSharedProcessInfo().isOperatingSystemAtLeastVersion(NSOperatingSystemVersion(26, 0, 0))
+
     @Volatile private var safeInsets = SafeInsets()
     @Volatile private var edgeToEdge = false
-    @Volatile private var orientation = ScreenOrientation.Landscape
+    // Let an existing iPad window keep its orientation until the user's settings load.
+    @Volatile private var orientation = if (windowingIPad) ScreenOrientation.Auto else ScreenOrientation.Landscape
     @Volatile private var orientationRevision = 0
     @Volatile private var keyboardTop: Float? = null
     private var controller: UncivIOSViewController? = null
@@ -112,7 +116,10 @@ class IOSDisplay : PlatformDisplay {
         val height = view.bounds.height.toInt()
         if (width <= 0 || height <= 0) return
         val nativeInsets = view.safeAreaInsets
-        val next = SafeInsets(nativeInsets.left.toInt(), nativeInsets.top.toInt(),
+        // iPadOS 26 can reveal window controls over full-screen compatibility content
+        // while reporting a zero top safe area. Keep a 44pt band clear for those controls.
+        val topInset = if (windowingIPad) maxOf(nativeInsets.top, 44.0) else nativeInsets.top
+        val next = SafeInsets(nativeInsets.left.toInt(), topInset.toInt(),
             nativeInsets.right.toInt(), nativeInsets.bottom.toInt())
         if (next == safeInsets && width == viewWidth && height == viewHeight) return
         safeInsets = next
