@@ -15,8 +15,10 @@ import com.badlogic.gdx.utils.Align
 import com.unciv.GUI
 import com.unciv.UncivGame
 import com.unciv.logic.civilization.Civilization
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.InputDisabling
 import com.unciv.ui.components.extensions.addInTable
+import com.unciv.ui.components.extensions.surroundWithCircle
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.images.ImageGetter
@@ -150,7 +152,11 @@ class MinimapHolder(val mapHolder: WorldMapHolder) : Table() {
         if (shouldShowMapButtons()) {
             // table provides larger click area. we want the resize icon to be small to not cover the map
             val name = if (maximized) "Reduce" else "Increase"
-            val image = ImageGetter.getImage("OtherIcons/$name")
+            val image = ImageGetter.getImage("OtherIcons/$name").let {
+                if (ExpeditionBlueTheme.enabled && !maximized)
+                    it.surroundWithCircle(20f, color = ExpeditionBlueTheme.background)
+                else it
+            }
             table.add(image).expand().size(20f).pad(8f).align(alignment)
             table.touchable = Touchable.enabled
             table.onActivation(toggle)

@@ -2,6 +2,7 @@ package com.unciv.ui.screens.worldscreen.status
 
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
+import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
@@ -32,6 +33,7 @@ class NextTurnButton(
     private val worldScreen: WorldScreen
 ) : IconTextButton("", null, 30, labelFontSize = UiTypography.size(TextRole.Control)) {
     private var nextTurnAction = Default
+    private val disabledIconColor = Color.valueOf("B8C7CA")
     val currentAction: NextTurnAction get() = nextTurnAction
     private val unitsDueLabel = Label("", BaseScreen.skin)
     private val unitsDueCell: Cell<Label>
@@ -62,6 +64,8 @@ class NextTurnButton(
 
         isEnabled = nextTurnAction.getText(worldScreen) == "AutoPlay"
             || ((worldScreen.isPlayersTurn || worldScreen.failedUpload) && !worldScreen.waitingForAutosave && !worldScreen.isNextTurnUpdateRunning())
+        if (ExpeditionBlueTheme.enabled && nextTurnAction == NextTurnAction.NextTurn)
+            iconCell.actor?.color = if (isEnabled) ExpeditionBlueTheme.primaryInk else disabledIconColor
         if (isEnabled) {
             addTooltip(KeyboardBinding.NextTurn)
         } else {

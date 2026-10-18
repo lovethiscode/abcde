@@ -13,7 +13,9 @@ import com.unciv.ui.images.ImageGetter
 object NotificationIcon {
     private val darkMonochromeIcons by lazy {
         setOf(City, War, Death, Crosshair, Spy, Barbarians, Ruins, CityState, Diplomacy,
-            Question, Quest, "UnitActionIcons/Promote")
+            Question, Quest, "UnitActionIcons/Promote",
+            "ImprovementIcons/Farm", "ImprovementIcons/Holy site", "ImprovementIcons/Moai",
+            "ImprovementIcons/Polder", "ImprovementIcons/Terrace farm")
     }
 
     const val Barbarians = "ImprovementIcons/Barbarian encampment"
