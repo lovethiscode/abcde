@@ -21,6 +21,7 @@ object WorldMapTileUpdater {
         // General update of all tiles
         for (tileGroup in tileGroups.values) {
             tileGroup.update(civView)
+            tileGroup.layerImprovement.dimImprovement(false)
             tileGroup.layerYield.dimYields(false)
         }
 
