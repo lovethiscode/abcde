@@ -365,7 +365,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         eventHeader.isVisible = events.isVisible
         if (showEvents) {
             world.notificationsScroll.isVisible = false
-            rebuildUrgent(rightWidth, world.viewingCiv.notifications)
+            rebuildUrgent(rightWidth - tools.width - points(4f), world.viewingCiv.notifications)
             urgent.setPosition(right - urgent.width, map.y - gap - urgent.height)
             if (events.isVisible) {
                 val eventWidth = if (portrait) width else points(304f)
