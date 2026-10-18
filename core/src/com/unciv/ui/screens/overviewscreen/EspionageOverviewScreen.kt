@@ -15,6 +15,7 @@ import com.unciv.logic.civilization.Civilization
 import com.unciv.logic.civilization.diplomacy.DiplomacyFlags
 import com.unciv.models.Spy
 import com.unciv.models.SpyAction
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.SmallButtonStyle
 import com.unciv.ui.components.extensions.addCapitalIndicator
@@ -211,7 +212,7 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
         }).size(30f)
         @Pure
         fun getColor(rank: Int): Color = when (rank) {
-            1 -> Color.BROWN
+            1 -> ExpeditionBlueTheme.color(Color.BROWN, Color.valueOf("C99562"))
             2 -> Color.LIGHT_GRAY
             else -> Color.GOLD
         }
