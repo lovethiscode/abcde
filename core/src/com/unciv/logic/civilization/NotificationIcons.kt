@@ -65,7 +65,9 @@ object NotificationIcon {
             ImageGetter.getResourcePortrait(icon, iconSize)
         else ->
             ImageGetter.getImage(icon).let {
-                if (ExpeditionBlueTheme.enabled && icon in darkMonochromeIcons)
+                val isBuildingIcon = icon.startsWith("BuildingIcons/") &&
+                    icon != "BuildingIcons/Fallback"
+                if (ExpeditionBlueTheme.enabled && (icon in darkMonochromeIcons || isBuildingIcon))
                     it.surroundWithCircle(iconSize, color = ExpeditionBlueTheme.text)
                 else it
             }
