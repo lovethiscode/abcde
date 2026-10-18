@@ -235,7 +235,7 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
     private class OverviewAndSupplyTable(worldScreen: WorldScreen) : Table(BaseScreen.skin) {
         val unitSupplyImage = ImageGetter.getImage("OtherIcons/ExclamationMark")
             .apply { color = Color.FIREBRICK }
-        private val unitSupplyControl = if (BattlefieldHud.enabled)
+        private val unitSupplyControl: Actor = if (BattlefieldHud.enabled)
             Container(unitSupplyImage).size(BattlefieldHud.points(20f)).apply {
                 touchable = Touchable.enabled
             }
