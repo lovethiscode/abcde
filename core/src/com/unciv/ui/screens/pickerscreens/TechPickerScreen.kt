@@ -76,10 +76,6 @@ class TechPickerScreen(
     private lateinit var tree: WidgetGroup
     private lateinit var treeScroll: ZoomableScrollPane
     private var zoom = if (metrics.compact) .8f else 1f
-    private var zoomOutButton: TextButton? = null
-    private var zoomInButton: TextButton? = null
-    private var zoomReset: TextButton? = null
-    private var zoomMenuButton: TextButton? = null
     private var iconShader: ShaderProgram? = null
     private var initialized = false
     private var searchField: UncivTextField? = null
@@ -158,10 +154,6 @@ class TechPickerScreen(
     private fun build(anchor: Vector2? = null) {
         root.clearChildren()
         root.pad(u(if (metrics.compact) 6f else 10f), u(metrics.padding), u(if (metrics.compact) 6f else 12f), u(metrics.padding))
-        zoomMenuButton = null
-        zoomReset = null
-        zoomOutButton = null
-        zoomInButton = null
         buildHeader()
         buildTree()
         root.add(header).growX().minWidth(0f).height(u(metrics.headerHeight)).row()
@@ -203,59 +195,12 @@ class TechPickerScreen(
             }
         }
         header.add(identity).growX().minWidth(0f).padRight(u(8f))
-        if (metrics.stacked) {
-            zoomMenuButton = action("${(zoom * 100).roundToInt()}%", "ui-tech-map-tools", outlined = true) { openMapTools() }
-            header.add(zoomMenuButton).minWidth(u(58f)).height(u(44f)).padRight(u(8f))
-        } else {
-            header.add(buildZoomTools()).height(u(44f)).padRight(u(8f))
+        if (!metrics.stacked)
             header.add(label("${Fonts.science} +${civInfo.stats.statsForNextTurn.science.roundToInt()}", TextRole.Supporting, appearance.gold)).padRight(u(8f))
-        }
         header.add(action(if (metrics.stacked) "" else "Search", "ui-tech-search") { openOverlay("search") }).minSize(u(44f))
         if (!freeTechPick)
             header.add(action(if (metrics.stacked) "" else "{Queue} ${draft.size}", "ui-tech-queue") { openOverlay("queue") })
                 .minSize(u(44f)).padLeft(u(8f))
-    }
-
-    private fun buildZoomTools(onLocate: (() -> Unit)? = null, includeHelp: Boolean = true): Table = Table().apply {
-        zoomOutButton = action("−", "ui-tech-zoom-out") { stepZoom(-10) }
-        add(zoomOutButton).size(u(44f))
-        zoomReset = action("${(zoom * 100).roundToInt()}%", "ui-tech-zoom-reset") { setZoom(1f) }
-        add(zoomReset).minWidth(u(54f)).height(u(44f)).padLeft(u(8f))
-        zoomInButton = action("+", "ui-tech-zoom-in") { stepZoom(10) }
-        add(zoomInButton).size(u(44f)).padLeft(u(8f))
-        val locate = action("", "ui-tech-locate") {
-            val target = civTech.currentTechnology()?.takeIf { it.name in nodes } ?: selectedTech
-            if (target != null) { selectTechnology(target, center = true); closeOverlay(); onLocate?.invoke() }
-        }
-        locate.clearChildren()
-        locate.add(maskIcon(ImageGetter.getImage("OtherIcons/CrosshairB"))).size(u(20f))
-        add(locate).size(u(44f)).padLeft(u(8f))
-        if (includeHelp) add(action("?", "ui-tech-legend") { openLegend() }).size(u(44f)).padLeft(u(8f))
-    }
-
-    private fun buildLegend(): Table = Table().apply {
-        left()
-        listOf("Researched" to appearance.good, "Research / queue" to appearance.gold, "Available" to appearance.muted).forEach { (text, color) ->
-            add(ImageGetter.getImage("OtherIcons/Circle", color)).size(u(6f)).padRight(u(8f))
-            add(label(text, TextRole.Supporting, appearance.text)).left().padTop(u(8f)).padBottom(u(8f)).row()
-        }
-    }
-
-    private fun openLegend() {
-        Popup(this).apply {
-            add(buildLegend()).pad(u(12f)).row()
-            addCloseButton("Close", style = appearance.buttonStyle(outlined = true))
-            open()
-        }
-    }
-
-    private fun openMapTools() {
-        val popup = Popup(this)
-        popup.add(buildZoomTools(onLocate = { popup.close() }, includeHelp = false)).pad(u(8f)).row()
-        popup.add(buildLegend()).left().pad(u(8f)).row()
-        popup.addCloseButton("Close", style = appearance.buttonStyle(outlined = true))
-        updateZoomCaption()
-        popup.open()
     }
 
     private fun buildTree() {
@@ -346,7 +291,6 @@ class TechPickerScreen(
             override fun layout() { treeScroll.resizeViewport(Rectangle(0f, 0f, width, height)) }
         }
         mainView.add(host).grow().minWidth(0f).minHeight(0f).row()
-        updateZoomCaption()
         if (metrics.stacked) mainView.add(buildSelectionPeek()).growX().row()
     }
 
@@ -502,7 +446,6 @@ class TechPickerScreen(
         displayedTechs.firstOrNull { it.era() == activeEra }?.let { centerOnTechnology(it) }
         updateEraButtons()
     }
-    private fun stepZoom(percent: Int) = setZoom(((treeScroll.scaleX * 100).roundToInt() + percent) / 100f)
     private fun setZoom(value: Float) {
         treeScroll.validate()
         val center = Rectangle().also { treeScroll.getViewport(it) }.getCenter(Vector2())
@@ -514,13 +457,6 @@ class TechPickerScreen(
         treeScroll.updateVisualScroll()
         treeScroll.updateCulling()
         zoom = treeScroll.scaleX
-        updateZoomCaption()
-    }
-    private fun updateZoomCaption() {
-        zoomReset?.setText("${(zoom * 100).roundToInt()}%")
-        zoomMenuButton?.setText("${(zoom * 100).roundToInt()}%")
-        zoomOutButton?.isDisabled = zoom <= TechnologyAtlasGraph.minZoom
-        zoomInButton?.isDisabled = zoom >= TechnologyAtlasGraph.maxZoom
     }
     private fun centerAt(x: Float, y: Float) {
         treeScroll.validate()
