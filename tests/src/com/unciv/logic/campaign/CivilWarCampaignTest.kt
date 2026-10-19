@@ -1,5 +1,9 @@
 package com.unciv.logic.campaign
 
+import com.unciv.logic.map.mapunit.PossibleUpgrade
+import com.unciv.logic.map.mapunit.UpgradeAvailability
+import com.unciv.models.Counter
+
 import com.badlogic.gdx.Gdx
 import com.unciv.UncivGame
 import com.unciv.logic.GameInfo
@@ -236,7 +240,7 @@ class CivilWarCampaignTest {
     @Test fun `illegal upgrade is refused and normal identity replacement is not a loss`() {
         val g = game(); val u = g.getCurrentPlayerCivilization().units.getCivUnits().first { it.isMilitary() }
         val unitCount = u.civ.units.getCivUnits().count()
-        u.upgrade.performUpgrade(g.ruleset.units.getValue("Infantry"), true)
+        u.upgrade.performUpgrade(PossibleUpgrade(g.ruleset.units.getValue("Infantry"), null, false, UpgradeAvailability.AvailableForFree, 0, Counter()), true)
         assertEquals(unitCount, u.civ.units.getCivUnits().count())
         assertFalse(u.isDestroyed)
         u.destroy(preserveCampaignIdentity = true)

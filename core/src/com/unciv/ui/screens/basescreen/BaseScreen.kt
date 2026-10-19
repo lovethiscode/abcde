@@ -87,8 +87,7 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
     }
 
     init {
-        val screenSize = game.settings.screenSize
-        val height = screenSize.virtualHeight
+        val height = game.settings.screenSize.getHeight()
 
         /** The ExtendViewport sets the _minimum_(!) world size - the actual world size will be larger, fitted to screen/window aspect ratio. */
         stage = UncivStage(SafeAreaViewport(height, useFullScreenLayout))
@@ -282,7 +281,7 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
     fun isPortrait() = stage.viewport.screenHeight > stage.viewport.screenWidth
     /** @return `true` if the screen is higher than it is wide _and_ resolution is at most 1050x700 */
     fun isCrampedPortrait() = isPortrait() &&
-            game.settings.screenSize.virtualHeight <= 700
+            game.settings.screenSize.getHeight() <= 700
 
     internal fun safeAreaBoundsInWorld() =
         (stage.viewport as SafeAreaViewport).safeAreaBoundsInWorld

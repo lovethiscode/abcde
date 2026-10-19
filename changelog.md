@@ -1,3 +1,29 @@
+## 4.22.12
+
+Fix city status layout when city resources are shown - by kilo-cy (New contributor!)
+
+By unciv-loof:
+- Sort modifiers in diplomacy screen by their impact on relationship - 
+- Sort pantheons and religions in overview tab by founding turn
+
+Fix "Check this mod" button not selecting the tab and mod in the OptionsPopup on Android - By SomeTroglodyte
+
+## 4.22.11
+
+Added "Auto" screen size setting
+
+Spaceship parts buildable again
+
+Selecting random map after custom no longer generates land-only
+
+MP preview displays number of players and estimated time until player's turn - By unciv-loof
+
+By SomeTroglodyte:
+- Improve espionage screen and spy movement handling via map 
+- Fix broken keyboard binding for "Create [improvement]" 
+- Extension Mods allow more removals via ModOptions 
+- Fix loading games with invalid speed or difficulty entry crashes
+
 ## 4.22.10
 
 Allow removing all forms of starting locations in map editor

@@ -36,7 +36,7 @@ object UiTypography {
         if (stage != null && stage.viewport.screenHeight > 0)
             return stage.camera.viewportHeight / stage.viewport.screenHeight
         val safe = Display.getSafeArea(Gdx.graphics.width, Gdx.graphics.height)
-        return UncivGame.Current.settings.screenSize.virtualHeight / minOf(safe.width, safe.height).coerceAtLeast(1)
+        return UncivGame.Current.settings.screenSize.getHeight() / minOf(safe.width, safe.height).coerceAtLeast(1)
     }
 
     /** [unit] is 1 inside a parent that already scales point coordinates (e.g. CityWorkbench). */

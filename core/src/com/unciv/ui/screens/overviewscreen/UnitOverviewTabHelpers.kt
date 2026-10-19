@@ -7,7 +7,6 @@ import com.badlogic.gdx.utils.Align
 import com.unciv.GUI
 import com.unciv.logic.map.HexCoord
 import com.unciv.models.UnitActionType
-import com.unciv.models.UpgradeUnitAction
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
 import com.unciv.ui.components.extensions.darken
@@ -16,7 +15,6 @@ import com.unciv.ui.components.input.onClick
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.UnitUpgradeMenu
 import com.unciv.ui.screens.pickerscreens.PromotionPickerScreen
-import com.unciv.logic.map.mapunit.actions.UnitActionsUpgrade
 import com.unciv.view.MapUnitView
 import com.unciv.view.TileView
 import yairm210.purity.annotations.Readonly
@@ -48,31 +46,30 @@ open class UnitOverviewTabHelpers {
     protected fun getActionText(unit: MapUnitView): String? {
         val workerText by lazy { getWorkerActionText(unit) }
         return when {
-            unit.getUnit().action == null -> workerText
+            unit.action == null -> workerText
             unit.isFortified() -> UnitActionType.Fortify.value
             unit.isGuarding() -> UnitActionType.Guard.value
             unit.isMoving() -> "Moving"
             unit.isAutomated() && workerText != null -> "[$workerText] ${Fonts.automate}"
-            else -> unit.getUnit().action
+            else -> unit.action
         }
     }
 
     protected fun getUpgradeTable(unitView: MapUnitView, actionContext: UnitOverviewTab): Table? {
-        val unit = unitView.getUnit()
         val table = Table()
-        val unitActions = UnitActionsUpgrade.getUpgradeActionAnywhere(unit)
-        if (unitActions.none()) return null
+        val upgrades = unitView.getPossibleUpgrades().filter { it.isShownToPlayer }
+        if (upgrades.isEmpty()) return null
         val canEnable = actionContext.viewingPlayer.getCiv().isCurrentPlayer() && GUI.isAllowedChangeState()
 
-        for (unitAction in unitActions) {
-            val enable = canEnable && unitAction.action != null
-            val unitToUpgradeTo = (unitAction as UpgradeUnitAction).unitToUpgradeTo
+        for (upgrade in upgrades) {
+            val enable = canEnable && unitView.canUpgradeTo(upgrade.upgradedUnit)
+            val unitToUpgradeTo = upgrade.upgradedUnit
             val selectKey = unitView.id.toString()
             val upgradeIcon = ImageGetter.getUnitIcon(unitToUpgradeTo,
                 if (enable) ExpeditionBlueTheme.color(Color.GREEN, ExpeditionBlueTheme.gold)
                 else ExpeditionBlueTheme.color(Color.GREEN.darken(0.5f), ExpeditionBlueTheme.muted))
             upgradeIcon.onClick {
-                UnitUpgradeMenu(actionContext.overviewScreen.stage, upgradeIcon, unitView, unitAction, enable) {
+                UnitUpgradeMenu(actionContext.overviewScreen.stage, upgradeIcon, unitView, upgrade, enable) {
                     actionContext.update(true)
                     actionContext.overviewScreen.select(EmpireOverviewCategories.Units, selectKey) // actionContext.select skips setting scrollY
                 }
@@ -85,9 +82,9 @@ open class UnitOverviewTabHelpers {
 
     @Readonly @Suppress("purity") // Calls action
     protected fun getUpgradeSortString(unitView: MapUnitView): String? {
-        val upgrade = UnitActionsUpgrade.getUpgradeActionAnywhere(unitView.getUnit()).firstOrNull()
+        val upgrade = unitView.getPossibleUpgrades().firstOrNull { it.isShownToPlayer }
             ?: return null
-        return (upgrade as UpgradeUnitAction).unitToUpgradeTo.name.tr(hideIcons = true)
+        return upgrade.upgradedUnit.name.tr(hideIcons = true)
     }
 
     protected fun getPromotionsTable(unitView: MapUnitView, actionContext: UnitOverviewTab): Table {
@@ -95,7 +92,6 @@ open class UnitOverviewTabHelpers {
         // That created problems with sorting - and determining when the state would allow minimal updating is complex.
         // But the old way also had the mini-bug that PromotionPicker allows unit rename which wasn't reflected on the grid...
         // Now it always does rebuild all rows (as simple as actionContext.update instead of updatePromotionsTable).
-        val unit = unitView.getUnit()
         val promotionsTable = Table()
         val canEnable = actionContext.viewingPlayer.getCiv().isCurrentPlayer() && GUI.isAllowedChangeState()
         updatePromotionsTable(promotionsTable, unitView, canEnable)
