@@ -5,6 +5,7 @@ import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.utils.Align
+import com.badlogic.gdx.utils.Scaling
 import com.unciv.models.UncivSound
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.*
@@ -301,6 +302,8 @@ internal class PromotionAtlasView(
             label.setText("Default promotions for [${unit.getBaseUnit().name}]".tr(hideIcons = true))
             labelCell.growX().minWidth(0f)
             imageCell.size(u(24f)).padRight(u(8f))
+            // CheckBox defaults to Scaling.none; the skin drawable can exceed the pt-sized cell.
+            image.setScaling(Scaling.fit)
             label.setFontSize(this@PromotionAtlasView.style.font(TextRole.Control))
         }).minHeight(u(44f)).padTop(u(12f)).row()
         detailsScroll = AutoScrollPane(reading).apply { setScrollingDisabled(true, false); setOverscroll(false, false) }
