@@ -138,7 +138,7 @@ class UnitOverviewTab(
         val city = unit.getTile().getVisibleTilesInDistance(3).firstOrNull { it.isCityCenter() }?.owningCity()
         if (city?.tryGetCityView() == null) detail.detailRow("Closest city", city?.name ?: "—") else {
             val cityButton = OverviewUi.button(flat = true) {
-                overviewScreen.game.resetToWorldScreen().mapHolder.setCenterPosition(city.getCenterTile().position, selectUnit = false)
+                overviewScreen.game.resetToWorldScreen().mapHolder.setCenterPosition(city.getCenterTile().position(), selectUnit = false)
             }.apply {
                 right()
                 add(city.name.toLabel(fontSize = font(TextRole.Supporting), hideIcons = true)).right()
