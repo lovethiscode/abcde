@@ -24,6 +24,8 @@ import com.unciv.models.ruleset.Ruleset
 import com.unciv.models.ruleset.nation.Nation
 import com.unciv.models.ruleset.unit.BaseUnit
 import com.unciv.models.skins.SkinCache
+import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.models.stats.Stat
 import com.unciv.models.tilesets.TileSetCache
 import com.unciv.ui.components.NonTransformGroup
 import com.unciv.ui.components.extensions.*
@@ -509,7 +511,7 @@ object ImageGetter {
 
     fun getSpecialistIcon(color: Color): Image {
         val specialist = getImage("StatIcons/Specialist")
-        specialist.color = color
+        specialist.color = ExpeditionBlueTheme.color(color, if (color == Color.BLUE) Stat.Science.color else color)
         return specialist
     }
     
