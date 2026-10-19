@@ -133,7 +133,7 @@ abstract class ReligionPickerScreenCommon(
         val upBackground = style.up
         if (ExpeditionBlueTheme.enabled && upBackground != null) {
             // Preserve label contrast; a group tint also darkens all of its children.
-            style = Button.ButtonStyle(style).apply { disabled = skin.newDrawable(upBackground, color) }
+            style = Button.ButtonStyle(style).apply { disabled = this@ReligionPickerScreenCommon.skin.newDrawable(upBackground, color) }
             isDisabled = true
         } else this.color = color
     }
