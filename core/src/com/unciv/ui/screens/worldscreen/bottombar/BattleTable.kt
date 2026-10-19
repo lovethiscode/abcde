@@ -487,7 +487,8 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         val attackerNameWrapper = Table()
         val attackerLabel = attacker.getCombatantName().toLabel(hideIcons = true, role = TextRole.Body)
         attackerNameWrapper.add(getIcon(attacker)).padRight(5f)
-        attackerNameWrapper.add(attackerLabel)
+        val attackerLabelCell = attackerNameWrapper.add(attackerLabel)
+        if (BattlefieldHud.enabled) attackerLabelCell.minWidth(0f).growX()
         add(attackerNameWrapper)
 
         val canNuke = attackerView.mayUseNuke(targetTileView)
@@ -500,7 +501,9 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
 
             val defenderLabel = defender.getCombatantName().toLabel(hideIcons = true, role = TextRole.Body)
             defenderNameWrapper.add(getIcon(defender)).padRight(5f)
-            defenderNameWrapper.add(defenderLabel).row()
+            val defenderLabelCell = defenderNameWrapper.add(defenderLabel)
+            if (BattlefieldHud.enabled) defenderLabelCell.minWidth(0f).growX()
+            defenderNameWrapper.row()
         }
         add(defenderNameWrapper).row()
 
@@ -554,7 +557,8 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         val attackerNameWrapper = Table()
         val attackerLabel = attacker.getCombatantName().toLabel(hideIcons = true, role = TextRole.Body)
         attackerNameWrapper.add(getIcon(attacker)).padRight(5f)
-        attackerNameWrapper.add(attackerLabel)
+        val attackerLabelCell = attackerNameWrapper.add(attackerLabel)
+        if (BattlefieldHud.enabled) attackerLabelCell.minWidth(0f).growX()
         add(attackerNameWrapper)
 
         val canAttack = attackerView.canAttack()

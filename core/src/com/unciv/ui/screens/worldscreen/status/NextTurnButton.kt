@@ -80,7 +80,9 @@ class NextTurnButton(
         isChecked = false
         label.setText(nextTurnAction.getText(worldScreen).tr())
         val primary = ExpeditionBlueTheme.enabled && nextTurnAction == NextTurnAction.NextTurn
-        val foreground = if (primary) ExpeditionBlueTheme.primaryInk else ExpeditionBlueTheme.labelColor(nextTurnAction.color)
+        val foreground = if (primary) ExpeditionBlueTheme.primaryInk
+            else if (ExpeditionBlueTheme.enabled && nextTurnAction == NextTurnAction.FoundReligion) ExpeditionBlueTheme.danger
+            else ExpeditionBlueTheme.labelColor(nextTurnAction.color)
         if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get(if (primary) "positive" else "default", TextButtonStyle::class.java)
         label.color = foreground
         unitsDueLabel.color = if (primary) ExpeditionBlueTheme.primaryInk else ExpeditionBlueTheme.color(com.badlogic.gdx.graphics.Color.WHITE, ExpeditionBlueTheme.text)

@@ -87,7 +87,10 @@ abstract class ReligionPickerScreenCommon(
             when {
                 belief != null -> {
                     if (withTypeLabel)
-                        add(belief.type.name.toLabel(fontColor = Color.valueOf(belief.type.color), role = TextRole.Body)).row()
+                        add(belief.type.name.toLabel(fontColor = ExpeditionBlueTheme.color(
+                            Color.valueOf(belief.type.color),
+                            if (belief.type == BeliefType.Founder) ExpeditionBlueTheme.danger else Color.valueOf(belief.type.color)
+                        ), role = TextRole.Body)).row()
                     val nameLabel = WrappableLabel(belief.name, labelWidth,fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize))
                     add(nameLabel.apply { wrap = true }).row()
                     val effectLabel = WrappableLabel(belief.uniqueObjects.filter { !it.isHiddenToUsers() }.map { it.getDisplayText() }
@@ -127,7 +130,11 @@ abstract class ReligionPickerScreenCommon(
     /** Disable a [Button] by setting its [touchable][Button.touchable] and the given [color] */
     protected fun Button.disable(color: Color) {
         touchable = Touchable.disabled
-        this.color = color
+        if (ExpeditionBlueTheme.enabled) {
+            // Preserve label contrast; a group tint also darkens all of its children.
+            style = Button.ButtonStyle(style).apply { disabled = skin.newDrawable(up, color) }
+            isDisabled = true
+        } else this.color = color
     }
 
     // This forces this label to use an own clone of the default style. If not, hovering over the button will gray
