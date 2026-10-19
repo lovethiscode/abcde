@@ -51,7 +51,7 @@ internal class PromotionAtlasView(
     private lateinit var canvas: WidgetGroup
     private lateinit var graphScroll: AutoScrollPane
     private var detailsScroll: AutoScrollPane? = null
-    data class State(val selection: String?, val x: Float, val y: Float, val expanded: Boolean, val detailY: Float)
+    class State(val selection: String?, val x: Float, val y: Float, val expanded: Boolean, val detailY: Float)
     fun snapshot() = State(selected?.promotion?.name, graphScroll.scrollX / style.unit,
         graphScroll.scrollY / style.unit, expanded, (detailsScroll?.scrollY ?: 0f) / style.unit)
     fun restore(state: State, save: Boolean) {
