@@ -25,6 +25,7 @@ import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.WrappableLabel
+import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.civilopediascreen.MarkupRenderer
 import yairm210.purity.annotations.Readonly
 
@@ -133,7 +134,7 @@ abstract class ReligionPickerScreenCommon(
         val upBackground = style.up
         if (ExpeditionBlueTheme.enabled && upBackground != null) {
             // Preserve label contrast; a group tint also darkens all of its children.
-            style = Button.ButtonStyle(style).apply { disabled = this@ReligionPickerScreenCommon.skin.newDrawable(upBackground, color) }
+            style = Button.ButtonStyle(style).apply { disabled = BaseScreen.skin.newDrawable(upBackground, color) }
             isDisabled = true
         } else this.color = color
     }
