@@ -145,7 +145,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
             width = battlefieldWidth()
             invalidateHierarchy()
             validate()
-            height = minOf(prefHeight, BattlefieldHud.points(190f))
+            height = minOf(prefHeight, maxOf(minHeight, BattlefieldHud.points(190f)))
             validate()
         } else addBorderAllowOpacity(2f, Color.WHITE)
         if (BattlefieldHud.enabled) {
@@ -235,8 +235,10 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
                     cell.minWidth(0f)
                 }
                 is ScrollPane -> {
-                    (actor.actor as? Table)?.let { constrainBattlefieldCells(it, TextRole.Supporting) }
-                    cell.minWidth(0f).minHeight(0f)
+                    val content = actor.actor as? Table
+                    content?.let { constrainBattlefieldCells(it, TextRole.Supporting) }
+                    cell.minWidth(0f).minHeight(
+                        if (content != null && content.cells.size > 0) BattlefieldHud.points(24f) else 0f)
                 }
             }
         }
