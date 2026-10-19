@@ -12,6 +12,8 @@ import com.unciv.models.TutorialTrigger
 import com.unciv.models.UncivSound
 import com.unciv.models.ruleset.unit.Promotion
 import com.unciv.models.translations.tr
+import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.audio.SoundPlayer
 import com.unciv.ui.components.extensions.isEnabled
 import com.unciv.ui.components.extensions.toCheckBox
@@ -63,6 +65,11 @@ class PromotionPickerScreen private constructor(
 
     // This if we should save the unit promotion or not.
     private var saveUnitPromotion = false
+    private var atlas: PromotionAtlasView? = null
+    override val screenClearColor: Color get() = if (UiNavigation.isIos) ExpeditionBlueTheme.background else super.screenClearColor
+
+    private fun isPickable(node: PromotionTree.PromotionNode) = canPromoteNow &&
+        (!node.pathIsAmbiguous || node.distanceToAdopted == 1) && tree.canBuyUpTo(node.promotion)
 
     init {
         closeButton.onActivation {
@@ -72,6 +79,15 @@ class PromotionPickerScreen private constructor(
         }
         closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
 
+        if (UiNavigation.isIos) {
+            buttonCellMaxWidth = 0f
+            buttonCellMinWidth = 0f
+            pickerPane.remove()
+            atlas = PromotionAtlasView(this, unit, tree, canChangeState, ::isPickable, { node ->
+                acceptPromotion(node)
+                checkSaveUnitPromotion()
+            }, { saveUnitPromotion = it })
+        } else {
         if (canPromoteNow) {
             rightSideButton.setText("Pick promotion".tr())
             rightSideButton.onClick(UncivSound.Silent) {
@@ -106,6 +122,7 @@ class PromotionPickerScreen private constructor(
 
         fillTable()
 
+        }
         displayTutorial(TutorialTrigger.Experience)
     }
 
@@ -115,7 +132,12 @@ class PromotionPickerScreen private constructor(
         // if user managed to click disabled button, still do nothing
         if (button == null || !button.isPickable) return
 
-        val path = tree.getPathTo(button.node.promotion)
+        acceptPromotion(button.node)
+    }
+
+    private fun acceptPromotion(node: PromotionTree.PromotionNode) {
+        if (!isPickable(node)) return
+        val path = tree.getPathTo(node.promotion)
         SoundPlayer.playRepeated(UncivSound.Promote, path.size.coerceAtMost(2))
 
         for (promotion in path)
@@ -216,9 +238,7 @@ class PromotionPickerScreen private constructor(
     }
     
     private fun getButton(tree: PromotionTree, node: PromotionTree.PromotionNode) : PromotionButton {
-        val isPickable = canPromoteNow &&
-            (!node.pathIsAmbiguous || node.distanceToAdopted == 1) &&
-            tree.canBuyUpTo(node.promotion)
+        val isPickable = isPickable(node)
 
         val button = PromotionButton(node, isPickable, promotedLabelStyle, buttonCellMaxWidth - 60f)
 
@@ -388,7 +408,10 @@ class PromotionPickerScreen private constructor(
     override fun recreate() = recreate(closeOnPick)
     fun recreate(closeOnPick: Boolean): BaseScreen {
         val newScreen = PromotionPickerScreen(unit, closeOnPick, originalName, onChange)
-        newScreen.setScrollY(scrollPane.scrollY)
+        if (atlas != null) {
+            newScreen.saveUnitPromotion = saveUnitPromotion
+            newScreen.atlas?.restore(atlas!!.snapshot(), saveUnitPromotion)
+        } else newScreen.setScrollY(scrollPane.scrollY)
         return newScreen
     }
 }
