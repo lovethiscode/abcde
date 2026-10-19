@@ -1,5 +1,7 @@
 package com.unciv.ui.popups
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
@@ -7,6 +9,7 @@ import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.isEnabled
 import com.unciv.ui.components.widgets.UncivTextField
 import com.unciv.ui.components.input.onChange
@@ -44,32 +47,55 @@ class AskNumberPopup(
         val wrapper = Table()
         wrapper.add(icon).padRight(10f)
         wrapper.add(label.toLabel(TextRole.Body))
-        add(wrapper).colspan(2).row()
+        if (ordinaryPresentation) {
+            addDialogTitle(if (label == "Enter the amount of gold") "Set trade amount" else label,
+                if (label == "Enter the amount of gold") "Gold · Trade offer" else "")
+            addGoodSizedLabel(if (label == "Enter the amount of gold") "Amount" else label,
+                UiTypography.size(TextRole.Control, popupUnit)).row()
+        }
+        else add(wrapper).colspan(2).row()
 
         val valueField = UncivTextField.Integer(label, defaultValue)
+        if (ordinaryPresentation) {
+            // Step buttons use the text setter too. Revalidate those edits just
+            // like keyboard input, including recovery from an out-of-range value.
+            valueField.setProgrammaticChangeEvents(true)
+            valueField.style = com.badlogic.gdx.scenes.scene2d.ui.TextField.TextFieldStyle(valueField.style).apply {
+                font = Fonts.getUiFont(UiTypography.size(TextRole.Control, popupUnit))
+                if (ExpeditionBlueTheme.enabled) background = OrdinaryPopupStyle(popupUnit).let {
+                    it.outlined(it.deep, radius = 8f)
+                }
+            }
+        }
         valueField.name = "ui-number-input"
 
         val centerTable = Table(skin)
 
         fun addValueButton(delta: Int) {
             centerTable.add(
-                Button(
-                    delta.toStringSigned().toLabel(TextRole.Body),
-                    skin
-                ).apply {
+                (if (ordinaryPresentation) com.badlogic.gdx.scenes.scene2d.ui.TextButton(delta.toStringSigned(), OrdinaryPopupStyle(popupUnit).button()).apply {
+                    this.label.setFontSize(UiTypography.size(TextRole.Control, popupUnit))
+                } else Button(delta.toStringSigned().toLabel(TextRole.Body), skin)).apply {
                     onClick {
                         val value = valueField.intValue ?: return@onClick
-                        valueField.intValue = (value + delta).coerceIn(bounds)
+                        valueField.intValue = if (ordinaryPresentation)
+                            (value.toLong() + delta).coerceIn(bounds.first.toLong(), bounds.last.toLong()).toInt()
+                        else (value + delta).coerceIn(bounds)
                     }
                 }
-            ).pad(5f)
+            ).pad(5f).apply { if (ordinaryPresentation) minSize(44f * popupUnit).growX() }
         }
 
+        if (ordinaryPresentation) {
+            add(valueField).width(popupContentWidth).minHeight(48f * popupUnit).colspan(2).row()
+            addGoodSizedLabel("Enter an integer from [${bounds.first}] to [${bounds.last}].",
+                UiTypography.size(TextRole.Supporting, popupUnit)).row()
+        }
         for (value in amountButtons.reversed()) {
             addValueButton(-value)
         }
 
-        centerTable.add(valueField).growX().pad(10f)
+        if (!ordinaryPresentation) centerTable.add(valueField).growX().pad(10f)
 
         add(centerTable).colspan(2).row()
 
@@ -77,14 +103,19 @@ class AskNumberPopup(
             addValueButton(value)
         }
 
-        val errorLabel = errorText.toLabel(TextRole.Body)
+        val errorLabel = errorText.toLabel(if (ordinaryPresentation) TextRole.Supporting else TextRole.Body)
+        if (ordinaryPresentation) errorLabel.wrap = true
         errorLabel.color = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
 
         addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.cancel else com.unciv.Constants.close)
         val okButton = addOKButton(
+            text = if (ordinaryPresentation && label == "Enter the amount of gold") "Add to offer" else com.unciv.Constants.OK,
             validate = {
-                val errorFound = valueField.intValue?.let { validate(it) } != true
-                if (errorFound) add(errorLabel).colspan(2).center()
+                val errorFound = valueField.intValue?.let { (!ordinaryPresentation || it in bounds) && validate(it) } != true
+                if (errorFound && (!ordinaryPresentation || errorLabel.parent == null)) {
+                    if (ordinaryPresentation) add(errorLabel).colspan(2).width(popupContentWidth).row()
+                    else add(errorLabel).colspan(2).center()
+                }
                 !errorFound
             }
         ) {
@@ -93,9 +124,17 @@ class AskNumberPopup(
         okButton.name = "ui-number-confirm"
         equalizeLastTwoButtonWidths()
 
-        valueField.onChange {
-            okButton.isEnabled = valueField.intValue?.let { it in bounds } == true
+        fun updateValidity() {
+            val valid = valueField.intValue?.let { it in bounds && (!ordinaryPresentation || validate(it)) } == true
+            if (ordinaryPresentation) okButton.isDisabled = !valid
+            else okButton.isEnabled = valid
+            if (ordinaryPresentation) {
+                if (!valid && errorLabel.parent == null) add(errorLabel).colspan(2).width(popupContentWidth).row()
+                errorLabel.isVisible = !valid
+            }
         }
+        valueField.onChange { updateValidity() }
+        if (ordinaryPresentation) updateValidity()
 
         keyboardFocus = valueField
     }

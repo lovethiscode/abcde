@@ -20,7 +20,16 @@ internal class WorldScreenMenuStyle(private val unit: Float) {
     private val gold = ExpeditionBlueTheme.color(Color.GOLD, ExpeditionBlueTheme.gold)
     private val ink = ExpeditionBlueTheme.color(Color.BLACK, ExpeditionBlueTheme.primaryInk)
     fun px(value: Float) = value * unit
-    fun font(value: TextRole) = UiTypography.size(value)
+    fun font(value: TextRole) = UiTypography.size(value, unit)
+
+    fun navigationStyle() = TextButton.TextButtonStyle(buttonStyle()).apply {
+        val rule = ImageGetter.getWhiteDotDrawable().tint(border)
+        up = object : BaseDrawable() {
+            override fun draw(batch: Batch, x: Float, y: Float, width: Float, height: Float) {
+                rule.draw(batch, x, y, width, unit)
+            }
+        }
+    }
 
     fun surface(color: Color, radius: Float = 8f): BaseDrawable {
         val dot = ImageGetter.getWhiteDotDrawable().tint(color)

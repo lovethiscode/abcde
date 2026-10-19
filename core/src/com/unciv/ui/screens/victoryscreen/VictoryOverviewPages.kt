@@ -20,6 +20,7 @@ import kotlin.math.roundToInt
 
 /** Per-screen choices survive viewport recreation without changing saved game data. */
 internal class VictoryPageState {
+    var resultDetailsOpened = false
     var victory: String? = null
     var ranking = RankingType.Score
     var demographicRanking = RankingType.Score
@@ -72,6 +73,8 @@ internal class VictoryProgressPage(
 
     init {
         top()
+        if (state.victory == null && world.gameInfo.campaign == null && world.gameInfo.endless == null)
+            state.victory = world.gameInfo.victoryData?.victoryType
         if (compact) {
             add(sidebar).growX().minWidth(0f).padBottom(pt(12f)).row()
             add(detail).grow().minWidth(0f).minHeight(0f)
@@ -130,6 +133,17 @@ internal class VictoryProgressPage(
             }
         }
         body.add(heading).growX().minWidth(0f).row()
+        if (world.gameInfo.campaign == null && world.gameInfo.endless == null) {
+            val outcome = world.gameInfo.victoryData
+            val story = when {
+                outcome?.victoryType == selected.name -> if (outcome.winningCivObject == viewer)
+                    selected.victoryString else selected.defeatString
+                outcome == null && viewer.isDefeated() -> Victory().defeatString
+                else -> ""
+            }
+            if (story.isNotEmpty()) body.add(U.plainLabel(story, TextRole.Body).apply { wrap = true })
+                .left().padTop(pt(8f)).padBottom(pt(12f)).row()
+        }
         body.add(U.plainLabel(selected.victoryScreenHeader, TextRole.Supporting, U.muted).apply { wrap = true })
             .left().padTop(pt(3f)).padBottom(pt(14f)).row()
         if (global) addGlobal(body, selected) else addOur(body, selected, progress)

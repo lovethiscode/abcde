@@ -4,6 +4,7 @@ import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
+import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.models.UncivSound
 import com.unciv.models.metadata.GameSettings
@@ -24,8 +25,13 @@ import kotlin.math.floor
  *  @see [addMusicControls]
  */
 interface MusicControls {
+    val stackMusicSliders: Boolean get() = false
+    /** Let the owner supply its coordinate-aware typography without changing legacy callers. */
+    fun musicControlLabel(text: String): Label = text.toLabel()
+
     fun Table.addVolumeSlider(text: String, initial: Float, silent: Boolean = false, onChange: (Float) -> Unit) {
-        add(text.tr()).left().fillX()
+        add(musicControlLabel(text)).left().fillX()
+        if (stackMusicSliders) row()
 
         val volumeSlider = UncivSlider(
             0f, 1.0f, 0.05f,
@@ -34,7 +40,7 @@ interface MusicControls {
             getTipText = UncivSlider::formatPercent,
             onChange = onChange
         )
-        add(volumeSlider).pad(5f).row()
+        add(volumeSlider).apply { if (stackMusicSliders) growX() }.pad(5f).row()
     }
 
     fun Table.addSoundEffectsVolumeSlider(settings: GameSettings) =
@@ -84,7 +90,8 @@ interface MusicControls {
             override fun invoke(value: Float) = posToLength(value).toInt().tr()
         }
 
-        add("Pause between tracks".tr()).left().fillX()
+        add(musicControlLabel("Pause between tracks")).left().fillX()
+        if (stackMusicSliders) row()
 
         val pauseLengthSlider = UncivSlider(
             0f, 30f, 1f,
@@ -95,7 +102,7 @@ interface MusicControls {
             music.silenceLength = posToLength(it)
             settings.pauseBetweenTracks = music.silenceLength.toInt()
         }
-        add(pauseLengthSlider).pad(5f).row()
+        add(pauseLengthSlider).apply { if (stackMusicSliders) growX() }.pad(5f).row()
     }
 
     fun Table.addMusicCurrentlyPlaying(music: MusicController) {

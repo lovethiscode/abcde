@@ -47,6 +47,9 @@ object UiNavigation {
             }).apply { minWidth = 0f; minHeight = 0f }
         }
 
+    /** Shared point-sized surface geometry for ordinary popup controls. */
+    fun roundedSurface(color: Color, radius: Float, unit: Float): BaseDrawable = rounded(color, radius, unit)
+
     fun buttonStyle(unit: Float = minimumTouchSize() / 44f): TextButton.TextButtonStyle =
         TextButton.TextButtonStyle(BaseScreen.skin.get(TextButton.TextButtonStyle::class.java)).apply {
             if (!ExpeditionBlueTheme.enabled) return@apply

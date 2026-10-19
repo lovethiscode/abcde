@@ -56,7 +56,7 @@ class VictoryManager : IsPartOfGameInfoSerialization {
             }.firstOrNull() ?: (null to null)
 
     @Readonly
-    private fun votesNeededForDiplomaticVictory(): Int {
+    fun votesNeededForDiplomaticVictory(): Int {
         // The original counts "teams ever alive", which excludes Observer and Barbarians.
         // The "ever alive" part sounds unfair - could make a Vote unwinnable?
 
@@ -87,7 +87,12 @@ class VictoryManager : IsPartOfGameInfoSerialization {
         return (results.none { it != bestCiv && it.value == bestCiv.value })
     }
 
-    data class DiplomaticVictoryVoteBreakdown(val results: Counter<String>, val winnerText: String)
+    data class DiplomaticVictoryVoteBreakdown(
+        val results: Counter<String>,
+        val winnerText: String,
+        val title: String = winnerText,
+        val tieExplanation: String? = null
+    )
     @Readonly
     fun getDiplomaticVictoryVoteBreakdown(): DiplomaticVictoryVoteBreakdown {
         val results = calculateDiplomaticVotingResults(civInfo.gameInfo.diplomaticVictoryVotesCast)
@@ -104,12 +109,14 @@ class VictoryManager : IsPartOfGameInfoSerialization {
         if (winnerList.size > 1)
             lines += "Tied in first position: [${winnerList.joinToString { it.tr() }}]" // Yes with icons
         val winnerCiv = civInfo.gameInfo.getCivilization(winnerList.first())
-        lines += when {
+        val title = when {
             lines.isNotEmpty() -> "No world leader was elected."
             winnerCiv == civInfo -> "You have been elected world leader!"
             else -> "${winnerCiv.nation.getLeaderDisplayName()} has been elected world leader!"
         }
-        return DiplomaticVictoryVoteBreakdown(results, lines.joinToString("\n") { "{$it}" })
+        val tieExplanation = lines.lastOrNull().takeIf { winnerList.size > 1 }
+        lines += title
+        return DiplomaticVictoryVoteBreakdown(results, lines.joinToString("\n") { "{$it}" }, title, tieExplanation)
     }
 
     /** The victories [civInfo] can achieve in this game: enabled in the game parameters, and open to

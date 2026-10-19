@@ -21,7 +21,12 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextField
 import com.badlogic.gdx.scenes.scene2d.ui.WidgetGroup
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.utils.Align
+import com.unciv.UncivGame
+import com.unciv.ui.components.extensions.setFontSize
+import com.badlogic.gdx.scenes.scene2d.ui.Value
+import com.unciv.ui.images.ImageGetter
 import com.unciv.Constants
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.GUI
 import com.unciv.logic.event.EventBus
 import com.unciv.ui.components.extensions.addSeparator
@@ -71,8 +76,224 @@ open class Popup(
      */
     enum class Scrollability { None, All, WithoutButtons, DevConsole }
 
-    protected val maxPopupWidth get() = stageToShowOn.width * maxSizePercentage
-    protected val maxPopupHeight get() = stageToShowOn.height * maxSizePercentage
+    /** Ordinary game presentation is isolated from campaign/endless and specialised tools. */
+    protected val ordinaryPresentation = scrollable == Scrollability.WithoutButtons &&
+        UiNavigation.isIos && UncivGame.getGameInfoOrNull()?.let {
+            it.campaign == null && it.endless == null
+        } == true && !javaClass.name.let {
+            it.contains(".options.") || it.contains(".chat.") || it.contains(".devconsole.")
+                || it.contains(".newgamescreen.") || it.endsWith("AuthPopup")
+        }
+    protected val popupUnit get() = UiTypography.unitsPerPoint(stageToShowOn)
+    protected var ordinaryViewport = ordinaryPresentation
+    protected var ordinaryPreferredWidth = 560f
+    protected val popupContentWidth get() = (maxPopupWidth - 40f * popupUnit).coerceAtLeast(1f)
+    protected val maxPopupWidth get() = if (ordinaryPresentation)
+        minOf(lastKnownVisibleArea().width - 24f * popupUnit,
+            minOf(ordinaryPreferredWidth, if (stageToShowOn.height / popupUnit <= 520f) 720f else ordinaryPreferredWidth) * popupUnit).coerceAtLeast(1f)
+        else stageToShowOn.width * maxSizePercentage
+    private fun contentWidthValue() = object : Value() {
+        override fun get(context: Actor?) = popupContentWidth
+    }
+    private var closed = false
+    private var cancelButton: TextButton? = null
+    private var lastLayoutWidth = -1f
+    private var lastLayoutHeight = -1f
+    private var revealFocusedInput = false
+    private var typographyUnit = popupUnit
+    private val ordinaryButtons = HashMap<TextButton, Pair<Boolean, Boolean>>()
+
+    protected fun styleOrdinaryButton(button: TextButton, primary: Boolean = false, destructive: Boolean = false) {
+        if (!ordinaryPresentation || !ExpeditionBlueTheme.enabled) return
+        ordinaryButtons[button] = primary to destructive
+        button.style = OrdinaryPopupStyle(popupUnit).button(primary, destructive)
+    }
+
+    protected fun addChoiceCard(button: com.badlogic.gdx.scenes.scene2d.ui.TextButton, vararg consequences: String):
+        com.badlogic.gdx.scenes.scene2d.ui.Cell<com.badlogic.gdx.scenes.scene2d.ui.TextButton> {
+        styleOrdinaryButton(button)
+        button.label.setFontSize(UiTypography.size(TextRole.Control, popupUnit))
+        button.label.wrap = true
+        button.label.setAlignment(com.badlogic.gdx.utils.Align.left)
+        button.clearChildren()
+        val textWidth = object : com.badlogic.gdx.scenes.scene2d.ui.Value() {
+            override fun get(context: com.badlogic.gdx.scenes.scene2d.Actor?) = (popupContentWidth - 60f * popupUnit).coerceAtLeast(1f)
+        }
+        val details = Table().apply {
+            add(button.label).width(textWidth).left().row()
+            for (text in consequences.filter { it.isNotBlank() }) add(text.toLabel(fontSize = UiTypography.size(TextRole.Supporting, popupUnit), fontColor = Color.LIGHT_GRAY)
+                .apply { wrap = true }).width(textWidth).left().padTop(6f * popupUnit).row()
+        }
+        val indicator = object : com.badlogic.gdx.scenes.scene2d.ui.Image() {
+            private val circle = ImageGetter.getCircleDrawable()
+            override fun draw(batch: com.badlogic.gdx.graphics.g2d.Batch, parentAlpha: Float) {
+                val edge = if (button.isChecked) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.muted
+                batch.color = edge
+                circle.draw(batch, x, y, width, height)
+                val inset = 1.5f * popupUnit
+                batch.color = ExpeditionBlueTheme.background
+                circle.draw(batch, x + inset, y + inset, width - inset * 2, height - inset * 2)
+                if (button.isChecked) {
+                    batch.color = edge
+                    circle.draw(batch, x + width * .27f, y + height * .27f, width * .46f, height * .46f)
+                }
+                batch.color = Color.WHITE
+            }
+        }
+        button.pad(14f * popupUnit)
+        button.add(indicator).size(20f * popupUnit).top().padRight(12f * popupUnit)
+        button.add(details).minWidth(0f).growX().left()
+        // Supply a real width before measuring wrapped consequences.
+        details.setWidth((popupContentWidth - 60f * popupUnit).coerceAtLeast(1f))
+        button.setWidth(popupContentWidth)
+        val cell = add(button).width(popupContentWidth).minHeight(44f * popupUnit).padBottom(8f * popupUnit)
+        row()
+        return cell
+    }
+
+    private fun updatePopupScale(group: Group, ratio: Float) {
+        // Scene2D labels own their scale; never mutate the shared BitmapFont metrics.
+        for (actor in group.children) when (actor) {
+            is Label -> actor.setFontScale(actor.fontScaleX * ratio, actor.fontScaleY * ratio)
+            is TextField -> actor.style = TextField.TextFieldStyle(actor.style).apply {
+                font = com.unciv.ui.components.fonts.Fonts.getUiFont(UiTypography.size(TextRole.Control, popupUnit))
+            }
+            is com.badlogic.gdx.scenes.scene2d.ui.SelectBox<*> -> {
+                val controlFont = UiTypography.controlFont(popupUnit)
+                actor.style = com.badlogic.gdx.scenes.scene2d.ui.SelectBox.SelectBoxStyle(actor.style).apply {
+                    font = controlFont
+                    listStyle = com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(listStyle).apply { font = controlFont }
+                }
+            }
+            is Group -> updatePopupScale(actor, ratio)
+        }
+        if (group is Table) for (cell in group.cells) {
+            // Fixed geometry is in the previous stage's units. Computed Values already
+            // follow their owner (including separators and responsive text columns).
+            val minW = if (cell.minWidthValue is Value.Fixed) cell.minWidth * ratio else null
+            val prefW = if (cell.prefWidthValue is Value.Fixed) cell.prefWidth * ratio else null
+            val maxW = if (cell.maxWidthValue is Value.Fixed) cell.maxWidth * ratio else null
+            val minH = if (cell.minHeightValue is Value.Fixed) cell.minHeight * ratio else null
+            val prefH = if (cell.prefHeightValue is Value.Fixed) cell.prefHeight * ratio else null
+            val maxH = if (cell.maxHeightValue is Value.Fixed) cell.maxHeight * ratio else null
+            minW?.let { cell.minWidth(it) }; prefW?.let { cell.prefWidth(it) }; maxW?.let { cell.maxWidth(it) }
+            minH?.let { cell.minHeight(it) }; prefH?.let { cell.prefHeight(it) }; maxH?.let { cell.maxHeight(it) }
+            cell.pad(cell.padTop * ratio, cell.padLeft * ratio, cell.padBottom * ratio, cell.padRight * ratio)
+            cell.space(cell.spaceTop * ratio, cell.spaceLeft * ratio, cell.spaceBottom * ratio, cell.spaceRight * ratio)
+        }
+        if (group is Table) group.pad(group.padTop * ratio, group.padLeft * ratio, group.padBottom * ratio, group.padRight * ratio)
+    }
+
+    /** Reflow the same actors, retaining text input, focus, listeners and game callbacks. */
+    private fun layoutOrdinaryPopup() {
+        if (!ordinaryPresentation) return
+        val unit = popupUnit
+        if (unit != typographyUnit) {
+            updatePopupScale(innerTable, unit / typographyUnit)
+            typographyUnit = unit
+            headerCloseButton?.let { button ->
+                button.style = UiNavigation.buttonStyle(unit)
+                (button.parent as? Table)?.getCell(button)?.size(44f * unit)
+                button.cells.firstOrNull()?.size(20f * unit)
+            }
+            titleTable.pad(16f * unit, 20f * unit, 16f * unit, 20f * unit)
+        }
+        if (ExpeditionBlueTheme.enabled) {
+            val ui = OrdinaryPopupStyle(unit)
+            innerTable.background = ui.surface(ui.background, 16f)
+            titleTable.background = if (titleTable.hasChildren()) ui.divider(atTop = false) else null
+            bottomTable.background = if (bottomTable.hasChildren()) ui.divider(atTop = true, fill = ui.deep) else null
+            ordinaryButtons.forEach { (button, kind) -> button.style = ui.button(kind.first, kind.second) }
+        }
+        topTable.pad(20f * unit, 20f * unit, 20f * unit, 20f * unit)
+        topTable.defaults().pad(4f * unit, 0f, 4f * unit, 0f)
+        getScrollPane()?.setScrollingDisabled(true, false)
+        if (bottomTable.hasChildren()) bottomTable.pad(14f * unit, 20f * unit, 18f * unit, 20f * unit)
+        else bottomTable.pad(0f)
+        bottomTable.right()
+        val buttons = bottomTable.cells.mapNotNull { it.actor as? TextButton }
+        if (buttons.size == bottomTable.cells.size && buttons.isNotEmpty()) {
+            // Equal action widths match the prototype; a single action keeps a readable minimum.
+            // On short landscape windows wrapping keeps the actions above the bottom edge.
+            val naturalWidths = buttons.associateWith {
+                it.label.wrap = false
+                val width = it.label.prefWidth
+                it.label.wrap = true
+                width
+            }
+            val stacked = stageToShowOn.height / unit >= 430f &&
+                buttons.sumOf { naturalWidths.getValue(it).toDouble() + 32f * unit } +
+                (buttons.size - 1) * 8f * unit > popupContentWidth
+            bottomTable.clearChildren()
+            for (button in buttons) {
+                button.label.wrap = true
+                button.label.setAlignment(Align.center)
+                button.labelCell.minWidth(0f).growX()
+                button.pad(10f * unit, 12f * unit, 10f * unit, 12f * unit)
+                val width = when {
+                    stacked -> popupContentWidth - 8f * unit
+                    buttons.size > 1 -> (popupContentWidth - 8f * unit * buttons.size) / buttons.size
+                    else -> maxOf(110f * unit, naturalWidths.getValue(button) + 24f * unit).coerceAtMost(popupContentWidth - 8f * unit)
+                }.coerceAtLeast(44f * unit)
+                button.label.setSize((width - 24f * unit).coerceAtLeast(1f), 0f)
+                button.label.invalidate()
+                bottomTable.add(button).width(width)
+                    .expand(0, 0).fill(false, true)
+                    .minHeight(maxOf(44f * unit, button.label.prefHeight + 20f * unit)).pad(4f * unit)
+                if (stacked) bottomTable.row()
+            }
+        }
+        for (cell in topTable.cells) {
+            if (topTable.columns > 1 && cell.colspan != topTable.columns) continue
+            // Full-width body cells already sit inside the 20pt content inset.
+            // Additional horizontal cell padding would create a second scroll axis.
+            cell.padLeft(0f).padRight(0f)
+            when (val actor = cell.actor) {
+                is Label -> { actor.wrap = true; cell.minWidth(0f).width(contentWidthValue()) }
+                is TextButton -> { actor.label.wrap = true; cell.minWidth(0f).width(contentWidthValue()) }
+                is TextField -> cell.minWidth(0f).width(contentWidthValue())
+                is com.badlogic.gdx.scenes.scene2d.ui.SelectBox<*>, is Table -> cell.minWidth(0f).width(contentWidthValue())
+            }
+        }
+        innerTable.getCell(titleTable)?.minWidth(0f)?.width(maxPopupWidth)
+        innerTable.getCell(bottomTable)?.minWidth(0f)?.width(maxPopupWidth)
+        topTableCell.minWidth(0f).width(maxPopupWidth)
+        super.getCell(innerTable)?.minWidth(0f)?.width(maxPopupWidth)
+        recalculateInnerTableMaxHeight()
+        innerTable.invalidateHierarchy()
+        lastLayoutWidth = stageToShowOn.width
+        lastLayoutHeight = stageToShowOn.height
+        revealFocusedInput = true
+    }
+
+    override fun act(delta: Float) {
+        super.act(delta)
+        if (ordinaryPresentation) {
+            cancelButton?.let { headerCloseButton?.isDisabled = it.isDisabled }
+            if (lastLayoutWidth != stageToShowOn.width || lastLayoutHeight != stageToShowOn.height || typographyUnit != popupUnit)
+                layoutOrdinaryPopup()
+            if (revealFocusedInput && isVisible) {
+                revealFocusedInput = false
+                val input = keyboardFocus as? TextField
+                val pane = getScrollPane()
+                if (input != null && input.isDescendantOf(topTable) && pane != null) {
+                    // Reflow before reading widget coordinates: the keyboard can leave
+                    // only enough body space for the field, with its label above view.
+                    validate()
+                    innerTable.validate()
+                    pane.validate()
+                    topTable.validate()
+                    val position = input.localToAscendantCoordinates(topTable, com.badlogic.gdx.math.Vector2())
+                    // Centre the field after rotation instead of retaining an old
+                    // edge-aligned offset that can clip its outline under the header.
+                    pane.scrollTo(0f, position.y, 0f, input.height, false, true)
+                    pane.scrollX = 0f
+                    pane.updateVisualScroll()
+                }
+            }
+        }
+    }
+    protected val maxPopupHeight get() = (if (ordinaryPresentation) lastKnownVisibleArea().height else stageToShowOn.height) * maxSizePercentage
 
     /** This exists to differentiate the actual popup (this table)
      *  from the 'screen blocking' part of the popup (which covers the entire screen).
@@ -206,6 +427,7 @@ open class Popup(
     }
 
     private fun recalculateInnerTableMaxWidth() {
+        if (ordinaryPresentation) { topTableCell.maxWidth(maxPopupWidth); return }
         val minWidth = innerTable.minWidth.coerceAtMost(stageToShowOn.width)
         topTableCell.maxWidth(maxOf(maxPopupWidth, minWidth))
         innerTable.invalidate()
@@ -217,6 +439,8 @@ open class Popup(
      * closed. Use [force] = true if you want to open this popup above the other one anyway.
      */
     fun open(force: Boolean = false) {
+        closed = false
+        layoutOrdinaryPopup()
         stageToShowOn.addActor(this)
         recalculateInnerTableMaxHeight()
         innerTable.pack()
@@ -234,12 +458,16 @@ open class Popup(
     }
 
     protected open fun onVisibleAreaChanged(visibleArea: Rectangle) {
+        layoutOrdinaryPopup()
         if (com.badlogic.gdx.Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
             val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight + titleTable.prefHeight
             topTableCell.maxSize(maxPopupWidth, (visibleArea.height * maxSizePercentage - buttonsHeight).coerceAtLeast(0f))
             innerTable.invalidateHierarchy()
         }
-        fitOrCenterContentIntoVisibleArea(visibleArea)
+        if (ordinaryPresentation) {
+            recalculateInnerTableMaxHeight()
+            centerContentIntoVisibleArea(lastKnownVisibleArea())
+        } else fitOrCenterContentIntoVisibleArea(visibleArea)
     }
 
     override fun drawBackground(batch: com.badlogic.gdx.graphics.g2d.Batch, parentAlpha: Float, x: Float, y: Float) {
@@ -261,7 +489,17 @@ open class Popup(
 
     private fun Rectangle.isMostOfScreen() =
         width / stageToShowOn.width > 0.9f && height / stageToShowOn.height > 0.9f
-    private fun lastKnownVisibleArea() = (stageToShowOn as UncivStage).lastKnownVisibleArea
+    private fun lastKnownVisibleArea(): Rectangle {
+        val visible = (stageToShowOn as UncivStage).lastKnownVisibleArea
+        if (!ordinaryViewport) return visible
+        val safe = (stageToShowOn.viewport as? com.unciv.ui.screens.basescreen.SafeAreaViewport)
+            ?.safeAreaBoundsInWorld ?: return visible
+        val bottom = maxOf(visible.y, safe.y)
+        // iOS keyboard notifications constrain height only. A prior screen may have
+        // broadcast a different stage width before the world stage became active.
+        return Rectangle(safe.x, bottom, safe.width,
+            (minOf(visible.top, safe.top) - bottom).coerceAtLeast(1f))
+    }
 
     /** Centers [innerTable] when only status bar and/or system UI limit the [visibleArea],
      *  otherwise shifts it from center just enough to fit in [visibleArea] plus 5f padding.
@@ -304,6 +542,8 @@ open class Popup(
      * Close this popup and - if any other popups are pending - display the next one.
      */
     open fun close() {
+        if (ordinaryPresentation && closed) return
+        closed = true
         events.stopReceiving()
         for (listener in closeListeners) listener()
         remove()
@@ -317,6 +557,7 @@ open class Popup(
             if (!clickBehindToClose || GUI.getSettings().forbidPopupClickBehindToClose) return
             // Since Gdx doesn't limit events to the actually `hit` actors...
             if (event?.target != this@Popup) return
+            if (ordinaryPresentation && (closed || cancelButton?.isDisabled == true)) return
             close()
             onCloseCallback?.invoke()
         }
@@ -336,7 +577,8 @@ open class Popup(
     override fun defaults(): Cell<Actor> = topTable.defaults()
     /** Popup proxy redirects [addSeparator][com.unciv.ui.components.extensions.addSeparator] to [topTable] */
     fun addSeparator(color: Color = Color.WHITE, colSpan: Int = 0, height: Float = 2f) =
-        topTable.addSeparator(color, colSpan, height)
+        topTable.addSeparator(if (ordinaryPresentation && color == Color.WHITE) Color.valueOf("385965") else color,
+            colSpan, if (ordinaryPresentation) popupUnit else height)
     /** Proxy redirects [clear][com.badlogic.gdx.scenes.scene2d.ui.Table.clear] to clear all content:
      *  [innerTable] or if [Scrollability.WithoutButtons] was used [topTable] and [bottomTable] */
     override fun clear() {
@@ -348,6 +590,8 @@ open class Popup(
         titleTable.pad(0f)
         headerCloseButton = null
         headerDismissAction = null
+        cancelButton = null
+        ordinaryButtons.clear()
         clickBehindToClose = false
         onCloseCallback = null
     }
@@ -359,11 +603,12 @@ open class Popup(
      * @param text The caption text.
      * @param size The font size for the label.
      */
-    fun addGoodSizedLabel(text: String, size: Int = UiTypography.size(TextRole.Body), hideIcons:Boolean = false, color: Color = Color.WHITE): Cell<Label> {
+    fun addGoodSizedLabel(text: String, size: Int = UiTypography.size(TextRole.Body, if (ordinaryPresentation) popupUnit else UiTypography.unitsPerPoint()), hideIcons:Boolean = false, color: Color = Color.WHITE): Cell<Label> {
         val label = text.toLabel(fontSize = size, hideIcons = hideIcons, fontColor = color)
         label.wrap = true
-        label.setAlignment(Align.center)
-        return add(label).width(stageToShowOn.width / 2)
+        label.setAlignment(if (ordinaryPresentation) Align.left else Align.center)
+        return if (ordinaryPresentation) add(label).minWidth(0f).width(contentWidthValue())
+            else add(label).width(stageToShowOn.width / 2)
     }
 
     /**
@@ -380,7 +625,9 @@ open class Popup(
         action: () -> Unit
     ): Cell<TextButton> {
         val button = text.toTextButton(style)
-        button.onActivation { action() }
+        if (style == null) styleOrdinaryButton(button)
+        if (ordinaryPresentation) button.label.setFontSize(UiTypography.size(TextRole.Control, popupUnit))
+        button.onActivation { if (!ordinaryPresentation || !closed) action() }
         button.keyShortcuts.add(key)
         return bottomTable.add(button).apply { if (UiNavigation.isIos) minSize(UiNavigation.minimumTouchSize()) }
     }
@@ -391,7 +638,9 @@ open class Popup(
         = addButton(text, KeyCharAndCode(key), style, action)
     fun addButton(text: String, binding: KeyboardBinding, style: TextButtonStyle? = null, action: () -> Unit): Cell<TextButton> {
         val button = text.toTextButton(style)
-        button.onActivation(binding = binding) { action() }
+        if (style == null) styleOrdinaryButton(button)
+        if (ordinaryPresentation) button.label.setFontSize(UiTypography.size(TextRole.Control, popupUnit))
+        button.onActivation(binding = binding) { if (!ordinaryPresentation || !closed) action() }
         return bottomTable.add(button).apply { if (UiNavigation.isIos) minSize(UiNavigation.minimumTouchSize()) }
     }
 
@@ -411,6 +660,7 @@ open class Popup(
         clickBehindToClose = true
         onCloseCallback = action
         fun dismiss() {
+            if (ordinaryPresentation && closed) return
             close()
             action?.invoke()
         }
@@ -425,9 +675,12 @@ open class Popup(
         val cell = addButton(text, additionalKey, closeStyle) { dismiss() }
         cell.actor.keyShortcuts.add(KeyCharAndCode.BACK)
         if (UiNavigation.isIos && text == Constants.cancel) {
-            UiNavigation.styleTextButton(cell.actor)
+            UiNavigation.styleTextButton(cell.actor, if (ordinaryPresentation) popupUnit else UiNavigation.minimumTouchSize() / 44f)
+            styleOrdinaryButton(cell.actor)
+            if (ordinaryPresentation) cancelButton = cell.actor
             // Reuse an existing title-bar X, including its cancellation callback.
-            val button = headerDismissButton { if (!cell.actor.isDisabled) dismiss() }
+            val cancelActor = cell.actor
+            val button = headerDismissButton { if (!cancelActor.isDisabled) dismiss() }
             if (button.parent == null) addDismissControl(button)
         }
         return cell
@@ -435,14 +688,14 @@ open class Popup(
 
     private fun headerDismissButton(action: () -> Unit): TextButton {
         headerDismissAction = action
-        return headerCloseButton ?: UiNavigation.dismissButton().apply {
+        return headerCloseButton ?: UiNavigation.dismissButton(if (ordinaryPresentation) popupUnit else UiNavigation.minimumTouchSize() / 44f).apply {
             onActivation { headerDismissAction?.invoke() }
         }.also { headerCloseButton = it }
     }
 
     private fun addDismissControl(button: TextButton): Cell<TextButton> {
         (button.parent as? Table)?.getCell(button)?.let { return it }
-        val unit = UiNavigation.minimumTouchSize() / 44f
+        val unit = if (ordinaryPresentation) popupUnit else UiNavigation.minimumTouchSize() / 44f
         titleTable.add().expandX()
         val cell = titleTable.add(button).size(button.width, button.height).right()
         if (topTable === bottomTable) {
@@ -452,8 +705,51 @@ open class Popup(
             floatingCloseHeader = true
             innerTable.padTop(maxOf(contentTopPadding, 60f * unit))
             innerTable.addActor(titleTable)
-        } else titleTable.pad(12f * unit, 20f * unit, 0f, 20f * unit)
+        } else titleTable.pad(16f * unit, 20f * unit, 16f * unit, 20f * unit)
         return cell
+    }
+
+    /** A compulsory decision has a fixed heading, with no dismiss action. */
+    protected fun addDecisionTitle(text: String, subtitle: String = "") =
+        addDialogTitle(text, subtitle, dismissible = false)
+
+    /** Prototype fact rows keep values in a separate, trailing-aligned column. */
+    protected fun addFactRow(caption: String, value: String, action: (() -> Unit)? = null) {
+        fun columnWidth(fraction: Float) = object : Value() {
+            override fun get(context: Actor?) =
+                (popupContentWidth * fraction - 8f * popupUnit).coerceAtLeast(1f)
+        }
+        val line = Table().apply {
+            add(caption.toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
+                .width(columnWidth(.6f)).left()
+            add(value.toLabel(TextRole.Body, unit = popupUnit, alignment = Align.right).apply { wrap = true })
+                .width(columnWidth(.4f)).right().padLeft(16f * popupUnit)
+        }
+        if (action != null) {
+            line.touchable = Touchable.enabled
+            line.onActivation { action() }
+        }
+        add(line).width(popupContentWidth).padTop(12f * popupUnit)
+            .apply { if (action != null) minHeight(44f * popupUnit) }.row()
+    }
+
+    /** Shared identity stack, with optional original-game artwork. */
+    protected fun addDialogTitle(title: String, subtitle: String = "", icon: Actor? = null, dismissible: Boolean = true,
+                                 onDismiss: (() -> Unit)? = null) {
+        val identity = Table().apply {
+            val text = Table().apply {
+                add(title.toLabel(TextRole.PageTitle, unit = popupUnit, hideIcons = icon != null).apply { wrap = true }).growX().minWidth(0f).left().row()
+                if (subtitle.isNotBlank()) add(subtitle.toLabel(TextRole.Supporting, unit = popupUnit, fontColor = Color.LIGHT_GRAY)
+                    .apply { wrap = true }).growX().minWidth(0f).left().padTop(4f * popupUnit)
+            }
+            if (icon != null) add(icon).size((if (maxPopupWidth / popupUnit <= 430f) 36f else 52f) * popupUnit).top().padRight(14f * popupUnit)
+            add(text).growX().minWidth(0f).left()
+        }
+        if (dismissible) addTitleWithCloseButton(identity, action = onDismiss)
+        else {
+            titleTable.pad(16f * popupUnit, 20f * popupUnit, 16f * popupUnit, 20f * popupUnit)
+            titleTable.add(identity).growX().minWidth(0f)
+        }
     }
 
     /** Adds a centered title and right-hand X, fixed above the scrollable content. */
@@ -464,14 +760,25 @@ open class Popup(
     ): Group {
         clickBehindToClose = true
         onCloseCallback = action
-        val closeButton = if (UiNavigation.isIos) headerDismissButton { close(); action?.invoke() }.apply {
+        val closeButton = if (UiNavigation.isIos) headerDismissButton { if (!ordinaryPresentation || !closed) { close(); action?.invoke() } }.apply {
             keyShortcuts.add(KeyCharAndCode.BACK)
         } else getCloseButton { close(); action?.invoke() }
         if (additionalKey != null) closeButton.keyShortcuts.add(additionalKey)
-        val header = UiNavigation.popupHeader(title, closeButton)
+        val header = if (ordinaryPresentation) {
+            if (title is Label) {
+                title.setFontSize(UiTypography.size(TextRole.PageTitle, popupUnit))
+                title.wrap = true
+                title.setAlignment(Align.left)
+            }
+            Table(skin).apply {
+                add(title).minWidth(0f).growX().left()
+                add(closeButton).size(44f * popupUnit).top().padLeft(12f * popupUnit)
+            }
+        } else UiNavigation.popupHeader(title, closeButton)
         if (topTable === bottomTable) add(header).growX().row()
         else {
-            titleTable.pad(20f, 25f, 0f, 25f)
+            if (ordinaryPresentation) titleTable.pad(16f * popupUnit, 20f * popupUnit, 16f * popupUnit, 20f * popupUnit)
+            else titleTable.pad(20f, 25f, 0f, 25f)
             titleTable.add(header).growX()
         }
         return closeButton
@@ -500,6 +807,8 @@ open class Popup(
             }
         }
         cell.actor.keyShortcuts.add(KeyCharAndCode.RETURN)
+        styleOrdinaryButton(cell.actor, primary = true,
+            destructive = style === BaseScreen.skin.get("negative", TextButtonStyle::class.java))
         return cell
     }
 
@@ -515,6 +824,7 @@ open class Popup(
      * Make their width equal by setting minWidth of one cell to actor width of the other.
      */
     fun equalizeLastTwoButtonWidths() {
+        if (ordinaryPresentation) return // Measured with the available window width on open.
         val n = bottomTable.cells.size
         if (n < 2) throw UnsupportedOperationException()
         val cell1 = bottomTable.cells[n-2]

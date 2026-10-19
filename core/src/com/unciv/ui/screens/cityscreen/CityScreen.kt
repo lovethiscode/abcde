@@ -476,7 +476,13 @@ class CityScreen(
             purchasePrompt,
             "Purchase",
             true,
-            restoreDefault = { updateAsync() }
+            restoreDefault = { updateAsync() },
+            presentation = ConfirmPopup.Presentation(
+                "Purchase this tile?", "{${cityView.name}} · {Tile expansion}", "Add this tile to the city.",
+                listOf("Current gold" to cityView.viewingCiv().gold.toString(), "Purchase cost" to goldCostOfTile.toString(),
+                    "Gold remaining" to (cityView.viewingCiv().gold - goldCostOfTile).toString()),
+                confirmCaption = "Spend [$goldCostOfTile] gold to purchase"
+            )
         ) {
             Concurrency.run {
                 val success = cityView.tryBuyTile(selectedTile)

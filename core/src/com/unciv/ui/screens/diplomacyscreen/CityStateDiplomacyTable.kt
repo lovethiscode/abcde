@@ -227,7 +227,9 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
     private fun getRevokeProtectionButton(otherCiv: Civilization): TextButton {
         val revokeProtectionButton = "Revoke Protection".toTextButton()
         revokeProtectionButton.onClick {
-            ConfirmPopup(diplomacyScreen, "Revoke protection for [${otherCiv.civName}]?", "Revoke Protection") {
+            ConfirmPopup(diplomacyScreen, "Revoke protection for [${otherCiv.civName}]?", "Revoke Protection",
+                presentation = ConfirmPopup.Presentation("Revoke protection for [${otherCiv.civName}]?", "Diplomatic action",
+                    "You will no longer protect [${otherCiv.civName}].")) {
                 otherCiv.cityStateFunctions.removeProtectorCiv(viewingCiv)
                 diplomacyScreen.updateLeftSideTable(otherCiv)
                 diplomacyScreen.updateRightSide(otherCiv)

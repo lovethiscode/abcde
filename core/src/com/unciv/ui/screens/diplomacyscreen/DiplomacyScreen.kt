@@ -389,7 +389,9 @@ class DiplomacyScreen(
             declareWarButton.setText(declareWarButton.text.toString() + " (${turnsToPeaceTreaty.tr()}${Fonts.turn})")
         }
         declareWarButton.onClick {
-            ConfirmPopup(this, getDeclareWarButtonText(otherCiv), "Declare war") {
+            ConfirmPopup(this, getDeclareWarButtonText(otherCiv), "Declare war",
+                presentation = ConfirmPopup.Presentation(getDeclareWarButtonText(otherCiv), "Diplomatic action",
+                    "Confirming will start a war with [${otherCiv.civName}].", confirmCaption = "Declare war on [${otherCiv.civName}]")) {
                 diplomacyManager.declareWar()
                 setRightSideFlavorText(otherCiv, otherCiv.nation.attacked, "Very well.")
                 updateLeftSideTable(otherCiv)

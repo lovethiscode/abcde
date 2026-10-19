@@ -509,7 +509,14 @@ class PolicyPickerScreen(
 
     private fun overlayHeader(title: String) = Table().apply {
         add(label(title,18,wrap=true)).growX().minWidth(0f).left()
-        add(action("Close", "ui-policy-overlay-close", outlined=true) { closeOverlay() }).height(u(44f)).padLeft(u(8f))
+        val ordinary = UiNavigation.isIos && viewingCiv.gameInfo.campaign == null && viewingCiv.gameInfo.endless == null
+        val dismiss = if (ordinary)
+            UiNavigation.dismissButton(appearance.unit).apply {
+                name = "ui-policy-overlay-close"
+                onActivation { closeOverlay() }
+            }
+        else action("Close", "ui-policy-overlay-close", outlined=true) { closeOverlay() }
+        add(dismiss).height(u(44f)).padLeft(u(8f)).apply { if (ordinary) width(u(44f)) }
     }
 
     private fun openOverlay(kind: String) {
@@ -619,7 +626,14 @@ class PolicyPickerScreen(
             !policies.isAdopted(completion.name) && members(policy.branch).all { it.name == policy.name || policies.isAdopted(it.name) }
         val question = "Are you sure you want to adopt [${policy.name}]?".tr() + "\n\n" + costText +
             (if (completes) "\n\n" + "Completes the [${policy.branch.name}] branch and grants its reward".tr() else "")
-        ConfirmPopup(this,question,"Adopt",true,restoreDefault={ confirming=false }) {
+        ConfirmPopup(this,question,"Adopt",true,restoreDefault={ confirming=false },
+            presentation = ConfirmPopup.Presentation("Are you sure you want to adopt [${policy.name}]?", "Social Policy",
+                if (completes) "Completes the [${policy.branch.name}] branch and grants its reward" else "",
+                if (policies.freePolicies > 0) listOf("Cost" to "Uses 1 free policy — no Culture cost")
+                else listOf("Culture cost" to policies.getCultureNeededForNextPolicy().toString(),
+                    "Culture remaining" to (policies.storedCulture - policies.getCultureNeededForNextPolicy()).toString()),
+                confirmCaption = "Adopt [${policy.name}]")
+        ) {
             confirming=false
             if (pickable(policy)) adopt(policy, completes)
         }.apply {

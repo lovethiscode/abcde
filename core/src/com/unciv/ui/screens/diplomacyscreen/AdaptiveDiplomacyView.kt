@@ -295,6 +295,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         val visibleSecondary = secondaryButton?.takeIf {
             !layout.narrow || primaryWidth+secondaryWidth+moreWidth+16f <= layout.detailWidth-32f
         }
+        val moreActions = actions.filter { it != primary && it != visibleSecondary }
         val primaryCell = bar.add(primaryButton).height(ui.px(44f)).padRight(ui.px(8f))
         if (layout.narrow) primaryCell.growX().minWidth(ui.px(primaryWidth)) else primaryCell.width(ui.px(primaryWidth))
         if (visibleSecondary != null) {
@@ -306,15 +307,37 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         if (!layout.narrow) bar.add().growX()
         more.name = "ui-diplomacy-more"
         more.onActivation {
-            val popup = Popup(screen)
-            popup.add(ui.label("Diplomatic actions",TextRole.Body)).padBottom(ui.px(12f)).row()
-            for (button in actions.filter { it != primary && it != visibleSecondary }.sortedBy { it.name?.startsWith("ui-declare-war:")==true || it.name=="ui-diplomacy-denounce" }) {
-                popup.add(ui.decorate(button)).width(ui.px(minOf(320f,layout.detailWidth-24f))).minHeight(ui.px(44f)).padBottom(ui.px(8f)).row()
+            val popup = object : Popup(screen) {
+                init {
+                    if (ordinaryPresentation) addDialogTitle("Diplomatic actions",
+                        "{${civ.civName}} · {${if (civ.isCityState) "City-State" else "Diplomacy"}}")
+                    else add(ui.label("Diplomatic actions",TextRole.Body)).padBottom(ui.px(12f)).row()
+                }
+                fun addAction(button: TextButton) {
+                    if (!ordinaryPresentation) {
+                        add(ui.decorate(button)).width(ui.px(minOf(320f,layout.detailWidth-24f)))
+                            .minHeight(ui.px(44f)).padBottom(ui.px(8f)).row()
+                        return
+                    }
+                    ui.decorate(button, ghost = true)
+                    button.label.setEllipsis(false)
+                    button.label.wrap = true
+                    button.label.setAlignment(Align.left)
+                    button.clearChildren()
+                    button.add(button.label).growX().minWidth(0f)
+                    button.add(ImageGetter.getImage("OtherIcons/ArrowRight").apply { color = ui.muted })
+                        .size(12f * popupUnit).padLeft(12f * popupUnit)
+                    add(button).width(popupContentWidth).minWidth(0f).minHeight(44f * popupUnit).row()
+                    addSeparator()
+                }
+            }
+            for (button in moreActions.sortedBy { it.name?.startsWith("ui-declare-war:")==true || it.name=="ui-diplomacy-denounce" }) {
+                popup.addAction(button)
                 button.onActivation { popup.close() }
             }
             popup.addCloseButton(); popup.open()
         }
-        bar.add(more).width(ui.px(moreWidth)).height(ui.px(44f))
+        if (moreActions.isNotEmpty()) bar.add(more).width(ui.px(moreWidth)).height(ui.px(44f))
         detail.add(com.badlogic.gdx.scenes.scene2d.ui.Image(ui.surface(com.unciv.models.skins.ExpeditionBlueTheme.border,0f)))
             .growX().height(ui.px(1f)).row()
         detail.add(bar).growX().pad(ui.px(10f),ui.px(16f),ui.px(12f),ui.px(16f)).row()

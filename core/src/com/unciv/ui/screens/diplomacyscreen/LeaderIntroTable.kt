@@ -4,6 +4,7 @@ import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.civilization.Civilization
@@ -21,7 +22,8 @@ import com.unciv.ui.screens.basescreen.BaseScreen
  */
 class LeaderIntroTable (
     civInfo: Civilization,
-    hello: String = ""
+    hello: String = "",
+    popupStage: com.badlogic.gdx.scenes.scene2d.Stage? = null
 ): Table(BaseScreen.skin) {
     /**
      * Build either a Table(icon, leaderName <br> hello) or
@@ -35,7 +37,21 @@ class LeaderIntroTable (
         val leaderPortraitFile = "LeaderIcons/" + nation.leaderName
         val leaderLabel = civInfo.getLeaderDisplayName().toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize), hideIcons = true)
         val nationIndicator = ImageGetter.getNationPortrait(nation, 24f)
-        if (nation.leaderName.isNotEmpty() && ImageGetter.imageExists(leaderPortraitFile)) {
+        if (popupStage != null) {
+            val unit = UiTypography.unitsPerPoint(popupStage)
+            leaderLabel.setFontSize(UiTypography.size(TextRole.PageTitle, unit))
+            leaderLabel.wrap = true
+            leaderLabel.setAlignment(Align.left)
+            val identity = Table().apply {
+                add(leaderLabel).growX().minWidth(0f).left().row()
+                if (hello.isNotEmpty()) add(hello.toLabel(fontSize = UiTypography.size(TextRole.Body, unit))
+                    .apply { wrap = true }).growX().minWidth(0f).left()
+            }
+            val portrait = if (nation.leaderName.isNotEmpty() && ImageGetter.imageExists(leaderPortraitFile))
+                ImageGetter.getImage(leaderPortraitFile) else ImageGetter.getNationPortrait(nation, 56f * unit)
+            add(portrait).size(56f * unit).top().padRight(12f * unit)
+            add(identity).growX().minWidth(0f)
+        } else if (nation.leaderName.isNotEmpty() && ImageGetter.imageExists(leaderPortraitFile)) {
             val nameTable = Table()
             nameTable.add(leaderLabel)
             nameTable.add(nationIndicator).pad(0f, 10f, 5f, 0f).row()

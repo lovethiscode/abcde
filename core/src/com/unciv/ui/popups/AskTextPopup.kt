@@ -1,5 +1,7 @@
 package com.unciv.ui.popups
 
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
@@ -12,6 +14,7 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.components.widgets.UncivTextField
 import com.unciv.ui.components.extensions.surroundWithCircle
 import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.input.onChange
 
 /** Simple class for showing a prompt for a string to the user
  * @param screen The previous screen the user was on
@@ -31,6 +34,10 @@ class AskTextPopup(
     defaultText: String = "",
     errorText: String = "Invalid input! Please enter a different string.",
     maxLength: Int = 32,
+    dialogTitle: String = label,
+    fieldLabel: String = label,
+    subtitle: String = "",
+    confirmText: String = com.unciv.Constants.OK,
     validate: (input: String) -> Boolean = { true },
     actionOnOk: (input: String) -> Unit = {},
 ) : Popup(screen) {
@@ -41,29 +48,54 @@ class AskTextPopup(
         val wrapper = Table()
         wrapper.add(icon).padRight(10f)
         wrapper.add(label.toLabel(TextRole.Body))
-        add(wrapper).colspan(2).row()
+        if (ordinaryPresentation) {
+            addDialogTitle(dialogTitle, subtitle)
+            addGoodSizedLabel(fieldLabel, UiTypography.size(TextRole.Control, popupUnit)).row()
+        }
+        else add(wrapper).colspan(2).row()
 
         val nameField = UncivTextField(label, defaultText)
+        if (ordinaryPresentation) {
+            nameField.style = com.badlogic.gdx.scenes.scene2d.ui.TextField.TextFieldStyle(nameField.style).apply {
+                font = Fonts.getUiFont(UiTypography.size(TextRole.Control, popupUnit))
+                if (ExpeditionBlueTheme.enabled) background = OrdinaryPopupStyle(popupUnit).let {
+                    it.outlined(it.deep, radius = 8f)
+                }
+            }
+        }
         nameField.textFieldFilter = TextField.TextFieldFilter { _, char -> char !in illegalChars }
         nameField.maxLength = maxLength
 
-        add(nameField).growX().colspan(2).row()
+        add(nameField).growX().colspan(2).apply { if (ordinaryPresentation) minHeight(48f * popupUnit).width(popupContentWidth) }.row()
 
-        val errorLabel = errorText.toLabel(TextRole.Body)
+        val errorLabel = (if (ordinaryPresentation && dialogTitle == "Rename city") "Enter a city name." else errorText)
+            .toLabel(if (ordinaryPresentation) TextRole.Supporting else TextRole.Body)
+        if (ordinaryPresentation) errorLabel.wrap = true
         errorLabel.color = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
 
         addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.cancel else com.unciv.Constants.close)
-        addOKButton(
+        val confirmButton = addOKButton(
+            text = if (ordinaryPresentation) confirmText else com.unciv.Constants.OK,
             validate = {
-                val errorFound = !validate(nameField.text)
-                if (errorFound) {
+                val errorFound = !validate(nameField.text) || (ordinaryPresentation && dialogTitle == "Rename city" && nameField.text.isBlank())
+                if (errorFound && (!ordinaryPresentation || errorLabel.parent == null)) {
                     row()
-                    add(errorLabel).colspan(2).center()
+                    add(errorLabel).colspan(2).apply { if (ordinaryPresentation) width(popupContentWidth) }.center()
                 }
                 !errorFound
             }
         ) {
             actionOnOk(nameField.text)
+        }.actor
+        if (ordinaryPresentation) {
+            fun updateValidity() {
+                val valid = validate(nameField.text) && (!ordinaryPresentation || dialogTitle != "Rename city" || nameField.text.isNotBlank())
+                confirmButton.isDisabled = !valid
+                if (!valid && errorLabel.parent == null) add(errorLabel).colspan(2).width(popupContentWidth).row()
+                errorLabel.isVisible = !valid
+            }
+            nameField.onChange { updateValidity() }
+            updateValidity()
         }
         equalizeLastTwoButtonWidths()
         keyboardFocus = nameField

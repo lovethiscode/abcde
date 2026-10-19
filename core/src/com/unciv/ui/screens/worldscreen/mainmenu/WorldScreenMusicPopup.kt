@@ -5,6 +5,7 @@ import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.extensions.toLabel
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
@@ -12,10 +13,15 @@ import com.unciv.UncivGame
 import com.unciv.models.metadata.GameSettings
 import com.unciv.models.metadata.GameSettings.ScreenSize
 import com.unciv.ui.audio.MusicController
+import com.unciv.ui.audio.MusicTrackChooserFlags
 import com.unciv.ui.components.extensions.MusicControls
 import com.unciv.ui.components.extensions.setSize
 import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.input.onClick
+import com.unciv.ui.components.input.onChange
+import com.unciv.ui.components.widgets.TranslatedSelectBox
+import com.unciv.models.translations.tr
+import com.unciv.ui.popups.OrdinaryPopupStyle
 import com.unciv.ui.components.widgets.ExpanderTab
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.images.ImageGetter
@@ -27,6 +33,11 @@ import yairm210.purity.annotations.Readonly
 class WorldScreenMusicPopup(
     worldScreen: WorldScreen
 ) : Popup(worldScreen, maxSizePercentage = calcSize(worldScreen)), MusicControls {
+    override val stackMusicSliders get() = ordinaryPresentation
+
+    override fun musicControlLabel(text: String): Label = if (ordinaryPresentation)
+        text.toLabel(TextRole.Control, unit = popupUnit)
+    else super<MusicControls>.musicControlLabel(text)
 
     companion object {
         // 3/4 of the screen is just a bit too small on small screen settings
@@ -40,7 +51,7 @@ class WorldScreenMusicPopup(
 
     private val musicController = UncivGame.Current.musicController
     private val trackStyle: TextButton.TextButtonStyle
-    private val historyExpander: ExpanderTab
+    private val historyExpander: ExpanderTab?
     private val visualMods = worldScreen.game.settings.visualMods
     private val mods = worldScreen.gameInfo.gameParameters.mods
 
@@ -63,13 +74,18 @@ class WorldScreenMusicPopup(
         trackStyle.disabled = up
         trackStyle.disabledFontColor = Color.LIGHT_GRAY
 
+        if (ordinaryPresentation) {
+            historyExpander = null
+            buildOrdinaryControls(settings)
+        } else {
         addMusicMods(settings)
         historyExpander = addHistory()
         if (UiNavigation.isIos) {
-            bottomTable.addMusicVolumeSlider(settings, musicController)
-            bottomTable.addMusicPauseSlider(settings, musicController)
-            bottomTable.addMusicCurrentlyPlaying(musicController)
-            bottomTable.addSimplePlayerControls(musicController).colspan(2)
+            val controls = if (ordinaryPresentation) Table(skin).also { add(it).growX().minWidth(0f).row() } else bottomTable
+            controls.addMusicVolumeSlider(settings, musicController)
+            controls.addMusicPauseSlider(settings, musicController)
+            controls.addMusicCurrentlyPlaying(musicController)
+            controls.addSimplePlayerControls(musicController).colspan(2)
             addTitleWithCloseButton("Music".toLabel(TextRole.Body))
         } else {
             bottomTable.addMusicControls(settings, musicController)
@@ -77,9 +93,61 @@ class WorldScreenMusicPopup(
         }
 
         musicController.onChange {
-            historyExpander.innerTable.clear()
-            historyExpander.innerTable.updateTrackList(musicController.getHistory())
+            historyExpander?.innerTable?.run { clear(); updateTrackList(musicController.getHistory()) }
         }
+        }
+    }
+
+    private fun buildOrdinaryControls(settings: GameSettings) {
+        addDialogTitle("Music", "Playback controls")
+        val current = "".toLabel(TextRole.Supporting, unit = popupUnit).apply { wrap = true }
+        fun updateStatus() {
+            val track = if (musicController.isPlaying()) musicController.getHistory().lastOrNull()?.toString().orEmpty() else "—Paused—".tr()
+            current.setText("Currently playing: [$track]".tr())
+        }
+        updateStatus()
+        add(current).width(popupContentWidth).left().row()
+        val groups = musicController.getAllMusicFileInfo().groupBy { it.mod }
+        val default = "—Default—"
+        val history = "—History—"
+        val playlists = listOf(default, history) + groups.keys.filter { it.isNotEmpty() }.sorted()
+        add("Playlist".toLabel(TextRole.Control, unit = popupUnit)).left().padTop(12f * popupUnit).row()
+        val selector = TranslatedSelectBox(playlists, default).apply {
+            val controlFont = UiTypography.controlFont(popupUnit)
+            style = com.badlogic.gdx.scenes.scene2d.ui.SelectBox.SelectBoxStyle(style).apply {
+                font = controlFont
+                listStyle = com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(listStyle).apply { font = controlFont }
+                if (com.unciv.models.skins.ExpeditionBlueTheme.enabled) background = OrdinaryPopupStyle(popupUnit).let {
+                    it.selectField()
+                }
+                backgroundOver = background; backgroundOpen = background; backgroundDisabled = background
+            }
+        }
+        add(selector).width(popupContentWidth).minHeight(48f * popupUnit).row()
+        val controls = Table(skin).apply { defaults().growX().minWidth(0f) }
+        controls.addMusicVolumeSlider(settings, musicController)
+        controls.addMusicPauseSlider(settings, musicController)
+        add(controls).width(popupContentWidth).growX().row()
+        fun tracks() = if (selector.selected.value == history) musicController.getHistory()
+            else groups[if (selector.selected.value == default) "" else selector.selected.value].orEmpty().asSequence()
+        val browser = ExpanderTab("Choose a track", UiTypography.size(TextRole.Control, popupUnit),
+            startsOutOpened = false) { it.updateTrackList(tracks()) }
+        add(browser).width(popupContentWidth).growX().row()
+        selector.onChange { browser.innerTable.clear(); browser.innerTable.updateTrackList(tracks()) }
+        styleOrdinaryButton(addButton("Next track") { musicController.chooseTrack(flags = MusicTrackChooserFlags.none); updateStatus() }.actor)
+        val play = addButton(if (musicController.isPlaying()) "Pause" else "Play") {
+            if (musicController.isPlaying()) musicController.pause(.5f) else musicController.resume(.5f)
+            updateStatus()
+        }.actor
+        styleOrdinaryButton(play, primary = true)
+        play.addAction(com.badlogic.gdx.scenes.scene2d.actions.Actions.forever(
+            com.badlogic.gdx.scenes.scene2d.actions.Actions.sequence(
+                com.badlogic.gdx.scenes.scene2d.actions.Actions.delay(.25f),
+                com.badlogic.gdx.scenes.scene2d.actions.Actions.run {
+                    play.setText((if (musicController.isPlaying()) "Pause" else "Play").tr())
+                })))
+        musicController.onChange { updateStatus() }
+        closeListeners.add { musicController.onChange(null) }
     }
 
     private fun String.toSmallUntranslatedButton(rightSide: Boolean = false) =

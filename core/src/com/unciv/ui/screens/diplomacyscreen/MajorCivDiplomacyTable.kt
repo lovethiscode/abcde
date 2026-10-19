@@ -155,7 +155,10 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
     ): TextButton {
         val denounceButton = "Denounce ([30] turns)".toTextButton().apply { name = "ui-diplomacy-denounce" }
         denounceButton.onClick {
-            ConfirmPopup(diplomacyScreen, "Denounce [${otherCiv.civName}]?", "Denounce ([30] turns)") {
+            ConfirmPopup(diplomacyScreen, "Denounce [${otherCiv.civName}]?", "Denounce ([30] turns)",
+                presentation = ConfirmPopup.Presentation("Denounce [${otherCiv.civName}]?", "Diplomatic action",
+                    "Publicly denouncing [${otherCiv.civName}] will affect your diplomatic relations.",
+                    listOf("Duration" to "[30] turns"), confirmCaption = "Denounce [${otherCiv.civName}]")) {
                 diplomacyManager.denounce()
                 diplomacyScreen.updateLeftSideTable(otherCiv)
                 diplomacyScreen.setRightSideFlavorText(

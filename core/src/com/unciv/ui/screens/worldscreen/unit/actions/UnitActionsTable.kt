@@ -422,7 +422,11 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
             invokeAction(unitAction, unit)
             return
         }
-        ConfirmPopup(worldScreen, confirmation.question, confirmation.confirmText) {
+        ConfirmPopup(worldScreen, confirmation.question, confirmation.confirmText,
+            presentation = if (unitAction.uiType == UiUnitActionType.DisbandUnit) ConfirmPopup.Presentation(
+                "Disband [${unit.name}]?", "Unit action", "Disbanding removes this unit from the map.",
+                if (unit.currentTile.getOwner() == unit.civ) listOf("Gold received" to unit.baseUnit.getDisbandGold(unit.civ).toString()) else emptyList()
+            ) else null) {
             invokeAction(unitAction, unit)
         }.open()
     }

@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.worldscreen
 
 import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
@@ -75,6 +76,194 @@ class AlertPopup(
         private val LIGHTER_ORANGE_COLOR = Color(1f, 2/5f, 0f, 1f)
     }
 
+    private var cityChoiceButton: com.badlogic.gdx.scenes.scene2d.ui.TextButton? = null
+    private var cityChoiceAction: (() -> Unit)? = null
+    private var cityConfirm: com.badlogic.gdx.scenes.scene2d.ui.TextButton? = null
+
+    /** One reading flow: rules first, auxiliary quote beside it only when it fits. */
+    private fun addReadingSpread(description: String, quote: String, content: Table? = null) {
+        val body = description.toLabel(fontSize = UiTypography.size(TextRole.Body, popupUnit)).apply { wrap = true }
+        val quoteLabel = quote.toLabel(fontSize = UiTypography.size(TextRole.Supporting, popupUnit),
+            fontColor = Color.LIGHT_GRAY).apply { wrap = true }
+        val main = Table().apply { top().left() }
+        val spread = object : Table() {
+            private var previousWidth = -1f
+            private var previousUnit = -1f
+            private fun reflow(availableWidth: Float) {
+                val unit = popupUnit
+                if (previousWidth != availableWidth || previousUnit != unit) {
+                    previousWidth = availableWidth; previousUnit = unit
+                    clearChildren(); main.clearChildren()
+                    val columns = quote.isNotBlank() && availableWidth / unit > 620f
+                    val mainWidth = if (columns) availableWidth - 258f * unit else availableWidth
+
+                    // Wrapped descendants must measure at the reading column width,
+                    // including while a closed disclosure is first constructed.
+                    // Otherwise a cached one-character measurement leaves a huge
+                    // empty scroll range after its content has reflowed.
+                    content?.let {
+                        it.width = mainWidth
+                        fun invalidateChildren(actor: com.badlogic.gdx.scenes.scene2d.Actor) {
+                            if (actor is com.badlogic.gdx.scenes.scene2d.Group)
+                                actor.children.forEach(::invalidateChildren)
+                            (actor as? com.badlogic.gdx.scenes.scene2d.utils.Layout)?.invalidate()
+                        }
+                        invalidateChildren(it)
+                    }
+
+                    main.add(content ?: body).minWidth(0f).width(mainWidth).top().left()
+                    add(main).width(mainWidth).top()
+                    if (quote.isNotBlank()) {
+                        if (columns) {
+                            add(ImageGetter.getWhiteDot().apply { color = Color.valueOf("385965") })
+                                .width(unit).growY().padLeft(14f * unit).padRight(14f * unit)
+                            add(quoteLabel).minWidth(0f).width(229f * unit).top()
+                        } else {
+                            row()
+                            add(ImageGetter.getWhiteDot().apply { color = Color.valueOf("385965") }).width(availableWidth).height(unit).padTop(18f * unit).padBottom(18f * unit).row()
+                            add(quoteLabel).minWidth(0f).width(availableWidth).top().left()
+                        }
+                    }
+                }
+            }
+            override fun layout() { reflow(width); super.layout() }
+            override fun getPrefHeight(): Float { reflow(if (width > 0f) width else popupContentWidth); return super.getPrefHeight() }
+            override fun getPrefWidth() = popupContentWidth
+        }
+        add(spread).width(popupContentWidth).growX().row()
+    }
+
+
+    private fun technologySummary(tech: com.unciv.models.ruleset.tech.Technology): Table {
+        val descriptions = com.unciv.ui.objectdescriptions.TechnologyDescriptions
+        val index = descriptions.buildTechIconsIndex(gameInfo.ruleset, viewingCiv)
+        val result = Table()
+        val textWidth = object : com.badlogic.gdx.scenes.scene2d.ui.Value() {
+            override fun get(context: com.badlogic.gdx.scenes.scene2d.Actor?) =
+                (result.width - 44f * popupUnit).coerceAtLeast(1f)
+        }
+        fun heading(text: String) {
+            result.add(text.toLabel(TextRole.SectionTitle, unit = popupUnit).apply { wrap = true })
+                .colspan(2).growX().minWidth(0f).left().padTop(12f * popupUnit).padBottom(8f * popupUnit).row()
+        }
+        fun item(name: String, details: String, icon: com.badlogic.gdx.scenes.scene2d.Actor) {
+            result.add(icon).size(28f * popupUnit).top().padRight(12f * popupUnit)
+            result.add(Table().apply {
+                add(name.toLabel(TextRole.Control, unit = popupUnit, hideIcons = true).apply { wrap = true }).width(textWidth).left().row()
+                if (details.isNotBlank()) add(details.toLabel(TextRole.Supporting, unit = popupUnit, fontColor = Color.LIGHT_GRAY)
+                    .apply { wrap = true }).width(textWidth).left().padTop(4f * popupUnit)
+            }).growX().minWidth(0f).padBottom(12f * popupUnit).row()
+        }
+        val units = index.enabledUnitsByTech[tech.name].orEmpty()
+        if (units.isNotEmpty()) {
+            heading("Units enabled")
+            for (unit in units) item(unit.name, unit.getShortDescription(uniqueExclusionFilter = tech::uniqueIsRequirementForThisTech),
+                ImageGetter.getConstructionPortrait(unit.name, 28f * popupUnit))
+        }
+        val buildings = index.enabledBuildingsByTech[tech.name].orEmpty()
+        for ((isWonder, group) in buildings.groupBy { it.isAnyWonder() }) {
+            heading(if (isWonder) "Wonders enabled" else "Buildings enabled")
+            for (building in group) item(building.name, building.getShortDescription(uniqueInclusionFilter = tech::uniqueIsNotRequirementForThisTech),
+                ImageGetter.getConstructionPortrait(building.name, 28f * popupUnit))
+        }
+        val improvements = index.improvementsByTechRequired[tech.name].orEmpty()
+        if (improvements.isNotEmpty()) {
+            heading("Tile improvements enabled")
+            for (improvement in improvements) item(improvement.name, "", ImageGetter.getImprovementPortrait(improvement.name, 28f * popupUnit))
+        }
+        // Keep every mod-specific rule in the same scroll flow, with an explicit disclosure.
+        val full = tech.getDescription(viewingCiv)
+        if (units.isEmpty() && buildings.isEmpty() && improvements.isEmpty()) {
+            result.add(full.toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
+                .colspan(2).growX().minWidth(0f).left().row()
+        } else result.add(com.unciv.ui.components.widgets.ExpanderTab("View full rules",
+            UiTypography.size(TextRole.Control, popupUnit), startsOutOpened = false,
+            expanderWidth = 1f) { table ->
+            val rulesWidth = object : com.badlogic.gdx.scenes.scene2d.ui.Value() {
+                override fun get(context: com.badlogic.gdx.scenes.scene2d.Actor?): Float {
+                    val available = popupContentWidth
+                    val column = if (tech.quote.isNotBlank() && available / popupUnit > 620f)
+                        available - 258f * popupUnit else available
+                    return (column - 24f * popupUnit).coerceAtLeast(1f)
+                }
+            }
+            table.add(full.toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true }).width(rulesWidth)
+        }).colspan(2).growX().minWidth(0f).row()
+        return result
+    }
+
+    private fun wonderSummary(wonder: com.unciv.models.ruleset.Building): Table {
+        val result = Table()
+        fun heading(text: String) {
+            result.add(text.toLabel(TextRole.SectionTitle, unit = popupUnit).apply { wrap = true })
+                .colspan(2).growX().minWidth(0f).left().padTop(12f * popupUnit).padBottom(8f * popupUnit).row()
+        }
+        fun fact(caption: String, value: String) {
+            fun width(fraction: Float) = object : com.badlogic.gdx.scenes.scene2d.ui.Value() {
+                override fun get(context: com.badlogic.gdx.scenes.scene2d.Actor?) =
+                    (result.width * fraction - 8f * popupUnit).coerceAtLeast(1f)
+            }
+            result.add(caption.toLabel(TextRole.Body, unit = popupUnit, hideIcons = true).apply { wrap = true })
+                .width(width(.6f)).left().padBottom(8f * popupUnit)
+            result.add(value.toLabel(TextRole.Body, unit = popupUnit, alignment = com.badlogic.gdx.utils.Align.right).apply { wrap = true })
+                .width(width(.4f)).right().padLeft(16f * popupUnit).padBottom(8f * popupUnit).row()
+        }
+        fun number(value: Float): String =
+            (if (value > 0f) "+" else "") + (if (value % 1f == 0f) value.toInt().tr() else value.toString())
+        heading("Wonder effects")
+        for ((stat, value) in wonder.cloneStats()) if (value != 0f) fact(stat.name, number(value))
+        for ((stat, value) in wonder.getStatPercentageBonuses(null)) if (value != 0f) fact(stat.name, number(value) + "%")
+        if (wonder.cityStrength != 0.0) fact("City strength", "+${wonder.cityStrength}")
+        if (wonder.cityHealth != 0) fact("City health", "+${wonder.cityHealth}")
+        val effects = if (wonder.replacementTextForUniques.isNotEmpty()) listOf(wonder.replacementTextForUniques)
+            else wonder.uniqueObjects.filterNot { it.isHiddenToUsers() }.map { it.getDisplayText() }
+        if (effects.isNotEmpty()) {
+            heading("Rewards and effects")
+            for (effect in effects) result.add(effect.toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
+                .colspan(2).growX().minWidth(0f).left().padBottom(12f * popupUnit).row()
+        }
+        if (wonder.requiredNearbyImprovedResources != null) result.add(
+            ("Requires improved [" + wonder.requiredNearbyImprovedResources!!.joinToString("/") { it.tr() } + "] near city")
+                .toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
+            .colspan(2).growX().minWidth(0f).left().row()
+        return result
+    }
+
+    private fun bindCityChoice(button: com.badlogic.gdx.scenes.scene2d.ui.TextButton, action: () -> Unit) {
+        if (!ordinaryPresentation) { button.onActivation { action() }; return }
+        if (cityConfirm == null) cityConfirm = addButton("Choose an action", com.unciv.ui.components.input.KeyCharAndCode.RETURN) {
+            val selected = cityChoiceAction
+            cityChoiceAction = null
+            selected?.invoke()
+        }.actor.apply { isDisabled = true; name = "ui-disposition-confirm"; styleOrdinaryButton(this, primary = true) }
+        button.onActivation {
+            cityChoiceButton?.isChecked = false
+            cityChoiceButton = button
+            button.isChecked = true
+            cityChoiceAction = action
+            cityConfirm?.let {
+                it.setText(button.text.toString())
+                it.isDisabled = false
+                styleOrdinaryButton(it, primary = true,
+                    destructive = button.name in setOf("ui-disposition:raze", "ui-disposition:destroy"))
+            }
+        }
+    }
+
+    private fun addCivilianChoice(text: String, binding: KeyboardBinding, action: () -> Unit):
+        com.badlogic.gdx.scenes.scene2d.ui.Cell<com.badlogic.gdx.scenes.scene2d.ui.TextButton> {
+        if (!ordinaryPresentation) return addCloseButton(text, binding, action)
+        val button = text.toTextButton()
+        button.label.setFontSize(UiTypography.size(TextRole.Control, popupUnit))
+        button.label.wrap = true
+        button.labelCell.minWidth(0f).growX()
+        button.pad(10f * popupUnit)
+        bindCityChoice(button) { close(); action() }
+        cityConfirm?.name = "ui-civilian-confirm"
+        button.keyShortcuts.add(KeyboardBindings[binding])
+        return addChoiceCard(button, if (binding == KeyboardBinding.Confirm) "Return this civilian to its original owner." else "Keep this civilian in your civilization.")
+    }
+
     //region convenience getters
     private val music get() = UncivGame.Current.musicController
     private val gameInfo get() = worldScreen.gameInfo
@@ -98,6 +287,7 @@ class AlertPopup(
 
     init {
         var shouldOpen = true
+        if (ordinaryPresentation && popupAlert.type in setOf(AlertType.TechResearched, AlertType.WonderBuilt)) ordinaryPreferredWidth = 820f
 
         // This makes the buttons fill up available width. See comments in #9559.
         // To implement a middle ground, I would either simply replace growX() with minWidth(240f) or so,
@@ -142,6 +332,16 @@ class AlertPopup(
             AlertType.GameHasBeenWon -> addGameHasBeenWon()
             AlertType.Event -> shouldOpen = addEvent()
         }
+        // These decisions must be resolved by an explicit action; tapping the map cannot
+        // silently annex, keep a captive or accept/reject a diplomatic demand.
+        if (ordinaryPresentation && popupAlert.type in setOf(
+                AlertType.WarDeclaration, AlertType.StartIntro, AlertType.CityConquered, AlertType.CityTraded, AlertType.DiplomaticMarriage,
+                AlertType.RecapturedCivilian, AlertType.DemandToStopSettlingCitiesNear,
+                AlertType.DemandToStopSpreadingReligion, AlertType.DemandToStopSpyingOnUs,
+                AlertType.DemandToNotAttackUs, AlertType.DeclarationOfFriendship, AlertType.Event)) clickBehindToClose = false
+        if (ordinaryPresentation && popupAlert.type in setOf(AlertType.FirstContact, AlertType.Defeated,
+                AlertType.StartIntro, AlertType.WarDeclaration, AlertType.AcceptingDemand, AlertType.RejectingDemand))
+            (bottomTable.cells.lastOrNull()?.actor as? com.badlogic.gdx.scenes.scene2d.ui.TextButton)?.let { styleOrdinaryButton(it, primary = true) }
         if (shouldOpen) open()
         else viewingCiv.popupAlerts.remove(popupAlert)
     }
@@ -162,7 +362,7 @@ class AlertPopup(
         val civInfo = getCiv(popupAlert.value)
         if (civInfo.isDefeated()) return false
         if (UiNavigation.isIos) {
-            addTitleWithCloseButton(LeaderIntroTable(civInfo), KeyboardBindings[KeyboardBinding.NextTurnAlternate])
+            addTitleWithCloseButton(LeaderIntroTable(civInfo, popupStage = if (ordinaryPresentation) stageToShowOn else null), KeyboardBindings[KeyboardBinding.NextTurnAlternate])
                 .name = "ui-alert-close"
             addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
         } else addLeaderName(civInfo)
@@ -215,14 +415,14 @@ class AlertPopup(
 
     private fun addCityConquered() {
         val city = getCity(popupAlert.value)
-        addQuestionAboutTheCity(city.name)
+        addQuestionAboutTheCity(city)
         val conqueringCiv = gameInfo.getCurrentPlayerCivilization()
 
         if (city.foundingCivObject != null
                 && city.civ != city.foundingCivObject // can't liberate if the city actually belongs to those guys
                 && conqueringCiv != city.foundingCivObject) { // or belongs originally to us
             addLiberateOption(city, conqueringCiv)
-            addSeparator()
+            if (!ordinaryPresentation) addSeparator()
         }
 
         if (conqueringCiv.isOneCityChallenger()) {
@@ -235,12 +435,12 @@ class AlertPopup(
             addAnnexOption(city, mayAnnex = mayAnnex) {
                 city.puppetCity(conqueringCiv)
             }
-            addSeparator()
+            if (!ordinaryPresentation) addSeparator()
 
             addPuppetOption(mayAnnex = mayAnnex) {
                 city.puppetCity(conqueringCiv)
             }
-            addSeparator()
+            if (!ordinaryPresentation) addSeparator()
 
             addRazeOption(city, mayAnnex = mayAnnex, conqueringCiv)
         }
@@ -257,7 +457,7 @@ class AlertPopup(
 
     private fun addCityTraded() {
         val city = getCity(popupAlert.value)
-        addQuestionAboutTheCity(city.name)
+        addQuestionAboutTheCity(city)
         val conqueringCiv = gameInfo.getCurrentPlayerCivilization()
 
         if (!conqueringCiv.isAtWarWith(city.foundingCivObject!!)) {
@@ -344,7 +544,7 @@ class AlertPopup(
         if (otherCiv.isDefeated())
             return false
         addLeaderName(otherCiv)
-        addTopicHeader("ACCEPTING DEMAND", Color.YELLOW)
+        if (!ordinaryPresentation) addTopicHeader("ACCEPTING DEMAND", Color.YELLOW)
         val leaderMessage = otherCiv.nation.acceptingDemand.ifEmpty {
             "We will comply, but our consent is given grudgingly."
         }
@@ -359,7 +559,7 @@ class AlertPopup(
         if (otherCiv.isDefeated())
             return false
         addLeaderName(otherCiv)
-        addTopicHeader("REJECTING DEMAND", LIGHTER_ORANGE_COLOR)
+        if (!ordinaryPresentation) addTopicHeader("REJECTING DEMAND", LIGHTER_ORANGE_COLOR)
         val theirDiplomacy = otherCiv.getDiplomacyManager(viewingCiv)!!
         val leaderMessage = if (theirDiplomacy.isRelationshipLevelGE(RelationshipLevel.Competitor)) {
             music.playVoice("${otherCiv.nation.name}.neutralRejectingDemand")
@@ -392,7 +592,7 @@ class AlertPopup(
         } else {
             val mayAnnex = !marryingCiv.hasUnique(UniqueType.MayNotAnnexCities)
             addAnnexOption(city, mayAnnex) {}
-            addSeparator()
+            if (!ordinaryPresentation) addSeparator()
 
             addPuppetOption(mayAnnex) {
                 city.isPuppet = true
@@ -418,15 +618,25 @@ class AlertPopup(
 
     private fun addGameHasBeenWon() {
         val victoryData = gameInfo.victoryData!!
-        addGoodSizedLabel("[${victoryData.winningCivObject.civName}] has won a [${victoryData.victoryType}] Victory!").row()
-        addButton("Victory status") { close(); worldScreen.game.pushScreen{ VictoryScreen(worldScreen) } }.row()
+        val result = "[${victoryData.winningCivObject.civName}] has won a [${victoryData.victoryType}] Victory!"
+        if (ordinaryPresentation) {
+            addDialogTitle(result, "Game over")
+            addGoodSizedLabel("View the victory status, or close this notice to return to the map.").row()
+        } else addGoodSizedLabel(result).row()
+        styleOrdinaryButton(addButton("Victory status") { close(); worldScreen.game.pushScreen{ VictoryScreen(worldScreen) } }.actor, primary = true)
         addCloseButton()
     }
 
     private fun addGoldenAge() {
-        addInformationTitle("GOLDEN AGE")
-        addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
-        addGoodSizedLabel("Your citizens have been happy with your rule for so long that the empire enters a Golden Age!").row()
+        if (ordinaryPresentation) {
+            addDialogTitle("GOLDEN AGE", viewingCiv.civName)
+            addGoodSizedLabel("Your empire enters a Golden Age!").row()
+            addFactRow("Duration", "[${viewingCiv.goldenAges.turnsLeftForCurrentGoldenAge}] turns")
+        } else {
+            addInformationTitle("GOLDEN AGE")
+            addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
+            addGoodSizedLabel("Your citizens have been happy with your rule for so long that the empire enters a Golden Age!").row()
+        }
         if (!UiNavigation.isIos) addCloseButton()
         music.chooseTrack(viewingCiv.civName, MusicMood.Golden, MusicTrackChooserFlags.setSpecific)
     }
@@ -441,13 +651,14 @@ class AlertPopup(
         if (originalOwner.isDefeated()) return false
         val captor = viewingCiv
 
-        addGoodSizedLabel("Return [${capturedUnit.name}] to [${originalOwner.civName}]?")
-        addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
+        val question = "Return [${capturedUnit.name}] to [${originalOwner.civName}]?"
+        if (ordinaryPresentation) addDialogTitle(question, "Liberated civilian", ImageGetter.getConstructionPortrait(capturedUnit.name, 52f * popupUnit), dismissible = false)
+        else { addGoodSizedLabel(question); addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING) }
         addGoodSizedLabel("The [${capturedUnit.name}] we liberated originally belonged to [${originalOwner.civName}]. They will be grateful if we return it to them.").row()
 
         bottomTable.defaults().pad(0f, 30f) // Small buttons, plenty of pad so we don't fat-finger it
 
-        addCloseButton(Constants.yes, KeyboardBinding.Confirm) {
+        addCivilianChoice(if (ordinaryPresentation) "Return [${capturedUnit.name}] to [${originalOwner.civName}]?" else Constants.yes, KeyboardBinding.Confirm) {
             // Return it to original owner
             val unitName = capturedUnit.baseUnit.name
             capturedUnit.destroy()
@@ -474,7 +685,7 @@ class AlertPopup(
             }
             originalOwner.addNotification("Your captured [${unitName}] has been returned by [${captor.civName}]", notificationSequence, NotificationCategory.Diplomacy, NotificationIcon.Trade, unitName, captor.civName)
         }.apply { actor.name = "ui-alert-choice:return" }
-        addCloseButton(Constants.no, KeyboardBinding.Cancel) {
+        addCivilianChoice(if (ordinaryPresentation) "Keep the worker" else Constants.no, KeyboardBinding.Cancel) {
             // Take it for ourselves
             BattleUnitCapture.captureOrConvertToWorker(capturedUnit, captor)
         }.apply { actor.name = "ui-alert-choice:keep" }
@@ -483,7 +694,8 @@ class AlertPopup(
 
     private fun addStartIntro() {
         val civInfo = viewingCiv
-        addLeaderName(civInfo)
+        if (ordinaryPresentation) addDialogTitle("[${civInfo.nation.leaderName}] leads [${civInfo.civName}]", "A new civilization journey", dismissible = false)
+        else addLeaderName(civInfo)
         addGoodSizedLabel(civInfo.nation.startIntroPart1).row()
         addGoodSizedLabel(civInfo.nation.startIntroPart2).row()
         addCloseButton("Let's begin!")
@@ -496,6 +708,13 @@ class AlertPopup(
 
     private fun addTechResearched() {
         val tech = gameInfo.ruleset.technologies[popupAlert.value]!!
+        if (ordinaryPresentation) {
+            addDialogTitle(tech.name, "Technology researched", ImageGetter.getTechIconPortrait(tech.name, 52f * popupUnit))
+            addReadingSpread(tech.getDescription(viewingCiv), tech.quote, technologySummary(tech))
+            styleOrdinaryButton(addButton("Continue playing") { close() }.actor, primary = true)
+            music.chooseTrack(tech.name, MusicMood.Researched, MusicTrackChooserFlags.setSpecific)
+            return
+        }
         addInformationTitle(tech.name)
         addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
         val centerTable = Table()
@@ -513,7 +732,8 @@ class AlertPopup(
         // technically they already declared war, but if they're dead it'll be strange that they talk to us
         if (civInfo.isDefeated()) return false
         addLeaderName(civInfo)
-        addTopicHeader("DECLARATION OF WAR", LIGHTER_RED_COLOR)
+        if (!ordinaryPresentation) addTopicHeader("DECLARATION OF WAR", LIGHTER_RED_COLOR)
+        else addGoodSizedLabel("War has already begun. Your reply will not reverse the declaration.", UiTypography.size(TextRole.Supporting, popupUnit)).row()
         val leaderMessage = civInfo.nation.declaringWar
         if (leaderMessage.isNotEmpty())
             addGoodSizedLabel(leaderMessage).row()
@@ -526,12 +746,21 @@ class AlertPopup(
     }
 
     private fun addTopicHeader(text: String, color: Color) {
-        addGoodSizedLabel(text, color=color, size=Constants.smallerHeadingFontSize)
+        addGoodSizedLabel(text, color=color, size=if (ordinaryPresentation) UiTypography.size(TextRole.SectionTitle, popupUnit) else Constants.smallerHeadingFontSize)
             .padBottom(20f).row()
     }
 
     private fun addWonderBuilt() {
         val wonder = gameInfo.ruleset.buildings[popupAlert.value]!!
+        if (ordinaryPresentation) {
+            val city = viewingCiv.cities.firstOrNull { it.cityConstructions.containsBuildingOrEquivalent(wonder.name) }
+            addDialogTitle("[${wonder.name}] built", city?.let { "{${it.name}} · {World Wonder}" } ?: "World Wonder",
+                ImageGetter.getConstructionPortrait(wonder.name, 52f * popupUnit))
+            addReadingSpread(wonder.getShortDescription(multiline = true), wonder.quote, wonderSummary(wonder))
+            styleOrdinaryButton(addButton("Continue playing") { close() }.actor, primary = true)
+            music.chooseTrack(wonder.name, MusicMood.Wonder, MusicTrackChooserFlags.setSpecific)
+            return
+        }
         addInformationTitle(wonder.name)
         addSeparator().padBottom(10f)
         if(ImageGetter.wonderImageExists(wonder.name)) {    // Wonder Graphic exists
@@ -570,36 +799,67 @@ class AlertPopup(
     //region Helpers
 
     private fun addLeaderName(civInfo: Civilization) {
-        add(LeaderIntroTable(civInfo))
+        val identity = LeaderIntroTable(civInfo, popupStage = if (ordinaryPresentation) stageToShowOn else null)
+        if (ordinaryPresentation) {
+            val title = when (popupAlert.type) {
+                AlertType.FirstContact -> "First contact · [${civInfo.civName}]"
+                AlertType.Defeated -> "[${civInfo.civName}] has been defeated"
+                AlertType.WarDeclaration -> "[${civInfo.civName}] has declared war on us!"
+                AlertType.AcceptingDemand -> "[${civInfo.civName}] accepted our demand"
+                AlertType.RejectingDemand -> "[${civInfo.civName}] rejected our demand"
+                else -> ""
+            }
+            if (title.isNotBlank()) {
+                addDialogTitle(title, civInfo.nation.leaderName,
+                    dismissible = popupAlert.type !in setOf(AlertType.WarDeclaration, AlertType.StartIntro))
+                return
+            }
+        }
+        add(identity).apply { if (ordinaryPresentation) growX().minWidth(0f) }
         addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
     }
 
-    private fun addQuestionAboutTheCity(cityName: String) {
+    private fun addQuestionAboutTheCity(city: City) {
+        val cityName = city.name
+        if (ordinaryPresentation) {
+            val kind = if (city.isOriginalCapital) "Original capital" else "Non-capital city"
+            addDecisionTitle("How should [$cityName] be governed?", "{Captured city} · {${city.civ.civName}} · {$kind}")
+            return
+        }
         addGoodSizedLabel("What would you like to do with the city of [$cityName]?",UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize), hideIcons = true).padBottom(20f).row()
     }
 
     private fun addDestroyOption(destroyAction: () -> Unit) {
         val button = "Destroy".toTextButton().apply { name = "ui-disposition:destroy" }
-        button.onActivation {
+        bindCityChoice(button) {
             destroyAction()
             close()
         }
         button.keyShortcuts.add('d')
+        if (ordinaryPresentation) {
+            addChoiceCard(button, "Destroying the city instantly razes the city to the ground.")
+            return
+        }
         add(button).row()
         addGoodSizedLabel("Destroying the city instantly razes the city to the ground.").row()
     }
 
     private fun addAnnexOption(city: City, mayAnnex: Boolean, annexAction: () -> Unit) {
-        val button = "Annex".toTextButton().apply { name = "ui-disposition:annex" }
+        val button = (if (ordinaryPresentation) "Annex city" else "Annex").toTextButton().apply { name = "ui-disposition:annex" }
         button.apply {
             if (!mayAnnex) disable() else {
-                button.onActivation {
+                bindCityChoice(button) {
                     annexAction()
                     city.annexCity()
                     close()
                 }
                 button.keyShortcuts.add('a')
             }
+        }
+        if (ordinaryPresentation) {
+            addChoiceCard(button, if (mayAnnex) "Annexed cities become part of your regular empire." else "Your civilization may not annex this city.",
+                if (mayAnnex) "Their citizens generate 2x the unhappiness, unless you build a courthouse." else "")
+            return
         }
         add(button).row()
         if (mayAnnex) {
@@ -612,12 +872,19 @@ class AlertPopup(
     }
 
     private fun addPuppetOption(mayAnnex: Boolean, puppetAction: () -> Unit) {
-        val button = "Puppet".toTextButton().apply { name = "ui-disposition:puppet" }
-        button.onActivation {
+        val button = (if (ordinaryPresentation) "Establish puppet government" else "Puppet").toTextButton().apply { name = "ui-disposition:puppet" }
+        bindCityChoice(button) {
             puppetAction()
             close()
         }
         button.keyShortcuts.add('p')
+        if (ordinaryPresentation) {
+            addChoiceCard(button, "Puppeted cities do not increase your tech or policy cost.",
+                "You have no control over the the production of puppeted cities.",
+                "Puppeted cities also generate 25% less Science and Culture.",
+                if (mayAnnex) "A puppeted city can be annexed at any time." else "")
+            return
+        }
         add(button).row()
         addGoodSizedLabel("Puppeted cities do not increase your tech or policy cost.").row()
         addGoodSizedLabel("You have no control over the the production of puppeted cities.").row()
@@ -627,22 +894,26 @@ class AlertPopup(
 
     private fun addLiberateOption(city: City, conqueringCiv: Civilization) {
         val button = "Liberate (city returns to [originalOwner])".fillPlaceholders(city.foundingCivObject!!.civName).toTextButton().apply { name = "ui-disposition:liberate" }
-        button.onActivation {
+        bindCityChoice(button) {
             city.liberateCity(conqueringCiv)
             close()
         }
         button.keyShortcuts.add('l')
+        if (ordinaryPresentation) {
+            addChoiceCard(button, "Liberating a city returns it to its original owner, giving you a massive relationship boost with them!")
+            return
+        }
         add(button).row()
         addGoodSizedLabel("Liberating a city returns it to its original owner, giving you a massive relationship boost with them!")
     }
 
     private fun addRazeOption(city: City, mayAnnex: Boolean, conqueringCiv: Civilization) {
         val canRaze = city.canBeDestroyed(justCaptured = true)
-        val button = "Raze".toTextButton().apply { name = "ui-disposition:raze" }
+        val button = (if (ordinaryPresentation) "Raze city" else "Raze").toTextButton().apply { name = "ui-disposition:raze" }
         button.apply {
             if (!canRaze) disable()
             else {
-                onActivation {
+                bindCityChoice(button) {
                     city.puppetCity(conqueringCiv)
                     if (mayAnnex) { city.annexCity() }
                     city.isBeingRazed = true
@@ -650,6 +921,11 @@ class AlertPopup(
                 }
                 keyShortcuts.add('r')
             }
+        }
+        if (ordinaryPresentation) {
+            addChoiceCard(button, if (!canRaze) "Original capitals and holy cities cannot be razed." else if (mayAnnex) "Razing the city annexes it, and starts burning the city to the ground." else "Razing the city puppets it, and starts burning the city to the ground.",
+                if (canRaze) "The population will gradually dwindle until the city is destroyed." else "")
+            return
         }
         add(button).row()
         if (canRaze) {

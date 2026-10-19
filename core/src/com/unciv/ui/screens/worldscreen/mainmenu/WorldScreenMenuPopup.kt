@@ -18,6 +18,7 @@ import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.Popup
+import com.unciv.ui.popups.OrdinaryPopupStyle
 import com.unciv.ui.screens.savescreens.LoadGameScreen
 import com.unciv.ui.screens.victoryscreen.VictoryScreen
 import com.unciv.ui.screens.worldscreen.WorldScreen
@@ -47,8 +48,10 @@ class WorldScreenMenuPopup(
         val unit = if (UiNavigation.isIos) worldScreen.stage.width / Gdx.graphics.width else 1f
         val ui = WorldScreenMenuStyle(unit)
         val safe = worldScreen.safeAreaBoundsInWorld()
-        val portrait = safe.height > safe.width
-        val width = minOf(safe.width - ui.px(32f), ui.px(if (portrait) 650f else 800f))
+        val ordinary = UiNavigation.isIos && worldScreen.gameInfo.campaign == null && worldScreen.gameInfo.endless == null
+        ordinaryViewport = ordinary
+        val width = minOf(safe.width - ui.px(32f), ui.px(if (ordinary) 820f else if (safe.height > safe.width) 650f else 800f))
+        val portrait = if (ordinary) width / unit <= 620f else safe.height > safe.width
         val inset = ui.px(if (safe.height / unit < 480f) 20f else 24f)
         val contentWidth = width - 2 * inset
         innerTable.background = ui.surface(ui.background, 16f)
@@ -84,6 +87,13 @@ class WorldScreenMenuPopup(
                 add(resume).width(resumeWidth).minHeight(ui.px(44f)).padLeft(ui.px(16f))
             }
         }
+        if (ordinary) {
+            header.clearChildren()
+            header.add(title).growX().minWidth(0f).left()
+            header.add(UiNavigation.dismissButton(unit).apply {
+                onActivation { close() }
+            }).size(ui.px(44f)).top().padLeft(ui.px(12f))
+        }
         innerTable.add(header).width(width).row()
         innerTable.add(ImageGetter.getWhiteDot().apply { color = ui.border }).height(unit).growX().row()
 
@@ -96,6 +106,10 @@ class WorldScreenMenuPopup(
             name = "world-menu-$text"
             label.setFontSize(ui.font(TextRole.Control))
             label.setAlignment(Align.left)
+            if (ordinary) {
+                style = ui.navigationStyle()
+                add("›".toLabel(ui.muted, ui.font(TextRole.SectionTitle))).padLeft(ui.px(12f))
+            }
             labelCell.minWidth(0f).growX()
             pad(ui.px(10f), ui.px(12f), ui.px(10f), ui.px(12f))
             naturalWidths[this] = prefWidth
@@ -154,10 +168,10 @@ class WorldScreenMenuPopup(
         for ((index, entry) in groups.withIndex()) {
             val (heading, buttons) = entry
             // Long translations and enlarged fonts may need a full-width row in portrait.
-            val columns = if (portrait && buttons.all { naturalWidths.getValue(it) <= (groupWidth - ui.px(8f)) / 2 }) 2 else 1
+            val columns = if (!ordinary && portrait && buttons.all { naturalWidths.getValue(it) <= (groupWidth - ui.px(8f)) / 2 }) 2 else 1
             val buttonWidth = (groupWidth - ui.px(8f) * (columns - 1)) / columns
             val group = Table().apply {
-                add(heading.toLabel(ui.muted, ui.font(TextRole.Supporting)).apply { wrap = true })
+                add(heading.toLabel(ui.muted, ui.font(if (ordinary) TextRole.SectionTitle else TextRole.Supporting)).apply { wrap = true })
                     .width(groupWidth).colspan(columns).left().padBottom(ui.px(10f)).row()
                 for ((i, button) in buttons.withIndex()) {
                     // Measure at the actual width so wrapped text grows the row instead of clipping.
@@ -168,11 +182,11 @@ class WorldScreenMenuPopup(
                     if ((i + 1) % columns == 0) row()
                 }
             }
-            if (!portrait && index > 0) {
+            if (!portrait && index > 0 && !ordinary) {
                 body.add(ImageGetter.getWhiteDot().apply { color = ui.border })
                     .width(unit).growY().padLeft(gap / 2).padRight(gap / 2 - unit)
             }
-            body.add(group).width(groupWidth).top().padBottom(if (portrait && index < 2) ui.px(16f) else 0f)
+            body.add(group).width(groupWidth).padLeft(if (!portrait && ordinary && index > 0) gap else 0f).top().padBottom(if (portrait && index < 2) ui.px(16f) else 0f)
             if (portrait) body.row()
         }
         val scroll = AutoScrollPane(body).apply {
@@ -180,8 +194,17 @@ class WorldScreenMenuPopup(
             setScrollingDisabled(true, false)
             setOverscroll(false, false)
         }
-        val availableHeight = (safe.height - ui.px(32f) - header.prefHeight - unit).coerceAtLeast(ui.px(44f))
-        innerTable.add(scroll).width(width).height(minOf(body.prefHeight, availableHeight))
+        val footer = if (ordinary) Table().apply {
+            background = OrdinaryPopupStyle(unit).let { it.divider(atTop = true, fill = it.deep) }
+            pad(ui.px(14f), inset, ui.px(18f), inset)
+            right()
+            resume.label.setSize((resumeWidth - ui.px(32f)).coerceAtLeast(1f), 0f)
+            resume.label.invalidate()
+            add(resume).width(resumeWidth).minHeight(maxOf(ui.px(44f), resume.label.prefHeight + ui.px(20f)))
+        } else null
+        val availableHeight = (safe.height - ui.px(32f) - header.prefHeight - unit - (footer?.prefHeight ?: 0f)).coerceAtLeast(ui.px(44f))
+        innerTable.add(scroll).width(width).height(minOf(body.prefHeight, availableHeight)).row()
+        if (footer != null) innerTable.add(footer).width(width)
         innerTable.pack()
         invalidateHierarchy()
     }

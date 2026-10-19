@@ -165,7 +165,11 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
             sellText,
             restoreDefault = {
                 cityScreen.updateAsync()
-            }
+            },
+            presentation = ConfirmPopup.Presentation("Sell [${construction.name}]?", cityView.name,
+                "Selling removes this building and its effects from the city.",
+                listOf("Gold received" to cityView.getGoldForSellingBuilding(construction.name).toString()),
+                construction.getShortDescription(multiline = true), sellText)
         ) {
             sellBuildingConfirmed(construction)
         }.open()

@@ -28,6 +28,7 @@ import com.unciv.ui.components.extensions.areSecretKeysPressed
 import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.images.ImageGetter
@@ -35,6 +36,8 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.basescreen.RecreateOnResize
 import com.unciv.ui.screens.newgamescreen.NewGameScreen
 import com.unciv.ui.screens.pickerscreens.PickerScreen
+import com.unciv.ui.screens.pickerscreens.OrdinaryGamePopupScreen
+import com.unciv.ui.popups.Popup
 import com.unciv.ui.screens.worldscreen.WorldScreen
 import yairm210.purity.annotations.Readonly
 import java.util.EnumSet
@@ -43,7 +46,7 @@ class VictoryScreen private constructor(
     private val worldScreen: WorldScreen,
     pageNumber: Int,
     private val pageState: VictoryPageState
-) : PickerScreen(), RecreateOnResize {
+) : OrdinaryGamePopupScreen(), RecreateOnResize {
     constructor(worldScreen: WorldScreen, pageNumber: Int = 0) : this(worldScreen, pageNumber, VictoryPageState())
 
     private val compact = stage.width < pt(640f)
@@ -257,6 +260,9 @@ class VictoryScreen private constructor(
             val status = if (gameInfo.victoryData != null || playerCiv.isDefeated()) "Game ended" else "Game in progress"
             add(OverviewUi.plainLabel(status, TextRole.Supporting, OverviewUi.muted)).left().padLeft(if (compact) 0f else pt(12f))
         }
+        val ordinaryResult = gameInfo.campaign == null && gameInfo.endless == null &&
+            (gameInfo.victoryData != null || playerCiv.isDefeated())
+        val resultHeadline = if (ordinaryResult) descriptionLabel.text.toString().substringBefore('\n') else ""
         val root = object : Table() {
             override fun act(delta: Float) {
                 super.act(delta)
@@ -269,13 +275,17 @@ class VictoryScreen private constructor(
                 pt(if (tablet) 24f else 12f), pt(if (tablet) 36f else 12f))
             add(header).growX().minWidth(0f).height(pt(if (compact) 76f else 48f)).row()
             add(ImageGetter.getWhiteDot().apply { color = OverviewUi.border }).growX().height(pt(1f)).row()
+            if (ordinaryResult) add(resultHeadline.toLabel(fontSize = font(TextRole.SectionTitle)).apply { wrap = true })
+                .growX().minWidth(0f).padTop(pt(8f)).padBottom(pt(8f)).row()
             add(navScroll).growX().minWidth(0f).height(pt(52f)).row()
             add(metadata).growX().minWidth(0f).padBottom(pt(9f)).row()
             add(tabs).grow().minWidth(0f).minHeight(0f).row()
             if (rightSideButton.isVisible) {
                 val footer = Table().apply {
-                    add(descriptionLabel).colspan(if (compact) 2 else 1).growX().minWidth(0f).padRight(pt(12f))
-                    if (compact) row()
+                    if (!ordinaryResult) {
+                        add(descriptionLabel).colspan(if (compact) 2 else 1).growX().minWidth(0f).padRight(pt(12f))
+                        if (compact) row()
+                    }
                     add(closeButton).height(OverviewUi.touch).padRight(pt(8f))
                     add(rightSideButton).height(OverviewUi.touch)
                 }
@@ -292,6 +302,58 @@ class VictoryScreen private constructor(
         }
         refreshNavigation()
         stage.addActor(root)
+        if (ordinaryResult && !pageState.resultDetailsOpened) showOrdinaryResult()
+    }
+
+    private fun showOrdinaryResult() {
+        val headline = descriptionLabel.text.toString().substringBefore('\n')
+        val result = gameInfo.victoryData
+        val story = if (result != null && result.winningCivObject != playerCiv && !playerCiv.isDefeated())
+            "Another civilization has won. You can review the result or keep playing on the map."
+        else descriptionLabel.text.toString().substringAfter('\n', "")
+        val achieved = result?.let { gameInfo.ruleset.victories[it.victoryType] }
+        presentGameDialog(object : Popup(this@VictoryScreen) {
+            init {
+                addDecisionTitle(headline, "{${playerCiv.civName}} · {Turn} ${gameInfo.turns} · " +
+                    YearTextUtil.toYearText(gameInfo.getYear(), playerCiv.isLongCountDisplay()))
+                if (story.isNotBlank()) addGoodSizedLabel(story).row()
+                if (result?.victoryType == "Diplomatic") {
+                    val (votesReceived, _) = playerCiv.victoryManager.getDiplomaticVictoryVoteBreakdown()
+                    addFactRow("Votes received", "[${votesReceived[playerCiv.civID]}] votes")
+                    addFactRow("Election threshold", "[${playerCiv.victoryManager.votesNeededForDiplomaticVictory()}] votes")
+                    addFactRow("World leader election", if (result.winningCivObject == playerCiv) "Elected" else "Not elected")
+                } else for (milestone in achieved?.milestoneObjects.orEmpty()) {
+                    val completed = milestone.hasBeenCompletedBy(playerCiv)
+                    val text = milestone.getVictoryScreenButtonHeaderText(completed, playerCiv)
+                    val progress = Regex(""" \(([^()]*/[^()]*)\)$""").find(text)
+                    addFactRow(if (progress == null) text else text.substring(0, progress.range.first),
+                        progress?.groupValues?.get(1) ?: if (completed) "Completed" else "Not completed")
+                }
+                val information = com.unciv.ui.components.widgets.ExpanderTab("Game information", font(TextRole.Control),
+                    startsOutOpened = false) { table ->
+                    table.add(("{Difficulty}: {${gameInfo.difficulty}}\n{Game Speed}: {${gameInfo.gameParameters.speed}}\n" +
+                        "{Max Turns}: ${gameInfo.gameParameters.maxTurns}").toLabel(TextRole.Body).apply { wrap = true })
+                        .width(popupContentWidth).row()
+                    val details = "Victory status".toTextButton()
+                    styleOrdinaryButton(details)
+                    details.onActivation {
+                        pageState.resultDetailsOpened = true
+                        showPickerDetails()
+                    }
+                    table.add(details).minHeight(44f * popupUnit).growX().row()
+                }
+                add(information).width(popupContentWidth).growX().row()
+                addButton("Singleplayer") {
+                    val setup = GameSetupInfo(gameInfo)
+                    setup.mapParameters.reseed()
+                    game.pushScreen { NewGameScreen(setup) }
+                }
+                styleOrdinaryButton(addButton("One more turn...!") {
+                    gameInfo.oneMoreTurnMode = true
+                    game.popScreen()
+                }.actor, primary = true)
+            }
+        })
     }
 
     private fun displayWinner(victoryData: VictoryData) {

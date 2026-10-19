@@ -15,6 +15,10 @@ class UnitRenamePopup(val screen: BaseScreen, val unit: MapUnitView, val actionO
             label = "Choose name for [${unit.getBaseUnit().name}]",
             icon = ImageGetter.getUnitIcon(unit.getBaseUnit()).surroundWithCircle(80f),
             defaultText = unit.instanceName ?: defaultName,
+            dialogTitle = "Rename unit",
+            fieldLabel = "Unit name",
+            subtitle = defaultName,
+            confirmText = "Save name",
             actionOnOk = { userInput ->
                 //If the user inputs an empty string OR the original name, clear the unit instanceName so the base name is used
                 unit.trySetInstanceName(if (userInput == "" || userInput == defaultName) null else userInput)

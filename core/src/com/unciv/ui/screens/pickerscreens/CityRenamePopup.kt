@@ -16,6 +16,10 @@ class CityRenamePopup(val screen: BaseScreen, val cityView: CityView, val action
             screen,
             label = "Please enter a new name for your city",
             defaultText = cityView.name.tr(hideIcons = true),
+            dialogTitle = "Rename city",
+            fieldLabel = "City name",
+            subtitle = cityView.name.tr(hideIcons = true),
+            confirmText = "Save name",
             validate = { it != "" },
             actionOnOk = { text ->
                 cityView.tryRenameCity(text)
