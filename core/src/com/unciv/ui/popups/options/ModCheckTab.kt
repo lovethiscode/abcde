@@ -11,6 +11,7 @@ import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.models.ruleset.Ruleset
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.ruleset.RulesetCache
 import com.unciv.models.ruleset.unique.UniqueParameterType
 import com.unciv.models.ruleset.unique.UniqueType
@@ -304,7 +305,10 @@ internal class ModCheckTab(
         val table = Table(BaseScreen.skin).apply {
             defaults().pad(8f)
             background = BaseScreen.skinStrings.getUiBackground("General/DisabledBox", tintColor = Color.DARK_GRAY)
-            add(ImageGetter.getImage("OtherIcons/Question").apply { setSize(33f) }).padRight(10f).growY()
+            val question = ImageGetter.getImage("OtherIcons/Question").apply { setSize(33f) }
+            add(if (ExpeditionBlueTheme.enabled)
+                question.surroundWithCircle(33f, resizeActor = false, color = ExpeditionBlueTheme.text)
+            else question).padRight(10f).growY()
             add(mod.name.toLabel(Color.LIGHT_GRAY, UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize), alignment = Align.left)).left().grow()
             addTooltip("Requirements could not be determined.\nChoose a base to check this Mod.", 16f, targetAlign = Align.top)
         }
