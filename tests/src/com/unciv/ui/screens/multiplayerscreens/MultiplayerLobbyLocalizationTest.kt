@@ -5,7 +5,7 @@ import com.unciv.UncivGame
 import com.unciv.models.metadata.GameSettings
 import com.unciv.models.translations.TranslationFileReader
 import com.unciv.models.translations.getPlaceholderText
-import com.unciv.models.translations.squareBraceRegex
+import com.unciv.models.translations.getPlaceholderParameters
 import com.unciv.models.translations.tr
 import com.unciv.testing.BaseTestRunner
 import org.junit.Assert.assertEquals
@@ -32,8 +32,8 @@ class MultiplayerLobbyLocalizationTest {
                 assertNotNull("$language is missing $source", translated)
                 assertFalse("$language has blank $source", translated.isNullOrBlank())
                 assertEquals("$language changed parameters in $source",
-                    squareBraceRegex.findAll(source).map { it.value }.toList().sorted(),
-                    squareBraceRegex.findAll(translated!!).map { it.value }.toList().sorted())
+                    source.getPlaceholderParameters().toList().sorted(),
+                    translated!!.getPlaceholderParameters().toList().sorted())
             }
         }
     }

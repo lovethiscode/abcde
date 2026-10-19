@@ -4,7 +4,7 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.utils.Json
 import com.unciv.models.metadata.OverviewPersistableData
 import com.unciv.models.translations.TranslationFileReader
-import com.unciv.models.translations.squareBraceRegex
+import com.unciv.models.translations.getPlaceholderParameters
 import com.unciv.testing.BaseTestRunner
 import com.unciv.ui.components.widgets.SortableGrid
 import org.junit.Assert.*
@@ -43,8 +43,8 @@ class OverviewStateTest {
             for (key in keys) {
                 val translated = entries[key]
                 assertFalse("$language: $key", translated.isNullOrBlank())
-                assertEquals("$language: $key", squareBraceRegex.findAll(key).map { it.value }.toList(),
-                    squareBraceRegex.findAll(translated!!).map { it.value }.toList())
+                assertEquals("$language: $key", key.getPlaceholderParameters().toList(),
+                    translated!!.getPlaceholderParameters().toList())
             }
         }
     }
