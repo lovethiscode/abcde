@@ -1,6 +1,8 @@
 package com.unciv.logic.civilization
 
 import com.unciv.models.ruleset.Ruleset
+import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.ui.components.extensions.surroundWithCircle
 import com.unciv.ui.images.ImageGetter
 
 @Suppress("ConstPropertyName") // We want enum-like names
@@ -9,7 +11,25 @@ import com.unciv.ui.images.ImageGetter
  *  which accepts texture paths or some ruleset object names (nation, tech, unit) - this will be translated through [getImage].
  */
 object NotificationIcon {
-    // Remember: The typical white-on-transparency icon will not be visible on Notifications
+    private val darkMonochromeIcons by lazy {
+        setOf(City, War, Death, Crosshair, Spy, Barbarians, Ruins, CityState, Diplomacy,
+            Question, Quest, "UnitActionIcons/Promote",
+            "ImprovementIcons/Farm", "ImprovementIcons/Holy site", "ImprovementIcons/Moai",
+            "ImprovementIcons/Polder", "ImprovementIcons/Terrace farm",
+            "ImprovementIcons/Academy", "ImprovementIcons/Camp", "ImprovementIcons/Customs house",
+            "ImprovementIcons/Fishing Boats", "ImprovementIcons/Landmark", "ImprovementIcons/Lumber mill",
+            "ImprovementIcons/Manufactory", "ImprovementIcons/Mine", "ImprovementIcons/Offshore Platform",
+            "ImprovementIcons/Oil well", "ImprovementIcons/Pasture", "ImprovementIcons/Plantation",
+            "ImprovementIcons/Quarry", "ImprovementIcons/Trading post", "OtherIcons/Present",
+            "OtherIcons/Sleep", "ResourceIcons/Citrus", "ResourceIcons/Copper",
+            "ResourceIcons/Cotton", "ResourceIcons/Crab", "ResourceIcons/Dyes",
+            "ResourceIcons/Furs", "ResourceIcons/Gems", "ResourceIcons/Gold Ore",
+            "ResourceIcons/Incense", "ResourceIcons/Ivory", "ResourceIcons/Marble",
+            "ResourceIcons/Pearls", "ResourceIcons/Salt", "ResourceIcons/Silk",
+            "ResourceIcons/Silver", "ResourceIcons/Spices", "ResourceIcons/Sugar",
+            "ResourceIcons/Truffles", "ResourceIcons/Whales", "ResourceIcons/Wine",
+            "UnitActionIcons/Upgrade")
+    }
 
     const val Barbarians = "ImprovementIcons/Barbarian encampment"
     const val City = "ImprovementIcons/City center"
@@ -49,12 +69,20 @@ object NotificationIcon {
         ruleset.nations.containsKey(icon) ->
             ImageGetter.getNationPortrait(ruleset.nations[icon]!!, iconSize)
         ruleset.units.containsKey(icon) ->
-            ImageGetter.getUnitIcon(ruleset.units[icon]!!)
+            ImageGetter.getUnitIcon(ruleset.units[icon]!!).let {
+                if (ExpeditionBlueTheme.enabled) it.surroundWithCircle(iconSize, color = ExpeditionBlueTheme.text) else it
+            }
         ruleset.unitPromotions.containsKey(icon) ->
             ImageGetter.getPromotionPortrait(icon, iconSize)
         ruleset.tileResources.containsKey(icon) ->
             ImageGetter.getResourcePortrait(icon, iconSize)
         else ->
-            ImageGetter.getImage(icon)
+            ImageGetter.getImage(icon).let {
+                val isBuildingIcon = icon.startsWith("BuildingIcons/") &&
+                    icon != "BuildingIcons/Fallback"
+                if (ExpeditionBlueTheme.enabled && (icon in darkMonochromeIcons || isBuildingIcon))
+                    it.surroundWithCircle(iconSize, color = ExpeditionBlueTheme.text)
+                else it
+            }
     }
 }

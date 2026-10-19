@@ -38,9 +38,10 @@ class WonderOverviewTab(
             val entry = Table().apply {
                 background = OverviewUi.surface(OverviewUi.panel)
                 pad(pt(10f), pt(16f), pt(10f), pt(16f))
-                val image = wonder.getImage()
+                val imageSize = pt(28f)
+                val image = wonder.getImage(imageSize)
                 image?.onClick { overviewScreen.openCivilopedia(wonder.makeLink()) }
-                add(image).size(pt(28f)).padRight(pt(12f))
+                add(image).size(image?.width ?: imageSize, image?.height ?: imageSize).padRight(pt(12f))
                 val identity = Table().apply {
                     left()
                     add(wonder.getNameColumn().toLabel(fontSize = font(TextRole.Control), hideIcons = true).apply { wrap = true })

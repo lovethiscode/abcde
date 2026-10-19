@@ -2,6 +2,7 @@ package com.unciv.ui.components.tilegroups
 
 import com.badlogic.gdx.graphics.Color
 import com.unciv.UncivGame
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.view.CivView
 import com.unciv.view.TileView
 import com.unciv.ui.images.ImageGetter
@@ -30,8 +31,12 @@ class WorldTileGroup(tileView: TileView, tileSetStrings: TileSetStrings)
             return
 
         val icon = when {
-            tileView.isLocked() -> ImageGetter.getImage("TileIcons/Locked").apply { color = Color.WHITE.darken(0.5f) }
-            tileView.isWorked() && tileView.providesYield() -> ImageGetter.getImage("TileIcons/Worked").apply { color = Color.WHITE.darken(0.5f) }
+            tileView.isLocked() -> ImageGetter.getImage("TileIcons/Locked").apply {
+                if (!ExpeditionBlueTheme.enabled) color = Color.WHITE.darken(0.5f)
+            }
+            tileView.isWorked() && tileView.providesYield() -> ImageGetter.getImage("TileIcons/Worked").apply {
+                if (!ExpeditionBlueTheme.enabled) color = Color.WHITE.darken(0.5f)
+            }
             else -> null
         }
 

@@ -2,6 +2,7 @@ package com.unciv.ui.screens.worldscreen.status
 
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
+import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
@@ -12,6 +13,7 @@ import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
 import com.unciv.ui.components.UncivTooltip.Companion.removeTooltips
 import com.unciv.ui.components.extensions.isEnabled
 import com.unciv.ui.components.extensions.setSize
+import com.unciv.ui.components.extensions.surroundWithCircle
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onActivation
@@ -32,6 +34,7 @@ class NextTurnButton(
     private val worldScreen: WorldScreen
 ) : IconTextButton("", null, 30, labelFontSize = UiTypography.size(TextRole.Control)) {
     private var nextTurnAction = Default
+    private val disabledIconColor = Color.valueOf("B8C7CA")
     val currentAction: NextTurnAction get() = nextTurnAction
     private val unitsDueLabel = Label("", BaseScreen.skin)
     private val unitsDueCell: Cell<Label>
@@ -62,6 +65,8 @@ class NextTurnButton(
 
         isEnabled = nextTurnAction.getText(worldScreen) == "AutoPlay"
             || ((worldScreen.isPlayersTurn || worldScreen.failedUpload) && !worldScreen.waitingForAutosave && !worldScreen.isNextTurnUpdateRunning())
+        if (ExpeditionBlueTheme.enabled && nextTurnAction == NextTurnAction.NextTurn)
+            iconCell.actor?.color = if (isEnabled) ExpeditionBlueTheme.primaryInk else disabledIconColor
         if (isEnabled) {
             addTooltip(KeyboardBinding.NextTurn)
         } else {
@@ -79,12 +84,20 @@ class NextTurnButton(
         if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get(if (primary) "positive" else "default", TextButtonStyle::class.java)
         label.color = foreground
         unitsDueLabel.color = if (primary) ExpeditionBlueTheme.primaryInk else ExpeditionBlueTheme.color(com.badlogic.gdx.graphics.Color.WHITE, ExpeditionBlueTheme.text)
-        if (nextTurnAction.icon != null && ImageGetter.imageExists(nextTurnAction.icon!!))
-            iconCell.setActor(ImageGetter.getImage(nextTurnAction.icon).apply {
+        if (nextTurnAction.icon != null && ImageGetter.imageExists(nextTurnAction.icon!!)) {
+            val image = ImageGetter.getImage(nextTurnAction.icon).apply {
                 setSize(30f)
-                color = foreground
-            })
-        else
+                color = if (ExpeditionBlueTheme.enabled) when (nextTurnAction) {
+                    NextTurnAction.FoundReligion -> ExpeditionBlueTheme.danger
+                    NextTurnAction.PickConstruction, NextTurnAction.WorldCongressVote -> Color.WHITE
+                    else -> foreground
+                } else foreground
+            }
+            iconCell.setActor(if (ExpeditionBlueTheme.enabled && nextTurnAction == NextTurnAction.PickConstruction)
+                image.apply { setSize(BattlefieldHud.points(18f)) }
+                    .surroundWithCircle(BattlefieldHud.points(20f), resizeActor = false, color = ExpeditionBlueTheme.text)
+            else image)
+        } else
             iconCell.clearActor()
 
         nextTurnAction.getSubText(worldScreen)?.let {
