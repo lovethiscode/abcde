@@ -238,7 +238,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
                     val content = actor.actor as? Table
                     content?.let { constrainBattlefieldCells(it, TextRole.Supporting) }
                     cell.minWidth(0f).minHeight(
-                        if (content != null && content.cells.size > 0) BattlefieldHud.points(24f) else 0f)
+                        if (content != null) minOf(content.prefHeight, BattlefieldHud.points(88f)) else 0f)
                 }
             }
         }
