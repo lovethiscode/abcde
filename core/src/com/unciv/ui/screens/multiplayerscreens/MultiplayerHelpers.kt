@@ -96,7 +96,8 @@ object MultiplayerHelpers {
                     || players.any { it.turnsPlayedAsHuman < 5 } // ensure sufficient data
                 ) return null
                 // how many players left until our turn
-                val numRemainingPlayers = Math.floorMod(untilIndex - fromIndex, players.size)
+                val numRemainingPlayers = if (untilIndex >= fromIndex) untilIndex - fromIndex
+                    else players.size - fromIndex + untilIndex
                 // list player civs between current player and ourselves, wrapping around if needed
                 val remainingPlayers = (players.drop(fromIndex) + players.take(untilIndex)).take(numRemainingPlayers)
                 val estimatedSecondsRemaining = remainingPlayers.sumOf { it.totalTurnTimeSeconds / it.turnsPlayedAsHuman }

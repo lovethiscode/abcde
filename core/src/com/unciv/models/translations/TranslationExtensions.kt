@@ -228,7 +228,7 @@ private fun String.translatePlaceholders(language: String, hideIcons: Boolean, f
         val substitutions = HashMap<String, String>()
         for (i in termsInMessage.indices) {
             val translated = termsInMessage[i].tr(language, hideIcons)
-            substitutions.putIfAbsent(termsInTranslationPlaceholder[i], translated)
+            substitutions.getOrPut(termsInTranslationPlaceholder[i]) { translated }
         }
 
         val sb = StringBuilder(translatedWithPlaceholders.length + 16)
