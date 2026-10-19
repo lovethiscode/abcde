@@ -19,6 +19,7 @@ open class ForeignCityView(protected open val city: City,
                            gameView: GameView) : OwnedView<City>(city, viewer, spectatorMode, gameView) {
     @Readonly internal override fun owner(): Civilization = city.civ
 
+    val id: String get() = city.id
     val name: String get() = city.name
     val location: HexCoord get() = city.location
 

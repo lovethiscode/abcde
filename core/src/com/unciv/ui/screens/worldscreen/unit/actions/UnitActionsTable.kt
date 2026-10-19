@@ -406,7 +406,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
             actionButton.touchable = Touchable.enabled
             actionButton.addContextMenu {
                 UnitUpgradeMenu(worldScreen.stage, actionButton, worldScreen.selectedGameView.getMapUnitView(unit),
-                    upgradeAction, enable = unitAction.action != null, callbackAfterAnimation = true) {
+                    upgradeAction.upgrade, enable = unitAction.action != null, callbackAfterAnimation = true) {
                     worldScreen.shouldUpdate = true
                 }
             }
