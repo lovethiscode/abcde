@@ -88,39 +88,39 @@ class PromotionPickerScreen private constructor(
                 checkSaveUnitPromotion()
             }, { saveUnitPromotion = it })
         } else {
-        if (canPromoteNow) {
-            rightSideButton.setText("Pick promotion".tr())
-            rightSideButton.onClick(UncivSound.Silent) {
-                acceptPromotion(selectedPromotion)
+            if (canPromoteNow) {
+                rightSideButton.setText("Pick promotion".tr())
+                rightSideButton.onClick(UncivSound.Silent) {
+                    acceptPromotion(selectedPromotion)
                 
-                checkSaveUnitPromotion()
-            }
-        } else {
-            rightSideButton.isVisible = false
-        }
-
-        updateDescriptionLabel()
-
-        if (canChangeState) {
-            //Always allow the user to rename the unit as many times as they like.
-            val renameButton = "Choose name for [${unit.name}]".toTextButton()
-            renameButton.onClick {
-                UnitRenamePopup(this, unit) {
-                    game.replaceCurrentScreen{ recreate() }
+                    checkSaveUnitPromotion()
                 }
+            } else {
+                rightSideButton.isVisible = false
             }
-            topTable.add(renameButton).pad(5f).row()
-        }
 
-        // Create all buttons without placing them yet, measure
-        buttonCellMaxWidth = ((stage.width - 80f) / tree.getMaxColumns())
-            .coerceIn(190f, 300f)
-        for (node in tree.allNodes())
-            promotionToButton[node.promotion.name] = getButton(tree, node)
-        buttonCellMinWidth = (promotionToButton.values.maxOfOrNull { it.prefWidth + 10f } ?: 0f)
-            .coerceIn(190f, buttonCellMaxWidth)
+            updateDescriptionLabel()
 
-        fillTable()
+            if (canChangeState) {
+                //Always allow the user to rename the unit as many times as they like.
+                val renameButton = "Choose name for [${unit.name}]".toTextButton()
+                renameButton.onClick {
+                    UnitRenamePopup(this, unit) {
+                        game.replaceCurrentScreen{ recreate() }
+                    }
+                }
+                topTable.add(renameButton).pad(5f).row()
+            }
+
+            // Create all buttons without placing them yet, measure
+            buttonCellMaxWidth = ((stage.width - 80f) / tree.getMaxColumns())
+                .coerceIn(190f, 300f)
+            for (node in tree.allNodes())
+                promotionToButton[node.promotion.name] = getButton(tree, node)
+            buttonCellMinWidth = (promotionToButton.values.maxOfOrNull { it.prefWidth + 10f } ?: 0f)
+                .coerceIn(190f, buttonCellMaxWidth)
+
+            fillTable()
 
         }
         displayTutorial(TutorialTrigger.Experience)

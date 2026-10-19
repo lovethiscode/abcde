@@ -68,8 +68,20 @@ internal class PromotionAtlasView(
     private fun button(text: String, id: String, primary: Boolean = false, action: () -> Unit) =
         style.button(text, primary, outlined = !primary).apply {
             name = id; label.setEllipsis(false); label.wrap = true
+            labelCell.growX().minWidth(0f)
             onActivation { action() }
         }
+    private fun promotionIcon(node: PromotionTree.PromotionNode): Table {
+        val parts = com.unciv.models.ruleset.unit.Promotion.getBaseNameAndLevel(node.promotion.name)
+        val path = listOf("UnitPromotionIcons/${parts.nameWithoutBrackets}",
+            "UnitPromotionIcons/${parts.basePromotionName}", "UnitIcons/${parts.basePromotionName.removeSuffix(" ability")}")
+            .firstOrNull { ImageGetter.imageExists(it) } ?: "OtherIcons/Star"
+        return Table().apply {
+            background = style.outline(style.deep, style.line, radius = 20f)
+            pad(u(5f))
+            add(ImageGetter.getImage(path).apply { color = style.text }).grow()
+        }
+    }
     private fun state(node: PromotionTree.PromotionNode) = when {
         node.isAdopted -> "Acquired"
         canPick(node) -> "Promotion available"
@@ -84,8 +96,9 @@ internal class PromotionAtlasView(
         val header = Table()
         UiNavigation.styleBackButton(screen.closeButton, unit = style.unit)
         header.add(screen.closeButton).minSize(u(44f)).padRight(u(12f))
-        header.add(label("Unit promotions", TextRole.PageTitle)).growX().minWidth(0f).left()
-        if (!portrait) header.add(label("Promotion paths", TextRole.Supporting, true)).padRight(u(16f))
+        header.add(label("Unit promotions", TextRole.PageTitle)).minWidth(0f).left().padRight(u(12f))
+        if (!portrait) header.add(label("Promotion paths", TextRole.Supporting, true)).left()
+        header.add().expandX()
         header.add(button("Locate selection", "ui-promotion-locate") { locateSelection() }).minHeight(u(44f)).width(u(104f))
         root.add(header).growX().padBottom(u(12f)).row()
         buildGraph()
@@ -129,11 +142,17 @@ internal class PromotionAtlasView(
         val cw = u(cols * 196f + 12f)
         val ch = u(rows * 72f + 44f)
         canvas = object : WidgetGroup() {
+            private var positionedHeight = ch
             override fun getPrefWidth() = cw
             override fun getPrefHeight() = ch
+            override fun layout() {
+                val shift = height - positionedHeight
+                for (child in children) if (child is Table || child is Label) child.moveBy(0f, shift)
+                positionedHeight = height
+            }
         }.apply { setSize(cw, ch); touchable = Touchable.childrenOnly }
         canvas.addActor(object : Actor() {
-            init { touchable = Touchable.disabled }
+            init { touchable = Touchable.disabled; setSize(cw, ch) }
             override fun draw(batch: Batch, parentAlpha: Float) {
                 val old = batch.packedColor
                 val path = selected?.let { tree.getPathTo(it.promotion).toSet() }.orEmpty()
@@ -162,7 +181,7 @@ internal class PromotionAtlasView(
                 name = "ui-promotion:${node.promotion.name}"
                 touchable = Touchable.enabled
                 pad(u(6f), u(10f), u(6f), u(10f))
-                add(ImageGetter.getPromotionPortrait(node.promotion.name)).size(u(28f)).padRight(u(8f))
+                add(promotionIcon(node)).size(u(28f)).padRight(u(8f))
                 val words = Table()
                 words.add(label(node.promotion.name, TextRole.Control).apply { setEllipsis(true) }).growX().minWidth(0f).left().row()
                 words.add(label(state(node), TextRole.Supporting, true)).growX().minWidth(0f).left()
@@ -231,6 +250,7 @@ internal class PromotionAtlasView(
         details.clear()
         details.background = style.surface(style.panel)
         details.pad(u(14f))
+        details.touchable = Touchable.enabled
         if (portrait) {
             val top = Table()
             top.add(label("Promotion details", TextRole.SectionTitle)).growX().minWidth(0f).left()
@@ -244,7 +264,7 @@ internal class PromotionAtlasView(
         val node = selected
         if (node != null) {
             val heading = Table()
-            heading.add(ImageGetter.getPromotionPortrait(node.promotion.name)).size(u(40f)).padRight(u(10f))
+            heading.add(promotionIcon(node)).size(u(40f)).padRight(u(10f))
             val words = Table()
             words.add(label(node.promotion.name, TextRole.SectionTitle, wrap = true)).growX().minWidth(0f).left().row()
             words.add(label(state(node), TextRole.Supporting, true)).left()
@@ -276,7 +296,13 @@ internal class PromotionAtlasView(
         if (node == null && statusText != null) reading.add(label(statusText!!, wrap = true)).row()
         if (unit.canSaveDefaultPromotions()) reading.add("Default promotions for [${unit.getBaseUnit().name}]".toCheckBox(saving) {
             saving = it; saveDefaults(it)
-        }.apply { label.wrap = true; label.setFontSize(this@PromotionAtlasView.style.font(TextRole.Control)) }).minHeight(u(44f)).padTop(u(12f)).row()
+        }.apply {
+            label.wrap = true
+            label.setText("Default promotions for [${unit.getBaseUnit().name}]".tr(hideIcons = true))
+            labelCell.growX().minWidth(0f)
+            imageCell.size(u(24f)).padRight(u(8f))
+            label.setFontSize(this@PromotionAtlasView.style.font(TextRole.Control))
+        }).minHeight(u(44f)).padTop(u(12f)).row()
         detailsScroll = AutoScrollPane(reading).apply { setScrollingDisabled(true, false); setOverscroll(false, false) }
         details.add(detailsScroll).grow().minSize(0f).row()
         if (node != null) {
