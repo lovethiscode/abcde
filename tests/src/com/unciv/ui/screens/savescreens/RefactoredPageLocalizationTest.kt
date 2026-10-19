@@ -8,7 +8,7 @@ import com.unciv.models.metadata.GameSettings
 import com.unciv.models.metadata.LocaleCode
 import com.unciv.models.translations.TranslationFileReader
 import com.unciv.models.translations.getPlaceholderText
-import com.unciv.models.translations.squareBraceRegex
+import com.unciv.models.translations.getPlaceholderParameters
 import com.unciv.models.translations.tr
 import com.unciv.testing.BaseTestRunner
 import org.junit.Assert.*
@@ -41,8 +41,8 @@ class RefactoredPageLocalizationTest {
                 assertFalse("$language blank $key", entry!!.value.isBlank())
                 assertEquals("$language duplicate $key", 1, counts[key.getPlaceholderText()])
                 assertEquals("$language changed parameters for $key",
-                    squareBraceRegex.findAll(entry.key).map { it.value }.sorted().toList(),
-                    squareBraceRegex.findAll(entry.value).map { it.value }.sorted().toList())
+                    entry.key.getPlaceholderParameters().sorted().toList(),
+                    entry.value.getPlaceholderParameters().sorted().toList())
             }
         }
     }

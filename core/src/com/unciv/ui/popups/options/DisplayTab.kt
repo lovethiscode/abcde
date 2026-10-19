@@ -25,7 +25,6 @@ import com.unciv.ui.screens.worldscreen.NotificationsScroll
 import com.unciv.utils.Display
 import com.unciv.utils.ScreenMode
 import com.unciv.utils.ScreenOrientation
-import kotlin.math.abs
 
 internal class DisplayTab(
     optionsPopup: OptionsPopup
@@ -208,15 +207,7 @@ internal class DisplayTab(
         add("{Screen size}: %.1f\" x %.1f\"".format(widthInches, heightInches).toLabel(TextRole.Body)).colspan(2).row()
     }
 
-    /** Picks the [ScreenSize] giving roughly the same number of virtual units per physical inch of the shorter screen side everywhere */
-    private fun guessScreenSize(): ScreenSize {
-        val mode = Gdx.graphics.displayMode
-        val shorterSideInches = minOf(mode.width / Gdx.graphics.ppiX, mode.height / Gdx.graphics.ppiY)
-        // On desktop you use a mouse pointer, on phones you use your fat fingers
-        val unitsPerInch = if (Gdx.app.type != Application.ApplicationType.Desktop) 220f else 100f
-        val targetVirtualHeight = shorterSideInches * unitsPerInch
-        return ScreenSize.entries.minBy { abs(it.virtualHeight - targetVirtualHeight) }
-    }
+    private fun guessScreenSize(): ScreenSize = ScreenSize.guess()
 
     private fun Table.addScreenOrientationSelectBox() {
         if (!Display.hasOrientation()) return

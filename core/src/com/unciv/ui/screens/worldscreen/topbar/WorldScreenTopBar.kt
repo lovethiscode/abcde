@@ -15,6 +15,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.logic.civilization.Civilization
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.center
 import com.unciv.ui.components.extensions.darken
@@ -234,11 +235,16 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
 
     private class OverviewAndSupplyTable(worldScreen: WorldScreen) : Table(BaseScreen.skin) {
         val unitSupplyImage = ImageGetter.getImage("OtherIcons/ExclamationMark")
-            .apply { color = Color.FIREBRICK }
+            .apply { color = if (BattlefieldHud.enabled) ExpeditionBlueTheme.danger else Color.FIREBRICK }
+        private val unitSupplyControl: Actor = if (BattlefieldHud.enabled)
+            Container(unitSupplyImage).size(BattlefieldHud.points(20f)).apply {
+                touchable = Touchable.enabled
+            }
+        else unitSupplyImage
         val unitSupplyCell: Cell<Actor?>
 
         init {
-            unitSupplyImage.onClick {
+            unitSupplyControl.onClick {
                 worldScreen.openEmpireOverview(EmpireOverviewCategories.Units)
             }
 
@@ -262,8 +268,9 @@ class WorldScreenTopBar(internal val worldScreen: WorldScreen) : Table() {
         fun update(worldScreen: WorldScreen) {
             val newVisible = worldScreen.selectedCiv.stats.getUnitSupplyDeficit() > 0
             if (newVisible == unitSupplyCell.hasActor()) return
-            if (newVisible) unitSupplyCell.setActor(unitSupplyImage)
-                .size(50f).padLeft(10f)
+            if (newVisible) unitSupplyCell.setActor(unitSupplyControl)
+                .size(if (BattlefieldHud.enabled) UiNavigation.minimumTouchSize() else 50f)
+                .padLeft(10f)
             else unitSupplyCell.setActor(null).size(0f).pad(0f)
             invalidate()
             pack()

@@ -1,5 +1,9 @@
 package com.unciv.logic.achievements
 
+import com.unciv.logic.map.mapunit.PossibleUpgrade
+import com.unciv.logic.map.mapunit.UpgradeAvailability
+import com.unciv.models.Counter
+
 import com.unciv.json.json
 import com.unciv.logic.battle.Battle
 import com.unciv.logic.battle.MapUnitCombatant
@@ -286,7 +290,7 @@ class AchievementEngineTest(private val baseRuleset: com.unciv.models.metadata.B
         val names = listOf("Shock I", "Shock II", "Shock III", "Drill II", "Drill III")
         for (name in names.take(4)) unit.promotions.addPromotion(name)
         assertFalse("N31" in f.results())
-        unit.upgrade.performUpgrade(f.test.ruleset.units.getValue("Spearman"), isFree = true)
+        unit.upgrade.performUpgrade(PossibleUpgrade(f.test.ruleset.units.getValue("Spearman"), null, false, UpgradeAvailability.AvailableForFree, 0, Counter()), isFree = true)
         val upgraded = f.player.units.getUnitById(unit.id)!!
         upgraded.promotions.addPromotion(names.last())
         assertTrue("N31" in f.results())

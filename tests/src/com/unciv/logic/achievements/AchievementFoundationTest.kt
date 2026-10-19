@@ -1,5 +1,9 @@
 package com.unciv.logic.achievements
 
+import com.unciv.logic.map.mapunit.PossibleUpgrade
+import com.unciv.logic.map.mapunit.UpgradeAvailability
+import com.unciv.models.Counter
+
 import com.unciv.json.json
 import com.unciv.logic.GameInfo
 import com.unciv.logic.civilization.PlayerType
@@ -173,11 +177,11 @@ class AchievementFoundationTest {
         val civ = game.gameInfo.civilizations.first()
         val unit = game.addUnit("Warrior", civ, game.getTile(0, 0))
         val id = unit.id
-        unit.upgrade.performUpgrade(game.ruleset.units.getValue("Spearman"), isFree = true)
+        unit.upgrade.performUpgrade(PossibleUpgrade(game.ruleset.units.getValue("Spearman"), null, false, UpgradeAvailability.AvailableForFree, 0, Counter()), isFree = true)
         val upgraded = civ.units.getUnitById(id)!!
         assertEquals("Spearman", upgraded.name)
         upgraded.health = 71
-        upgraded.upgrade.performUpgrade(game.ruleset.units.getValue("Trireme"), isFree = true)
+        upgraded.upgrade.performUpgrade(PossibleUpgrade(game.ruleset.units.getValue("Trireme"), null, false, UpgradeAvailability.AvailableForFree, 0, Counter()), isFree = true)
         val restored = civ.units.getUnitById(id)!!
         assertEquals("Spearman", restored.name)
         assertEquals(71, restored.health)

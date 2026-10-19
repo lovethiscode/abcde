@@ -235,7 +235,7 @@ class TestGame(vararg addGlobalUniques: String, forUITesting: Boolean = false, b
     }
 
     fun addReligion(foundingCiv: Civilization): Religion {
-        val religion = Religion("Religion-${objectsCreated++}", gameInfo, foundingCiv)
+        val religion = Religion("Religion-${objectsCreated++}", gameInfo, foundingCiv, gameInfo.turns)
         foundingCiv.religionManager.religion = religion
         gameInfo.religions[religion.name] = religion
         return religion

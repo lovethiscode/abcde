@@ -1,8 +1,9 @@
-package com.unciv.ui.screens.overviewscreen
+package com.unciv.ui.screens.espionage
 
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.SplitPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -15,10 +16,13 @@ import com.unciv.logic.civilization.Civilization
 import com.unciv.logic.civilization.diplomacy.DiplomacyFlags
 import com.unciv.models.Spy
 import com.unciv.models.SpyAction
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.SmallButtonStyle
 import com.unciv.ui.components.extensions.addCapitalIndicator
 import com.unciv.ui.components.extensions.disable
+import com.unciv.ui.components.extensions.getCloseButton
+import com.unciv.ui.components.extensions.scrollTo
 import com.unciv.ui.components.extensions.setSize
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
@@ -31,16 +35,18 @@ import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onRightClick
 import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.popups.AnimatedMenuPopup
 import com.unciv.ui.popups.ConfirmPopup
-import com.unciv.ui.screens.pickerscreens.PickerScreen
+import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.WorldScreen
 import yairm210.purity.annotations.Pure
+import kotlin.collections.iterator
 
-/** On this screen, possible locations of spies are a [City] or the Spy Hideout which we represent as `null` */
+/** On this screen, possible locations of spies are a [com.unciv.logic.city.City] or the Spy Hideout which we represent as `null` */
 private typealias Location = City?
 
 /** Screen used for moving spies between cities */
-class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldScreen) : PickerScreen(true) {
+class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) : BaseScreen() {
     private val collator = UncivGame.Current.settings.getCollatorFromLocale()
 
     private val spySelectionTable = Table()
@@ -56,8 +62,17 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
     private val spyActionButtons = hashMapOf<SpyLocationActionButton, Location>()
     private val moveSpyButtons = hashMapOf<Spy, TextButton>()
 
+    private val locationLabels = mutableMapOf<String?, Actor>()
+    private val closeButton: Group
+
+    // With dynamic button text, the layout "flutters" when selecting/deselecting a Spy - so control the minWidth:
+    // Which one is fatter is obvious in English, but in other languages not so much
+    private val moveButtonWidth = "Move".toTextButton().prefWidth.coerceAtLeast(Constants.cancel.toTextButton().prefWidth)
+
     /** Readability shortcut */
     private val manager get() = civInfo.espionageManager
+
+    private val isPortrait: Boolean // To detect when a resize needs re-layout
 
     init {
         spySelectionTable.defaults().space(10f)
@@ -69,17 +84,24 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
 
         middlePanes.minSplitAmount = 0.25f
         middlePanes.maxSplitAmount = 0.75f
-        middlePanes.splitAmount = getPrefSplitAmount()
-        topTable.add(middlePanes).grow()
+        isPortrait = if (isPortrait()) {
+            middlePanes.splitAmount = 0.33f
+            middlePanes.isVertical = true
+            true
+        } else {
+            middlePanes.splitAmount = getPrefSplitAmount()
+            false
+        }
+        middlePanes.setFillParent(true)
+        stage.addActor(middlePanes)
 
-        closeButton.isVisible = true
-        closeButton.onActivation {
+        closeButton = getCloseButton {
             civInfo.cache.updateViewableTiles()
             game.popScreen()
         }
         closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
-        rightSideButton.isVisible = false
-
+        positionCloseButton()
+        stage.addActor(closeButton)
         globalShortcuts.add(KeyboardBinding.Civilopedia) { openCivilopedia("Tutorial/Espionage") }
     }
 
@@ -88,6 +110,18 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
         val freeSpace = stage.width - handleWidth - spySelectionTable.prefWidth - locationSelectionTable.prefWidth
         val x = spySelectionTable.prefWidth + freeSpace.coerceAtLeast(handleWidth) / 2
         return (x / stage.width).coerceIn(0.3f, 0.7f)
+    }
+
+    private fun positionCloseButton() {
+        closeButton.setPosition(stage.width - 10f, stage.height - 10f, Align.topRight)
+    }
+
+    // Not using `RecreateOnResize` because this one is fine with resizes, exept we want to flip SplitPane arrangement for portrait
+    override fun resize(width: Int, height: Int) {
+        super.resize(width, height)
+        positionCloseButton()
+        if (isPortrait() == isPortrait) return
+        game.replaceCurrentScreen { EspionageScreen(civInfo, worldScreen) }
     }
 
     //region Update
@@ -133,7 +167,13 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
         val spyLocation = spy.getCityOrNull()
         spySelectionTable.add(spyLocation.getIcon()).padRight(5f)
         // "Location" column
-        spySelectionTable.add(spy.getLocationName().toLabel(hideIcons = true, role = TextRole.Body)).left()
+        val key = spy.getCityOrNull()?.id
+        val label = spy.getLocationName().toLabel(hideIcons = true, role = TextRole.Body)
+        spySelectionTable.add(label).left()
+        label.onActivation {
+            val actor = locationLabels[key]
+            if (actor != null) locationScrollPane.scrollTo(actor, true)
+        }
         // "Action" column
         val actionString = if (spy.action.showTurns)
             "[${spy.action.displayString}] ${spy.turnsRemainingForAction}${Fonts.turn}"
@@ -150,14 +190,17 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
         if (!worldScreen.canChangeState || !spy.isAlive() || civInfo.isDefeated()) {
             // Spectators aren't allowed to move the spies of the Civs they are viewing
             moveSpyButton.disable()
+        } else {
+            AnimatedMenuPopup.Helpers.addIndicator(moveSpyButton, 0.5f)
         }
-        spySelectionTable.add(moveSpyButton).row()
+        spySelectionTable.add(moveSpyButton).minWidth(moveButtonWidth).row()
         moveSpyButtons[spy] = moveSpyButton
     }
 
     private fun updateLocationList() {
         locationSelectionTable.clear()
         spyActionButtons.clear()
+        locationLabels.clear()
         initLocationHeader()
 
         @Suppress("DEPRECATION") // The replacement doesn't allow chaining filters
@@ -183,7 +226,9 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
 
     private fun addLocationToSelectionTable(location: Location) {
         locationSelectionTable.add(location.getIcon()).padLeft(20f).padRight(10f)
+        val key = location?.id
         val label = location.getLocationName().toLabel(hideIcons = true, role = TextRole.Body)
+        locationLabels[key] = label
         if (location != null) {
             label.onClick {
                 worldScreen.game.popScreen() // If a detour to this screen (i.e. not directly from worldScreen) is made possible, use resetToWorldScreen instead
@@ -209,9 +254,8 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
         add(ImageGetter.getImage("OtherIcons/Spy_White").apply {
             color = Color.WHITE
         }).size(30f)
-        @Pure
         fun getColor(rank: Int): Color = when (rank) {
-            1 -> Color.BROWN
+            1 -> ExpeditionBlueTheme.color(Color.BROWN, Color.valueOf("C99562"))
             2 -> Color.LIGHT_GRAY
             else -> Color.GOLD
         }
@@ -345,7 +389,8 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
                 && location.civ.isMajorCiv()
                 && location.civ.knows(civInfo) // ensures the !! below won't crash
                 && location.civ.getDiplomacyManager(civInfo)!!.hasFlag(DiplomacyFlags.AgreedToNotSendSpies)) {
-                ConfirmPopup(this@EspionageOverviewScreen,
+                ConfirmPopup(
+                    this@EspionageScreen,
                     // The promise isn't broken when you move the spy - only when they catch you stealing a tech
                     "This may result in breaking your promise to [${location.civ.civName}]",
                     "Move",
@@ -375,7 +420,8 @@ class EspionageOverviewScreen(val civInfo: Civilization, val worldScreen: WorldS
         override fun clickHandler() {
             val spy = selectedSpy!!
             if (!isCurrentAction) {
-                ConfirmPopup(this@EspionageOverviewScreen,
+                ConfirmPopup(
+                    this@EspionageScreen,
                     "Do you want to stage a coup in [${location!!.civ.civName}] with a " +
                         "[${(selectedSpy!!.getCoupChanceOfSuccess(false) * 100f).toInt()}]% " +
                         "chance of success?",

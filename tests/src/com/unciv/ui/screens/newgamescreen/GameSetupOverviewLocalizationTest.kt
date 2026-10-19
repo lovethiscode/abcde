@@ -2,7 +2,7 @@ package com.unciv.ui.screens.newgamescreen
 
 import com.badlogic.gdx.Gdx
 import com.unciv.models.translations.TranslationFileReader
-import com.unciv.models.translations.squareBraceRegex
+import com.unciv.models.translations.getPlaceholderParameters
 import com.unciv.testing.BaseTestRunner
 import org.junit.Assert.*
 import org.junit.Test
@@ -25,8 +25,8 @@ class GameSetupOverviewLocalizationTest {
                 val translated = entries[message]
                 assertFalse("$language: $message", translated.isNullOrBlank())
                 assertEquals("$language: $message",
-                    squareBraceRegex.findAll(message).map { it.value }.toList(),
-                    squareBraceRegex.findAll(translated!!).map { it.value }.toList())
+                    message.getPlaceholderParameters().toList(),
+                    translated!!.getPlaceholderParameters().toList())
                 assertEquals("Duplicate $language: $message", 1,
                     file.readString("UTF-8").lineSequence().count { it.startsWith("$message = ") })
             }

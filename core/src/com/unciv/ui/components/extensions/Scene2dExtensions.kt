@@ -350,11 +350,11 @@ fun addRoundCloseButton(
         return button
     }
     val size = 30f
-    val button = getCloseButton(size, size-15f, Color.CLEAR, Color.RED, action = action)
+    val button = getCloseButton(size, size - 15f, Color.CLEAR, Color.RED, action = action)
         .surroundWithCircle(size, false, BaseScreen.clearColor)
-        .surroundWithCircle(size+4f, false, Color.WHITE)
+        .surroundWithCircle(size + 4f, false, Color.WHITE)
     parent.addActor(button)
-    button.setPosition(parent.width - button.width*3/4, parent.height - button.height*3/4)
+    button.setPosition(parent.width - button.width * 0.75f, parent.height - button.height * 0.75f)
     return button
 }
 

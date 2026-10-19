@@ -1,7 +1,7 @@
 package com.unciv.logic
 
 import com.unciv.UncivGame
-import com.unciv.models.translations.TranslationActiveModsCache
+import com.unciv.models.translations.TranslationCache
 import yairm210.purity.annotations.Pure
 import yairm210.purity.annotations.Readonly
 
@@ -24,7 +24,7 @@ data class Version(
     @Readonly fun toNiceString(buildNumber: String = number.toString()): String {
         val game = UncivGame.Current
         return game.translations.getText("[] (Build [])", game.settings.language,
-            TranslationActiveModsCache.activeMods, "[version] (Build [number])")
+            TranslationCache.activeMods, "[version] (Build [number])")
             .replace("[version]", text)
             .replace("[number]", buildNumber)
     }

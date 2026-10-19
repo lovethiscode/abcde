@@ -1,5 +1,9 @@
 package com.unciv.logic.campaign
 
+import com.unciv.logic.map.mapunit.PossibleUpgrade
+import com.unciv.logic.map.mapunit.UpgradeAvailability
+import com.unciv.models.Counter
+
 import com.badlogic.gdx.Gdx
 import com.unciv.UncivGame
 import com.unciv.logic.GameInfo
@@ -183,7 +187,7 @@ class CampaignAllLevelsTest {
         p.stats.statsForNextTurn.gold = 3f
         for (i in 1..3) round(g,i)
         assertTrue(CampaignRules.evaluate(g).main); assertTrue(CampaignRules.evaluate(g).population)
-        melee.upgrade.performUpgrade(g.ruleset.units.getValue("Spearman"), true)
+        melee.upgrade.performUpgrade(PossibleUpgrade(g.ruleset.units.getValue("Spearman"), null, false, UpgradeAvailability.AvailableForFree, 0, Counter()), true)
         assertTrue(melee.id in g.campaign!!.producedUnits)
         p.stats.statsForNextTurn.gold = 3f
         assertTrue(CampaignRules.evaluate(g).main)
@@ -227,7 +231,7 @@ class CampaignAllLevelsTest {
     @Test fun `siege settles only after disposition and preserves upgrade identity`() {
         val g = game(12); val s = g.campaign!!; val p = g.getCurrentPlayerCivilization()
         val siege = p.units.getCivUnits().first { it.id in s.protectedUnits }
-        siege.upgrade.performUpgrade(g.ruleset.units.getValue("Trebuchet"), true)
+        siege.upgrade.performUpgrade(PossibleUpgrade(g.ruleset.units.getValue("Trebuchet"), null, false, UpgradeAvailability.AvailableForFree, 0, Counter()), true)
         assertFalse(s.protectedUnitLost)
         s.completedRounds = 14
         p.popupAlerts.add(PopupAlert(AlertType.CityConquered,"enemy-fort"))

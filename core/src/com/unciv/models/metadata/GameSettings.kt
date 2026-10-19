@@ -9,6 +9,7 @@ import com.unciv.logic.UncivShowableException
 import com.unciv.logic.multiplayer.FriendList
 import com.unciv.logic.multiplayer.chat.ChatWebSocket
 import com.unciv.models.UncivSound
+import com.unciv.models.translations.TranslationCache
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.fonts.FontFamilyData
 import com.unciv.ui.components.fonts.Fonts
@@ -23,6 +24,7 @@ import java.text.DecimalFormat
 import java.text.NumberFormat
 import org.threeten.bp.Duration
 import java.util.Locale
+import kotlin.math.abs
 
 /** Settings that apply across all games, stored in GameSettings.json */
 class GameSettings {
@@ -252,15 +254,9 @@ class GameSettings {
         return Collator.getInstance(getCurrentLocale())
     }
 
-    /** A NumberFormat for the chosen [language] - cached instance, do not mutate */
-    @Readonly
-    fun getCurrentNumberFormat(): DecimalFormat {
-        return LocaleCode.getNumberFormatFromLanguage(language)
-    }
-
     /** A NumberFormat for the chosen [language] - mutable and can be configured in [block] right away */
     fun getAndModifyCurrentNumberFormat(block: (DecimalFormat.() -> Unit)?): DecimalFormat {
-        val formatter = LocaleCode.getNumberFormatFromLanguage(language).clone() as DecimalFormat
+        val formatter = TranslationCache.getNumberFormatter()
         if (block != null) formatter.block()
         return formatter
     }
@@ -318,10 +314,11 @@ class GameSettings {
     }
 
     enum class ScreenSize(
-        @Suppress("unused")  // Actual width determined by screen aspect ratio, this as comment only
-        val virtualWidth: Float,
-        val virtualHeight: Float
+        private val virtualWidth: Float,
+        private val virtualHeight: Float
     ) {
+        /** Concrete dimensions come from [guess], see [getHeight] */
+        Auto(0f, 0f),
         Micro(630f,420f),
         Tiny(750f,500f),
         Small(900f,600f),
@@ -331,6 +328,24 @@ class GameSettings {
         FullHD(1920f, 1280f),
         QuadHD(2560f, 1707f);
         override fun toString() = name.tr() // Allow direct use in a SelectBox
+
+        /** Minimum virtual height of the stage. For [Auto] taken from the size guessed from the physical screen.
+         *  (The actual stage width is determined by screen aspect ratio, see [getWidth]) */
+        fun getHeight(): Float = if (this == Auto) guess().virtualHeight else virtualHeight
+        /** Nominal virtual width, informational only. For [Auto] taken from the size guessed from the physical screen. */
+        fun getWidth(): Float = if (this == Auto) guess().virtualWidth else virtualWidth
+
+        companion object {
+            /** Picks the concrete [ScreenSize] giving roughly the same number of virtual units per physical inch of the shorter screen side everywhere */
+            fun guess(): ScreenSize {
+                val mode = Gdx.graphics.displayMode
+                val shorterSideInches = minOf(mode.width / Gdx.graphics.ppiX, mode.height / Gdx.graphics.ppiY)
+                // On desktop you use a mouse pointer, on phones you use your fat fingers
+                val unitsPerInch = if (Gdx.app.type != ApplicationType.Desktop) 230f else 100f
+                val targetVirtualHeight = shorterSideInches * unitsPerInch
+                return entries.filter { it != Auto }.minBy { abs(it.virtualHeight - targetVirtualHeight) }
+            }
+        }
     }
 
     class GameSettingsAutoPlay {

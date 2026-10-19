@@ -34,7 +34,7 @@ object UiNavigation {
     fun minimumTouchSize(): Float {
         if (!isIos) return 44f
         val safe = Display.getSafeArea(Gdx.graphics.width, Gdx.graphics.height)
-        return touchSize(UncivGame.Current.settings.screenSize.virtualHeight, minOf(safe.width, safe.height).toFloat())
+        return touchSize(UncivGame.Current.settings.screenSize.getHeight(), minOf(safe.width, safe.height).toFloat())
     }
 
     fun touchSize(virtualSize: Float, safePoints: Float) = 44f * virtualSize / safePoints

@@ -59,7 +59,7 @@ class OptionsPopup(
     private var sidebarWidth = 0f
     // Pager indices follow the visible tabs, not the full enum order.
     private val visiblePages = OptionsPopupPages.entries.filter { it.visible(withDebug) }
-    private val pageIndex = HashMap<OptionsPopupPages, OptionsPopupTab>()
+    private val pageIndex = LinkedHashMap<OptionsPopupPages, OptionsPopupTab>()
     override val activePage get() = visiblePages[tabs.activePage]
     override val rightWidgetMinWidth: Float
         get() = if (useSidebar) (tabs.prefWidth * 0.32f).coerceIn(OptionsPopupStyle.points(120f), OptionsPopupStyle.points(220f))

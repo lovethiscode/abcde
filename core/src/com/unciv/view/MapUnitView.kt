@@ -9,9 +9,11 @@ import com.unciv.logic.battle.TargetHelper
 import com.unciv.logic.civilization.Civilization
 import com.unciv.logic.map.MapPathing
 import com.unciv.logic.map.mapunit.MapUnit
+import com.unciv.logic.map.mapunit.PossibleUpgrade
 import com.unciv.logic.map.mapunit.actions.UnitActions
+import com.unciv.models.Counter
 import com.unciv.models.UnitActionType
-import com.unciv.logic.map.mapunit.movement.PathsToTilesWithinTurn
+import com.unciv.models.ruleset.tile.TileImprovement
 import com.unciv.logic.map.mapunit.AvailablePromotion
 import com.unciv.models.ruleset.unit.BaseUnit
 import com.unciv.models.ruleset.unit.Promotion
@@ -32,8 +34,20 @@ class MapUnitView internal constructor(
     @Readonly fun getPromotionNames(): Set<String> = unit.promotions.promotions
     /** The unit's promotions as objects, in json order. */
     @Readonly fun getPromotions(): Sequence<Promotion> = unit.promotions.getPromotions(sorted = true)
-    @Readonly fun canUpgradeTo(unitToUpgradeTo: BaseUnit, ignoreResources: Boolean = false): Boolean =
-        unit.upgrade.canUpgrade(unitToUpgradeTo, ignoreResources = ignoreResources)
+    /** Upgrades of this unit worth showing (normal ones, not ruins-only), see [PossibleUpgrade.isShownToPlayer] */
+    @Readonly fun getPossibleUpgrades(): List<PossibleUpgrade> = unit.upgrade.getUpgradesOfKind(isSpecial = false)
+    /** `true` if a regular upgrade to [baseUnit] could be performed right now */
+    @Readonly fun canUpgradeTo(baseUnit: BaseUnit): Boolean = getPossibleUpgrades()
+        .any { it.upgradedUnit == baseUnit && unit.upgrade.canPerformUpgrade(it, isFree = false) }
+    /** Performs a regular upgrade to [baseUnit] if [canUpgradeTo] allows it
+     *  @return whether an upgrade was performed */
+    fun tryUpgradeTo(baseUnit: BaseUnit): Boolean {
+        val upgrade = getPossibleUpgrades()
+            .firstOrNull { it.upgradedUnit == baseUnit && unit.upgrade.canPerformUpgrade(it, isFree = false) }
+            ?: return false
+        unit.upgrade.performUpgrade(upgrade, isFree = false)
+        return true
+    }
     @Readonly fun isInOwnTerritory(): Boolean = unit.currentTile.getOwner() == unit.civ
     @Readonly fun hasUniqueToBuildImprovements(): Boolean = unit.cache.hasUniqueToBuildImprovements
     @Readonly fun hasUniqueToCreateWaterImprovements(): Boolean = unit.cache.hasUniqueToCreateWaterImprovements
@@ -55,12 +69,17 @@ class MapUnitView internal constructor(
     // This is pure UI and should be migrated somewhere where it can be shared by both its usages
     @Readonly fun getMovementString(): String = unit.getMovementString()
     @Readonly fun getMovementDestination(): TileView = gameView.tileMapView.getTile(unit.getMovementDestination())
+    val action: String? get() = unit.action
     @Readonly fun isMoving(): Boolean = unit.isMoving()
     @Readonly fun isExploring(): Boolean = unit.isExploring()
     @Readonly fun isEscorting(): Boolean = unit.isEscorting()
     @Readonly fun isSleeping(): Boolean = unit.isSleeping()
     @Readonly fun isAutomated(): Boolean = unit.isAutomated()
     @Readonly fun isSetUpForSiege(): Boolean = unit.isSetUpForSiege()
+    @Readonly fun canBuildImprovement(improvement: TileImprovement): Boolean = unit.canBuildImprovement(improvement)
+    @Readonly fun getTurnsToBuild(improvement: TileImprovement): Int = improvement.getTurnsToBuild(unit.civ, unit)
+    @Readonly fun getStockpiledResourceRequirements(improvement: TileImprovement): Counter<String> =
+        improvement.getStockpiledResourceRequirements(unit.cache.state)
     @Readonly fun getImprovementInProgress(): String? = unit.getTile().improvementInProgress
     @Readonly fun canBuildCurrentImprovement(): Boolean {
         val tile = unit.getTile()
@@ -76,7 +95,6 @@ class MapUnitView internal constructor(
         unit.movement.getDistanceToTiles().getPathToTile(tileView.unwrap()).map { gameView.tileMapView.getTile(it) }
     @Readonly fun getRoadPath(tileView: TileView): List<TileView>? =
         unit.movement.getRoadPath(tileView.unwrap())?.map { gameView.tileMapView.getTile(it) }
-    @Readonly fun getDistanceToTiles(): PathsToTilesWithinTurn = unit.movement.getDistanceToTiles()
     @Readonly fun canReach(tileView: TileView): Boolean = unit.movement.canReach(tileView.unwrap())
     @Readonly fun getShortestPath(tileView: TileView): List<TileView> =
         unit.movement.getShortestPath(tileView.unwrap()).map { gameView.tileMapView.getTile(it) }
@@ -101,12 +119,8 @@ class MapUnitView internal constructor(
             .map { gameView.tileMapView.getTile(it) }
     @Readonly fun getTilesInAttackRange(): List<TileView> =
         unit.getTile().getTilesInDistanceRange(IntRange(1, unit.getRange())).map { gameView.tileMapView.getTile(it) }.toList()
-    @Readonly fun getAttackableEnemies(
-        unitDistanceToTiles: PathsToTilesWithinTurn,
-        tilesToCheck: List<TileView>? = null,
-        stayOnTile: Boolean = false
-    ): List<AttackableTileView> =
-        TargetHelper.getAttackableEnemies(unit, unitDistanceToTiles, tilesToCheck?.map { it.unwrap() }, stayOnTile)
+    @Readonly fun getAttackableEnemies(): List<AttackableTileView> =
+        TargetHelper.getAttackableEnemies(unit, unit.movement.getDistanceToTiles())
             .map { AttackableTileView(it, viewer, spectatorMode, gameView) }
     /** `null` if the unit isn't currently pathing a road; otherwise the tiles still to come on that path. */
     @Readonly fun getFutureAutomatedRoadConnectionTiles(): List<TileView>? {
@@ -120,6 +134,19 @@ class MapUnitView internal constructor(
     // Actions
     fun trySwapMoveToTile(tileView: TileView, keepEscorting: Boolean = false): Boolean {
         unit.movement.swapMoveToTile(tileView.unwrap(), keepEscorting)
+        return true
+    }
+    /** Clears the improvement queue of the tile this unit stands on. */
+    fun tryStopWorkingOnImprovement(): Boolean {
+        unit.getTile().stopWorkingOnImprovement()
+        return true
+    }
+    /** Starts working on [improvement] on the tile this unit stands on, and queues [queuedImprovement] after it if given. */
+    fun tryStartWorkingOnImprovement(improvement: TileImprovement, queuedImprovement: TileImprovement? = null): Boolean {
+        val tile = unit.getTile()
+        tile.startWorkingOnImprovement(improvement, unit.civ, unit)
+        if (queuedImprovement != null)
+            tile.queueImprovement(queuedImprovement, unit.civ, unit)
         return true
     }
     fun trySetInstanceName(name: String?): Boolean {
@@ -172,6 +199,12 @@ class MapUnitView internal constructor(
     fun tryInvokeUnitAction(unitActionType: UnitActionType): Boolean = UnitActions.invokeUnitAction(unit, unitActionType)
     fun tryMoveToTile(tileView: TileView): Boolean {
         unit.movement.moveToTile(tileView.unwrap())
+        return true
+    }
+
+    /** @return whether [due] was set */
+    fun setDue(value: Boolean): Boolean {
+        unit.due = value
         return true
     }
 
