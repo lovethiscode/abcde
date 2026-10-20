@@ -168,7 +168,9 @@ internal class CampaignHomeMenu(
             .width(width).height(px(1f)).padBottom(px(if (minimal) 4f else 12f)).row()
         val tools = Table()
         val toolCount = if (game.achievementsAvailable) 4 else 3
-        val toolColumns = if (largeText && !sideBySide && !minimal) 2 else toolCount
+        // Phone portrait needs enough width for localized tool names at the normal text size too.
+        // The second row fits in the space the portrait composition already leaves below the tools.
+        val toolColumns = if (!sideBySide) 2 else toolCount
         val toolWidth = (width - px(8f) * (toolColumns - 1)) / toolColumns
         var added = 0
         fun tool(text: String, icon: String, binding: KeyboardBinding = KeyboardBinding.None, action: () -> Unit): Button {

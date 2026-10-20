@@ -62,7 +62,7 @@ class OptionsPopup(
     private val pageIndex = LinkedHashMap<OptionsPopupPages, OptionsPopupTab>()
     override val activePage get() = visiblePages[tabs.activePage]
     override val rightWidgetMinWidth: Float
-        get() = if (useSidebar) (tabs.prefWidth * 0.32f).coerceIn(OptionsPopupStyle.points(120f), OptionsPopupStyle.points(220f))
+        get() = if (useSidebar) (tabs.prefWidth * 0.42f).coerceIn(OptionsPopupStyle.points(196f), OptionsPopupStyle.points(260f))
         else if (stageToShowOn.width < 600f) 200f else 240f
     internal val tabMinWidth: Float
 
@@ -84,7 +84,7 @@ class OptionsPopup(
         val tabMaxHeight: Float
         screen.run {
             val safe = Display.getSafeArea(com.badlogic.gdx.Gdx.graphics.width, com.badlogic.gdx.Gdx.graphics.height)
-            val preferredSidebar = OptionsPopupStyle.points(if (minOf(safe.width, safe.height) >= 600) 240f else 200f)
+            val preferredSidebar = OptionsPopupStyle.points(if (minOf(safe.width, safe.height) >= 600) 240f else 232f)
             sidebarWidth = if (compactNavigation) 0f else preferredSidebar.coerceAtMost(stage.width * 0.4f)
             tabMaxWidth = if (useSidebar) stage.width - sidebarWidth - 1f - contentPadding * 2
                 else if (isPortrait()) stage.width - 10f else 0.8f * stage.width

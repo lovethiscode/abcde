@@ -9,6 +9,7 @@ import com.unciv.models.ruleset.unique.GameContext
 import com.unciv.models.ruleset.unique.UniqueType
 import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
 import com.unciv.ui.components.extensions.addSeparator
+import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.keyShortcuts
@@ -37,6 +38,8 @@ class RenderEvent(
      *  keep reporting the width they were built for. To change this width, build a new one. */
     val labelWidth: Float = worldScreen.stage.width * 0.5f,
     val floatingTutorial: Boolean = false,
+    /** Use the short landscape teaching-card composition: title and instructions beside the image. */
+    val compactFloatingTutorial: Boolean = false,
     val onChoice: (EventChoice) -> Unit
 ) : Table() {
     private val gameInfo get() = worldScreen.gameInfo
@@ -64,17 +67,55 @@ class RenderEvent(
                 val titleIndex = if (floatingTutorial && event.text.isBlank())
                     event.civilopediaText.indexOfFirst { it.text.isNotBlank() } else -1
                 val bodyLines = event.civilopediaText.filterIndexed { index, _ -> index != titleIndex }
-                // Built-in task instructions lead; the original illustration remains below them.
-                val lines = if (floatingTutorial && event.name.startsWith("Tutorial Task: ["))
-                    bodyLines.sortedBy { it.extraImage.isNotBlank() } else bodyLines
-                add(if (floatingTutorial) MarkupRenderer.render(lines, labelWidth,
-                    padding = 0f, fitToWidth = true, useUiTypography = true,
-                    unit = UiTypography.unitsPerPoint(worldScreen.stage), linkAction = ::openCivilopedia)
-                    else event.renderCivilopediaText(labelWidth, ::openCivilopedia)).row()
+                if (compactFloatingTutorial && event.name.startsWith("Tutorial Task: [")) {
+                    addCompactTutorial(event, titleIndex, bodyLines)
+                } else {
+                    // Built-in task instructions lead; the original illustration remains below them.
+                    val lines = if (floatingTutorial && event.name.startsWith("Tutorial Task: ["))
+                        bodyLines.sortedBy { it.extraImage.isNotBlank() } else bodyLines
+                    add(if (floatingTutorial) MarkupRenderer.render(lines, labelWidth,
+                        padding = 0f, fitToWidth = true, useUiTypography = true,
+                        unit = UiTypography.unitsPerPoint(worldScreen.stage), linkAction = ::openCivilopedia)
+                        else event.renderCivilopediaText(labelWidth, ::openCivilopedia)).row()
+                }
             }
 
             for (choice in choices!!) addChoice(choice)
         }
+    }
+
+    private fun addCompactTutorial(event: Event, titleIndex: Int, bodyLines: List<FormattedLine>) {
+        val unit = UiTypography.unitsPerPoint(worldScreen.stage)
+        val illustration = bodyLines.firstOrNull { it.extraImage.isNotBlank() }
+        val textLines = bodyLines.filter { it.extraImage.isBlank() }
+        val illustrationWidth = if (illustration == null) 0f else minOf(72f * unit, labelWidth * 0.28f)
+        val gap = if (illustration == null) 0f else 10f * unit
+        val copyWidth = (labelWidth - illustrationWidth - gap).coerceAtLeast(1f)
+        val title = when {
+            event.text.isNotBlank() -> event.text
+            titleIndex >= 0 -> event.civilopediaText[titleIndex].text
+            else -> "Tutorial"
+        }
+        val copy = Table().apply {
+            defaults().left()
+            add(title.toLabel(role = TextRole.SectionTitle).apply {
+                wrap = true
+                setAlignment(Align.left)
+            }).width(copyWidth).row()
+            if (textLines.isNotEmpty()) add(MarkupRenderer.render(textLines, copyWidth,
+                padding = 0f, fitToWidth = true, useUiTypography = true, unit = unit,
+                linkAction = ::openCivilopedia)).width(copyWidth).padTop(4f * unit).row()
+        }
+        val row = Table().apply {
+            add(copy).width(copyWidth).growY().left()
+            if (illustration != null) {
+                add(MarkupRenderer.render(listOf(illustration), illustrationWidth,
+                    padding = 0f, fitToWidth = true, useUiTypography = true, unit = unit,
+                    linkAction = ::openCivilopedia))
+                    .width(illustrationWidth).padLeft(gap).center()
+            }
+        }
+        add(row).width(labelWidth).row()
     }
 
     private fun addChoice(choice: EventChoice) {

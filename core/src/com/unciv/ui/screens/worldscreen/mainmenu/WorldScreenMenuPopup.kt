@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.worldscreen.mainmenu
 
 import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.fonts.UiTypography
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -44,14 +45,19 @@ class WorldScreenMenuPopup(
         innerTable.pad(0f)
         innerTable.defaults().pad(0f)
         clickBehindToClose = true
-        // The map stage is edge-to-edge, so derive point scale from its own viewport.
-        val unit = if (UiNavigation.isIos) worldScreen.stage.width / Gdx.graphics.width else 1f
+        val ordinary = UiNavigation.isIos && worldScreen.gameInfo.campaign == null && worldScreen.gameInfo.endless == null
+        val unit = when {
+            ordinary -> UiTypography.unitsPerPoint(worldScreen.stage)
+            UiNavigation.isIos -> worldScreen.stage.width / Gdx.graphics.width
+            else -> 1f
+        }
         val ui = WorldScreenMenuStyle(unit)
         val safe = worldScreen.safeAreaBoundsInWorld()
-        val ordinary = UiNavigation.isIos && worldScreen.gameInfo.campaign == null && worldScreen.gameInfo.endless == null
         ordinaryViewport = ordinary
         val width = minOf(safe.width - ui.px(32f), ui.px(if (ordinary) 820f else if (safe.height > safe.width) 650f else 800f))
         val portrait = if (ordinary) width / unit <= 620f else safe.height > safe.width
+        val compactLandscape = ordinary && !portrait && safe.height / unit <= 520f
+        val compactMenu = ordinary && (portrait || compactLandscape)
         val inset = ui.px(if (safe.height / unit < 480f) 20f else 24f)
         val contentWidth = width - 2 * inset
         innerTable.background = ui.surface(ui.background, 16f)
@@ -78,7 +84,8 @@ class WorldScreenMenuPopup(
             else resume.prefWidth.coerceIn(ui.px(108f), contentWidth * .46f)
         resume.label.wrap = true
         val header = Table().apply {
-            pad(inset)
+            val verticalInset = if (compactMenu) ui.px(12f) else inset
+            pad(verticalInset, inset, verticalInset, inset)
             if (stackedHeader) {
                 add(title).width(contentWidth).left().row()
                 add(resume).width(resumeWidth).minHeight(ui.px(44f)).padTop(ui.px(16f))
@@ -164,21 +171,31 @@ class WorldScreenMenuPopup(
         val groups = listOf("Game management" to management, "Civilization progress" to progress, "Help and settings" to help)
         val gap = ui.px(24f)
         val groupWidth = if (portrait) contentWidth else (contentWidth - 2 * gap) / 3
-        val body = Table().apply { pad(inset) }
+        val body = Table().apply {
+            val verticalInset = if (compactMenu) ui.px(12f) else inset
+            pad(verticalInset, inset, verticalInset, inset)
+        }
         for ((index, entry) in groups.withIndex()) {
             val (heading, buttons) = entry
-            // Long translations and enlarged fonts may need a full-width row in portrait.
-            val columns = if (!ordinary && portrait && buttons.all { naturalWidths.getValue(it) <= (groupWidth - ui.px(8f)) / 2 }) 2 else 1
+            // The iPhone portrait menu uses two columns so every group fits in one screen.
+            // Labels retain the normal font size and grow their row when they wrap.
+            val columns = when {
+                ordinary && portrait -> 2
+                !ordinary && portrait && buttons.all { naturalWidths.getValue(it) <= (groupWidth - ui.px(8f)) / 2 } -> 2
+                else -> 1
+            }
             val buttonWidth = (groupWidth - ui.px(8f) * (columns - 1)) / columns
             val group = Table().apply {
-                add(heading.toLabel(ui.muted, ui.font(if (ordinary) TextRole.SectionTitle else TextRole.Supporting)).apply { wrap = true })
-                    .width(groupWidth).colspan(columns).left().padBottom(ui.px(10f)).row()
+                // These are quiet task-group captions in the prototype, not content section titles.
+                add(heading.toLabel(ui.muted, ui.font(TextRole.Supporting)).apply { wrap = true })
+                    .width(groupWidth).colspan(columns).left().padBottom(ui.px(if (compactMenu) 6f else 10f)).row()
                 for ((i, button) in buttons.withIndex()) {
                     // Measure at the actual width so wrapped text grows the row instead of clipping.
                     button.label.setSize(buttonWidth - ui.px(24f), 0f)
                     button.label.invalidate()
                     add(button).width(buttonWidth).minHeight(maxOf(ui.px(44f), button.label.prefHeight + ui.px(20f)))
-                        .padBottom(ui.px(8f)).padRight(if (i % columns == 0 && columns == 2) ui.px(8f) else 0f)
+                        .padBottom(if (compactMenu) 0f else ui.px(8f))
+                        .padRight(if (i % columns == 0 && columns == 2) ui.px(8f) else 0f)
                     if ((i + 1) % columns == 0) row()
                 }
             }
@@ -186,24 +203,33 @@ class WorldScreenMenuPopup(
                 body.add(ImageGetter.getWhiteDot().apply { color = ui.border })
                     .width(unit).growY().padLeft(gap / 2).padRight(gap / 2 - unit)
             }
-            body.add(group).width(groupWidth).padLeft(if (!portrait && ordinary && index > 0) gap else 0f).top().padBottom(if (portrait && index < 2) ui.px(16f) else 0f)
+            body.add(group).width(groupWidth).padLeft(if (!portrait && ordinary && index > 0) gap else 0f).top()
+                .padBottom(if (portrait && index < 2) ui.px(if (compactMenu) 10f else 16f) else 0f)
             if (portrait) body.row()
-        }
-        val scroll = AutoScrollPane(body).apply {
-            name = "world-menu-content"
-            setScrollingDisabled(true, false)
-            setOverscroll(false, false)
         }
         val footer = if (ordinary) Table().apply {
             background = OrdinaryPopupStyle(unit).let { it.divider(atTop = true, fill = it.deep) }
-            pad(ui.px(14f), inset, ui.px(18f), inset)
+            pad(ui.px(if (compactMenu) 10f else 14f), inset, ui.px(if (compactMenu) 12f else 18f), inset)
             right()
             resume.label.setSize((resumeWidth - ui.px(32f)).coerceAtLeast(1f), 0f)
             resume.label.invalidate()
             add(resume).width(resumeWidth).minHeight(maxOf(ui.px(44f), resume.label.prefHeight + ui.px(20f)))
         } else null
-        val availableHeight = (safe.height - ui.px(32f) - header.prefHeight - unit - (footer?.prefHeight ?: 0f)).coerceAtLeast(ui.px(44f))
-        innerTable.add(scroll).width(width).height(minOf(body.prefHeight, availableHeight)).row()
+        // The custom body must fit the same height cap that Popup applies to the whole panel.
+        val panelHeight = if (ordinary) minOf(safe.height - ui.px(32f), maxPopupHeight)
+            else safe.height - ui.px(32f)
+        val availableHeight = (panelHeight - header.prefHeight - unit - (footer?.prefHeight ?: 0f)).coerceAtLeast(ui.px(44f))
+        if (ordinary) {
+            // The grouped iPhone layout is sized to fit without scroll chrome or hidden items.
+            innerTable.add(body).width(width).row()
+        } else {
+            val scroll = AutoScrollPane(body).apply {
+                name = "world-menu-content"
+                setScrollingDisabled(true, false)
+                setOverscroll(false, false)
+            }
+            innerTable.add(scroll).width(width).height(minOf(body.prefHeight, availableHeight)).row()
+        }
         if (footer != null) innerTable.add(footer).width(width)
         innerTable.pack()
         invalidateHierarchy()

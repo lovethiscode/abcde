@@ -148,18 +148,24 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
 
     private fun buildOrdinaryTask(task: Event): Boolean {
         val taskWidth = getTaskWidth()
-        val hash = task.hashCode() * 31 + taskWidth.toInt()
+        val compactLandscape = battlefieldBounds?.let {
+            worldScreen.stage.width > worldScreen.stage.height && it.height < 160f * unit
+        } == true && task.name.startsWith("Tutorial Task: [")
+        val hash = (task.hashCode() * 31 + taskWidth.toInt()) * 31 + if (compactLandscape) 1 else 0
         if (hash != contentHash) {
             // This is an inline teaching card: tapping it toggles the compact task icon.
             // It has no modal close control or visible scroll chrome. Leave glyph overhang room.
             val bodyWidth = (taskWidth - 8f * unit).coerceAtLeast(1f)
             val content = RenderEvent(task, worldScreen, labelWidth = bodyWidth,
-                floatingTutorial = true) { worldScreen.shouldUpdate = true }
+                floatingTutorial = true, compactFloatingTutorial = compactLandscape) {
+                worldScreen.shouldUpdate = true
+            }
             // Font glyphs may overhang their measured advance at the beginning of a line.
             content.pad(0f, 4f * unit, 0f, 4f * unit)
             if (!content.isValid) return false
             clearChildren()
             background = OrdinaryPopupStyle(unit).surface(OrdinaryPopupStyle(unit).background, 16f)
+            ordinaryHeader = null
             val heading = Table().apply {
                 defaults().left()
                 val title = task.text.ifBlank {
@@ -170,8 +176,10 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
                     setAlignment(Align.left)
                 }).growX().minWidth(0f)
             }
-            ordinaryHeader = heading
-            add(heading).width(taskWidth).pad(16f * unit, 16f * unit, 8f * unit, 16f * unit).row()
+            if (!compactLandscape) {
+                ordinaryHeader = heading
+                add(heading).width(taskWidth).pad(16f * unit, 16f * unit, 8f * unit, 16f * unit).row()
+            }
             // Normal built-in tasks fit at their full preferred height. Retain touch scrolling
             // for unusually long mod instructions without drawing a track or scrollbar thumb.
             val scroll = AutoScrollPane(content).apply {
@@ -179,11 +187,16 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
                 setScrollingDisabled(true, false)
                 setOverscroll(false, false)
             }
-            ordinaryScrollCell = add(scroll).width(taskWidth).fill()
-                .pad(0f, 16f * unit, 16f * unit, 16f * unit)
+            ordinaryScrollCell = add(scroll).width(taskWidth).fill().apply {
+                if (compactLandscape) pad(8f * unit)
+                else pad(0f, 16f * unit, 16f * unit, 16f * unit)
+            }
             contentHash = hash
         }
-        ordinaryHeader?.let { heading ->
+        if (compactLandscape) {
+            ordinaryScrollCell?.maxHeight((getTaskHeight(taskWidth) - 16f * unit)
+                .coerceAtLeast(44f * unit))
+        } else ordinaryHeader?.let { heading ->
             heading.setSize(taskWidth, heading.prefHeight)
             heading.validate()
             ordinaryScrollCell?.maxHeight((getTaskHeight(taskWidth) - heading.prefHeight - 40f * unit)
