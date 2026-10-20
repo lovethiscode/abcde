@@ -330,10 +330,12 @@ class VictoryScreen private constructor(
                         progress?.groupValues?.get(1) ?: if (completed) "Completed" else "Not completed")
                 }
                 val information = com.unciv.ui.components.widgets.ExpanderTab("Game information", font(TextRole.Control),
-                    startsOutOpened = false) { table ->
+                    startsOutOpened = false, defaultPad = 0f, topPad = 8f * popupUnit) { table ->
                     table.add(("{Difficulty}: {${gameInfo.difficulty}}\n{Game Speed}: {${gameInfo.gameParameters.speed}}\n" +
                         "{Max Turns}: ${gameInfo.gameParameters.maxTurns}").toLabel(TextRole.Body).apply { wrap = true })
-                        .width(popupContentWidth).row()
+                        .minWidth(0f).width(object : com.badlogic.gdx.scenes.scene2d.ui.Value() {
+                            override fun get(context: com.badlogic.gdx.scenes.scene2d.Actor?) = popupContentWidth
+                        }).row()
                     val details = "Victory status".toTextButton()
                     styleOrdinaryButton(details)
                     details.onActivation {
@@ -342,6 +344,7 @@ class VictoryScreen private constructor(
                     }
                     table.add(details).minHeight(44f * popupUnit).growX().row()
                 }
+                information.getCell(information.header).minWidth(0f).minHeight(44f * popupUnit)
                 add(information).width(popupContentWidth).growX().row()
                 addButton("Singleplayer") {
                     val setup = GameSetupInfo(gameInfo)

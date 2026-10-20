@@ -158,6 +158,10 @@ class PromotionTree(
     }
 
     fun allNodes() = nodes.values.asSequence()
+    /** Ruleset/candidate order for the iOS skill tree, independent of locale and acquired state. */
+    fun allNodesInSourceOrder() = availablePromotions.asSequence()
+        .mapNotNull { nodes[it.promotion.name] }.distinct()
+
     fun allRoots() = allNodes().filter { it.isRoot }
 
     private fun detectLoop(node: PromotionNode): Boolean {

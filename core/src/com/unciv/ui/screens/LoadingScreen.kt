@@ -34,11 +34,15 @@ class LoadingScreen(
         val bounds = (stage.viewport as SafeAreaViewport).drawingBounds
         image.setBounds(bounds.x, bounds.y, bounds.width, bounds.height)
         stage.addActor(image)
-        stage.addAction(Actions.sequence(
+        val ordinary = com.unciv.ui.components.widgets.UiNavigation.isIos &&
+            com.unciv.UncivGame.getGameInfoOrNull()?.let { it.campaign == null && it.endless == null } != false
+        if (ordinary) {
+            // Build before the first frame: world creation can occupy the next GL frame,
+            // so a delayed Stage action may never run before the loading screen is disposed.
+            loadingPopup = LoadingPopup(this)
+        } else stage.addAction(Actions.sequence(
             Actions.delay(1000f),
-            Actions.run {
-                loadingPopup = LoadingPopup(this)
-            }
+            Actions.run { loadingPopup = LoadingPopup(this) }
         ))
     }
 

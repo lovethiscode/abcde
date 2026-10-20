@@ -25,6 +25,11 @@ open class OrdinaryGamePopupScreen : PickerScreen() {
         super.dispose()
     }
 
+    override fun resize(width: Int, height: Int) {
+        if (dialog != null && GUI.isWorldLoaded()) GUI.getWorldScreen().resize(width, height)
+        super.resize(width, height)
+    }
+
     override fun render(delta: Float) {
         val world = if (dialog != null && GUI.isWorldLoaded()) GUI.getWorldScreen() else null
         if (world == null) { super.render(delta); return }

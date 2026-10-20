@@ -191,7 +191,7 @@ val verifyIosConfiguration by tasks.registering {
         requirePlistEntry("CFBundleName", "<string>$appNamePlaceholder</string>")
         requirePlistEntry("CFBundleIconName", "<string>AppIcon</string>")
         requirePlistEntry("ITSAppUsesNonExemptEncryption", "<false\\s*/>")
-        requirePlistEntry("UIRequiresFullScreen", "<true\\s*/>")
+        requirePlistEntry("UIRequiresFullScreen", "<false\\s*/>")
         requirePlistEntry("UIApplicationSupportsMultipleScenes", "<false\\s*/>")
         requirePlistEntry("UISceneDelegateClassName", "<string>UncivSceneDelegate</string>")
         check(plistArrayValues("UIDeviceFamily", "integer") == listOf("1", "2")) {
@@ -208,12 +208,13 @@ val verifyIosConfiguration by tasks.registering {
             "The iPhone app must advertise camera-left LandscapeRight and Portrait exactly once"
         }
         val ipadOrientations = plistArrayValues("UISupportedInterfaceOrientations~ipad", "string")
-        check(ipadOrientations.size == 3 && ipadOrientations.toSet() == setOf(
+        check(ipadOrientations.size == 4 && ipadOrientations.toSet() == setOf(
             "UIInterfaceOrientationLandscapeLeft",
             "UIInterfaceOrientationLandscapeRight",
             "UIInterfaceOrientationPortrait",
+            "UIInterfaceOrientationPortraitUpsideDown",
         )) {
-            "The iPad-specific orientation list must contain LandscapeLeft, LandscapeRight and Portrait exactly once"
+            "The resizable iPad app must advertise all four orientations exactly once"
         }
         check(Regex(
             "<key>\\s*CFBundleIcons~ipad\\s*</key>.*" +
