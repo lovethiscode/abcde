@@ -44,6 +44,7 @@ class IOSDisplay : PlatformDisplay {
     private var controller: UncivIOSViewController? = null
     private var viewWidth = 0
     private var viewHeight = 0
+    private var lastWindowed = false
     private var lastVisibleStage: Stage? = null
     private var lastVisibleArea: Rectangle? = null
 
@@ -73,6 +74,21 @@ class IOSDisplay : PlatformDisplay {
     fun restoreOrientation() = requestOrientation(notifyOnFailure = false)
 
     fun getOrientationMask(): UIInterfaceOrientationMask {
+        // A window's shape is independent of the saved full-screen orientation preference.
+        if (isResizableWindow()) return UIInterfaceOrientationMask.All
+        return preferredOrientationMask()
+    }
+
+    private fun isResizableWindow(): Boolean {
+        if (!windowingIPad) return false
+        val window = controller?.takeIf { it.isViewLoaded }?.view?.window ?: return false
+        val bounds = window.bounds
+        val screen = window.screen.bounds
+        return kotlin.math.abs(minOf(bounds.width, bounds.height) - minOf(screen.width, screen.height)) > 2.0 ||
+            kotlin.math.abs(maxOf(bounds.width, bounds.height) - maxOf(screen.width, screen.height)) > 2.0
+    }
+
+    private fun preferredOrientationMask(): UIInterfaceOrientationMask {
         val landscape = landscapeOrientationMask()
         return when (orientation) {
             ScreenOrientation.Landscape -> landscape
@@ -92,7 +108,8 @@ class IOSDisplay : PlatformDisplay {
                 return@async // viewDidAppear/resume reapplies the latest preference.
             if (NSProcessInfo.getSharedProcessInfo().isOperatingSystemAtLeastVersion(NSOperatingSystemVersion(16, 0, 0))) {
                 host.setNeedsUpdateOfSupportedInterfaceOrientations()
-                scene.requestGeometryUpdate(UIWindowSceneGeometryPreferencesIOS(getOrientationMask())) { error ->
+                if (isResizableWindow()) return@async
+                scene.requestGeometryUpdate(UIWindowSceneGeometryPreferencesIOS(preferredOrientationMask())) { error ->
                     if (revision != orientationRevision) return@requestGeometryUpdate
                     Gdx.app.error("IOSDisplay", error.localizedDescription)
                     if (notifyOnFailure) Gdx.app.postRunnable {
@@ -121,11 +138,15 @@ class IOSDisplay : PlatformDisplay {
         val topInset = if (windowingIPad) maxOf(nativeInsets.top, 44.0) else nativeInsets.top
         val next = SafeInsets(nativeInsets.left.toInt(), topInset.toInt(),
             nativeInsets.right.toInt(), nativeInsets.bottom.toInt())
-        if (next == safeInsets && width == viewWidth && height == viewHeight) return
+        val windowed = isResizableWindow()
+        val changedWindowMode = windowed != lastWindowed
+        if (next == safeInsets && width == viewWidth && height == viewHeight && !changedWindowMode) return
+        lastWindowed = windowed
         safeInsets = next
         viewWidth = width
         viewHeight = height
         refreshLayout()
+        if (changedWindowMode) restoreOrientation()
     }
 
     fun updateKeyboard(top: Float?) { keyboardTop = top }
