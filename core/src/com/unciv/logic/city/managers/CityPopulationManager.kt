@@ -97,6 +97,8 @@ class CityPopulationManager : IsPartOfGameInfoSerialization {
 
 
     fun nextTurn(food: Int) {
+        com.unciv.logic.achievements.AchievementExtendedRules.resistanceChanged(city.civ)
+        if (!city.isInResistance()) com.unciv.logic.achievements.AchievementExtendedRules.foodWorked(city)
         foodStored += food
         if (food < 0)
             city.civ.addNotification("[${city.name}] is starving!",
@@ -128,7 +130,9 @@ class CityPopulationManager : IsPartOfGameInfoSerialization {
         }
         percentOfFoodCarriedOver = percentOfFoodCarriedOver.coerceAtMost(95)  // Try to avoid runaway food gain in mods, just in case
         foodStored += (foodNeededToGrow * percentOfFoodCarriedOver / 100f).toInt()
+        val beforeGrowth = population
         addPopulation(1)
+        com.unciv.logic.achievements.AchievementExtendedRules.foodGrowth(city, beforeGrowth)
         city.shouldReassignPopulation = true
         city.civ.addNotification("[${city.name}] has grown!", city.location,
             NotificationCategory.Cities, NotificationIcon.Growth)

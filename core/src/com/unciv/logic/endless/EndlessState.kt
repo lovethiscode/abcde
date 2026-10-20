@@ -45,6 +45,7 @@ class EndlessState : IsPartOfGameInfoSerialization {
     var recordEligible = true
     var saveSequence = 0L
     var endedAt = 0L
+    var honors: EndlessAchievementHistory? = null
     var stageState: EndlessStageState? = null
     @Transient var actionDepth = 0
     @Transient var settling = false

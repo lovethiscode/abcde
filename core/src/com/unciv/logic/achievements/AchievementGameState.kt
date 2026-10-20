@@ -59,7 +59,7 @@ class AchievementGameState : IsPartOfGameInfoSerialization {
     fun canContribute(game: GameInfo, profile: AchievementProfile): Boolean =
         recordingVersion >= AchievementCatalog.firstCompleteRecordingVersion &&
             recordingVersion <= AchievementCatalog.recordingVersion &&
-            catalogVersion == AchievementCatalog.version && gameId == game.gameId && !ended && gameId !in profile.disqualifiedGames
+            catalogVersion in 3..AchievementCatalog.version && gameId == game.gameId && !ended && gameId !in profile.disqualifiedGames
 
     companion object {
         fun create(game: GameInfo, generatedMap: Boolean, hadMods: Boolean): AchievementGameState? {

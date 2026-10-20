@@ -635,6 +635,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
 
     fun makePeace() {
         if (civInfo.gameInfo.endless != null || com.unciv.logic.campaign.CampaignRules.peaceBlocked(civInfo, otherCiv)) return
+        com.unciv.logic.achievements.AchievementExtendedRules.peace(civInfo, otherCiv)
         makePeaceOneSide()
         otherCivDiplomacy().makePeaceOneSide()
 

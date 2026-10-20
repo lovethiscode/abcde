@@ -435,6 +435,7 @@ class City : IsPartOfGameInfoSerialization, INamed {
 
     fun removeFlag(flag: CityFlags) {
         flagsCountdown.remove(flag.name)
+        if (flag == CityFlags.Resistance) com.unciv.logic.achievements.AchievementExtendedRules.resistanceChanged(civ)
     }
 
     fun resetWLTKD() {
@@ -484,6 +485,7 @@ class City : IsPartOfGameInfoSerialization, INamed {
         // Original capitals and holy cities cannot be destroyed,
         // unless, of course, they are captured by a one-city-challenger.
         if (!canBeDestroyed() && !overrideSafeties) return
+        com.unciv.logic.achievements.AchievementExtendedRules.ownershipChanged(this, civ, null)
         com.unciv.logic.endless.EndlessRules.loseCore(civ.gameInfo, id)
 
         // Destroy planes stationed in city

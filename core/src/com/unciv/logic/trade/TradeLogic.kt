@@ -123,6 +123,8 @@ class TradeLogic(val ourCivilization: Civilization, val otherCivilization: Civil
         val ourDiploManager = ourCivilization.getDiplomacyManager(otherCivilization)!!
         val theirDiploManager = otherCivilization.getDiplomacyManager(ourCivilization)!!
 
+        val achievementExchange = com.unciv.logic.achievements.AchievementExtendedRules.beforeTrade(ourCivilization, otherCivilization, currentTrade)
+
         ourDiploManager.apply {
             trades.add(currentTrade)
             updateHasOpenBorders()
@@ -290,6 +292,7 @@ class TradeLogic(val ourCivilization: Civilization, val otherCivilization: Civil
 
         otherCivilization.cache.updateCivResources()
         otherCivilization.updateStatsForNextTurn()
+        com.unciv.logic.achievements.AchievementExtendedRules.afterTrade(achievementExchange)
         AchievementTracker.tradeCompleted(ourCivilization, otherCivilization, currentTrade)
     }
 }

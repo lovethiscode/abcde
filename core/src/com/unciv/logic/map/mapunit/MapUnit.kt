@@ -962,6 +962,7 @@ class MapUnit : IsPartOfGameInfoSerialization {
 
     fun destroy(destroyTransportedUnit: Boolean = true, preserveCampaignIdentity: Boolean = false) {
         if (!preserveCampaignIdentity) {
+            com.unciv.logic.achievements.AchievementExtendedRules.unitLost(this)
             com.unciv.logic.campaign.CampaignRules.unitLost(this)
             com.unciv.logic.endless.EndlessRules.unitLost(this)
         }
@@ -1190,7 +1191,10 @@ class MapUnit : IsPartOfGameInfoSerialization {
      *  Cannot be used to reassign from one civ to another - doesn't remove from old owner.
      */
     fun assignOwner(civInfo: Civilization, updateCivInfo: Boolean = true) {
-        if (::civ.isInitialized && owner != civInfo.civID) com.unciv.logic.campaign.CampaignRules.unitLost(this, com.unciv.logic.campaign.CampaignLossReason.Captured)
+        if (::civ.isInitialized && owner != civInfo.civID) {
+            com.unciv.logic.achievements.AchievementExtendedRules.unitLost(this)
+            com.unciv.logic.campaign.CampaignRules.unitLost(this, com.unciv.logic.campaign.CampaignLossReason.Captured)
+        }
         owner = civInfo.civID
         this.civ = civInfo
         civInfo.units.addUnit(this, updateCivInfo)

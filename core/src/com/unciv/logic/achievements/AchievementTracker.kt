@@ -48,7 +48,7 @@ object AchievementTracker {
         }
         val state = game.achievements ?: return
         if (state.ended || !state.initializationComplete || state.actionDepth != 0 ||
-            state.recordingVersion != AchievementCatalog.firstCompleteRecordingVersion) return
+            state.recordingVersion !in AchievementCatalog.firstCompleteRecordingVersion..AchievementCatalog.recordingVersion) return
         val player = game.civilizations.firstOrNull { it.civID == state.playerId } ?: return
         if (game.gameParameters.godMode || game.simulateUntilWin) {
             disqualify(game)
@@ -58,10 +58,12 @@ object AchievementTracker {
         val actualWinner = winner ?: game.victoryData?.let { victory -> game.civilizations.firstOrNull { it.civID == victory.winningCiv } }
         val actualRoute = victoryRoute ?: game.victoryData?.victoryType
         val terminal = actualWinner != null || player.isDefeated()
+        if (actualWinner == player) AchievementExtendedRules.finishWindows(player, terminalVictory = true)
         val ids = AchievementRules.evaluate(game, atTurnEnd || terminal, actualWinner, actualRoute)
         state.history.completed.addAll(ids)
         try {
-            service?.record(game, ids, actualRoute.takeIf { actualWinner == player })
+            val durable = service ?: return
+            durable.record(game, ids, actualRoute, terminal = terminal, playerWon = actualWinner == player)
         } catch (error: IOException) {
             // Keep branch facts for retry; a disk failure must not interrupt a game or report an uncommitted award.
             Log.error("Could not persist achievements; will retry after the next game action", error)
@@ -81,7 +83,7 @@ object AchievementTracker {
     }
 
     private fun state(civ: Civilization): AchievementGameState? = civ.gameInfo.achievements?.takeIf {
-        !it.ended && it.playerId == civ.civID && it.recordingVersion == AchievementCatalog.recordingVersion
+        !it.ended && it.playerId == civ.civID && it.recordingVersion in AchievementCatalog.firstCompleteRecordingVersion..AchievementCatalog.recordingVersion
     }
 
     fun startTurn(civ: Civilization) { state(civ)?.history?.startTurn(civ.gameInfo.turns) }
@@ -98,12 +100,13 @@ object AchievementTracker {
 
     fun cityFounded(city: City) {
         val state = city.civ.gameInfo.achievements ?: return
-        if (state.ended || state.recordingVersion != AchievementCatalog.recordingVersion) return
+        if (state.ended || state.recordingVersion !in AchievementCatalog.firstCompleteRecordingVersion..AchievementCatalog.recordingVersion) return
         val history = state.history
         val key = (++history.nextCitySerial).toString()
         history.cityKeys[AchievementGameState.tileKey(city.getCenterTile())] = key
         if (city.civ.civID == state.playerId) history.foundedCities.add(key)
         cityAcquired(city)
+        AchievementExtendedRules.founded(city)
     }
 
     fun cityAcquired(city: City) {
@@ -117,7 +120,9 @@ object AchievementTracker {
         if (building.isWonder) state(city.civ)?.history?.restrictions?.add(AchievementRules.worldWonder)
     }
 
-    fun buildingProduced(city: City, building: Building) {
+    fun buildingProduced(city: City, building: Building, normalProduction: Boolean = false) {
+        if (normalProduction) AchievementExtendedRules.buildingProduced(city, building)
+        else AchievementExtendedRules.productionReset(city, building.name)
         if (!building.isWonder) return
         val history = state(city.civ)?.history ?: return
         history.builtWonders[building.name] = cityKey(city)
@@ -173,6 +178,7 @@ object AchievementTracker {
     }
 
     fun cityBattleWon(unit: MapUnit, city: City) {
+        AchievementExtendedRules.captureStarted(unit, city)
         val history = state(unit.civ)?.history ?: return
         history.pendingCaptures[cityKey(city)] = AchievementCapture().apply {
             unitId = unit.id
@@ -196,6 +202,7 @@ object AchievementTracker {
             if (city == null) { history.pendingCaptures.remove(cityId); continue }
             if (city.civ != player || !capture.ownershipSettled) continue
             history.pendingCaptures.remove(cityId)
+            AchievementExtendedRules.captureSettled(city)
             if (!capture.foreign) continue
             val captor = player.units.getUnitById(capture.unitId)
             if (captor != null && !captor.isDestroyed && captor.isMilitary() &&

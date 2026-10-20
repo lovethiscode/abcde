@@ -91,6 +91,8 @@ class CityStats(val city: City) {
 
     var statsFromTiles = Stats()
 
+    @Transient var romanBonusConstruction = ""
+        private set
     var currentCityStats: Stats = Stats()  // This is so we won't have to calculate this multiple times - takes a lot of time, especially on phones
 
     //endregion
@@ -514,6 +516,8 @@ class CityStats(val city: City) {
         val newCurrentCityStats = Stats()
         for (stat in finalStatList.values) newCurrentCityStats.add(stat)
         currentCityStats = newCurrentCityStats
+        romanBonusConstruction = if (currentConstruction is Building &&
+            com.unciv.logic.achievements.AchievementExtendedRules.romanBonus(city, currentConstruction)) currentConstruction.name else ""
 
         if (updateCivStats) city.civ.updateStatsForNextTurn()
     }

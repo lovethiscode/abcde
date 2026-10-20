@@ -204,7 +204,7 @@ class CityConquestFunctions(val city: City) {
         }
     }
 
-    fun liberateCity(conqueringCiv: Civilization) {
+    fun liberateCity(conqueringCiv: Civilization): Unit = AchievementTracker.action(conqueringCiv.gameInfo) {
         if (city.foundingCivObject == null) { // this should never happen but just in case...
             this.puppetCity(conqueringCiv)
             this.annexCity()
@@ -245,6 +245,7 @@ class CityConquestFunctions(val city: City) {
         for (unit in city.getTiles().flatMap { it.getUnits() }.toList())
             if (!unit.movement.canPassThrough(unit.currentTile))
                 unit.movement.teleportToClosestMoveableTile()
+        com.unciv.logic.achievements.AchievementExtendedRules.liberated(city, conqueringCiv)
         AchievementTracker.settle(conqueringCiv.gameInfo)
     }
 
@@ -316,6 +317,7 @@ class CityConquestFunctions(val city: City) {
     fun moveToCiv(newCiv: Civilization) {
         val oldCiv = city.civ
         check(oldCiv.gameInfo.endless?.let { it.modeVersion == 2 && oldCiv.civID == it.playerId && newCiv != oldCiv && !city.hasJustBeenConquered } != true) { "Defense cities cannot be transferred." }
+        com.unciv.logic.achievements.AchievementExtendedRules.ownershipChanged(city, oldCiv, newCiv)
         com.unciv.logic.campaign.CampaignRules.cityTransferred(city, oldCiv, newCiv)
         if (oldCiv.gameInfo.endless?.playerId == oldCiv.civID && newCiv != oldCiv)
             com.unciv.logic.endless.EndlessRules.loseCore(oldCiv.gameInfo, city.id)

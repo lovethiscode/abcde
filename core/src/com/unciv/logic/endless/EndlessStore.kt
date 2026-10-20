@@ -119,7 +119,7 @@ class EndlessStore(private val files: UncivFiles) {
         val previous = saved()
         val old = previous?.endless
         if (old != null && (old.attemptId != s.attemptId || old.ended || old.saveSequence >= s.saveSequence)) {
-            if (old.attemptId == s.attemptId && old.ended) reconcile(previous)
+            if (old.attemptId == s.attemptId) reconcile(previous)
             return@withLock
         }
         write(game)
@@ -161,6 +161,7 @@ class EndlessStore(private val files: UncivFiles) {
             check(current.endless!!.claimedStages == s.claimedStages && digest(candidate) == s.pendingRewardDigest)
             write(candidate)
         }
+        EndlessAchievementStore(files).reconcileCommitted(current)
         ChallengeTelemetry.report("reward",candidate,s.pendingRewardChoice)
         s.pendingRewardCandidate = null; s.pendingRewardDigest = ""; s.pendingRewardChoice = ""; s.saveBlocked = false
         candidate
@@ -181,6 +182,7 @@ class EndlessStore(private val files: UncivFiles) {
 
     private fun write(game: GameInfo, action: String = "saved") {
         SaveFileWriter.write(slot) { FileConversions.writeJson(it, game, true) }
+        EndlessAchievementStore(files).reconcileCommitted(game)
         ChallengeTelemetry.report(action, game)
     }
 
@@ -194,6 +196,7 @@ class EndlessStore(private val files: UncivFiles) {
 
     fun reconcile(game: GameInfo) {
         val s = game.endless ?: return
+        saved()?.takeIf { it.endless?.attemptId == s.attemptId }?.let { EndlessAchievementStore(files).reconcileCommitted(it) }
         if (!s.ended || !s.recordEligible || s.status == "Faulted") return
         val v2 = s.modeVersion == 2
         val recordsFile = recordsFile(v2)

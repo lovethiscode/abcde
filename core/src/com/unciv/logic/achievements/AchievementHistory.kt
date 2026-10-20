@@ -5,6 +5,7 @@ import com.unciv.logic.IsPartOfGameInfoSerialization
 
 /** Branch-local source facts. Legacy fields remain readable but are not used to award V2 medals. */
 class AchievementHistory : IsPartOfGameInfoSerialization {
+    var extended = AchievementExtendedHistory()
     var foundedCities = HashSet<String>()
     var maximumCities = 0
     var nextCitySerial = 0

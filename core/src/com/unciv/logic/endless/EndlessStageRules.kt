@@ -88,6 +88,7 @@ object EndlessStageRules {
 
     fun actionSettled(game: GameInfo) {
         val s = game.endless!!; val state = s.stageState!!
+        if (game.gameParameters.godMode || game.simulateUntilWin) s.recordEligible = false
         if (s.actionDepth != 0 || s.settling || s.ended) return
         s.settling = true
         try {
@@ -101,6 +102,7 @@ object EndlessStageRules {
                 state.clearedAt = s.round
                 state.nextStageRound = EndlessCounter.add(s.round,if (state.pace == "wild") 1 else 4)
                 state.phase = "RewardPending"
+                EndlessAchievementRules.stageCompleted(game)
                 state.preview = EndlessStagePlanner.plan(s.clone(),state.completedStages + 1,state.nextStageRound).first().apply { members.clear() }
             }
             if (!s.inTurn) settleBenefits(game)
@@ -152,6 +154,7 @@ object EndlessStageRules {
             if (state.phase == "Preparation" && s.round >= state.startRound) state.phase = "Combat"
             if (state.phase == "Combat") {
                 for (wave in s.waves.filter { !it.announced && it.round <= s.round }) {
+                    if (s.waves.none { it.announced }) EndlessAchievementRules.beforeFirstWave(game)
                     wave.announced = true; wave.members.forEach { it.lifecycle = "Pending" }
                     s.waveNumber = wave.number
                     notify(game,"Wave [${wave.number}] is approaching from [${directions[wave.mainSector]}]!")

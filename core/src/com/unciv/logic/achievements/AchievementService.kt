@@ -29,6 +29,7 @@ class AchievementService(private val directory: File, private val changed: () ->
             val merged = current.mergedWith(guest)
             current.unlocks = merged.unlocks
             current.victories = merged.victories
+            current.firstTerminals = merged.firstTerminals
             current.v2BuiltWonders = merged.v2BuiltWonders
             current.wonderGameIds = merged.wonderGameIds
             current.disqualifiedGames = merged.disqualifiedGames
@@ -56,18 +57,20 @@ class AchievementService(private val directory: File, private val changed: () ->
         return game.gameId !in blockedGames && ownerForGame(game) == accountKey && state.canContribute(game, profile)
     }
 
-    @Synchronized fun record(game: GameInfo, ids: Set<String>, victoryRoute: String? = null) {
+    @Synchronized fun record(game: GameInfo, ids: Set<String>, victoryRoute: String? = null,
+                             terminal: Boolean = false, playerWon: Boolean = false) {
         val state = game.achievements ?: return
         if (!canContribute(game)) return
         val eligibleIds = ids.filterTo(HashSet()) {
             AchievementCatalog.byId[it]?.let { definition ->
-                !definition.isCollection && AchievementCatalog.ineligibility(definition, state) == null
+                definition.mode == "free" && !definition.isCollection && AchievementCatalog.ineligibility(definition, state) == null
             } == true
         }
         val wonders = state.history.builtWonders.keys.takeIf {
             AchievementCatalog.ineligibility(AchievementCatalog.byId.getValue("N26"), state) == null
         }.orEmpty()
-        if (eligibleIds.all { it in profile.unlocks } && profile.v2BuiltWonders.containsAll(wonders) &&
+        val needsTerminal = terminal && state.recordingVersion >= 4 && "F15" in state.availableIds && game.gameId !in profile.firstTerminals
+        if (!needsTerminal && eligibleIds.all { it in profile.unlocks } && profile.v2BuiltWonders.containsAll(wonders) &&
             (wonders.isEmpty() || game.gameId in profile.wonderGameIds)) return
         fun record(id: String = "") = AchievementRecord().apply {
             persistedAt = System.currentTimeMillis()
@@ -75,12 +78,15 @@ class AchievementService(private val directory: File, private val changed: () ->
             civilization = state.civilization
             difficulty = state.difficulty
             achievementId = id
-            this.victoryRoute = victoryRoute.orEmpty()
+            this.victoryRoute = if (id.isEmpty() || !terminal || playerWon) victoryRoute.orEmpty() else ""
             turn = game.turns
+            recordingVersion = state.recordingVersion
             catalogVersion = state.catalogVersion
             ruleVersion = AchievementCatalog.version
         }
         profile = store(accountKey).update { next ->
+            if (needsTerminal && game.gameId !in next.firstTerminals) next.firstTerminals[game.gameId] =
+                com.unciv.json.json().toJson(record().apply { facts["outcome"] = if (playerWon) "win" else "loss" })
             eligibleIds.forEach { next.recordUnlock(record(it)) }
             next.v2BuiltWonders.addAll(wonders)
             if (wonders.isNotEmpty()) next.wonderGameIds.add(game.gameId)
@@ -100,6 +106,8 @@ class AchievementService(private val directory: File, private val changed: () ->
 
     @Synchronized fun pending(): Set<String> = profile.unlocks.keys.intersect(AchievementCatalog.reportableIds) - profile.reportedIds
     @Synchronized fun completed(): Set<String> = profile.unlocks.keys.intersect(AchievementCatalog.knownIds)
+    /** Detached read model for the handbook; browsing must never settle or award achievements. */
+    @Synchronized fun handbookSnapshot(): AchievementProfile = profile.clone()
     @Synchronized fun isBoundTo(gamePlayerId: String): Boolean = accountKey == playerKey(gamePlayerId)
 
     private fun playerKey(gamePlayerId: String) = MessageDigest.getInstance("SHA-256")
@@ -171,7 +179,8 @@ class AchievementService(private val directory: File, private val changed: () ->
             catalogVersion = AchievementCatalog.version
             ruleVersion = AchievementCatalog.version
         }) }
+        if (profile.victoryTypes().size >= 3) unlock("F15")
         if (profile.v2BuiltWonders.size >= 12 && profile.wonderGameIds.size >= 3) unlock("N26")
-        if (AchievementCatalog.byId.keys.filter { it != "N40" }.all { it in profile.unlocks }) unlock("N40")
+        if (AchievementCatalog.originalDependencies.all { it in profile.unlocks }) unlock("N40")
     }
 }

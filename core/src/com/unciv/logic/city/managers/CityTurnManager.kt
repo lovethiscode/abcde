@@ -118,6 +118,7 @@ class CityTurnManager(val city: City) {
                         demandNewResource()
                     }
                     CityFlags.Resistance.name -> {
+                        com.unciv.logic.achievements.AchievementExtendedRules.resistanceChanged(city.civ)
                         city.shouldReassignPopulation = true
                         city.civ.addNotification(
                             "The resistance in [${city.name}] has ended!",

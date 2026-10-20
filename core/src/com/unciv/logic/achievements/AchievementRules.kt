@@ -10,8 +10,8 @@ object AchievementRules {
     fun evaluate(game: GameInfo, atTurnEnd: Boolean = false,
                  winner: Civilization? = null, victoryRoute: String? = null): Set<String> {
         val state = game.achievements ?: return emptySet()
-        if (state.ended || state.recordingVersion != AchievementCatalog.recordingVersion ||
-            state.catalogVersion != AchievementCatalog.version || state.gameId != game.gameId) return emptySet()
+        if (state.ended || state.recordingVersion !in AchievementCatalog.firstCompleteRecordingVersion..AchievementCatalog.recordingVersion ||
+            state.catalogVersion !in 3..AchievementCatalog.version || state.gameId != game.gameId) return emptySet()
         val player = game.civilizations.firstOrNull { it.civID == state.playerId } ?: return emptySet()
         val history = state.history
         val result = HashSet(history.completed)
@@ -37,6 +37,8 @@ object AchievementRules {
             val record = history.units[it.id.toString()]
             record != null && record.combatPromotions >= 5 && record.majorMilitaryKills >= 10
         })
+
+        result.addAll(AchievementExtendedRules.evaluate(game, atTurnEnd))
 
         if (atTurnEnd) {
             add("N10", ownCities.count { !it.isCapital() && it.isConnectedToCapital() } >= 3)
@@ -81,7 +83,7 @@ object AchievementRules {
         }
         return result.filterTo(HashSet()) {
             val definition = AchievementCatalog.byId[it]
-            definition != null && !definition.isCollection && AchievementCatalog.ineligibility(definition, state) == null
+            definition != null && definition.mode == "free" && !definition.isCollection && AchievementCatalog.ineligibility(definition, state) == null
         }
     }
 }

@@ -64,8 +64,8 @@ class AchievementAvailabilityTest {
         assertEquals("The required victory route is disabled", reason(f, "N37"))
         f.state.enabledVictories.add("Scientific")
         assertNull(reason(f, "N38"))
-        assertEquals(40, f.state.availableIds.size)
-        assertEquals(40, AchievementCatalog.byId.size)
+        assertEquals(54, f.state.availableIds.size)
+        assertEquals(54, AchievementCatalog.byId.size)
     }
 
     @Test fun oldOrEndedGamesCannotSuggestFreshProgressButCollectionsStayVisible() {

@@ -350,7 +350,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
             if (inProgressConstructions.containsKey(constructionName)
                     && inProgressConstructions[constructionName]!! >= productionCost) {
                 val potentialOverflow = inProgressConstructions[constructionName]!! - productionCost
-                if (completeConstruction(construction)) {
+                if (completeConstruction(construction, normalProduction = true)) {
                     // See the URL below for explanation for this cap
                     // https://forums.civfanatics.com/threads/hammer-overflow.419352/
                     val maxOverflow = maxOf(productionCost, city.cityStats.currentCityStats.production.roundToInt())
@@ -373,6 +373,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
             if (getWorkDone( currentConstructionName()) == 0) {
                 constructionBegun(getConstruction( currentConstructionName()))
             }
+            com.unciv.logic.achievements.AchievementExtendedRules.productionAdded(city, cityStats.production.roundToInt(), cityStats)
             addProductionPoints(cityStats.production.roundToInt() + productionOverflow)
             productionOverflow = 0
         }
@@ -467,6 +468,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
                     inProgressConstructions[cheapestUpgradeUnit.name] = (inProgressConstructions[cheapestUpgradeUnit.name] ?: 0) + workDone
                 }
             }
+            com.unciv.logic.achievements.AchievementExtendedRules.productionReset(city, constructionName)
             inProgressConstructions.remove(constructionName)
         }
     }
@@ -502,7 +504,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
     }
 
     /** Returns false if we tried to construct a unit but it has nowhere to go */
-    fun completeConstruction(construction: INonPerpetualConstruction): Boolean = AchievementTracker.action(city.civ.gameInfo) {
+    fun completeConstruction(construction: INonPerpetualConstruction, normalProduction: Boolean = false): Boolean = AchievementTracker.action(city.civ.gameInfo) {
         if ((!com.unciv.logic.campaign.CivilWarCampaign.constructionAllowed(city, construction.name) || !com.unciv.logic.endless.EndlessRules.constructionAllowed(city, construction.name))) return@action false
         if (com.unciv.logic.campaign.CivilWarCampaign.isActive(city.civ.gameInfo) && !construction.isBuildable(this)) return@action false
         var unit: MapUnit? = null
@@ -589,7 +591,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
             }
         }
         com.unciv.logic.campaign.CampaignRules.productionCompleted(city, construction.name, unit)
-        if (construction is Building) AchievementTracker.buildingProduced(city, construction)
+        if (construction is Building) AchievementTracker.buildingProduced(city, construction, normalProduction)
         true
     }
 
@@ -692,6 +694,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
     fun removeBuilding(building: Building) {
         check(city.civ.gameInfo.endless?.let { it.modeVersion == 2 && !it.coreLost && building.name == "Palace" } != true) { "The defense Palace cannot be removed." }
         builtBuildingObjects = builtBuildingObjects.withoutItem(building)
+        com.unciv.logic.achievements.AchievementExtendedRules.productionReset(city, building.name)
         builtBuildings.remove(building.name)
         
         if (building.hasCreateOneImprovementUnique()){
@@ -786,6 +789,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
                 ?: return false  // nothing built - no pay
         }
 
+        com.unciv.logic.achievements.AchievementExtendedRules.productionReset(city, construction.name)
         if (!city.civ.gameInfo.gameParameters.godMode) {
             val constructionCost = construction.getStatBuyCost(city, stat)
                 ?: return false // We should never end up here anyway, so things have already gone _way_ wrong

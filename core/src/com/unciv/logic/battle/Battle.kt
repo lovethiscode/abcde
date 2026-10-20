@@ -150,6 +150,7 @@ object Battle {
         triggerCombatUniques(attacker, defender, attackedTile)
 
         val damageDealt = takeDamage(attacker, defender) + extraRangedAttackDamage
+        com.unciv.logic.achievements.AchievementExtendedRules.activeAttack(attacker, defender, damageDealt.attackerDealt)
 
         // check if unit is captured by the attacker (prize ships unique)
         // As ravignir clarified in issue #4374, this only works for aggressor
@@ -157,6 +158,7 @@ object Battle {
 
         if (defender is MapUnitCombatant && defender.unit.isMilitary() && defender.isDefeated() &&
             !captureMilitaryUnitSuccess && damageDealt.attackerDealt > 0) {
+            com.unciv.logic.achievements.AchievementExtendedRules.militaryDefeated(attacker.getCivInfo(), defender.unit.id, defenderWasMajorMilitary)
             com.unciv.logic.campaign.CampaignRules.combatDefeat(attacker, defender.unit)
             com.unciv.logic.endless.EndlessRules.combatDefeat(attacker, defender.unit)
             if (attacker is MapUnitCombatant)
@@ -164,6 +166,7 @@ object Battle {
             else AchievementTracker.eventCompleted(attacker.getCivInfo(), "N06")
         }
         if (attacker is MapUnitCombatant && attacker.unit.isMilitary() && attacker.isDefeated() && damageDealt.defenderDealt > 0) {
+            com.unciv.logic.achievements.AchievementExtendedRules.militaryDefeated(defender.getCivInfo(), attacker.unit.id, attackerWasMajorMilitary)
             com.unciv.logic.campaign.CampaignRules.combatDefeat(defender, attacker.unit)
             com.unciv.logic.endless.EndlessRules.combatDefeat(defender, attacker.unit)
             if (defender is MapUnitCombatant)

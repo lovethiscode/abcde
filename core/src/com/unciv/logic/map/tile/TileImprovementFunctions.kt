@@ -217,6 +217,7 @@ class TileImprovementFunctions(val tile: Tile) {
         }
 
         if (improvement == null) {
+            com.unciv.logic.achievements.AchievementExtendedRules.improvementChanged(tile)
             val wasEncampment = tile.isBarbarianEncampment()
             tile.improvementIsPillaged = false
             tile.setImprovementBasic(null)
@@ -274,7 +275,10 @@ class TileImprovementFunctions(val tile: Tile) {
             triggerImprovementUniques(improvement, civToActivateBroaderEffects, unit)
 
         updateCity()
-        if (improvementFieldHasChanged) AchievementTracker.improvementBuilt(tile, unit)
+        if (improvementFieldHasChanged) {
+            com.unciv.logic.achievements.AchievementExtendedRules.improvementBuilt(tile, unit)
+            AchievementTracker.improvementBuilt(tile, unit)
+        }
     }
 
     private fun triggerImprovementUniques(

@@ -26,19 +26,19 @@ class AchievementFoundationTest {
 
     private fun state(testGame: TestGame) = AchievementGameState.create(testGame.gameInfo, true, false)!!
 
-    @Test fun catalogMatchesTheChinesePreviewFortyAndExactlySixBeginnerClues() {
+    @Test fun catalogExtendsOriginalCluesWithIndependentLocalOnlyRules() {
         assertTrue(AchievementCatalog.localPreview)
-        assertEquals(3, AchievementCatalog.version)
-        assertEquals(3, AchievementCatalog.recordingVersion)
-        assertEquals((1..40).map { "N%02d".format(it) }, AchievementCatalog.definitions.map { it.id })
+        assertEquals(4, AchievementCatalog.version)
+        assertEquals(4, AchievementCatalog.recordingVersion)
+        assertEquals((1..40).map { "N%02d".format(it) }, AchievementCatalog.definitions.filter { it.id in AchievementCatalog.originalIds }.map { it.id })
         assertEquals(listOf(6, 12, 14, 8), AchievementTier.entries.map { tier ->
-            AchievementCatalog.definitions.count { it.tier == tier }
+            AchievementCatalog.definitions.count { it.tier == tier && it.id in AchievementCatalog.originalIds }
         })
-        assertEquals(AchievementCatalog.byId.keys - setOf("N01", "N02", "N03", "N05", "N06", "N09", "N40"),
+        assertEquals(AchievementCatalog.originalIds - setOf("N01", "N02", "N03", "N05", "N06", "N09", "N40"),
             AchievementCatalog.definitions.filter { it.minimumDifficulty != null }.map { it.id }.toSet())
-        assertEquals(setOf("Egypt", "Rome", "China", "Persia"), AchievementCatalog.civilizationAchievements.values.toSet())
-        assertEquals(4, AchievementCatalog.civilizationAchievements.size)
-        assertEquals(AchievementCatalog.byId.keys, AchievementCatalog.reportableIds)
+        assertEquals(setOf("Egypt", "Rome", "China", "Persia", "Inca", "Mongolia"), AchievementCatalog.civilizationAchievements.values.toSet())
+        assertEquals(8, AchievementCatalog.civilizationAchievements.size)
+        assertEquals(AchievementCatalog.originalIds, AchievementCatalog.reportableIds)
         assertTrue(AchievementCatalog.legacyIds.none { it in AchievementCatalog.reportableIds })
         assertEquals("com.aishuati.unciv.achievement.n01", AchievementCatalog.gameCenterId("N01"))
         assertThrows(IllegalArgumentException::class.java) { AchievementCatalog.gameCenterId("A01") }
@@ -93,7 +93,7 @@ class AchievementFoundationTest {
         game.gameInfo.difficulty = "Settler"
         game.gameInfo.gameParameters.victoryTypes.clear()
         val state = state(game)
-        for (definition in AchievementCatalog.definitions.filter { it.minimumDifficulty == null }) {
+        for (definition in AchievementCatalog.definitions.filter { it.minimumDifficulty == null && it.mode == "free" }) {
             state.civilization = definition.civilization ?: "Rome"
             assertNull(definition.id, AchievementCatalog.ineligibility(definition, state))
         }
@@ -168,7 +168,7 @@ class AchievementFoundationTest {
         val missingVersions = json().fromJson(AchievementGameState::class.java, "{gameId:old}")
         assertEquals(0, missingVersions.catalogVersion)
         assertEquals(0, missingVersions.recordingVersion)
-        state.recordingVersion = AchievementCatalog.firstCompleteRecordingVersion + 1
+        state.recordingVersion = AchievementCatalog.recordingVersion + 1
         assertFalse(state.canContribute(game, AchievementProfile()))
     }
 
@@ -190,7 +190,8 @@ class AchievementFoundationTest {
     @Test fun bothBuiltInRulesetsSupportTheCatalogWithReligionExplicitlyScoped() {
         for (base in com.unciv.models.metadata.BaseRuleset.entries) {
             val f = AchievementTestFixture(baseRuleset = base)
-            for (definition in AchievementCatalog.definitions) {
+            f.state.recordingVersion = AchievementCatalog.recordingVersion
+            for (definition in AchievementCatalog.definitions.filter { it.mode == "free" }) {
                 f.state.difficulty = "Deity"
                 f.state.oneCityChallenge = true
                 f.state.civilization = definition.civilization ?: "Rome"

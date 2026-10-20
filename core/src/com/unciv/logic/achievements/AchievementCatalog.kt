@@ -15,7 +15,9 @@ data class AchievementDefinition(
     val requiredUnit: String? = null,
     val requiresReligion: Boolean = false,
     val isCollection: Boolean = false,
-    val minimumOpponents: Int = 3
+    val minimumOpponents: Int = 3,
+    val minimumRecordingVersion: Int = 3,
+    val mode: String = "free"
 ) {
     // Avoid the generated Boolean.hashCode(boolean), which RoboVM does not provide.
     override fun hashCode(): Int = id.hashCode()
@@ -23,11 +25,11 @@ data class AchievementDefinition(
 
 /** Stable rule identities. Display strings and artwork are separate from eligibility. */
 object AchievementCatalog {
-    const val version = 3
+    const val version = 4
     const val localPreview = true
 
     // V1/V2 saves lack the source facts required by this preview. Never upgrade them on load.
-    const val recordingVersion = 3
+    const val recordingVersion = 4
     const val firstCompleteRecordingVersion = 3
 
     val difficulties = listOf("Settler", "Chieftain", "Warlord", "Prince", "King", "Emperor", "Immortal", "Deity")
@@ -73,14 +75,31 @@ object AchievementCatalog {
         AchievementDefinition("N37", AchievementTier.Extreme, minimumDifficulty = "Deity", minimumOpponents = 4),
         AchievementDefinition("N38", AchievementTier.Extreme, minimumDifficulty = "Emperor", oneCityChallenge = true, minimumOpponents = 4),
         AchievementDefinition("N39", AchievementTier.Extreme, minimumDifficulty = "Emperor", minimumOpponents = 4),
-        AchievementDefinition("N40", AchievementTier.Extreme, isCollection = true)
+        AchievementDefinition("N40", AchievementTier.Extreme, isCollection = true),
+        AchievementDefinition("F04", AchievementTier.Simple, minimumRecordingVersion = 4),
+        AchievementDefinition("F05", AchievementTier.Simple, minimumRecordingVersion = 4),
+        AchievementDefinition("F06", AchievementTier.Simple, minimumRecordingVersion = 4),
+        AchievementDefinition("F07", AchievementTier.Simple, minimumRecordingVersion = 4),
+        AchievementDefinition("F08", AchievementTier.Simple, minimumRecordingVersion = 4),
+        AchievementDefinition("F09", AchievementTier.Simple, minimumRecordingVersion = 4),
+        AchievementDefinition("R28", AchievementTier.Simple, civilization = "Rome", minimumRecordingVersion = 4),
+        AchievementDefinition("R34", AchievementTier.Simple, civilization = "China", requiredUnit = "Chu-Ko-Nu", minimumRecordingVersion = 4),
+        AchievementDefinition("F13", AchievementTier.Simple, civilization = "Inca", minimumRecordingVersion = 4),
+        AchievementDefinition("F14", AchievementTier.Simple, civilization = "Mongolia", requiredUnit = "Keshik", minimumRecordingVersion = 4),
+        AchievementDefinition("F15", AchievementTier.Simple, isCollection = true, minimumRecordingVersion = 4),
+        AchievementDefinition("E01", AchievementTier.Simple, minimumRecordingVersion = 4, mode = "endless"),
+        AchievementDefinition("E03", AchievementTier.Simple, minimumRecordingVersion = 4, mode = "endless"),
+        AchievementDefinition("E04", AchievementTier.Simple, minimumRecordingVersion = 4, mode = "endless")
     )
     val byId = definitions.associateBy { it.id }
+    /** A closed collection: adding a new rule must never expand the original encyclopedia. */
+    val originalDependencies = (1..39).map { "N%02d".format(it) }.toSet()
+    val originalIds = originalDependencies + "N40"
 
     // Retired V1 awards remain readable, but only the independent V2 catalog is submitted.
     val legacyIds = (1..40).mapTo(HashSet()) { "A%02d".format(it) }
-    val reportableIds = byId.keys
-    val knownIds = reportableIds + legacyIds
+    val reportableIds = originalIds
+    val knownIds = byId.keys + legacyIds
     fun gameCenterId(id: String): String {
         require(id in reportableIds) { "This achievement has no Game Center mapping" }
         return "com.aishuati.unciv.achievement.${id.lowercase()}"
@@ -116,6 +135,8 @@ object AchievementCatalog {
 
     /** Initial per-achievement applicability; ordinary branch history is checked by its evaluator. */
     fun ineligibility(definition: AchievementDefinition, state: AchievementGameState): String? = when {
+        state.recordingVersion < definition.minimumRecordingVersion -> "Start a new game to attempt this achievement"
+        definition.mode != "free" -> "This achievement requires Endless defense"
         state.aiOpponents < 1 -> "At least one AI opponent is required"
         definition.id !in state.availableIds -> "Start a new game to attempt this achievement"
         !meetsDifficulty(state.difficulty, definition.minimumDifficulty) -> "The difficulty is too low"
@@ -131,13 +152,13 @@ object AchievementCatalog {
     fun currentGameIneligibility(definition: AchievementDefinition, game: GameInfo?): String? {
         if (definition.id == "N40") return null // The collection belongs to the profile, across games.
         val state = game?.achievements
-        if (state == null || state.recordingVersion != recordingVersion || state.catalogVersion != version ||
+        if (state == null || state.recordingVersion !in firstCompleteRecordingVersion..recordingVersion || state.catalogVersion !in 3..version ||
             state.gameId != game.gameId)
             return "Start a new eligible single-player game"
         if (state.ended) return "This game no longer records achievements"
         ineligibility(definition, state)?.let { return it }
         val id = definition.id
-        if (state.oneCityChallenge && id in setOf("N02", "N10", "N12", "N14", "N28", "N29"))
+        if (state.oneCityChallenge && id in setOf("N02", "N10", "N12", "N14", "N28", "N29", "F04", "R28"))
             return "One City Challenge prevents the required expansion"
         if (id == "N07" && game.gameParameters.noBarbarians) return "Barbarians are disabled"
         if (id == "N16" && game.tileMap.values.mapNotNull { it.naturalWonder }.toSet().size < 3)

@@ -132,7 +132,7 @@ class AchievementServiceTest {
         AchievementTracker.service = service
         val f = AchievementTestFixture().apply { state.difficulty = "Emperor" }
         service.record(f.game, setOf("N39"), "Cultural")
-        assertTrue(service.completed().containsAll(AchievementCatalog.byId.keys))
+        assertTrue(service.completed().containsAll(AchievementCatalog.originalIds))
         assertEquals(40, service.completed().count { it.startsWith("N") })
         service.restoreCompleted(key, setOf("A01"))
         assertEquals(40, AchievementService(directory).completed().count { it.startsWith("N") })

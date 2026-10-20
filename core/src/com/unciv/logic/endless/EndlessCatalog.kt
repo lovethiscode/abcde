@@ -20,6 +20,7 @@ object EndlessCatalog {
         val game = requireNotNull(FileConversions.readJson(Gdx.files.internal("endless-v2/initial-state.json"), GameInfo::class.java))
         game.endless = EndlessState().apply {
             schemaVersion = 2; modeVersion = 2; mapVersion = 2; balanceVersion = stageBalanceVersion; scoringVersion = 2
+            honors = EndlessAchievementHistory().apply { recordingVersion = 1 }
             stageState = EndlessStageState().apply {
                 this.pace = pace; corePosition = game.getCities().first().location
                 phase = "Preparation"; currentStage = 1; completedStages = 0; combatRounds = 0

@@ -604,6 +604,7 @@ class UnitMovement(val unit: MapUnit) {
             }
         }
 
+        com.unciv.logic.achievements.AchievementExtendedRules.voluntaryMove(unit, origin)
         val finalTileReached = lastReachedEnterableTile
 
         // Silly floats which are almost zero

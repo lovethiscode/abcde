@@ -70,7 +70,9 @@ class TurnManager(val civInfo: Civilization) {
 
         civInfo.cache.updateViewableTiles() // adds explored tiles so that the units will be able to perform automated actions better
         civInfo.cache.updateCitiesConnectedToCapital()
+        com.unciv.logic.achievements.AchievementExtendedRules.visibleTurnStart(civInfo)
         startTurnFlags()
+        com.unciv.logic.achievements.AchievementExtendedRules.resistanceChanged(civInfo)
         updateRevolts()
 
         civInfo.forEachTriggeredUnique(UniqueType.TriggerUponTurnStart, civInfo.state, ignoreCities = true) { unique ->
