@@ -12,7 +12,7 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 class LoadFailurePopup(screen: BaseScreen, message: String, retry: () -> Unit) : Popup(screen, ordinaryShell = true) {
     init {
         ordinaryPreferredWidth = 480f
-        addDialogTitle("Unable to load game", "Load failed")
+        addDialogTitle("Unable to load game", "Load failed", dismissible = false)
         addGoodSizedLabel("The game was not loaded. Try again, or return to choose another save.").row()
         val details = ExpanderTab("View error details", fontSize = UiTypography.size(TextRole.Control, popupUnit),
             startsOutOpened = false, defaultPad = 0f, headerPad = 12f * popupUnit,

@@ -2,6 +2,7 @@ package com.unciv.ui.screens.pickerscreens
 
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch
+import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.*
@@ -17,6 +18,7 @@ import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.input.*
 import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.components.widgets.ZoomableScrollPane
 import com.unciv.ui.images.ImageGetter
 import com.unciv.view.MapUnitView
 import kotlin.math.atan2
@@ -61,14 +63,18 @@ internal class PromotionAtlasView(
     private var saving = false
     private var statusText: String? = null
     private lateinit var canvas: WidgetGroup
-    private lateinit var graphScroll: AutoScrollPane
+    private lateinit var graphScroll: ZoomableScrollPane
     private var detailsScroll: AutoScrollPane? = null
-    class State(val selection: String?, val x: Float, val y: Float, val expanded: Boolean, val detailY: Float, val prerequisitesOnly: Boolean)
+    private var graphZoom = 1f
+    class State(val selection: String?, val x: Float, val y: Float, val zoom: Float,
+                val expanded: Boolean, val detailY: Float, val prerequisitesOnly: Boolean)
     fun snapshot() = State(selected?.promotion?.name, graphScroll.scrollX / style.unit,
-        graphScroll.scrollY / style.unit, expanded, (detailsScroll?.scrollY ?: 0f) / style.unit, prerequisitesOnly)
+        graphScroll.scrollY / style.unit, graphScroll.scaleX, expanded,
+        (detailsScroll?.scrollY ?: 0f) / style.unit, prerequisitesOnly)
     fun restore(state: State, save: Boolean) {
         selected = tree.allNodes().firstOrNull { it.promotion.name == state.selection } ?: selected
         expanded = state.expanded; saving = save; prerequisitesOnly = state.prerequisitesOnly
+        graphZoom = state.zoom
         buildGraph()
         refresh()
         root.validate()
@@ -118,8 +124,7 @@ internal class PromotionAtlasView(
         root.add(body).grow().minSize(0f)
         refresh()
         root.validate()
-        graphScroll.scrollY = 0f
-        graphScroll.updateVisualScroll()
+        alignGraphToOrigin()
         // BACK closes the portrait reading layer first; the existing page back action is retained.
         screen.closeButton.keyShortcuts.clear()
         screen.globalShortcuts.add(KeyCharAndCode.BACK) {
@@ -219,7 +224,7 @@ internal class PromotionAtlasView(
         graphGates.clear()
         val depth = depths()
         val visible = orderedNodes.filter { !prerequisitesOnly || it in ancestors }
-        val labels = orderedNodes.associateWith { label(it.promotion.name, TextRole.Control) }
+        val labels = orderedNodes.associateWith { label(it.promotion.name, TextRole.CompactData) }
         val nodeWidth = ((labels.values.maxOfOrNull { it.prefWidth } ?: 0f) + u(56f)).coerceIn(u(156f), u(224f))
         for (word in labels.values) { word.wrap = true; word.setSize(nodeWidth-u(56f), 0f) }
         val junction = label("OR", TextRole.Supporting)
@@ -286,10 +291,19 @@ internal class PromotionAtlasView(
         if (visible.isEmpty()) canvas.addActor(label("No promotions available", wrap = true).apply {
             setBounds(u(18f), ch-u(110f), nodeWidth, u(70f))
         })
-        graphScroll = AutoScrollPane(canvas).apply {
+        graphScroll = ZoomableScrollPane(
+            minZoom = TechnologyAtlasGraph.minZoom,
+            maxZoom = TechnologyAtlasGraph.maxZoom,
+            // Promotion nodes own tap and double-tap gestures, so capture both pointers before
+            // a node can consume a pinch that starts on the graph content.
+            captureZoomGestures = true,
+        ).apply {
             name = "ui-promotion-tree"
+            actor = canvas
             style = ScrollPane.ScrollPaneStyle().apply { background = this@PromotionAtlasView.style.surface(this@PromotionAtlasView.style.deep, 10f) }
-            setOverscroll(false, false); setFadeScrollBars(false)
+            setOverscroll(false, false); setFadeScrollBars(false); setScrollingDisabled(false, false)
+            zoom(graphZoom)
+            onZoomStopListener = { graphZoom = scaleX }
         }
     }
 
@@ -392,7 +406,11 @@ internal class PromotionAtlasView(
             }
             browse.add(legend).growX().minWidth(0f).padBottom(u(4f)).row()
         }
-        browse.add(graphScroll).grow().minSize(0f)
+        val graphHost = object : WidgetGroup() {
+            init { addActor(graphScroll) }
+            override fun layout() { graphScroll.resizeViewport(Rectangle(0f, 0f, width, height)) }
+        }
+        browse.add(graphHost).grow().minSize(0f)
     }
     private fun select(node: PromotionTree.PromotionNode) {
         selected = node; statusText = null
@@ -404,9 +422,20 @@ internal class PromotionAtlasView(
     }
     private fun locateSelection() {
         val target = graphNodes[selected] ?: return
-        root.validate()
-        graphScroll.scrollTo(target.x, target.y, target.width, target.height, true, true)
+        graphScroll.validate()
+        graphScroll.scrollX = target.x + target.width / 2f
+        graphScroll.scrollY = graphScroll.maxY - target.y - target.height / 2f
         graphScroll.updateVisualScroll()
+        graphScroll.updateCulling()
+    }
+
+    /** Open at the graph's top-left instead of the padding that enables edge-centered panning. */
+    private fun alignGraphToOrigin() {
+        graphScroll.validate()
+        graphScroll.scrollX = graphScroll.width / 2f
+        graphScroll.scrollY = graphScroll.height / 2f
+        graphScroll.updateVisualScroll()
+        graphScroll.updateCulling()
     }
     private fun availableOpportunities() = (1..tree.possiblePromotions.size).takeWhile { unit.canAffordPromotions(it) }.size
 
@@ -419,7 +448,7 @@ internal class PromotionAtlasView(
         target.add(identity).growX().minWidth(0f).row()
         val available = availableOpportunities()
         target.add(label("{XP} ${unit.xp}/${unit.xpForNextPromotion()} · {[$available] promotions available} · {Health} ${unit.unitHealth}/100",
-            TextRole.Supporting, true, true)).growX().minWidth(0f).left().row()
+            if (compact) TextRole.Metadata else TextRole.Supporting, true, true)).growX().minWidth(0f).left().row()
     }
     private fun refresh() {
         ancestors = collectAncestors()
@@ -448,6 +477,9 @@ internal class PromotionAtlasView(
         details.background = style.surface(style.panel)
         details.pad(u(14f))
         details.touchable = Touchable.enabled
+        val detailTitleRole = if (compact) TextRole.Body else TextRole.SectionTitle
+        val detailBodyRole = if (compact) TextRole.Supporting else TextRole.Body
+        val detailMetaRole = if (compact) TextRole.Metadata else TextRole.Supporting
         if (portrait) {
             val top = Table()
             top.add(label("Promotion details", TextRole.SectionTitle, wrap = true)).growX().minWidth(0f).left()
@@ -465,15 +497,15 @@ internal class PromotionAtlasView(
             val heading = Table()
             heading.add(promotionIcon(node)).size(u(40f)).padRight(u(10f))
             val words = Table()
-            words.add(label(node.promotion.name, TextRole.SectionTitle, wrap = true)).growX().minWidth(0f).left().row()
-            words.add(label(state(node), TextRole.Supporting, true, true)).growX().minWidth(0f).left()
+            words.add(label(node.promotion.name, detailTitleRole, wrap = true)).growX().minWidth(0f).left().row()
+            words.add(label(state(node), detailMetaRole, true, true)).growX().minWidth(0f).left()
             heading.add(words).growX().minWidth(0f)
             identityArea.add(heading).growX().minWidth(0f).padTop(u(14f)).padBottom(u(12f)).row()
         }
         if (node != null) {
             reading.add(label("Direct prerequisites", TextRole.Supporting, true, true)).padBottom(u(6f)).row()
             val prerequisites = node.promotion.prerequisites
-            if (prerequisites.isEmpty()) reading.add(label("No prerequisite", wrap = true)).padBottom(u(12f)).row()
+            if (prerequisites.isEmpty()) reading.add(label("No prerequisite", detailBodyRole, wrap = true)).padBottom(u(12f)).row()
             else {
                 if (prerequisites.size > 1)
                     reading.add(label("Any one prerequisite", TextRole.Supporting, true, true)).padBottom(u(6f)).row()
@@ -503,9 +535,9 @@ internal class PromotionAtlasView(
                     }
                 }
             }
-            reading.add(label(statusText ?: node.promotion.getDescription(tree.possiblePromotions), wrap = true)).padTop(u(12f)).padBottom(u(16f)).row()
+            reading.add(label(statusText ?: node.promotion.getDescription(tree.possiblePromotions), detailBodyRole, wrap = true)).padTop(u(12f)).padBottom(u(16f)).row()
             reading.add(label("Unlocks", TextRole.Supporting, true, true)).padBottom(u(6f)).row()
-            if (node.children.isEmpty()) reading.add(label("End of this branch", wrap = true)).row()
+            if (node.children.isEmpty()) reading.add(label("End of this branch", detailBodyRole, wrap = true)).row()
             for (related in orderedNodes.filter { it in node.children })
                 reading.add(button(related.promotion.name, "ui-promotion-link:${related.promotion.name}") { select(related) })
                     .minHeight(u(44f)).padBottom(u(6f)).row()
@@ -520,7 +552,7 @@ internal class PromotionAtlasView(
                 refresh()
             }).minHeight(u(44f)).padTop(u(8f)).row()
         }
-        if (node == null && statusText != null) reading.add(label(statusText!!, wrap = true)).row()
+        if (node == null && statusText != null) reading.add(label(statusText!!, detailBodyRole, wrap = true)).row()
         if (unit.canSaveDefaultPromotions()) reading.add("Default promotions for [${unit.getBaseUnit().name}]".toCheckBox(saving) {
             saving = it; saveDefaults(it)
         }.apply {
@@ -545,7 +577,7 @@ internal class PromotionAtlasView(
                 !canPick(node) -> "Promotion requirements not met"
                 else -> "Consumes [${path.count { !it.hasUnique(com.unciv.models.ruleset.unique.UniqueType.FreePromotion) }}] promotion opportunities"
             }
-            details.add(label(reason, TextRole.Supporting, true, true)).growX().minWidth(0f).padTop(u(10f)).padBottom(u(8f)).row()
+            details.add(label(reason, detailMetaRole, true, true)).growX().minWidth(0f).padTop(u(10f)).padBottom(u(8f)).row()
             val action = if (node.isAdopted) "Acquired" else "Choose [${node.promotion.name}]"
             details.add(button(action, "ui-promotion-confirm", true) { pick(node) }.apply {
                 // Keep the atlas disabled drawable; isEnabled swaps in the legacy skin.

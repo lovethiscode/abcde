@@ -274,7 +274,13 @@ class TechPickerScreen(
             nodes[tech.name] = node
             tree.addActor(node)
         }
-        treeScroll = ZoomableScrollPane(minZoom = graph.minZoom, maxZoom = graph.maxZoom).apply {
+        treeScroll = ZoomableScrollPane(
+            minZoom = graph.minZoom,
+            maxZoom = graph.maxZoom,
+            // Nodes own tap, double-tap and long-press gestures. Capture the two pointers first so
+            // a pinch that starts over one or two nodes still reaches the graph zoom listener.
+            captureZoomGestures = true,
+        ).apply {
             name = "ui-tech-map"
             actor = tree
             setOverscroll(false, false)
@@ -298,22 +304,26 @@ class TechPickerScreen(
         name = "ui-tech:${tech.name}"
         touchable = Touchable.enabled
         pad(u(6f))
-        val identity = techDisc(tech, 30f)
-        add(identity).size(u(30f)).center().padRight(u(8f))
-        val info = Table().apply {
-            add(label(tech.name, TextRole.Control).apply { setEllipsis(true) }).growX().minWidth(0f).left().row()
-            add(label(nodeState(tech), TextRole.CompactData, stateColor(tech)).apply { name = "state"; setEllipsis(true) })
-                .growX().minWidth(0f).left().padTop(u(2f)).row()
-            val all = TechnologyDescriptions.getTechEnabledIcons(tech, civInfo, u(16f), iconsIndex).toList()
-            val icons = Table().apply {
-                left()
-                all.take(3).forEach { add(pictogram(it)).size(u(16f)).padRight(u(5f)) }
-                if (all.size > 3) add(label("+${all.size-3}", TextRole.Supporting, appearance.muted))
-                if (all.isEmpty()) add(label(if (tech.isContinuallyResearchable()) "Repeatable" else "Technology effects", TextRole.Supporting, appearance.muted))
-            }
-            add(icons).growX().height(u(18f)).padTop(u(3f))
+        val heading = Table().apply {
+            add(techDisc(tech, 24f)).size(u(24f)).padRight(u(6f))
+            add(label(tech.name, TextRole.CompactData).apply { setEllipsis(true) }).growX().minWidth(0f).left()
         }
-        add(info).growX().minWidth(0f).top()
+        add(heading).growX().minWidth(0f).height(u(24f)).row()
+
+        val all = TechnologyDescriptions.getTechEnabledIcons(tech, civInfo, u(16f), iconsIndex).toList()
+        val icons = Table().apply {
+            right()
+            all.take(3).forEach { add(pictogram(it)).size(u(16f)).padLeft(u(5f)) }
+            if (all.size > 3) add(label("+${all.size-3}", TextRole.Supporting, appearance.muted)).padLeft(u(3f))
+            if (all.isEmpty() && tech.isContinuallyResearchable())
+                add(label("Repeatable", TextRole.Supporting, appearance.muted)).padLeft(u(5f))
+        }
+        val summary = Table().apply {
+            add(label(nodeState(tech), TextRole.CompactData, stateColor(tech)).apply { name = "state"; setEllipsis(true) })
+                .growX().minWidth(0f).left()
+            add(icons).height(u(18f)).right()
+        }
+        add(summary).growX().minWidth(0f).height(u(18f)).padTop(u(2f))
         onClick { selectTechnology(tech) }
         onRightClick { selectTechnology(tech); addToQueue() }
         onDoubleClick(UncivSound.Paper) {
@@ -567,25 +577,31 @@ class TechPickerScreen(
         val tech = selectedTech
         if (tech == null) { detailsView.add(label("No technologies available",TextRole.Supporting,appearance.muted,true)).growX().pad(u(20f)); return }
         if (overlay == "details") detailsView.add(overlayHeader("Technology details")).growX().pad(u(10f)).row()
+        // The short landscape pane is a dense inspector. Full-screen portrait details and wider
+        // layouts retain the normal reading roles.
+        val detailTitleRole = if (metrics.compact) TextRole.Body else TextRole.SectionTitle
+        val detailHeadingRole = if (metrics.compact) TextRole.Supporting else TextRole.Control
+        val detailBodyRole = if (metrics.compact) TextRole.Supporting else TextRole.Body
+        val detailMetaRole = if (metrics.compact) TextRole.Metadata else TextRole.Supporting
         val content = Table().apply {
             top().left(); pad(u(if (metrics.compact) 12f else 22f)); defaults().growX().minWidth(0f).left()
         }
         val title = Table().apply {
             add(techDisc(tech, if (metrics.compact) 36f else 50f)).size(u(if (metrics.compact) 36f else 50f)).padRight(u(12f))
             val names = Table().apply {
-                add(label(tech.name,TextRole.PageTitle,wrap=true)).growX().minWidth(0f).left().row()
-                add(label(tech.era(),TextRole.Supporting,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(4f))
+                add(label(tech.name,detailTitleRole,wrap=true)).growX().minWidth(0f).left().row()
+                add(label(tech.era(),detailMetaRole,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(4f))
             }
             add(names).growX().minWidth(0f)
         }
         content.add(title).padBottom(u(if(metrics.compact)6f else 12f)).row()
         if (metrics.compact) {
-            content.add(label("${civTech.costOfTech(tech.name).tr()} ${Fonts.science} · ${nodeState(tech)}",TextRole.Supporting,stateColor(tech),true)).row()
+            content.add(label("${civTech.costOfTech(tech.name).tr()} ${Fonts.science} · ${nodeState(tech)}",TextRole.CompactData,stateColor(tech),true)).row()
         } else {
             content.add(label("{Research cost}  ${civTech.costOfTech(tech.name).tr()} ${Fonts.science}",TextRole.Supporting)).row()
             content.add(label(nodeState(tech),TextRole.Supporting,stateColor(tech),true)).padTop(u(5f)).row()
         }
-        fun heading(text: String) { content.add(label(text,TextRole.SectionTitle)).padTop(u(if(metrics.compact)8f else 20f)).padBottom(u(if(metrics.compact)4f else 7f)).row() }
+        fun heading(text: String) { content.add(label(text,detailHeadingRole)).padTop(u(if(metrics.compact)8f else 20f)).padBottom(u(if(metrics.compact)4f else 7f)).row() }
         fun chips(technologies: List<Technology>): Table = Table().apply {
             left()
             technologies.forEachIndexed { i,related ->
@@ -634,7 +650,7 @@ class TechPickerScreen(
                         else -> null
                     }
                     val meta = if(alreadyBuilt) "{Wonder} · {Already built}".tr() else if(kind=="Resource") "Reveals [$name] on the map".tr() else kind.tr()
-                    add(label(meta + if(summary.isNullOrBlank()) "" else " · " + summary.tr(),TextRole.Supporting,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(3f))
+                    add(label(meta + if(summary.isNullOrBlank()) "" else " · " + summary.tr(),detailMetaRole,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(3f))
                 }
                 add(info).growX().minWidth(0f)
                 add(maskIcon(ImageGetter.getImage("OtherIcons/ForwardArrow"))).size(u(12f)).padLeft(u(8f))
@@ -650,7 +666,7 @@ class TechPickerScreen(
             "道路与铁路维修耗时减少 50%，向上取整且至少 1 回合。已有铁路及其连接收益开局可用；研究本身不增加产能奖励。".tr()
         if(description.isNotBlank()) {
             heading("Technology effects")
-            content.add(label(description,TextRole.Body,appearance.muted,true)).row()
+            content.add(label(description,detailBodyRole,appearance.muted,true)).row()
         }
         val next = displayedTechs.filter { tech.name in it.prerequisites }
         if (next.isNotEmpty()) {
@@ -659,10 +675,11 @@ class TechPickerScreen(
         }
         content.add(action("Civilopedia","ui-tech-civilopedia") { openCivilopedia(tech.makeLink()) }.apply { keyShortcuts.add(KeyboardBinding.Civilopedia) }).height(u(44f)).padTop(u(12f)).row()
         val scroll = ScrollPane(content,BaseScreen.skin).apply {
-            name="ui-tech-detail-scroll"; setScrollingDisabled(true,false); setOverscroll(false,false); setFadeScrollBars(false)
+            name="ui-tech-detail-scroll"; setScrollingDisabled(true,false); setOverscroll(false,false)
             style = ScrollPane.ScrollPaneStyle(style).apply {
-                vScroll = appearance.surface(appearance.quietLine,0f).apply { minWidth=u(3f) }
-                vScrollKnob = appearance.surface(appearance.muted,2f).apply { minWidth=u(3f); minHeight=u(24f) }
+                // Mobile content remains touch-scrollable without a persistent scrollbar.
+                vScroll = null
+                vScrollKnob = null
             }
         }
         detailsView.add(scroll).grow().minWidth(0f).minHeight(0f).row()
@@ -670,7 +687,7 @@ class TechPickerScreen(
         val block = researchBlock(tech)
         val path = if(block==null) civTech.getRequiredTechsToDestination(tech).map { it.name } else emptyList()
         val message = block ?: if(freeTechPick) "No science cost" else "[${routeTurns(path)}] turns for the full route (including overflow)"
-        actions.add(label(message,TextRole.Body,if(block==null)appearance.muted else appearance.danger,true)).growX().colspan(2).padBottom(u(8f)).row()
+        actions.add(label(message,TextRole.Supporting,if(block==null)appearance.muted else appearance.danger,true)).growX().colspan(2).padBottom(u(8f)).row()
         if (!freeTechPick) {
             val research = action("Research this route", "ui-tech-research", outlined=true) { previewResearch() }
             research.isDisabled = block != null
@@ -785,7 +802,6 @@ class TechPickerScreen(
         if(draft==savedPlan || freeTechPick) { game.popScreen(); return }
         val popup = Popup(this)
         popup.addGoodSizedLabel("Discard changes to the research plan?").row()
-        if (UiNavigation.isIos) popup.addCloseButton()
         val keepEditing = popup.addCloseButton("Keep editing", style = if (UiNavigation.isIos) UiNavigation.buttonStyle() else appearance.buttonStyle(outlined = true))
         if (UiNavigation.isIos) UiNavigation.styleTextButton(keepEditing.actor)
         popup.addButton("Discard changes", style = if (UiNavigation.isIos)

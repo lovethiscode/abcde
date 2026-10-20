@@ -113,7 +113,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private val status = "Connecting to room...".toLabel(TextRole.Body)
     private val roomRole = "".toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18))
     private val setupFont = lazy {
-        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(UiTypography.size(TextRole.Control, UiTypography.unitsPerPoint(stage)) / Fonts.ORIGINAL_FONT_SIZE) }
+        Fonts.getUiFont(UiTypography.size(TextRole.Control, UiTypography.unitsPerPoint(stage)))
     }
     internal val formFont get() = setupFont.value
     private val headingFont = lazy {
@@ -929,7 +929,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             if (manualControl) add("Player ID".toTextButton().apply {
                 isEnabled = connected && !busy && !configurationPending
                 onClick { beforeModal(); editManualPlayer(s) }
-            }).height(36f)
+            }).height(if (UiNavigation.isIos) UiNavigation.minimumTouchSize() else 36f)
         }).growX().padTop(4f).row()
         val controls = Table()
         if (manualControl) controls.add((if (s.ready) "Cancel ready" else "Mark ready").toTextButton().apply {
@@ -1079,5 +1079,5 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         room?.let { setup = json().fromJson(GameSetupInfo::class.java,it.setup) }
     }
     override fun show() { super.show(); paused = false; connectRoom() }
-    override fun dispose() { disposed = true; disconnectRoom(); mapSettings?.cancelBackgroundJobs(); if (!enteringGame) job?.cancel(); if (setupFont.isInitialized()) formFont.dispose(); if (headingFont.isInitialized()) headingFont.value.dispose(); super.dispose() }
+    override fun dispose() { disposed = true; disconnectRoom(); mapSettings?.cancelBackgroundJobs(); if (!enteringGame) job?.cancel(); if (headingFont.isInitialized()) headingFont.value.dispose(); super.dispose() }
 }

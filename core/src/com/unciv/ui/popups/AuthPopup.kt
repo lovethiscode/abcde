@@ -1,6 +1,8 @@
 package com.unciv.ui.popups
 
 import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.fonts.UiTypography
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.UncivGame
@@ -8,6 +10,7 @@ import com.unciv.logic.multiplayer.storage.MultiplayerServer
 import com.unciv.logic.multiplayer.rethrowCancellationAfterCleanup
 import com.unciv.ui.components.widgets.UncivTextField
 import com.unciv.ui.components.input.onClick
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.utils.Concurrency
@@ -21,7 +24,7 @@ class AuthPopup(
         UncivGame.Current.onlineMultiplayer.multiplayerServer,
     private val authSuccessful: ((Boolean) -> Unit)? = null,
 )
-    : Popup(stage) {
+    : Popup(stage, ordinaryShell = true) {
 
     constructor(
         screen: BaseScreen,
@@ -99,10 +102,17 @@ class AuthPopup(
     }
     
     private fun addComponents(headerLabelText: String) {
+        if (ordinaryPresentation) addDialogTitle("Authentication", targetServerUrl.orEmpty())
         addGoodSizedLabel(headerLabelText).colspan(2).row()
-        targetServerUrl?.let { addGoodSizedLabel(it).colspan(2).row() }
-        add(passwordField).colspan(2).growX().pad(16f, 0f, 16f, 0f).row()
+        if (!ordinaryPresentation) targetServerUrl?.let { addGoodSizedLabel(it).colspan(2).row() }
+        add(passwordField).colspan(2).growX().apply {
+            if (ordinaryPresentation) width(popupContentWidth).minHeight(48f * popupUnit)
+        }.pad(16f * if (ordinaryPresentation) popupUnit else 1f, 0f, 16f * if (ordinaryPresentation) popupUnit else 1f, 0f).row()
         addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.cancel else com.unciv.Constants.close, style = if (UiNavigation.isIos) null else negativeButtonStyle).growX().padRight(8f)
-        add(button).growX().padLeft(8f)
+        if (ordinaryPresentation) {
+            button.label.setFontSize(UiTypography.size(TextRole.Control, popupUnit))
+            styleOrdinaryButton(button, primary = true)
+            bottomTable.add(button).minHeight(44f * popupUnit).growX().padLeft(8f * popupUnit)
+        } else add(button).growX().padLeft(8f)
     }
 }

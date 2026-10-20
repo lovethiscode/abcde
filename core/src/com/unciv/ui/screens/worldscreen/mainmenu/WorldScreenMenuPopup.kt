@@ -97,9 +97,6 @@ class WorldScreenMenuPopup(
         if (ordinary) {
             header.clearChildren()
             header.add(title).growX().minWidth(0f).left()
-            header.add(UiNavigation.dismissButton(unit).apply {
-                onActivation { close() }
-            }).size(ui.px(44f)).top().padLeft(ui.px(12f))
         }
         innerTable.add(header).width(width).row()
         innerTable.add(ImageGetter.getWhiteDot().apply { color = ui.border }).height(unit).growX().row()

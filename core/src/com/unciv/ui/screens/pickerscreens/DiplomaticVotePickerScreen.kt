@@ -40,7 +40,7 @@ class DiplomaticVotePickerScreen(private val votingCiv: Civilization, private va
             init {
                 val unOwner = votingCiv.victoryManager.getUNBuildingAndOwnerNames().second
                 val votes = if (unOwner == votingCiv.civID) 2 else 1
-                addDialogTitle("Elect a world leader", "Votes available: [$votes]", onDismiss = { game.popScreen() })
+                addDialogTitle("Elect a world leader", "Votes available: [$votes]", dismissible = false)
                 addGoodSizedLabel("Choose who should become the world leader and win a Diplomatic Victory!").row()
                 val cards = ArrayList<com.badlogic.gdx.scenes.scene2d.ui.TextButton>()
                 val confirm = addButton("Choose a civ to vote for") { voteAndClose() }.actor.apply { isDisabled = !hasSelection }

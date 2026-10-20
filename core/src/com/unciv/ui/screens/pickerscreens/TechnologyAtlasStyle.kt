@@ -124,9 +124,9 @@ internal class TechnologyAtlasStyle(val unit: Float) {
 /** Compact graph geometry is independent of the fixed-size reading and action panels. */
 internal object TechnologyAtlasGraph {
     const val nodeWidth = 176f
-    const val nodeHeight = 68f
+    const val nodeHeight = 56f
     const val columnStep = 208f
-    const val rowStep = 80f
+    const val rowStep = 68f
     const val inset = 16f
     const val topInset = 48f
     const val minZoom = .3f

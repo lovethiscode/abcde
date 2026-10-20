@@ -153,10 +153,8 @@ internal class CityWorkbench(
                 val focus = CityFocus.safeValueOf(stat)
                 if (focus == city.getCityFocus()) background = ImageGetter.getWhiteDotDrawable().tint(Color.valueOf("496269"))
                 add(ImageGetter.getStatIcon(stat.name)).size(20f).padRight(8f)
-                add(amount.roundToInt().toString().toLabel(fontSize = UiTypography.size(TextRole.Body, unit = 1f, legacySize = 17))).padRight(4f)
-                add("".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = 1f, legacySize = 11)).apply {
-                    setText(stat.name.tr(hideIcons = true, hideStats = true))
-                }).minWidth(0f)
+                add(amount.roundToInt().toString().toLabel(fontSize = UiTypography.size(TextRole.Body, unit = 1f, legacySize = 17)))
+                addTooltip(stat.name)
                 if (screen.canCityBeChanged()) onActivation(binding = if (city.getCityFocus() == focus) CityFocus.NoFocus.binding else focus.binding) {
                     city.trySetCityFocus(if (city.getCityFocus() == focus) CityFocus.NoFocus else focus)
                     screen.updateAsync()

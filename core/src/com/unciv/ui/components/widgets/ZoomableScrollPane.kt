@@ -25,7 +25,8 @@ open class ZoomableScrollPane(
     private val extraCullingX: Float = 0f,
     private val extraCullingY: Float = 0f,
     var minZoom: Float = 0.5f,
-    var maxZoom: Float = 1 / minZoom // if we can halve the size, then by default also allow to double it
+    var maxZoom: Float = 1 / minZoom, // if we can halve the size, then by default also allow to double it
+    captureZoomGestures: Boolean = false,
 ) : ScrollPane(Group()) {
     var continuousScrollingX = false
 
@@ -45,7 +46,8 @@ open class ZoomableScrollPane(
     var mapPanningSpeed: Float = 6f
 
     init {
-        this.addListener(zoomListener)
+        if (captureZoomGestures) addCaptureListener(zoomListener)
+        else addListener(zoomListener)
     }
 
     open fun reloadMaxZoom() {

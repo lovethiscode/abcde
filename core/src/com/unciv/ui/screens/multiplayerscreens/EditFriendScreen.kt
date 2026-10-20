@@ -7,7 +7,8 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
-import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.ui.Value
 import com.unciv.UncivGame
 import com.unciv.logic.IdChecker
 import com.unciv.logic.multiplayer.FriendList
@@ -24,24 +25,28 @@ import com.unciv.utils.isUUID
 
 class EditFriendScreen(selectedFriend: FriendList.Friend) : PickerScreen() {
     init {
+        val unit = UiNavigation.minimumTouchSize() / 44f
+        val formWidth = object : Value() {
+            override fun get(context: Actor?) = minOf(stage.width - 32f * unit, 560f * unit).coerceAtLeast(1f)
+        }
         val friendNameTextField = UncivTextField("Please input a name for your friend!", selectedFriend.name)
         val pastePlayerIDButton = "Player ID from clipboard".toTextButton()
         val playerIDTextField = UncivTextField("Please input a player ID for your friend!", selectedFriend.playerID)
         val deleteFriendButton = "Delete".toTextButton()
         val friendlist = FriendList()
 
-        topTable.add("Friend name".toLabel(TextRole.Body)).row()
-        topTable.add(friendNameTextField).pad(10f).padBottom(30f).width(stage.width/2).row()
+        pickerPane.setNavigationContent("Edit friend".toLabel(TextRole.PageTitle))
+        topTable.defaults().minWidth(0f)
+        topTable.add("Friend name".toLabel(TextRole.Control)).width(formWidth).left().padTop(16f * unit).row()
+        topTable.add(friendNameTextField).width(formWidth).minHeight(48f * unit).padTop(8f * unit).padBottom(20f * unit).row()
 
         pastePlayerIDButton.onClick {
             playerIDTextField.text = Gdx.app.clipboard.contents
         }
 
-        topTable.add("Player ID".toLabel(TextRole.Body)).row()
-        val gameIDTable = Table()
-        gameIDTable.add(playerIDTextField).pad(10f).width(2*stage.width/3 - pastePlayerIDButton.width)
-        gameIDTable.add(pastePlayerIDButton)
-        topTable.add(gameIDTable).padBottom(30f).row()
+        topTable.add("Player ID".toLabel(TextRole.Control)).width(formWidth).left().row()
+        topTable.add(playerIDTextField).width(formWidth).minHeight(48f * unit).padTop(8f * unit).row()
+        topTable.add(pastePlayerIDButton).width(formWidth).minHeight(44f * unit).padTop(8f * unit).padBottom(20f * unit).row()
 
         deleteFriendButton.onClick {
             val askPopup = ConfirmPopup(
@@ -55,7 +60,7 @@ class EditFriendScreen(selectedFriend: FriendList.Friend) : PickerScreen() {
             askPopup.open()
         }.apply { if (ExpeditionBlueTheme.enabled) deleteFriendButton.style = BaseScreen.skin.get("negative", TextButtonStyle::class.java)
             else color = Color.RED }
-        topTable.add(deleteFriendButton)
+        topTable.add(deleteFriendButton).width(formWidth).minHeight(44f * unit)
 
         //CloseButton Setup
         closeButton.setText(UiNavigation.backCaption)

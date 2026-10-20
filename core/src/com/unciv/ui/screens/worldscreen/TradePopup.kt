@@ -169,7 +169,7 @@ class TradePopup(worldScreen: WorldScreen) : Popup(worldScreen) {
                           counterparty: com.unciv.logic.civilization.Civilization) : Popup(worldScreen) {
         init {
             if (ordinaryPresentation) addDialogTitle("Trade agreed", "{${counterparty.civName}} · {${counterparty.nation.leaderName}}",
-                onDismiss = { worldScreen.shouldUpdate = true })
+                dismissible = false)
             else { add(leaderIntroTable); addSeparator().padBottom(15f) }
             addGoodSizedLabel("Excellent!").row()
             val farewell = addCloseButton("Farewell.", KeyCharAndCode.SPACE) {

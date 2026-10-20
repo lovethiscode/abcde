@@ -43,6 +43,11 @@ class MapParametersTable(
     private val councilLayoutFont: com.badlogic.gdx.graphics.g2d.BitmapFont? = null,
     private val sizeChangedCallback: (()->Unit)? = null
 ) : Table() {
+    private fun worldWrapWarning(): String {
+        val warning = "World wrap maps are very memory intensive - creating large world wrap maps on Android can lead to crashes!".tr()
+        return if (UiNavigation.isIos) warning.replace("Android", "iOS") else warning
+    }
+
     // These are accessed from outside the class to read _and_ write values,
     // namely from MapOptionsTable, NewMapScreen and NewGameScreen
     lateinit var mapTypeSelectBox: TranslatedSelectBox
@@ -171,7 +176,7 @@ class MapParametersTable(
             table.defaults().left().growX().minHeight(44f).padBottom(8f)
             for (check in listOf(strategicBalanceCheckbox, legendaryStartCheckbox, noRuinsCheckbox,
                 noNaturalWondersCheckbox, worldWrapCheckbox)) table.add(check).row()
-            table.add("World wrap maps are very memory intensive - creating large world wrap maps on Android can lead to crashes!"
+            table.add(worldWrapWarning()
                 .toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18)).apply { wrap = true }).row()
             if (this::mirrorSelectBox.isInitialized)
                 table.add(SinglePlayerSetup.field("Map mirroring", mirrorSelectBox, width - 24f)).growX().row()
@@ -571,7 +576,7 @@ class MapParametersTable(
     }
 
     private fun addWrappedCheckBoxes() {
-        val worldWrapWarning = "World wrap maps are very memory intensive - creating large world wrap maps on Android can lead to crashes!"
+        val worldWrapWarning = worldWrapWarning()
         if (mapGeneratedMainType == MapGeneratedMainType.randomGenerated) {
             if (directLayoutWidth != null) {
                 add(SinglePlayerSetup.group("{Other Settings}", directLayoutWidth!!, "World.RandomOther") {

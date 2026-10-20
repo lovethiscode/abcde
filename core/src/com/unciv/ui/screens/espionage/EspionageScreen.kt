@@ -34,6 +34,7 @@ import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onRightClick
 import com.unciv.ui.components.widgets.AutoScrollPane
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.AnimatedMenuPopup
 import com.unciv.ui.popups.ConfirmPopup
@@ -75,10 +76,11 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
     private val isPortrait: Boolean // To detect when a resize needs re-layout
 
     init {
+        val topPad = if (UiNavigation.isIos) UiNavigation.minimumTouchSize() + 16f else 10f
         spySelectionTable.defaults().space(10f)
-        spySelectionTable.pad(10f).top()
+        spySelectionTable.pad(10f).padTop(topPad).top()
         locationSelectionTable.defaults().space(5f)
-        locationSelectionTable.pad(10f).top()
+        locationSelectionTable.pad(10f).padTop(topPad).top()
 
         update()
 
@@ -95,10 +97,12 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
         middlePanes.setFillParent(true)
         stage.addActor(middlePanes)
 
-        closeButton = getCloseButton {
+        fun navigateBack() {
             civInfo.cache.updateViewableTiles()
             game.popScreen()
         }
+        closeButton = if (UiNavigation.isIos) UiNavigation.backButton("Map").apply { onActivation { navigateBack() } }
+            else getCloseButton { navigateBack() }
         closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
         positionCloseButton()
         stage.addActor(closeButton)
@@ -113,7 +117,10 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
     }
 
     private fun positionCloseButton() {
-        closeButton.setPosition(stage.width - 10f, stage.height - 10f, Align.topRight)
+        if (UiNavigation.isIos) {
+            val safe = safeAreaBoundsInWorld()
+            closeButton.setPosition(safe.x + 8f, safe.y + safe.height - 8f, Align.topLeft)
+        } else closeButton.setPosition(stage.width - 10f, stage.height - 10f, Align.topRight)
     }
 
     // Not using `RecreateOnResize` because this one is fine with resizes, exept we want to flip SplitPane arrangement for portrait

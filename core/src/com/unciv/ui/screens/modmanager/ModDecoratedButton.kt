@@ -19,9 +19,9 @@ import com.unciv.ui.images.ImageGetter
  */
 internal class ModDecoratedButton(private var modInfo: ModUIData) : Table() {
     private val stateImages: ModStateImages?
-    private val title = ModManagementStyle.label(modInfo.buttonText(), TextRole.PageTitle)
-    private val trailing = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
-    private val categoriesLabel = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
+    private val title = ModManagementStyle.label(modInfo.buttonText(), TextRole.Body)
+    private val trailing = ModManagementStyle.label("", TextRole.CompactData, ModManagementStyle.muted)
+    private val categoriesLabel = ModManagementStyle.label("", TextRole.Supporting, ModManagementStyle.muted)
 
     init {
         touchable = Touchable.enabled

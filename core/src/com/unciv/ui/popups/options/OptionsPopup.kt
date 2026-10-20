@@ -49,7 +49,7 @@ class OptionsPopup(
     private val navigationButtons = ArrayList<IconTextButton>()
     private val pageDescription = "".toLabel(OptionsPopupStyle.muted, OptionsPopupStyle.fontSize(TextRole.Supporting)).apply { wrap = true }
     private val contentFontDelegate = lazy {
-            Fonts.fontImplementation.getBitmapFont().apply { data.setScale(OptionsPopupStyle.fontSize(TextRole.Control) / Fonts.ORIGINAL_FONT_SIZE) }
+        Fonts.getUiFont(OptionsPopupStyle.fontSize(TextRole.Control))
     }
     internal val contentFont get() = contentFontDelegate.value
     private var visibleHeight = 0f
@@ -247,17 +247,12 @@ class OptionsPopup(
         finishEditing()
         onClose() // activate the passed 'on close' callback
         super.close()
-        disposeContentFont()
     }
 
     internal fun finishEditing() {
         game.musicController.onChange(null)
         tabs.selectPage(-1, false)
         settings.save()
-    }
-
-    internal fun disposeContentFont() {
-        if (contentFontDelegate.isInitialized()) contentFont.dispose()
     }
 
     override fun setVisible(visible: Boolean) {

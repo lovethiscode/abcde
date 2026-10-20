@@ -33,7 +33,7 @@ internal class ModInfoAndActionPane(
     private val repoUrlToPreviewImage = HashMap<String, Texture?>()
     private val imageHolder = Table()
     private val secondaryActions = Table()
-    private val sizeLabel = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
+    private val sizeLabel = ModManagementStyle.label("", TextRole.Body)
     companion object {
         fun formatSize(size: Int) = when {
             size <= 0 -> ""
@@ -107,7 +107,7 @@ internal class ModInfoAndActionPane(
         val title = Table().apply {
             add(ModManagementStyle.label(cleanModName(modName), TextRole.PageTitle)).growX().minWidth(0f).row()
             if (author.isNotEmpty())
-                add(ModManagementStyle.label("Author: [$author]", TextRole.Body, ModManagementStyle.muted))
+                add(ModManagementStyle.label("Author: [$author]", TextRole.Supporting, ModManagementStyle.muted))
                     .growX().minWidth(0f).padTop(8f)
         }
         heading.add(imageHolder).size(48f).top().padRight(14f)
@@ -117,7 +117,7 @@ internal class ModInfoAndActionPane(
         val facts = Table().apply { defaults().growX().minWidth(0f).top().padRight(18f) }
         fun metric(value: Label, caption: String): Table = Table().apply {
             add(value).growX().minWidth(0f).left().row()
-            add(ModManagementStyle.label(caption, TextRole.Body, ModManagementStyle.muted))
+            add(ModManagementStyle.label(caption, TextRole.Supporting, ModManagementStyle.muted))
                 .growX().minWidth(0f).padTop(4f)
         }
         val factValues = ArrayList<Pair<Label, String>>()
@@ -126,12 +126,12 @@ internal class ModInfoAndActionPane(
         // Keep the size actor attached even when unknown: the asynchronous query may fill it later.
         if (!isBuiltin) factValues.add(sizeLabel to "Size")
         if (updatedAt.isNotEmpty())
-            factValues.add(ModManagementStyle.label("", TextRole.SectionTitle).apply {
+            factValues.add(ModManagementStyle.label("", TextRole.Body).apply {
                 wrap = false
                 setText(updatedAt.take(10))
             } to "Updated")
         if (stars != null)
-            factValues.add(ModManagementStyle.label("$stars${Fonts.star}", TextRole.SectionTitle).apply { wrap = false } to "Stars")
+            factValues.add(ModManagementStyle.label("$stars${Fonts.star}", TextRole.Body).apply { wrap = false } to "Stars")
         val stackedFacts = factValues.sumOf { (value, _) -> value.prefWidth.toDouble() + 18f } > availableWidth
         for ((value, caption) in factValues) {
             facts.add(metric(value, caption)).minWidth(value.prefWidth + 18f)

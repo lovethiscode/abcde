@@ -82,7 +82,7 @@ class NewGameScreen(
     private var startingGame = false
     private var setupStatus = ""
     private val setupFont = lazy {
-        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(UiTypography.size(TextRole.Control, UiTypography.unitsPerPoint(stage)) / Fonts.ORIGINAL_FONT_SIZE) }
+        Fonts.getUiFont(UiTypography.size(TextRole.Control, UiTypography.unitsPerPoint(stage)))
     }
     internal val formFont get() = setupFont.value
     internal val directSetupWidth get() = if (stackedLayout) stage.width - 72f else (stage.width - 96f) / 3f
@@ -226,6 +226,7 @@ class NewGameScreen(
                 add("Game settings summary".toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18)))
             }
             bottomTable.clear()
+            pickerPane.useContentSizedFooter = true
             if (stackedLayout) {
                 val actions = Table()
                 val buttons = horizontalGroup.children.toList()
@@ -238,13 +239,17 @@ class NewGameScreen(
                         .growY().padRight(if (index < buttons.lastIndex) 10f else 0f)
                 }
                 rightSideGroup.addActor(actions)
-                pickerPane.useContentSizedFooter = true
                 bottomTable.add(pickerPane.descriptionScroll).minWidth(0f)
                     .minHeight(descriptionLabel.style.font.data.lineHeight * descriptionLabel.fontScaleY * 2f + 20f)
                     .grow().row()
             } else {
-                bottomTable.add(summaryTitle).pad(12f)
-                bottomTable.add(pickerPane.descriptionScroll).minWidth(0f).grow()
+                val summary = Table().apply {
+                    add(summaryTitle).growX().left().pad(10f, 12f, 2f, 12f).row()
+                    add(pickerPane.descriptionScroll).minWidth(0f)
+                        .minHeight(descriptionLabel.style.font.data.lineHeight * descriptionLabel.fontScaleY * 3f + 20f)
+                        .grow()
+                }
+                bottomTable.add(summary).minWidth(0f).grow()
             }
             bottomTable.add(rightSideGroup).minWidth(0f).pad(10f).right()
         } else {
@@ -261,7 +266,7 @@ class NewGameScreen(
         scrollPane.setScrollingDisabled(true, true)
         val header = Table().apply {
             if (stackedLayout) {
-                add(councilHeading("Singleplayer", TextRole.PageTitle).apply { wrap = true })
+                add(councilHeading("Singleplayer", TextRole.SectionTitle).apply { wrap = true })
                     .growX().minWidth(0f).left()
             } else {
                 add().width((190f - closeButton.prefWidth).coerceAtLeast(0f))
@@ -791,7 +796,6 @@ class NewGameScreen(
 
     override fun dispose() {
         mapOptionsTable.cancelBackgroundJobs()
-        if (setupFont.isInitialized()) formFont.dispose()
         if (headingFont.isInitialized()) headingFont.value.dispose()
         super.dispose()
     }

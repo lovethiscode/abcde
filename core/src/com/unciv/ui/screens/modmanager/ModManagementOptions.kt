@@ -88,7 +88,7 @@ internal class ModManagementOptions(
         }
         for ((label, select) in listOf("Category:" to categorySelect,
             "Sort Current:" to sortPicker(true), "Sort Downloadable:" to sortPicker(false))) {
-            popup.add(ModManagementStyle.label(label, TextRole.SectionTitle)).width(width).left().padBottom(6f).row()
+            popup.add(ModManagementStyle.label(label, TextRole.Control)).width(width).left().padBottom(6f).row()
             popup.add(select).width(width).minHeight(ModManagementStyle.touchHeight).padBottom(16f).row()
         }
         if (!UiNavigation.isIos) popup.addCloseButton()

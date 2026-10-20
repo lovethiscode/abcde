@@ -18,6 +18,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.TransformDrawable
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.widgets.ExpanderTab
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.screens.basescreen.BaseScreen
@@ -35,11 +36,11 @@ internal object SinglePlayerSetup {
         }
     }
 
-    fun style(actor: Actor, font: BitmapFont) {
+    fun style(actor: Actor, controlFont: BitmapFont) {
         when (actor) {
             is CheckBox -> actor.style = CheckBox.CheckBoxStyle(actor.style).apply {
                 actor.align(com.badlogic.gdx.utils.Align.left)
-                this.font = com.unciv.ui.components.fonts.Fonts.font
+                this.font = controlFont
                 checkedFontColor = ExpeditionBlueTheme.text
                 checkboxOff = ExpeditionBlueTheme.outlinedControl(
                     ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.panel),
@@ -59,15 +60,15 @@ internal object SinglePlayerSetup {
                 checkboxOnOver = checkboxOn
             }
             is TextButton -> actor.style = TextButton.TextButtonStyle(actor.style).apply {
-                this.font = com.unciv.ui.components.fonts.Fonts.font
+                this.font = controlFont
                 up = surface()
                 down = surface(ExpeditionBlueTheme.hero, ExpeditionBlueTheme.controlBorder)
                 over = down
                 disabled = surface(ExpeditionBlueTheme.panel)
             }
             is SelectBox<*> -> actor.style = SelectBox.SelectBoxStyle(actor.style).apply {
-                this.font = font
-                listStyle = ListStyle(listStyle).apply { this.font = font }
+                this.font = controlFont
+                listStyle = ListStyle(listStyle).apply { this.font = controlFont }
                 val body = surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.border)
                 val iconName = when (actor.name) {
                     "setup-field-Difficulty" -> "OtherIcons/Capital"
@@ -89,7 +90,7 @@ internal object SinglePlayerSetup {
                 backgroundOver = background
                 backgroundOpen = background
             }
-            is TextField -> actor.style = TextField.TextFieldStyle(actor.style).apply { this.font = font }
+            is TextField -> actor.style = TextField.TextFieldStyle(actor.style).apply { this.font = controlFont }
             is IconTextButton -> actor.style = Button.ButtonStyle(actor.style).apply {
                 up = surface()
                 down = surface(ExpeditionBlueTheme.hero, ExpeditionBlueTheme.controlBorder)
@@ -97,8 +98,8 @@ internal object SinglePlayerSetup {
                 disabled = surface(ExpeditionBlueTheme.panel)
             }
         }
-        if (actor is Group) actor.children.forEach { style(it, font) }
-        if (actor is ExpanderTab && !actor.isOpen) style(actor.innerTable, font)
+        if (actor is Group) actor.children.forEach { style(it, controlFont) }
+        if (actor is ExpanderTab && !actor.isOpen) style(actor.innerTable, controlFont)
     }
 
     fun field(title: String, control: Actor, width: Float) = Table().apply {
@@ -122,7 +123,8 @@ internal object SinglePlayerSetup {
             if (captionIcon != null) add(ImageGetter.getImage(captionIcon, ExpeditionBlueTheme.text)).size(18f).padRight(7f)
             add(caption.toLabel(ExpeditionBlueTheme.text, UiTypography.size(TextRole.Control, legacySize = 18)).apply { wrap = true }).minWidth(0f).growX().left()
         }).width(labelWidth).left().padRight(8f)
-        add(control).minWidth(0f).width(width - labelWidth - 20f).height(36f).fillX()
+        add(control).minWidth(0f).width(width - labelWidth - 20f)
+            .height(if (UiNavigation.isIos) UiNavigation.minimumTouchSize() else 36f).fillX()
     }
 
     fun form(width: Float, fields: List<Pair<String, Actor>>) = Table().apply {
@@ -146,7 +148,8 @@ internal object SinglePlayerSetup {
             else -> "OtherIcons/Settings"
         }, ExpeditionBlueTheme.text).apply { setSize(20f, 20f) },
         startsOutOpened = opened, defaultPad = 12f, expanderWidth = width,
-        expanderHeight = 36f, headerPad = 0f, persistenceID = "SinglePlayer.$id",
+        expanderHeight = if (UiNavigation.isIos) UiNavigation.minimumTouchSize() else 36f,
+        headerPad = 0f, persistenceID = "SinglePlayer.$id",
         onChange = {
             expander.headerIcon.rotation = if (expander.isOpen) 90f else 180f
             if (expander.isOpen) {

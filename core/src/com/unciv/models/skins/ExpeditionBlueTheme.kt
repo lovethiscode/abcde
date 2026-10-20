@@ -177,8 +177,16 @@ object ExpeditionBlueTheme {
             checkedDownFontColor = gold
         }
         for (style in skin.getAll(ScrollPaneStyle::class.java).values()) {
-            style.hScrollKnob = skin.newDrawable("Scrollbar", border)
-            style.vScrollKnob = style.hScrollKnob
+            if (Gdx.app?.type == ApplicationType.iOS) {
+                // Touch scrolling remains available, but mobile pages do not show scrollbars.
+                style.hScroll = null
+                style.hScrollKnob = null
+                style.vScroll = null
+                style.vScrollKnob = null
+            } else {
+                style.hScrollKnob = skin.newDrawable("Scrollbar", border)
+                style.vScrollKnob = style.hScrollKnob
+            }
         }
         for (style in skin.getAll(SliderStyle::class.java).values()) {
             style.background = skin.newDrawable("Rectangle", border)

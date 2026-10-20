@@ -2,6 +2,9 @@ package com.unciv.ui.screens.multiplayerscreens
 
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
+import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.components.extensions.toLabel
 import com.unciv.logic.multiplayer.FriendList
 import com.unciv.ui.screens.pickerscreens.PickerScreen
 import com.unciv.ui.popups.Popup
@@ -9,11 +12,8 @@ import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.extensions.toTextButton
-import com.unciv.ui.components.widgets.AutoScrollPane as ScrollPane
 
 class ViewFriendsListScreen : PickerScreen() {
-    private val rightSideTable = Table()
-    private val leftSideTable = Table()
     private var friendsTable = Table()
 
     private val addFriendButton = "Add friend".toTextButton()
@@ -27,9 +27,9 @@ class ViewFriendsListScreen : PickerScreen() {
     init {
         setDefaultCloseAction()
         rightSideButton.remove()
+        val unit = UiNavigation.minimumTouchSize() / 44f
 
         //Help Button Setup
-        val tab = Table()
         val helpButton = "Help".toTextButton()
         helpButton.onClick {
             val helpPopup = Popup(this)
@@ -38,30 +38,31 @@ class ViewFriendsListScreen : PickerScreen() {
             helpPopup.addCloseButton()
             helpPopup.open()
         }
-        tab.add(helpButton)
-        tab.x = (stage.width - helpButton.width)
-        tab.y = (stage.height - helpButton.height)
-        stage.addActor(tab)
+        if (UiNavigation.isIos) pickerPane.setNavigationContent(Table().apply {
+            add("Friends".toLabel(TextRole.PageTitle)).growX().minWidth(0f).left()
+            add(helpButton).minHeight(44f * unit).padLeft(8f * unit)
+        }) else stage.addActor(Table().apply {
+            add(helpButton)
+            setPosition(stage.width - helpButton.width, stage.height - helpButton.height)
+        })
 
-        val mainTable = Table()
-        mainTable.add(ScrollPane(leftSideTable).apply { setScrollingDisabled(true, false) }).height(stage.height * 2 / 3)
-        mainTable.add(rightSideTable)
-        topTable.add(mainTable).row()
-        scrollPane.setScrollingDisabled(false, true)
-
-        rightSideTable.defaults().fillX()
-        rightSideTable.defaults().pad(20.0f)
+        topTable.add(friendsTable).growX().minWidth(0f).pad(16f * unit).row()
+        scrollPane.setScrollingDisabled(true, false)
+        rightSideGroup.space(8f * unit)
+        rightSideGroup.fill()
 
         addFriendButton.onClick {
             game.pushScreen{ AddFriendScreen() }
         }
-        rightSideTable.add(addFriendButton).padBottom(10f).row()
+        addFriendButton.setSize(maxOf(addFriendButton.prefWidth, 160f * unit), maxOf(addFriendButton.prefHeight, 44f * unit))
+        rightSideGroup.addActor(addFriendButton)
 
         editFriendButton.onClick {
             game.pushScreen{ EditFriendScreen(selectedFriend) }
             editFriendButton.disable()
         }
-        rightSideTable.add(editFriendButton).padBottom(30f).row()
+        editFriendButton.setSize(maxOf(editFriendButton.prefWidth, 160f * unit), maxOf(editFriendButton.prefHeight, 44f * unit))
+        rightSideGroup.addActor(editFriendButton)
         editFriendButton.disable()
 
         refreshFriendsList()
@@ -71,6 +72,11 @@ class ViewFriendsListScreen : PickerScreen() {
         listOfFriendsButtons.clear()
         friendsTable.clear()
 
+        if (friendsList.isEmpty()) {
+            friendsTable.add("No friends added yet".toLabel(TextRole.Body).apply { wrap = true }).growX().minWidth(0f).pad(16f)
+            return
+        }
+
         for (index in friendsList.indices) {
             listOfFriendsButtons.add(friendsList[index].name.toTextButton())
 
@@ -78,9 +84,7 @@ class ViewFriendsListScreen : PickerScreen() {
                 selectedFriend = friendsList[index]
                 editFriendButton.enable()
             }
-            friendsTable.add(listOfFriendsButtons[index]).padBottom(10f).row()
+            friendsTable.add(listOfFriendsButtons[index]).growX().minHeight(UiNavigation.minimumTouchSize()).padBottom(10f).row()
         }
-        leftSideTable.clear()
-        leftSideTable.add(friendsTable)
     }
 }

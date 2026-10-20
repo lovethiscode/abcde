@@ -105,12 +105,12 @@ class ModManagementScreen private constructor(
     private val discoverButton = ModManagementStyle.button("Discover mods")
     private val installedButton = ModManagementStyle.button("Installed")
     private val detailsBackButton = ModManagementStyle.button("Back to mod list")
-    private val modDescriptionLabel = ModManagementStyle.label("", TextRole.SectionTitle, ModManagementStyle.muted)
-    private val actionHint = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
+    private val modDescriptionLabel = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
+    private val actionHint = ModManagementStyle.label("", TextRole.Supporting, ModManagementStyle.muted)
     private val detailWidth = if (singleColumn) stage.width - 32f else (stage.width - 48f) * 0.54f
     private val listWidth = if (singleColumn) stage.width - 32f else stage.width - 48f - detailWidth
-    private val countLabel = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
-    private val sourceLabel = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
+    private val countLabel = ModManagementStyle.label("", TextRole.Supporting, ModManagementStyle.muted)
+    private val sourceLabel = ModManagementStyle.label("", TextRole.Supporting, ModManagementStyle.muted)
     private val sortHolder = Table()
     private val queryStatus = Table()
     private var onlineLoading = false
@@ -265,7 +265,7 @@ class ModManagementScreen private constructor(
         actionFooter.add(rightSideButton).growX().minWidth(0f).minHeight(ModManagementStyle.touchHeight).row()
         actionFooter.add(actionHint).growX().minWidth(0f).padTop(8f)
         detailPane.add(actionFooter).growX().padTop(12f)
-        modActionTable.add(ModManagementStyle.label("Select a mod to view its details", TextRole.SectionTitle, ModManagementStyle.muted))
+        modActionTable.add(ModManagementStyle.label("Select a mod to view its details", TextRole.Body, ModManagementStyle.muted))
             .width(detailWidth - 40f).padTop(30f)
         refreshBody()
     }
@@ -316,7 +316,7 @@ class ModManagementScreen private constructor(
             rightSideButton.isVisible = false
             actionHint.setText("")
             modActionTable.clear()
-            modActionTable.add(ModManagementStyle.label("Select a mod to view its details", TextRole.SectionTitle, ModManagementStyle.muted))
+            modActionTable.add(ModManagementStyle.label("Select a mod to view its details", TextRole.Body, ModManagementStyle.muted))
                 .width(detailWidth - 40f).padTop(30f)
             return
         }
@@ -503,7 +503,7 @@ class ModManagementScreen private constructor(
     }
 
     private fun markOnlineQueryIncomplete() {
-        val retryLabel = ModManagementStyle.label("Online query result is incomplete", TextRole.SectionTitle, ModManagementStyle.danger)
+        val retryLabel = ModManagementStyle.label("Online query result is incomplete", TextRole.Body, ModManagementStyle.danger)
         retryLabel.touchable = Touchable.enabled
         retryLabel.onClick {
             reloadOnlineMods()

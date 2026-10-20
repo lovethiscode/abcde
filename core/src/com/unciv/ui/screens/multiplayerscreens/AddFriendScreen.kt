@@ -4,6 +4,8 @@ import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.ui.Value
 import com.unciv.UncivGame
 import com.unciv.logic.IdChecker
 import com.unciv.logic.multiplayer.FriendList
@@ -22,23 +24,27 @@ class AddFriendScreen(
     initialID: String = ""
 ) : PickerScreen() {
     init {
+        val unit = UiNavigation.minimumTouchSize() / 44f
+        val formWidth = object : Value() {
+            override fun get(context: Actor?) = minOf(stage.width - 32f * unit, 560f * unit).coerceAtLeast(1f)
+        }
         val friendNameTextField = UncivTextField("Please input a name for your friend!", initialName)
         val pastePlayerIDButton = "Paste player ID from clipboard".toTextButton()
         val playerIDTextField = UncivTextField("Please input a player ID for your friend!", initialID)
         val friendlist = FriendList()
 
-        topTable.add("Friend name".toLabel(TextRole.Body)).row()
-        topTable.add(friendNameTextField).pad(10f).padBottom(30f).width(stage.width/2).row()
+        pickerPane.setNavigationContent("Add friend".toLabel(TextRole.PageTitle))
+        topTable.defaults().minWidth(0f)
+        topTable.add("Friend name".toLabel(TextRole.Control)).width(formWidth).left().padTop(16f * unit).row()
+        topTable.add(friendNameTextField).width(formWidth).minHeight(48f * unit).padTop(8f * unit).padBottom(20f * unit).row()
 
         pastePlayerIDButton.onClick {
             playerIDTextField.text = Gdx.app.clipboard.contents
         }
 
-        topTable.add("Player ID".toLabel(TextRole.Body)).row()
-        val gameIDTable = Table()
-        gameIDTable.add(playerIDTextField).pad(10f).width(2*stage.width/3 - pastePlayerIDButton.width)
-        gameIDTable.add(pastePlayerIDButton)
-        topTable.add(gameIDTable).padBottom(30f).row()
+        topTable.add("Player ID".toLabel(TextRole.Control)).width(formWidth).left().row()
+        topTable.add(playerIDTextField).width(formWidth).minHeight(48f * unit).padTop(8f * unit).row()
+        topTable.add(pastePlayerIDButton).width(formWidth).minHeight(44f * unit).padTop(8f * unit).padBottom(20f * unit).row()
 
         //CloseButton Setup
         closeButton.setText(UiNavigation.backCaption)

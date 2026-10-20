@@ -714,7 +714,7 @@ class AlertPopup(
     private fun addTechResearched() {
         val tech = gameInfo.ruleset.technologies[popupAlert.value]!!
         if (ordinaryPresentation) {
-            addDialogTitle(tech.name, "Technology researched", ImageGetter.getTechIconPortrait(tech.name, 52f * popupUnit))
+            addDialogTitle(tech.name, "Technology researched", ImageGetter.getTechIconPortrait(tech.name, 52f * popupUnit), dismissible = false)
             addReadingSpread(tech.getDescription(viewingCiv), tech.quote, technologySummary(tech))
             styleOrdinaryButton(addButton("Continue playing") { close() }.actor, primary = true)
             music.chooseTrack(tech.name, MusicMood.Researched, MusicTrackChooserFlags.setSpecific)
@@ -760,7 +760,7 @@ class AlertPopup(
         if (ordinaryPresentation) {
             val city = viewingCiv.cities.firstOrNull { it.cityConstructions.containsBuildingOrEquivalent(wonder.name) }
             addDialogTitle("[${wonder.name}] built", city?.let { "{${it.name}} · {World Wonder}" } ?: "World Wonder",
-                ImageGetter.getConstructionPortrait(wonder.name, 52f * popupUnit))
+                ImageGetter.getConstructionPortrait(wonder.name, 52f * popupUnit), dismissible = false)
             addReadingSpread(wonder.getShortDescription(multiline = true), wonder.quote, wonderSummary(wonder))
             styleOrdinaryButton(addButton("Continue playing") { close() }.actor, primary = true)
             music.chooseTrack(wonder.name, MusicMood.Wonder, MusicTrackChooserFlags.setSpecific)
@@ -815,8 +815,7 @@ class AlertPopup(
                 else -> ""
             }
             if (title.isNotBlank()) {
-                addDialogTitle(title, civInfo.nation.leaderName,
-                    dismissible = popupAlert.type !in setOf(AlertType.WarDeclaration, AlertType.StartIntro))
+                addDialogTitle(title, civInfo.nation.leaderName, dismissible = false)
                 return
             }
         }

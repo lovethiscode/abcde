@@ -105,8 +105,13 @@ class PolicyPickerScreen(
         setOverscroll(false, false)
         setFadeScrollBars(false)
         style = ScrollPane.ScrollPaneStyle(style).apply {
-            vScroll = appearance.surface(appearance.deep, 0f).apply { minWidth = u(3f) }
-            vScrollKnob = appearance.surface(appearance.muted, 2f).apply { minWidth = u(3f); minHeight = u(24f) }
+            if (UiNavigation.isIos) {
+                vScroll = null
+                vScrollKnob = null
+            } else {
+                vScroll = appearance.surface(appearance.deep, 0f).apply { minWidth = u(3f) }
+                vScrollKnob = appearance.surface(appearance.muted, 2f).apply { minWidth = u(3f); minHeight = u(24f) }
+            }
         }
     }
 

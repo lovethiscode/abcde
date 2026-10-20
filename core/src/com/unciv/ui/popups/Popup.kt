@@ -84,7 +84,7 @@ open class Popup(
             it.campaign == null && it.endless == null
         } ?: ordinaryShell) && !javaClass.name.let {
             it.contains(".options.") || it.contains(".chat.") || it.contains(".devconsole.")
-                || it.contains(".newgamescreen.") || it.endsWith("AuthPopup")
+                || it.contains(".newgamescreen.")
         }
     protected val popupUnit get() = UiTypography.unitsPerPoint(stageToShowOn)
     protected var ordinaryViewport = ordinaryPresentation
@@ -99,6 +99,7 @@ open class Popup(
     }
     private var closed = false
     private var cancelButton: TextButton? = null
+    private var hasEquivalentCancelButton = false
     private var lastLayoutWidth = -1f
     private var lastLayoutHeight = -1f
     private var revealFocusedInput = false
@@ -598,6 +599,7 @@ open class Popup(
         headerCloseButton = null
         headerDismissAction = null
         cancelButton = null
+        hasEquivalentCancelButton = false
         ordinaryButtons.clear()
         clickBehindToClose = false
         onCloseCallback = null
@@ -685,12 +687,27 @@ open class Popup(
             UiNavigation.styleTextButton(cell.actor, if (ordinaryPresentation) popupUnit else UiNavigation.minimumTouchSize() / 44f)
             styleOrdinaryButton(cell.actor)
             if (ordinaryPresentation) cancelButton = cell.actor
-            // Reuse an existing title-bar X, including its cancellation callback.
-            val cancelActor = cell.actor
-            val button = headerDismissButton { if (!cancelActor.isDisabled) dismiss() }
-            if (button.parent == null) addDismissControl(button)
+            hasEquivalentCancelButton = true
+            removeEquivalentHeaderDismissControl()
         }
         return cell
+    }
+
+    /** A visible Cancel performing the same dismiss action is the single close entry point. */
+    private fun removeEquivalentHeaderDismissControl() {
+        val button = headerCloseButton ?: return
+        val parent = button.parent as? Table
+        if (parent === titleTable && parent.children.size == 1) {
+            titleTable.clearChildren()
+            titleTable.pad(0f)
+        } else {
+            parent?.getCell(button)?.size(0f)?.pad(0f)
+            button.remove()
+            parent?.invalidateHierarchy()
+        }
+        headerCloseButton = null
+        headerDismissAction = null
+        titleTable.invalidateHierarchy()
     }
 
     private fun headerDismissButton(action: () -> Unit): TextButton {
@@ -745,9 +762,15 @@ open class Popup(
                                  onDismiss: (() -> Unit)? = null) {
         val identity = Table().apply {
             val text = Table().apply {
-                add(title.toLabel(TextRole.PageTitle, unit = popupUnit, hideIcons = icon != null).apply { wrap = true }).growX().minWidth(0f).left().row()
+                add(title.toLabel(TextRole.PageTitle, unit = popupUnit, hideIcons = icon != null).apply {
+                    wrap = true
+                    setAlignment(Align.left)
+                }).growX().minWidth(0f).left().row()
                 if (subtitle.isNotBlank()) add(subtitle.toLabel(TextRole.Supporting, unit = popupUnit, fontColor = Color.LIGHT_GRAY)
-                    .apply { wrap = true }).growX().minWidth(0f).left().padTop(4f * popupUnit)
+                    .apply {
+                        wrap = true
+                        setAlignment(Align.left)
+                    }).growX().minWidth(0f).left().padTop(4f * popupUnit)
             }
             if (icon != null) add(icon).size((if (maxPopupWidth / popupUnit <= 430f) 36f else 52f) * popupUnit).top().padRight(14f * popupUnit)
             add(text).growX().minWidth(0f).left()
@@ -759,7 +782,7 @@ open class Popup(
         }
     }
 
-    /** Adds a centered title and right-hand X, fixed above the scrollable content. */
+    /** Adds a fixed title and, unless an equivalent Cancel already exists, a right-hand X. */
     fun addTitleWithCloseButton(
         title: Actor,
         additionalKey: KeyCharAndCode? = null,
@@ -767,10 +790,11 @@ open class Popup(
     ): Group {
         clickBehindToClose = true
         onCloseCallback = action
-        val closeButton = if (UiNavigation.isIos) headerDismissButton { if (!ordinaryPresentation || !closed) { close(); action?.invoke() } }.apply {
+        val closeButton = if (UiNavigation.isIos && hasEquivalentCancelButton) null
+        else if (UiNavigation.isIos) headerDismissButton { if (!ordinaryPresentation || !closed) { close(); action?.invoke() } }.apply {
             keyShortcuts.add(KeyCharAndCode.BACK)
         } else getCloseButton { close(); action?.invoke() }
-        if (additionalKey != null) closeButton.keyShortcuts.add(additionalKey)
+        if (additionalKey != null) closeButton?.keyShortcuts?.add(additionalKey)
         val header = if (ordinaryPresentation) {
             if (title is Label) {
                 title.setFontSize(UiTypography.size(TextRole.PageTitle, popupUnit))
@@ -779,16 +803,17 @@ open class Popup(
             }
             Table(skin).apply {
                 add(title).minWidth(0f).growX().left()
-                add(closeButton).size(44f * popupUnit).top().padLeft(12f * popupUnit)
+                if (closeButton != null) add(closeButton).size(44f * popupUnit).top().padLeft(12f * popupUnit)
             }
-        } else UiNavigation.popupHeader(title, closeButton)
+        } else if (closeButton != null) UiNavigation.popupHeader(title, closeButton)
+        else Table(skin).apply { add(title).minWidth(0f).growX() }
         if (topTable === bottomTable) add(header).growX().row()
         else {
             if (ordinaryPresentation) titleTable.pad(16f * popupUnit, 20f * popupUnit, 16f * popupUnit, 20f * popupUnit)
             else titleTable.pad(20f, 25f, 0f, 25f)
             titleTable.add(header).growX()
         }
-        return closeButton
+        return closeButton ?: header
     }
 
     /**

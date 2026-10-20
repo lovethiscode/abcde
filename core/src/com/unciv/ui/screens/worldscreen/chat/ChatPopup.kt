@@ -134,7 +134,7 @@ class ChatPopup(
     private val chatHeaderRow = Table(skin)
     private val composer = Table(skin)
     private val inputFont by lazy {
-        Fonts.fontImplementation.getBitmapFont().apply { data.setScale(UiTypography.size(TextRole.Control, iosScale).toFloat() / Fonts.ORIGINAL_FONT_SIZE) }
+        Fonts.getUiFont(UiTypography.size(TextRole.Control, iosScale))
     }
 
     init {
@@ -253,7 +253,6 @@ class ChatPopup(
             Gdx.input.setOnscreenKeyboardVisible(false)
         }
         super.close()
-        if (UiNavigation.isIos) inputFont.dispose()
     }
 
     fun refreshPasswordReminder() {
@@ -262,7 +261,7 @@ class ChatPopup(
             passwordReminder.add(
                 "To use chat, set or check your password in Options → Multiplayer.".toLabel(TextRole.Body).apply {
                     wrap = true
-                    if (UiNavigation.isIos) setFontSize(UiTypography.size(TextRole.Metadata, iosScale))
+                    if (UiNavigation.isIos) setFontSize(UiTypography.size(TextRole.Supporting, iosScale))
                 }
             ).growX().padBottom(5f)
         }
