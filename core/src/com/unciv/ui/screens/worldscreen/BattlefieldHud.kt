@@ -418,11 +418,14 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         }
 
         if (world.gameInfo.campaign == null && world.gameInfo.endless == null) {
-            val tutorialTop = if (portrait && urgent.isVisible) urgent.y - gap else leftTop
+            var tutorialTop = if (portrait && urgent.isVisible) urgent.y - gap else leftTop
+            if (UiNavigation.isIos && portrait && !world.game.isTutorialTaskCollapsed && world.minimapWrapper.isVisible)
+                tutorialTop = minOf(tutorialTop, world.minimapWrapper.y - gap)
+            val tutorialHeight = points(if (UiNavigation.isIos) 300f else 190f)
             world.tutorialTaskTable.fitBattlefield(Rectangle(left,
-                maxOf(contextTop + gap, tutorialTop - points(190f)),
+                maxOf(contextTop + gap, tutorialTop - tutorialHeight),
                 minOf(points(340f), width),
-                minOf(points(190f), maxOf(touch, tutorialTop - contextTop - gap))))
+                minOf(tutorialHeight, maxOf(touch, tutorialTop - contextTop - gap))))
         }
         world.zoomController.apply {
             val panelY = contextTop + gap

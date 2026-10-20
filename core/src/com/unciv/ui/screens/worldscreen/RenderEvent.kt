@@ -14,6 +14,9 @@ import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.widgets.WrappableLabel
+import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.screens.civilopediascreen.FormattedLine
 import com.unciv.ui.screens.civilopediascreen.MarkupRenderer
 
@@ -33,6 +36,7 @@ class RenderEvent(
      *  the Table would follow, it recomputes its columns from zero on every run, but the labels
      *  keep reporting the width they were built for. To change this width, build a new one. */
     val labelWidth: Float = worldScreen.stage.width * 0.5f,
+    val floatingTutorial: Boolean = false,
     val onChoice: (EventChoice) -> Unit
 ) : Table() {
     private val gameInfo get() = worldScreen.gameInfo
@@ -42,13 +46,14 @@ class RenderEvent(
     //todo check generated translations
 
     init {
-        defaults().fillX().center().pad(5f)
+        // labelWidth is the available viewport, not a minimum content width plus cell insets.
+        defaults().fillX().center().pad(if (floatingTutorial) 0f else 5f)
 
         val gameContext = GameContext(gameInfo.currentPlayerCiv, unit = unit)
         val choices = event.getMatchingChoices(gameContext)
         isValid = choices != null
         if (isValid) {
-            if (event.text.isNotEmpty()) {
+            if (event.text.isNotEmpty() && !floatingTutorial) {
                 add(WrappableLabel(event.text, labelWidth).apply {
                     wrap = true
                     setAlignment(Align.center)
@@ -56,7 +61,16 @@ class RenderEvent(
                 }).row()
             }
             if (event.civilopediaText.isNotEmpty()) {
-                add(event.renderCivilopediaText(labelWidth, ::openCivilopedia)).row()
+                val titleIndex = if (floatingTutorial && event.text.isBlank())
+                    event.civilopediaText.indexOfFirst { it.text.isNotBlank() } else -1
+                val bodyLines = event.civilopediaText.filterIndexed { index, _ -> index != titleIndex }
+                // Built-in task instructions lead; the original illustration remains below them.
+                val lines = if (floatingTutorial && event.name.startsWith("Tutorial Task: ["))
+                    bodyLines.sortedBy { it.extraImage.isNotBlank() } else bodyLines
+                add(if (floatingTutorial) MarkupRenderer.render(lines, labelWidth,
+                    padding = 0f, fitToWidth = true, useUiTypography = true,
+                    unit = UiTypography.unitsPerPoint(worldScreen.stage), linkAction = ::openCivilopedia)
+                    else event.renderCivilopediaText(labelWidth, ::openCivilopedia)).row()
             }
 
             for (choice in choices!!) addChoice(choice)
@@ -76,7 +90,14 @@ class RenderEvent(
             button.keyShortcuts.add(key)
             button.addTooltip(key)
         }
-        add(button).row()
+        add(button).apply {
+            if (floatingTutorial) {
+                val unit = UiTypography.unitsPerPoint(worldScreen.stage)
+                button.label.setFontSize(UiTypography.size(TextRole.Control, unit))
+                button.label.wrap = true
+                width(labelWidth).minHeight(44f * unit)
+            }
+        }.row()
 
         val lines = (
             choice.civilopediaText.asSequence()
@@ -84,7 +105,9 @@ class RenderEvent(
                     .filterNot { it.isHiddenToUsers() }
                     .map { FormattedLine(it) }
             ).asIterable()
-        add(MarkupRenderer.render(lines, labelWidth, linkAction = ::openCivilopedia)).row()
+        add(MarkupRenderer.render(lines, labelWidth, padding = if (floatingTutorial) 0f else 2.5f, fitToWidth = floatingTutorial,
+            useUiTypography = floatingTutorial, unit = UiTypography.unitsPerPoint(worldScreen.stage),
+            linkAction = ::openCivilopedia)).row()
     }
 
     private fun openCivilopedia(link: String) = worldScreen.openCivilopedia(link)

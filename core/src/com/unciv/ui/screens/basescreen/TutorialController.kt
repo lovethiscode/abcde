@@ -3,6 +3,7 @@ package com.unciv.ui.screens.basescreen
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.models.TutorialTrigger
+import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.Popup
@@ -69,7 +70,30 @@ class TutorialRender(private val screen: BaseScreen) {
     private fun showDialog(tutorialName: String, texts: List<String>, closeAction: () -> Unit) {
         if (texts.isEmpty()) return closeAction()
 
-        val tutorialPopup = Popup(screen)
+        fun showNextStep() = showDialog(tutorialName, texts.subList(1, texts.size), closeAction)
+        val tutorialPopup = object : Popup(screen) {
+            val stepDialog = ordinaryPresentation && tutorialName != TutorialTrigger.ContactMe.name
+            init {
+                if (stepDialog) {
+                    // Preserve the existing outside-tap progression without disguising Next as X.
+                    clickBehindToClose = true
+                    onCloseCallback = ::showNextStep
+                }
+                if (ordinaryPresentation) {
+                    val trigger = TutorialTrigger.valueOf(tutorialName)
+                    val support = trigger == TutorialTrigger.ContactMe
+                    val title = when (trigger) {
+                        TutorialTrigger.ContactMe -> "Thank you for your support"
+                        TutorialTrigger.SlowStart -> "New Game"
+                        TutorialTrigger.EnemyCityNeedsConqueringWithMeleeUnit -> "Enemy City"
+                        TutorialTrigger.BarbarianEncountered -> "Barbarians"
+                        TutorialTrigger.OtherCivEncountered -> "Diplomacy"
+                        else -> trigger.value.replace('_', ' ').trimStart()
+                    }
+                    addDialogTitle(title, if (support) "Developer message" else "Tutorial", dismissible = !stepDialog)
+                }
+            }
+        }
         tutorialPopup.name = Constants.tutorialPopupNamePrefix + tutorialName
 
         val externalImage = ImageGetter.findExternalImage(tutorialName)
@@ -79,9 +103,17 @@ class TutorialRender(private val screen: BaseScreen) {
 
         tutorialPopup.addGoodSizedLabel(texts[0]).row()
 
-        tutorialPopup.addCloseButton(additionalKey = KeyCharAndCode.SPACE) {
+        if (tutorialPopup.stepDialog) {
+            tutorialPopup.addButton("Continue", KeyCharAndCode.SPACE) {
+                tutorialPopup.close()
+                showNextStep()
+            }.actor.apply {
+                name = "ui-tutorial-continue"
+                keyShortcuts.add(KeyCharAndCode.BACK)
+            }
+        } else tutorialPopup.addCloseButton(additionalKey = KeyCharAndCode.SPACE) {
             tutorialPopup.remove()
-            showDialog(tutorialName, texts.subList(1, texts.size), closeAction)
+            showNextStep()
         }.actor.name = "ui-tutorial-close"
         tutorialPopup.open()
     }

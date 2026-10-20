@@ -738,11 +738,25 @@ class TechPickerScreen(
         val tech = selectedTech ?: return
         val reason = researchBlock(tech)
         if(reason != null) { ToastPopup(reason,this); return }
-        val popup = Popup(this)
-        popup.addGoodSizedLabel((if(freeTechPick) "Get free technology" else "Research this route").tr()+" · "+tech.name.tr(hideIcons = true)).row()
         val path = civTech.getRequiredTechsToDestination(tech).map { it.name }
-        if(!freeTechPick) popup.addGoodSizedLabel(path.joinToString(" → ") { it.tr(hideIcons = true) }+"\n"+
-            "[${routeTurns(path)}] turns for the full route (including overflow)".tr()).row()
+        val popup = object : Popup(this@TechPickerScreen) {
+            init {
+                if (ordinaryPresentation) {
+                    addDialogTitle(if (freeTechPick) "Get free technology" else "Research [${tech.name}] route?", "Research plan")
+                    addGoodSizedLabel(path.joinToString(" → ") { it.tr(hideIcons = true) }).row()
+                    if (freeTechPick) addGoodSizedLabel("No science cost").row()
+                    else {
+                        addFactRow("Estimated time", "[${routeTurns(path)}] turns")
+                        addGoodSizedLabel("Overflow science is included; research speed can change the estimate.",
+                            size = UiTypography.size(TextRole.Supporting, popupUnit)).row()
+                    }
+                } else {
+                    addGoodSizedLabel((if(freeTechPick) "Get free technology" else "Research this route").tr()+" · "+tech.name.tr(hideIcons = true)).row()
+                    if(!freeTechPick) addGoodSizedLabel(path.joinToString(" → ") { it.tr(hideIcons = true) }+"\n"+
+                        "[${routeTurns(path)}] turns for the full route (including overflow)".tr()).row()
+                }
+            }
+        }
         popup.addCloseButton("Cancel",style=appearance.buttonStyle(outlined=true))
         popup.addButton(if(freeTechPick) "Get free technology" else "Set research plan",style=appearance.buttonStyle(primary=true)) {
             popup.close()

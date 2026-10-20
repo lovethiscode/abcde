@@ -163,6 +163,7 @@ class WorldScreen(
     internal val minimapWrapper = MinimapHolder(mapHolder)
     internal val bottomTileInfoTable = TileInfoTable(this)
     internal val notificationsScroll = NotificationsScroll(this)
+    private val shownRazeFeedback = HashSet<String>()
     internal val nextTurnButton = NextTurnButton(this)
     internal val statusButtons = StatusButtons(nextTurnButton)
     internal val smallUnitButton = SmallUnitButton(this, statusButtons)
@@ -613,6 +614,14 @@ class WorldScreen(
         // Late: the task card is fitted into the room left by the widgets around it, so they must have their final size
         if (uiEnabled && gameInfo.campaign == null && gameInfo.endless == null) tutorialTaskTable.update()
         else tutorialTaskTable.isVisible = false
+
+        if (com.unciv.ui.popups.OrdinaryGameFeedback.enabled(this)) {
+            for (notice in viewingCiv.notifications) {
+                if (!notice.text.endsWith("] has been razed to the ground!")) continue
+                if (shownRazeFeedback.add("${gameInfo.turns}:${notice.text}"))
+                    com.unciv.ui.popups.OrdinaryGameFeedback.razed(this, notice)
+            }
+        }
 
         if (battlefieldHud != null && uiEnabled) {
             battlefieldHud!!.layout()

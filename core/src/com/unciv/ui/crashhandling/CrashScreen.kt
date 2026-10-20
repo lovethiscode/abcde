@@ -16,10 +16,14 @@ import com.unciv.ui.components.extensions.addBorder
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.onClick
+import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.ToastPopup
+import com.unciv.ui.popups.Popup
+import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.components.widgets.ExpanderTab
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.utils.Log
 import java.io.PrintWriter
@@ -127,7 +131,63 @@ class CrashScreen(val exception: Throwable) : BaseScreen() {
 
     init {
         System.gc() // If we previously died to an OOM error, this decreases the chances that the *crash screen* will OOM as well
-        stage.addActor(makeLayoutTable())
+        if (UiNavigation.isIos && UncivGame.getGameInfoOrNull()?.let { it.campaign == null && it.endless == null } != false)
+            showOrdinaryError()
+        else stage.addActor(makeLayoutTable())
+    }
+
+    private fun showOrdinaryError() {
+        object : Popup(this@CrashScreen, ordinaryShell = true) {
+            init {
+                addDialogTitle("The game cannot continue", "Unrecoverable error", dismissible = false)
+                addGoodSizedLabel("You can copy the error report, then close and reopen the game.").row()
+                fun details(title: String, text: String) {
+                    val expander = ExpanderTab(title, fontSize = UiTypography.size(TextRole.Control, popupUnit),
+                        startsOutOpened = false, defaultPad = 0f, headerPad = 12f * popupUnit,
+                        expanderWidth = 1f,
+                        onChange = {
+                            refreshOrdinaryPopupLayout()
+                            getScrollPane()?.apply {
+                                validate()
+                                scrollX = 0f
+                                scrollY = 0f
+                                updateVisualScroll()
+                            }
+                        }) { content ->
+                        content.add(text.toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
+                            .width(object : com.badlogic.gdx.scenes.scene2d.ui.Value() {
+                                override fun get(context: Actor?) = (popupContentWidth - 24f * popupUnit).coerceAtLeast(1f)
+                            }).minWidth(0f).growX()
+                    }
+                    // ExpanderTab caches its initial content width; permit later rotation to shrink it.
+                    expander.getCell(expander.header).minWidth(0f)
+                    add(expander).minWidth(0f).growX().row()
+                }
+                details("View error details", displayedText)
+                details("Try to recover", "Reopen the game and try loading your latest save. If you use mods, try disabling them.")
+                addButton("Copy error report") { copyErrorReport() }
+                addButton("Open Issue Tracker") { openIssueTracker() }
+                // Do not reuse the Enter key that may have triggered this fatal error.
+                addOKButton("Close Unciv") { Gdx.app.exit() }.actor.keyShortcuts.clear()
+                open(true)
+            }
+        }
+    }
+
+    private fun copyErrorReport() {
+        try {
+            Gdx.app.clipboard.contents = fullText
+            copied = true
+            ToastPopup("Error report copied.", this)
+        } catch (ex: Exception) {
+            Log.debug("Could not copy to clipboard", ex)
+            ToastPopup("Could not copy to clipboard!", this)
+        }
+    }
+
+    private fun openIssueTracker() {
+        if (copied) Gdx.net.openURI("${Constants.uncivRepoURL}issues")
+        else ToastPopup("Please copy the error report first.", this)
     }
 
     /** @return A Table containing the layout of the whole screen. */
@@ -186,33 +246,13 @@ class CrashScreen(val exception: Throwable) : BaseScreen() {
     private fun makeActionButtonsTable(): Table {
         val copyButton = IconTextButton("Copy", fontSize = Constants.headingFontSize, labelFontSize = UiTypography.size(TextRole.Control))
             .onClick {
-                try {
-                    Gdx.app.clipboard.contents = fullText
-                    copied = true
-                    ToastPopup(
-                        "Error report copied.",
-                        this@CrashScreen
-                    )
-                } catch(ex:Exception) {
-                    Log.debug("Could not copy to clipboard", ex)
-                    ToastPopup(
-                        "Could not copy to clipboard!",
-                        this@CrashScreen
-                    )
-                }
+                copyErrorReport()
             }
         val reportButton = IconTextButton("Open Issue Tracker", ImageGetter.getImage("OtherIcons/Link"),
             Constants.headingFontSize
         , labelFontSize = UiTypography.size(TextRole.Control))
             .onClick {
-                if (copied) {
-                    Gdx.net.openURI("${Constants.uncivRepoURL}issues")
-                } else {
-                    ToastPopup(
-                        "Please copy the error report first.",
-                        this@CrashScreen
-                    )
-                }
+                openIssueTracker()
             }
         val closeButton = IconTextButton("Close Unciv", fontSize = Constants.headingFontSize, labelFontSize = UiTypography.size(TextRole.Control))
             .onClick { Gdx.app.exit() }

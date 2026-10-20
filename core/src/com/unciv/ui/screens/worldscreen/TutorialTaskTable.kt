@@ -3,12 +3,19 @@ package com.unciv.ui.screens.worldscreen
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.Cell
+import com.badlogic.gdx.utils.Align
 import com.unciv.UncivGame
 import com.unciv.models.ruleset.Event
 import com.unciv.ui.components.extensions.centerX
 import com.unciv.ui.components.extensions.darken
+import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.AutoScrollPane
+import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.popups.OrdinaryPopupStyle
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.topbar.WorldScreenTopBar
@@ -34,6 +41,10 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
     /** Identifies the content currently built, so an [update] that changes nothing keeps it */
     private var contentHash = 0
     private var battlefieldBounds: Rectangle? = null
+    private val ordinary get() = UiNavigation.isIos && worldScreen.gameInfo.campaign == null && worldScreen.gameInfo.endless == null
+    private val unit get() = UiTypography.unitsPerPoint(worldScreen.stage)
+    private var ordinaryScrollCell: Cell<AutoScrollPane>? = null
+    private var ordinaryHeader: Table? = null
 
     fun fitBattlefield(bounds: Rectangle) {
         battlefieldBounds = bounds
@@ -47,11 +58,7 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
         // update registering it again would stack up one more toggle per update - and a tap runs all
         // of them, an even count leaving the card exactly as it was. The rebuilds below therefore
         // use clearChildren(), which drops the cells only - clear() would take the listeners with them.
-        onClick {
-            UncivGame.Current.isTutorialTaskCollapsed = !UncivGame.Current.isTutorialTaskCollapsed
-            update()
-            worldScreen.shouldUpdate = true
-        }
+        onClick { setCollapsed(!UncivGame.Current.isTutorialTaskCollapsed) }
     }
 
     /** Rebuilds the card if needed, then refits and repositions it - or hides it when there is no
@@ -102,6 +109,7 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
 
     /** @return `false` when the [task] turns out not to be renderable */
     private fun buildTask(task: Event): Boolean {
+        if (ordinary) return buildOrdinaryTask(task)
         val taskWidth = getTaskWidth()
         // Default hashCode is OK - we see the same instance or not. The width is part of the hash
         // because a change means a rebuild, not a re-wrap: RenderEvent bakes the width into its
@@ -132,8 +140,69 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
         return true
     }
 
+    private fun setCollapsed(collapsed: Boolean) {
+        UncivGame.Current.isTutorialTaskCollapsed = collapsed
+        update()
+        worldScreen.shouldUpdate = true
+    }
+
+    private fun buildOrdinaryTask(task: Event): Boolean {
+        val taskWidth = getTaskWidth()
+        val hash = task.hashCode() * 31 + taskWidth.toInt()
+        if (hash != contentHash) {
+            // This is an inline teaching card: tapping it toggles the compact task icon.
+            // It has no modal close control or visible scroll chrome. Leave glyph overhang room.
+            val bodyWidth = (taskWidth - 8f * unit).coerceAtLeast(1f)
+            val content = RenderEvent(task, worldScreen, labelWidth = bodyWidth,
+                floatingTutorial = true) { worldScreen.shouldUpdate = true }
+            // Font glyphs may overhang their measured advance at the beginning of a line.
+            content.pad(0f, 4f * unit, 0f, 4f * unit)
+            if (!content.isValid) return false
+            clearChildren()
+            background = OrdinaryPopupStyle(unit).surface(OrdinaryPopupStyle(unit).background, 16f)
+            val heading = Table().apply {
+                defaults().left()
+                val title = task.text.ifBlank {
+                    task.civilopediaText.firstOrNull { it.text.isNotBlank() }?.text ?: "Tutorial"
+                }
+                add(title.toLabel(TextRole.SectionTitle, unit = unit).apply {
+                    wrap = true
+                    setAlignment(Align.left)
+                }).growX().minWidth(0f)
+            }
+            ordinaryHeader = heading
+            add(heading).width(taskWidth).pad(16f * unit, 16f * unit, 8f * unit, 16f * unit).row()
+            // Normal built-in tasks fit at their full preferred height. Retain touch scrolling
+            // for unusually long mod instructions without drawing a track or scrollbar thumb.
+            val scroll = AutoScrollPane(content).apply {
+                name = "ui-tutorial-task-content"
+                setScrollingDisabled(true, false)
+                setOverscroll(false, false)
+            }
+            ordinaryScrollCell = add(scroll).width(taskWidth).fill()
+                .pad(0f, 16f * unit, 16f * unit, 16f * unit)
+            contentHash = hash
+        }
+        ordinaryHeader?.let { heading ->
+            heading.setSize(taskWidth, heading.prefHeight)
+            heading.validate()
+            ordinaryScrollCell?.maxHeight((getTaskHeight(taskWidth) - heading.prefHeight - 40f * unit)
+                .coerceAtLeast(44f * unit))
+        }
+        invalidate()
+        return true
+    }
+
     private fun buildCollapsedIcon() {
         clearChildren()
+        if (ordinary) {
+            background = null
+            add(Table().apply {
+                add(ImageGetter.getImage("OtherIcons/HiddenTutorialTask")).size(20f * unit)
+            }).size(44f * unit)
+            contentHash = 0
+            return
+        }
         if (BattlefieldHud.enabled) {
             val icon = BattlefieldHud.points(20f)
             add(ImageGetter.getImage("OtherIcons/HiddenTutorialTask"))
@@ -155,6 +224,7 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
      *  did: an overlap we can read beats a fit we cannot. */
     private fun getTaskWidth(): Float {
         battlefieldBounds?.takeIf { BattlefieldHud.enabled }?.let {
+            if (ordinary) return (it.width - 32f * unit).coerceAtLeast(120f * unit)
             return (it.width - contentPad * 2).coerceAtLeast(collapsedIconSize)
         }
         val stageWidth = worldScreen.stage.width
@@ -178,6 +248,7 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
      *  final here. */
     private fun getTaskHeight(taskWidth: Float): Float {
         battlefieldBounds?.takeIf { BattlefieldHud.enabled }?.let {
+            if (ordinary) return it.height
             return (it.height - contentPad * 2).coerceAtLeast(collapsedIconSize)
         }
         val cardLeft = (worldScreen.stage.width - taskWidth) / 2 - contentPad

@@ -246,6 +246,7 @@ class AlertPopup(
                 it.isDisabled = false
                 styleOrdinaryButton(it, primary = true,
                     destructive = button.name in setOf("ui-disposition:raze", "ui-disposition:destroy"))
+                refreshOrdinaryPopupLayout()
             }
         }
     }
@@ -439,6 +440,7 @@ class AlertPopup(
 
             addPuppetOption(mayAnnex = mayAnnex) {
                 city.puppetCity(conqueringCiv)
+                com.unciv.ui.popups.OrdinaryGameFeedback.puppet(worldScreen, city)
             }
             if (!ordinaryPresentation) addSeparator()
 
@@ -658,7 +660,7 @@ class AlertPopup(
 
         bottomTable.defaults().pad(0f, 30f) // Small buttons, plenty of pad so we don't fat-finger it
 
-        addCivilianChoice(if (ordinaryPresentation) "Return [${capturedUnit.name}] to [${originalOwner.civName}]?" else Constants.yes, KeyboardBinding.Confirm) {
+        addCivilianChoice(if (ordinaryPresentation) "Return to [${originalOwner.civName}]" else Constants.yes, KeyboardBinding.Confirm) {
             // Return it to original owner
             val unitName = capturedUnit.baseUnit.name
             capturedUnit.destroy()
@@ -688,6 +690,9 @@ class AlertPopup(
         addCivilianChoice(if (ordinaryPresentation) "Keep the worker" else Constants.no, KeyboardBinding.Cancel) {
             // Take it for ourselves
             BattleUnitCapture.captureOrConvertToWorker(capturedUnit, captor)
+            captor.units.getUnitById(capturedUnit.id)?.let {
+                com.unciv.ui.popups.OrdinaryGameFeedback.keptCivilian(worldScreen, it.baseUnit.name, captor.civName)
+            }
         }.apply { actor.name = "ui-alert-choice:keep" }
         return true
     }
@@ -895,8 +900,10 @@ class AlertPopup(
     private fun addLiberateOption(city: City, conqueringCiv: Civilization) {
         val button = "Liberate (city returns to [originalOwner])".fillPlaceholders(city.foundingCivObject!!.civName).toTextButton().apply { name = "ui-disposition:liberate" }
         bindCityChoice(button) {
+            val originalOwner = city.foundingCivObject!!.civName
             city.liberateCity(conqueringCiv)
             close()
+            com.unciv.ui.popups.OrdinaryGameFeedback.liberated(worldScreen, city.name, originalOwner)
         }
         button.keyShortcuts.add('l')
         if (ordinaryPresentation) {
@@ -918,6 +925,7 @@ class AlertPopup(
                     if (mayAnnex) { city.annexCity() }
                     city.isBeingRazed = true
                     close()
+                    com.unciv.ui.popups.OrdinaryGameFeedback.razing(worldScreen, city)
                 }
                 keyShortcuts.add('r')
             }

@@ -58,14 +58,16 @@ import com.unciv.ui.screens.basescreen.UncivStage
 open class Popup(
     val stageToShowOn: Stage,
     scrollable: Scrollability = Scrollability.WithoutButtons,
-    private val maxSizePercentage: Float = 0.9f
+    private val maxSizePercentage: Float = 0.9f,
+    ordinaryShell: Boolean = false
 ): Table(BaseScreen.skin) {
 
     constructor(
         screen: BaseScreen,
         scrollable: Scrollability = Scrollability.WithoutButtons,
-        maxSizePercentage: Float = 0.9f
-    ) : this(screen.stage, scrollable, maxSizePercentage)
+        maxSizePercentage: Float = 0.9f,
+        ordinaryShell: Boolean = false
+    ) : this(screen.stage, scrollable, maxSizePercentage, ordinaryShell)
 
     /** Controls how content may scroll.
      *
@@ -78,9 +80,9 @@ open class Popup(
 
     /** Ordinary game presentation is isolated from campaign/endless and specialised tools. */
     protected val ordinaryPresentation = scrollable == Scrollability.WithoutButtons &&
-        UiNavigation.isIos && UncivGame.getGameInfoOrNull()?.let {
+        UiNavigation.isIos && (UncivGame.getGameInfoOrNull()?.let {
             it.campaign == null && it.endless == null
-        } == true && !javaClass.name.let {
+        } ?: ordinaryShell) && !javaClass.name.let {
             it.contains(".options.") || it.contains(".chat.") || it.contains(".devconsole.")
                 || it.contains(".newgamescreen.") || it.endsWith("AuthPopup")
         }
@@ -264,6 +266,11 @@ open class Popup(
         lastLayoutWidth = stageToShowOn.width
         lastLayoutHeight = stageToShowOn.height
         revealFocusedInput = true
+    }
+
+    /** Re-measure fixed actions after a decision changes their text. */
+    protected fun refreshOrdinaryPopupLayout() {
+        if (ordinaryPresentation) onVisibleAreaChanged(lastKnownVisibleArea())
     }
 
     override fun act(delta: Float) {

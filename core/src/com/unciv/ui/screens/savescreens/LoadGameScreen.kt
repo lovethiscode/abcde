@@ -532,16 +532,20 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
                 game.loadGame(loadedGame, callFromLoadScreen = true)
             } catch (notAPlayer: UncivShowableException) {
                 launchOnGLThread {
-                    val (message) = getLoadExceptionMessage(notAPlayer)
-                    loadingPopup.reuseWith(message, true)
+                    val ordinary = UiNavigation.isIos && com.unciv.UncivGame.getGameInfoOrNull()?.let {
+                        it.campaign == null && it.endless == null
+                    } != false
+                    if (ordinary) loadingPopup.close()
+                    else loadingPopup.reuseWith(getLoadExceptionMessage(notAPlayer).first, true)
                     blockedSave = LoadGameSaveKey.of(saveGameFile); updateReadButton()
-                    handleLoadGameException(notAPlayer)
+                    if (ordinary) handleLoadGameException(notAPlayer, retry = { blockedSave = null; onLoadGame(saveGameFile) })
+                    else handleLoadGameException(notAPlayer)
                 }
             } catch (ex: Exception) {
                 launchOnGLThread {
                     loadingPopup.close()
                     blockedSave = LoadGameSaveKey.of(saveGameFile); updateReadButton()
-                    handleLoadGameException(ex)
+                    handleLoadGameException(ex, retry = { blockedSave = null; onLoadGame(saveGameFile) })
                 }
             } finally {
                 launchOnGLThread { loadingGame = false; if (!disposed) updateReadButton() }
@@ -639,9 +643,17 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         }
     }
 
-    private fun handleLoadGameException(ex: Exception, primaryText: String = "Could not load game!") {
+    private fun handleLoadGameException(ex: Exception, primaryText: String = "Could not load game!", retry: (() -> Unit)? = null) {
         val isUserFixable = handleException(ex, primaryText)
-        if (!isUserFixable) {
+        val ordinary = UiNavigation.isIos && com.unciv.UncivGame.getGameInfoOrNull()?.let {
+            it.campaign == null && it.endless == null
+        } != false
+        if (ordinary && retry != null) {
+            val details = if (selectedSave?.exists() == false)
+                "The selected save is no longer available. Restore this file and retry, or choose another save."
+            else getLoadExceptionMessage(ex, primaryText).first
+            com.unciv.ui.popups.LoadFailurePopup(this, details, retry)
+        } else if (!isUserFixable) {
             val cantLoadGamePopup = Popup(this@LoadGameScreen)
             cantLoadGamePopup.addGoodSizedLabel("It looks like your saved game can't be loaded!").row()
             cantLoadGamePopup.addGoodSizedLabel("If you could copy your game data (\"Copy saved game to clipboard\" - ").row()
