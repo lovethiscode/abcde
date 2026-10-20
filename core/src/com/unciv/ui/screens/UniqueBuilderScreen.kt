@@ -177,7 +177,7 @@ private class UniqueTable(
         for ((index, parameter) in uniqueType.text.getPlaceholderParameters().withIndex()) {
             val paramTable = Table().apply { defaults().pad(10f) }
             paramTable.background = ImageGetter.getWhiteDotDrawable().tint(Color.DARK_GRAY)
-            paramTable.add("Parameter ${index+1}: $parameter".toLabel(TextRole.Body)).row()
+            paramTable.add("Parameter [${index+1}]: [$parameter]".toLabel(TextRole.Body)).row()
             val knownParamValues = uniqueType.parameterTypeMap[index]
                 .flatMap { it.getKnownValuesForAutocomplete(ruleset) }.toSet()
 

@@ -97,7 +97,7 @@ class MapEditorViewTab(
         try {
             tileMap.assignContinents(TileMap.AssignContinentsMode.Ensure)
         } catch (ex: Exception) {
-            ToastPopup("Error assigning continents: ${ex.message}", editorScreen)
+            ToastPopup("Error assigning continents: [${ex.message}]", editorScreen)
         }
 
         val area = tileMap.values.size

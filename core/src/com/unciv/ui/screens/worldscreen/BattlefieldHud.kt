@@ -84,10 +84,15 @@ internal class BattlefieldHud(private val world: WorldScreen) {
     private val tileHeader get() = world.bottomTileInfoTable.battlefieldHeader
     private val tileInfo = ScrollPane(world.bottomTileInfoTable, BaseScreen.skin).apply {
         name = "ui-battlefield-tile-details"
-        setScrollbarsOnTop(true) // Keep the measured text width; the bar stays in the right inset.
         setScrollingDisabled(true, false)
         setOverscroll(false, false)
-        setFadeScrollBars(false)
+        style = ScrollPane.ScrollPaneStyle(style).apply {
+            // Keep touch scrolling without spending tile-detail space on scrollbar chrome.
+            hScroll = null
+            hScrollKnob = null
+            vScroll = null
+            vScrollKnob = null
+        }
     }
     private val tileClose = iconButton("OtherIcons/Close", "ui-tile-details-close") {
         tileRequested = false
@@ -186,7 +191,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
     private fun rebuildUrgent(width: Float, notifications: List<Notification>) {
         urgent.clearChildren()
         val touch = UiNavigation.minimumTouchSize()
-        val gap = points(4f)
+        val rowGap = points(2f)
         val war = notifications.filter { it.category == NotificationCategory.War }
             .minByOrNull { if (it.icons.any { icon -> icon.endsWith("CrosshairB") }) 0 else 1 }
         val promotion = notifications.firstOrNull { it.actions.any { action -> action is PromoteUnitAction } }
@@ -197,7 +202,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
             val row = Button(BaseScreen.skin).apply {
                 name = "ui-urgent-notification:$index"
                 BattlefieldGeometry.fitControl(this)
-                pad(points(5f))
+                pad(points(3f), points(5f), points(3f), points(5f))
                 val icons = Table()
                 notification.addNotificationIconsTo(icons, world.gameInfo.ruleset, points(17f))
                 icons.touchable = Touchable.disabled
@@ -210,7 +215,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
             }
             row.width = width
             urgent.add(row).width(width).height(maxOf(touch, row.prefHeight))
-                .padBottom(if (index < entries.lastIndex) gap else 0f).row()
+                .padBottom(if (index < entries.lastIndex) rowGap else 0f).row()
         }
         eventCount.setText(notifications.size.toString())
         urgent.pack()
@@ -218,6 +223,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
 
     fun layout() {
         val gap = points(8f)
+        val urgentGap = points(4f)
         val safe = controlBounds(world, gap)
         val left = safe.x
         val right = safe.x + safe.width
@@ -366,7 +372,7 @@ internal class BattlefieldHud(private val world: WorldScreen) {
         if (showEvents) {
             world.notificationsScroll.isVisible = false
             rebuildUrgent(rightWidth - tools.width - points(4f), world.viewingCiv.notifications)
-            urgent.setPosition(right - urgent.width, map.y - gap - urgent.height)
+            urgent.setPosition(right - urgent.width, map.y - urgentGap - urgent.height)
             if (events.isVisible) {
                 val eventWidth = if (portrait) width else points(304f)
                 eventHeader.clearChildren()
@@ -387,15 +393,21 @@ internal class BattlefieldHud(private val world: WorldScreen) {
             }
         } else world.notificationsScroll.update(world.viewingCiv.notifications, safe.y + safe.height - top, bottom)
         // Tile inspection is independent of unit selection and stays in the right-hand lane.
-        // In portrait, use the space above the orders/combat area and fold notification previews.
+        // Notification previews yield their lane when the tile content would otherwise scroll.
         if (tileInfo.isVisible) {
             if (portrait) urgent.isVisible = false
             val tileWidth = minOf(points(208f), width)
             val tileBottom = if (portrait) contextTop + gap else status.y + status.height + gap
-            val tileTop = if (urgent.isVisible && urgent.height > 0f) urgent.y - gap else map.y - gap
-            val available = tileTop - tileBottom
             world.bottomTileInfoTable.fitBattlefield(tileWidth)
             val headerHeight = maxOf(points(28f), tileHeader.prefHeight)
+            var tileTop = if (urgent.isVisible && urgent.height > 0f) urgent.y - urgentGap else map.y - gap
+            var available = tileTop - tileBottom
+            val fullTileHeight = headerHeight + world.bottomTileInfoTable.prefHeight
+            if (urgent.isVisible && fullTileHeight > available) {
+                urgent.isVisible = false
+                tileTop = map.y - gap
+                available = tileTop - tileBottom
+            }
             if (available >= headerHeight) {
                 val bodyHeight = minOf(world.bottomTileInfoTable.prefHeight, available - headerHeight)
                 tileInfo.setBounds(right - tileWidth, tileBottom, tileWidth, bodyHeight)

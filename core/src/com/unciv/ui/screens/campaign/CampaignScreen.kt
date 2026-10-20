@@ -307,7 +307,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     private fun score(earned: Int, total: Int, size: TextRole) = Table().apply {
         add(artwork.icon("star", Theme.gold)).size(px(20f)).padRight(px(6f))
         add(label("$earned", size, Theme.text).apply { wrap = false })
-        add(label("/ $total 星", TextRole.Supporting, Theme.muted).apply { wrap = false }).padLeft(px(4f))
+        add(label("/ [$total] 星", TextRole.Supporting, Theme.muted).apply { wrap = false }).padLeft(px(4f))
     }
 
     private fun exploreButton(text: String, id: String, action: () -> Unit) = control("", id, true, action = action).apply {
@@ -371,7 +371,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             val enabled = levels.any { store.isUnlocked(it, progress) }
             val status = when { mastery -> "精通勋章"; complete -> "章节完成"; enabled -> "进行中"; else -> "未解锁" }
             val nodeWidth = px(if (compact) 110f else 126f).coerceAtMost(mapWidth * if (compact) .20f else .38f)
-            val node = mapNode("第 ${i + 1} 章", title.tr(), "[$status] · [${levels.sumOf { store.stars(it, progress) }}] / 12 星",
+            val node = mapNode("第 [${i + 1}] 章", title.tr(), "[$status] · [${levels.sumOf { store.stars(it, progress) }}] / 12 星",
                 listOf("city", "compass", "flag", "sun")[i], nodeWidth, false, -1,
                 "ui-campaign-chapter:$i", locked = !enabled) { openChapter(i) }
             node.setPosition(positions[i].first * mapWidth - node.width / 2, positions[i].second * mapHeight - node.height / 2)
@@ -566,7 +566,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         }).minHeight(px(44f)).row()
         val titleRow = Table().apply {
             val titleCopy = Table().apply {
-                add(label(if (historical) "独立战役" else "第 ${d.number} 关", TextRole.Metadata, Theme.muted)).growX().left().row()
+                add(label(if (historical) "独立战役" else "第 [${d.number}] 关", TextRole.Metadata, Theme.muted)).growX().left().row()
                 add(label(d.title, TextRole.PageTitle)).growX().minWidth(0f).padTop(px(3f)).left()
             }
             add(titleCopy).growX().minWidth(0f)
@@ -612,7 +612,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                         top(); left()
                         add(artwork.icon("star", Theme.gold)).size(px(16f)).top().padRight(px(10f))
                         add(Table().apply {
-                            add(label(if (i == 0) "通关目标" else "挑战 ${if (i == 1) "A" else "B"}", TextRole.Supporting, Theme.gold)).width(goalWidth - px(26f)).left().row()
+                            add(label(if (i == 0) "通关目标" else "挑战 [${if (i == 1) "A" else "B"}]", TextRole.Supporting, Theme.gold)).width(goalWidth - px(26f)).left().row()
                             add(label(goal, TextRole.Body)).width(goalWidth - px(26f)).left().padTop(px(5f))
                         }).width(goalWidth - px(26f))
                     }

@@ -9,6 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable
 import com.unciv.ui.components.UncivTooltip.Companion.addTooltip
+import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.Scaling
 import com.unciv.models.UncivSound
 import com.unciv.models.translations.tr
@@ -20,6 +21,8 @@ import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.widgets.ZoomableScrollPane
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.popups.AnimatedMenuPopup
+import com.unciv.ui.screens.basescreen.SafeAreaViewport
 import com.unciv.view.MapUnitView
 import kotlin.math.atan2
 import kotlin.math.sqrt
@@ -52,6 +55,7 @@ internal class PromotionAtlasView(
     private val graphGates = linkedMapOf<PromotionTree.PromotionNode, Table>()
     private val orderedNodes = tree.allNodesInSourceOrder().toList()
     private val browse = Table()
+    private val displayOptions: TextButton
     private var prerequisitesOnly = false
     private var ancestors = emptySet<PromotionTree.PromotionNode>()
     private val selectionColor = Color.valueOf("f6fafb")
@@ -116,9 +120,15 @@ internal class PromotionAtlasView(
         UiNavigation.styleBackButton(screen.closeButton, unit = style.unit)
         header.add(screen.closeButton).minSize(u(44f)).padRight(u(12f))
         header.add(label("Unit promotions", TextRole.PageTitle, wrap = true)).growX().minWidth(0f).left().padRight(u(8f))
-        val locate = button("Locate selection", "ui-promotion-locate") { locateSelection() }
-            .apply { isEnabled = selected != null }
-        header.add(locate).minHeight(u(44f)).width(u(if (portrait) 92f else 112f))
+        displayOptions = button("", "ui-promotion-display-options") { showDisplayOptions() }.apply {
+            clearChildren()
+            add(ImageGetter.getImage("OtherIcons/Options")).size(u(22f))
+            addTooltip("Display options", size = this@PromotionAtlasView.style.font(TextRole.Supporting).toFloat(),
+                dynamicTextProvider = {
+                    "{Display options} · {${if (prerequisitesOnly) "Prerequisites only" else "All promotions"}}".tr()
+                })
+        }
+        header.add(displayOptions).size(u(44f))
         root.add(header).growX().padBottom(u(4f)).row()
         buildGraph()
         root.add(body).grow().minSize(0f)
@@ -365,53 +375,61 @@ internal class PromotionAtlasView(
     private fun buildBrowse() {
         browse.clear()
         browse.background = style.surface(style.deep)
-        val contentWidth = u(width-padding*2-(if (portrait) 0f else detailWidth+gap))
-        val tools = Table()
-        val filters = listOf("All promotions" to false, "Prerequisites only" to true).map { (key, focused) ->
-            button(key, "ui-promotion-filter:$focused") {
-                prerequisitesOnly = focused; buildGraph(); refresh()
-            }.apply { isChecked = prerequisitesOnly == focused }
-        }
-        val entries = listOf("Selected", "Acquired", "Promotion available", "Locked").mapIndexed { index, text ->
-            Table().apply {
-                add(Image(nodeSurface(index == 1,index == 2,{ index == 0 }))).size(u(18f),u(12f)).padRight(u(6f))
-                add(label(text,TextRole.Supporting,true)).growX().minWidth(0f)
-            }
-        }
-        val filterWidths = filters.map {
-            // Label.prefWidth is zero while wrapping is enabled; measure first, then allow wrapping.
-            it.label.wrap = false
-            val naturalWidth = maxOf(u(44f), it.label.prefWidth+u(24f))
-            it.label.wrap = true
-            naturalWidth
-        }
-        val legendWidths = entries.map { it.prefWidth+u(12f) }
-        val singleRow = filterWidths.sum()+legendWidths.sum()+u(32f) <= contentWidth
-        for ((i, control) in filters.withIndex()) {
-            val cellWidth = if (singleRow) filterWidths[i] else contentWidth/2-u(8f)
-            tools.add(control).width(cellWidth).minHeight(u(44f)).pad(0f,u(4f),0f,u(4f))
-        }
-        if (singleRow) {
-            tools.add().expandX()
-            for ((i, entry) in entries.withIndex()) tools.add(entry).width(legendWidths[i]).padRight(u(4f))
-            browse.add(tools).growX().minWidth(0f).row()
-        } else {
-            browse.add(tools).growX().minWidth(0f).row()
-            val legend = Table()
-            val columns = if (legendWidths.sum() <= contentWidth) 4 else 2
-            for ((i, entry) in entries.withIndex()) {
-                (entry.cells.peek().actor as Label).wrap = true
-                legend.add(entry).width(contentWidth/columns-u(12f)).pad(u(4f),u(6f),u(4f),u(6f)).left()
-                if ((i+1)%columns == 0) legend.row()
-            }
-            browse.add(legend).growX().minWidth(0f).padBottom(u(4f)).row()
-        }
         val graphHost = object : WidgetGroup() {
             init { addActor(graphScroll) }
             override fun layout() { graphScroll.resizeViewport(Rectangle(0f, 0f, width, height)) }
         }
         browse.add(graphHost).grow().minSize(0f)
     }
+    /** Low-frequency controls live off the canvas so every orientation has room for more nodes. */
+    private fun showDisplayOptions() {
+        displayOptions.isChecked = prerequisitesOnly
+        object : AnimatedMenuPopup(screen.stage, displayOptions, Align.bottomRight) {
+            override fun createContentTable(): Table {
+                val bounds = (screen.stage.viewport as? SafeAreaViewport)?.safeAreaBoundsInWorld
+                    ?: Rectangle(0f, 0f, screen.stage.width, screen.stage.height)
+                val contentWidth = (minOf(u(320f), bounds.width-u(24f))-u(24f)).coerceAtLeast(u(44f))
+                val content = Table()
+                for ((key, focused) in listOf("All promotions" to false, "Prerequisites only" to true)) {
+                    content.add(button(key, "ui-promotion-filter:$focused") {
+                        close()
+                        if (prerequisitesOnly != focused) {
+                            prerequisitesOnly = focused
+                            buildGraph()
+                            refresh()
+                        }
+                    }.apply { isChecked = prerequisitesOnly == focused })
+                        .width(contentWidth).minHeight(u(44f)).padBottom(u(4f)).row()
+                }
+                content.add(button("Locate selection", "ui-promotion-locate") {
+                    close()
+                    locateSelection()
+                }.apply { isEnabled = selected != null })
+                    .width(contentWidth).minHeight(u(44f)).padTop(u(4f)).padBottom(u(12f)).row()
+                for ((index, text) in listOf("Selected", "Acquired", "Promotion available", "Locked").withIndex()) {
+                    val entry = Table()
+                    entry.add(Image(nodeSurface(index == 1, index == 2, { index == 0 })))
+                        .size(u(18f), u(12f)).pad(u(4f), u(4f), u(4f), u(10f))
+                    entry.add(label(text, TextRole.Supporting, muted = true, wrap = true))
+                        .growX().minWidth(0f).left()
+                    content.add(entry).width(contentWidth).padBottom(u(6f)).row()
+                }
+                val title = label("Display options", TextRole.SectionTitle, wrap = true)
+                title.setWidth(contentWidth)
+                return Table().apply {
+                    name = "ui-promotion-display-menu"
+                    background = style.outline(style.panel, style.line)
+                    pad(u(12f))
+                    add(title).width(contentWidth).left().padBottom(u(12f)).row()
+                    add(AutoScrollPane(content).apply { setScrollingDisabled(true, false) })
+                        .width(contentWidth)
+                        .height(minOf(content.prefHeight,
+                            (bounds.height-u(60f)-title.prefHeight).coerceAtLeast(u(44f))))
+                }
+            }
+        }
+    }
+
     private fun select(node: PromotionTree.PromotionNode) {
         selected = node; statusText = null
         ancestors = collectAncestors()
@@ -451,6 +469,7 @@ internal class PromotionAtlasView(
             if (compact) TextRole.Metadata else TextRole.Supporting, true, true)).growX().minWidth(0f).left().row()
     }
     private fun refresh() {
+        displayOptions.isChecked = prerequisitesOnly
         ancestors = collectAncestors()
         for ((node, tile) in graphNodes) tile.isVisible = !prerequisitesOnly || node in ancestors
         for ((node, gate) in graphGates) gate.isVisible = !prerequisitesOnly || node in ancestors
@@ -546,8 +565,8 @@ internal class PromotionAtlasView(
             }).minHeight(u(44f)).padTop(u(8f)).row()
         }
         for (status in unit.getStatusMap().values.sortedBy { it.turnsLeft }) {
-            reading.add(button("{${status.name}}: [${status.turnsLeft}] turns", "ui-promotion-status:${status.name}") {
-                statusText = "{${status.name}}: [${status.turnsLeft}] turns".tr() + "\n" +
+            reading.add(button("{${status.name}}: {[${status.turnsLeft}] turns}", "ui-promotion-status:${status.name}") {
+                statusText = "{${status.name}}: {[${status.turnsLeft}] turns}".tr() + "\n" +
                     unit.civ().ruleset.unitPromotions[status.name]?.getDescription(emptySet()).orEmpty()
                 refresh()
             }).minHeight(u(44f)).padTop(u(8f)).row()
