@@ -4,7 +4,9 @@ import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.badlogic.gdx.scenes.scene2d.ui.Button
+import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.Value
 import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.logic.civilization.Civilization
@@ -17,8 +19,6 @@ import com.unciv.models.ruleset.unique.GameContext
 import com.unciv.models.ruleset.unique.UniqueType
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.widgets.AutoScrollPane
-import com.unciv.ui.components.extensions.addSeparator
-import com.unciv.ui.components.extensions.addSeparatorVertical
 import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.input.onClick
@@ -26,6 +26,7 @@ import com.unciv.ui.components.extensions.packIfNeeded
 import com.unciv.ui.components.extensions.surroundWithCircle
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.AskTextPopup
+import com.unciv.ui.screens.overviewscreen.OverviewUi
 
 class ReligiousBeliefsPickerScreen (
     choosingCiv: Civilization,
@@ -39,8 +40,38 @@ class ReligiousBeliefsPickerScreen (
     private val leftScrollPane = AutoScrollPane(leftChosenBeliefs)
     private val rightBeliefsToChoose = Table() // Right middle part, contains the beliefs to choose
     private val rightScrollPane = AutoScrollPane(rightBeliefsToChoose)
+    private val rightPaneTitle: Label = "Beliefs".toLabel(TextRole.SectionTitle)
+    private val leftPane = Table().apply {
+        background = OverviewUi.rounded(OverviewUi.panel, 12f)
+        pad(OverviewUi.pt(10f))
+        add("Beliefs".toLabel(TextRole.SectionTitle)).growX().left().padBottom(OverviewUi.pt(8f)).row()
+        add(leftScrollPane).grow().minWidth(0f).minHeight(0f)
+    }
+    private val rightPane = Table().apply {
+        background = OverviewUi.rounded(OverviewUi.panel, 12f)
+        pad(OverviewUi.pt(10f))
+        add(rightPaneTitle).growX().left().padBottom(OverviewUi.pt(8f)).row()
+        add(rightScrollPane).grow().minWidth(0f).minHeight(0f)
+    }
+    private val middlePanes = object : Table() {
+        private var stacked: Boolean? = null
 
-    private val middlePanes = Table()
+        override fun layout() {
+            val shouldStack = height > width
+            if (stacked != shouldStack) {
+                clear()
+                if (shouldStack) {
+                    add(leftPane).growX().height(Value.percentHeight(.36f, this)).minHeight(OverviewUi.touch * 3f).row()
+                    add(rightPane).grow().minWidth(0f).minHeight(0f).padTop(OverviewUi.pt(10f))
+                } else {
+                    add(leftPane).width(Value.percentWidth(.34f, this)).growY().minWidth(0f)
+                    add(rightPane).grow().minWidth(0f).minHeight(0f).padLeft(OverviewUi.pt(10f))
+                }
+                stacked = shouldStack
+            }
+            super.layout()
+        }
+    }
 
     private var iconSelection = Selection()
     private var displayName: String? = null
@@ -65,21 +96,22 @@ class ReligiousBeliefsPickerScreen (
         ?: Religion("None", gameInfo, choosingCiv, gameInfo.turns)
 
     init {
-        leftChosenBeliefs.defaults().right().pad(10f).fillX()
-        rightBeliefsToChoose.defaults().left().pad(10f).fillX()
+        pickerPane.setNavigationContent(
+            (if (pickIconAndName) "Choose a Religion" else "Enhance [${currentReligion.getReligionDisplayName()}]")
+                .toLabel(TextRole.PageTitle)
+        )
+        leftChosenBeliefs.defaults().right().pad(OverviewUi.pt(4f)).fillX()
+        rightBeliefsToChoose.defaults().left().pad(OverviewUi.pt(4f)).fillX()
 
         if (pickIconAndName) setupChoosableReligionIcons()
         else setupVisibleReligionIcons()
 
         updateLeftTable()
 
-        middlePanes.add(leftScrollPane)
-        middlePanes.addSeparatorVertical()
-        middlePanes.add(rightScrollPane)
-
-        topTable.add(topReligionIcons).minHeight(topReligionIcons.prefHeight).row()
-        topTable.addSeparator()
-        topTable.add(middlePanes)
+        topReligionIcons.background = OverviewUi.rounded(OverviewUi.raised, 10f)
+        topTable.pad(OverviewUi.pt(12f))
+        topTable.add(topReligionIcons).growX().minHeight(topReligionIcons.prefHeight).row()
+        topTable.add(middlePanes).grow().minWidth(0f).minHeight(0f).padTop(OverviewUi.pt(10f))
 
         setOKAction(
             if (pickIconAndName) "Choose a Religion"
@@ -206,6 +238,7 @@ class ReligiousBeliefsPickerScreen (
         var selectedButtonHeight = 0f
         rightBeliefsToChoose.clear()
         rightSelection.clear()
+        rightPaneTitle.setText("Choose a [$beliefType] belief!".tr())
         val availableBeliefs = ruleset.beliefs.values
             .filter { it.type == beliefType || beliefType == BeliefType.Any }
 

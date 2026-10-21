@@ -9,7 +9,6 @@ import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
-import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.logic.map.tile.ImprovementBuildingProblem
 import com.unciv.models.ruleset.tile.TileImprovement
@@ -30,6 +29,7 @@ import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onDoubleClick
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.cityscreen.CityScreen
+import com.unciv.ui.screens.overviewscreen.OverviewUi
 import com.unciv.view.MapUnitView
 import com.unciv.view.TileView
 import kotlin.math.roundToInt
@@ -75,8 +75,13 @@ class ImprovementPickerScreen(
 
     init {
         setDefaultCloseAction()
+        pickerPane.setNavigationContent("Pick improvement".toLabel(TextRole.PageTitle))
+        pickerPane.useSideDescription("Details".toLabel(TextRole.SectionTitle))
+        bottomTable.background = OverviewUi.surface(OverviewUi.panel)
 
         rightSideButton.setText("Pick improvement".tr())
+        rightSideButton.name = "ui-improvement-confirm"
+        rightSideButton.labelCell.minWidth(OverviewUi.pt(152f))
         rightSideButton.onClick {
             accept(selectedImprovement)
         }
@@ -87,8 +92,11 @@ class ImprovementPickerScreen(
         }
         descriptionLabel.keyShortcuts.add(KeyboardBinding.Civilopedia)
 
-        val regularImprovements = Table()
-        regularImprovements.defaults().pad(5f)
+        val regularImprovements = Table().apply {
+            top()
+            background = OverviewUi.rounded(OverviewUi.panel, 12f)
+            pad(OverviewUi.pt(8f))
+        }
 
         for (improvement in ruleset.tileImprovements.values) {
             // canBuildImprovement() would allow e.g. great improvements thus we need to exclude them - except cancel
@@ -100,7 +108,10 @@ class ImprovementPickerScreen(
             regularImprovements.addImprovementRow(improvement, problemReport)
         }
 
-        val ownerTable = Table()
+        val ownerTable = Table().apply {
+            background = OverviewUi.rounded(OverviewUi.raised, 10f)
+            pad(OverviewUi.pt(6f))
+        }
         if (tile.getOwner() == null) {
             ownerTable.add("Unowned tile".toLabel(TextRole.Body)).pad(10f)
         } else if (tile.getOwner()!!.isOwnedByViewer()) {
@@ -120,9 +131,14 @@ class ImprovementPickerScreen(
             ownerTable.add(label).pad(10f)
         }
 
-        topTable.add(ownerTable)
+        topTable.defaults().minWidth(0f)
+        topTable.add(ownerTable).growX().pad(
+            OverviewUi.pt(16f), OverviewUi.pt(16f), OverviewUi.pt(8f), OverviewUi.pt(16f)
+        )
         topTable.row()
-        topTable.add(regularImprovements)
+        topTable.add(regularImprovements).growX().pad(
+            OverviewUi.pt(8f), OverviewUi.pt(16f), OverviewUi.pt(16f), OverviewUi.pt(16f)
+        )
     }
 
     private fun Table.addImprovementRow(improvement: TileImprovement, problemReport: ProblemReport) {
@@ -152,7 +168,7 @@ class ImprovementPickerScreen(
         if (turnsToBuild > 0) labelText += " - $turnsToBuild${Fonts.turn}"
         val tileResource = tile.getViewableResource(currentPlayerCiv)
         val provideResource = tileResource != null && tileResource.isImprovedBy(improvement.name)
-        if (provideResource) labelText += "\n" + "Provides [${tileResource!!.name}]".tr()
+        if (provideResource) labelText += "\n" + "Provides [${tileResource.name}]".tr()
         val removeImprovement = (!improvement.isRoad()
             && !improvement.name.startsWith(Constants.remove)
             && improvement.name != Constants.cancelImprovementOrder)
@@ -181,9 +197,10 @@ class ImprovementPickerScreen(
         val statsTable = getStatsTable(stats)
         statIcons.add(statsTable).padLeft(13f)
 
-        add(statIcons).align(Align.right)
-
-        val improvementButton = PickerPane.getPickerOptionButton(image, labelText).apply { name = "ui-improvement:${improvement.name}" }
+        val improvementButton = (PickerPane.getPickerOptionButton(image, labelText) as IconTextButton)
+            .apply { name = "ui-improvement:${improvement.name}" }
+        improvementButton.label.wrap = true
+        improvementButton.labelCell.minWidth(0f).growX()
         // This is onClick without ActivationTypes.Keystroke equivalence - keys should select *and* close:
         improvementButton.onActivation(type = ActivationTypes.Tap, noEquivalence = true) {
             setDescription(improvement, Color.WHITE)
@@ -199,7 +216,7 @@ class ImprovementPickerScreen(
             else -> null
         }
         if (improvementHighlight != null) {
-            if (ExpeditionBlueTheme.enabled) (improvementButton as IconTextButton).label.color = improvementHighlight
+            if (ExpeditionBlueTheme.enabled) improvementButton.label.color = improvementHighlight
             else improvementButton.color = improvementHighlight
         }
 
@@ -223,9 +240,17 @@ class ImprovementPickerScreen(
             }
         }
 
-        add(improvementButton)
-        add(getExplanationActor(improvement, problemReport)).padLeft(10f)
-        row()
+        val optionCard = Table().apply {
+            background = OverviewUi.rounded(OverviewUi.background, 9f)
+            pad(OverviewUi.pt(6f))
+            add(improvementButton).growX().minWidth(0f).minHeight(OverviewUi.touch)
+            add(statIcons).right().padLeft(OverviewUi.pt(8f))
+            getExplanationActor(improvement, problemReport)?.let { explanation ->
+                row()
+                add(explanation).colspan(2).growX().right().padTop(OverviewUi.pt(6f))
+            }
+        }
+        add(optionCard).growX().minWidth(0f).padBottom(OverviewUi.pt(8f)).row()
     }
 
     /** Sets the PickerPane's description and where in Civilopedia a click on it should go - but not the right side button */

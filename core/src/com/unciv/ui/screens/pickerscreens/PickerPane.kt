@@ -30,6 +30,7 @@ class PickerPane(
      *  Note if you don't use that helper, you'll need to do both click and keyboard support yourself. */
     val closeButton = if (UiNavigation.isIos) UiNavigation.backButton() else Constants.close.toTextButton()
     private val navigationHeader = Table()
+    private var navigationHasContent = false
     /** A scrollable wrapped Label you can use to show descriptions in the [bottomTable], starts empty */
     val descriptionLabel = DescriptionLabel()
     /** Wraps descriptionLabel - a subclass may replace the content, but beware: zero padding around this */
@@ -72,6 +73,7 @@ class PickerPane(
         bottomTable.add(descriptionScroll).grow()
 
         rightSideButton.disable()
+        rightSideButton.labelCell.minHeight(UiNavigation.minimumTouchSize())
         rightSideGroup.addActor(rightSideButton)
 
         bottomTable.add(rightSideGroup).pad(10f).right()
@@ -104,7 +106,7 @@ class PickerPane(
         if (showSideDescription)
             splitPane.splitAmount = 1f - (width * .26f).coerceIn(240f, 320f) / width
         if (UiNavigation.isIos) {
-            val hasNavigation = closeButton.parent === navigationHeader && closeButton.isVisible
+            val hasNavigation = navigationHasContent || closeButton.parent === navigationHeader && closeButton.isVisible
             navigationHeader.isVisible = hasNavigation
             getCell(navigationHeader).height(if (hasNavigation) maxOf(closeButton.height + 16f, navigationHeader.prefHeight) else 0f)
         }
@@ -126,11 +128,13 @@ class PickerPane(
         invalidateHierarchy()
     }
 
-    fun setNavigationContent(content: Actor) {
+    fun setNavigationContent(content: Actor, includeBackButton: Boolean = true) {
         if (!UiNavigation.isIos) return
         navigationHeader.clear()
-        navigationHeader.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
+        if (includeBackButton)
+            navigationHeader.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
         navigationHeader.add(content).growX().minWidth(0f).left().pad(8f)
+        navigationHasContent = true
         invalidateHierarchy()
     }
 
@@ -138,6 +142,7 @@ class PickerPane(
         if (!UiNavigation.isIos) return
         UiNavigation.styleTextButton(closeButton)
         navigationHeader.clear()
+        navigationHasContent = false
         bottomTable.clear()
         bottomTable.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(10f)
         bottomTable.add(descriptionScroll).grow()

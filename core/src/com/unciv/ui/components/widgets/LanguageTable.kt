@@ -23,6 +23,7 @@ import com.unciv.ui.screens.LanguagePickerScreen
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.civilopediascreen.FormattedLine
 import com.unciv.ui.screens.civilopediascreen.MarkupRenderer
+import com.unciv.ui.screens.overviewscreen.OverviewUi
 
 
 /** Represents a row in the Language picker, used both in [OptionsPopup] and in [LanguagePickerScreen]
@@ -31,6 +32,7 @@ import com.unciv.ui.screens.civilopediascreen.MarkupRenderer
 internal class LanguageTable(val language: String, val percentComplete: Int) : Table() {
     private val baseColor = BaseScreen.skinStrings.skinConfig.baseColor
     private val darkBaseColor = baseColor.darken(0.5f)
+    var useTaskStyle = false
 
     init{
         pad(10f)
@@ -50,7 +52,9 @@ internal class LanguageTable(val language: String, val percentComplete: Int) : T
     }
 
     fun update(chosenLanguage: String) {
-        background = BaseScreen.skinStrings.getUiBackground(
+        background = if (useTaskStyle)
+            OverviewUi.rounded(if (chosenLanguage == language) OverviewUi.selected else OverviewUi.panel)
+        else BaseScreen.skinStrings.getUiBackground(
             "LanguagePickerScreen/LanguageTable",
             tintColor = if (chosenLanguage == language) baseColor else darkBaseColor
         )
@@ -69,7 +73,7 @@ internal class LanguageTable(val language: String, val percentComplete: Int) : T
                     " INCOMPLETE! The percentage shown is how much of the language is translated in-game." +
                     " If you want to help translating the game into your language, click here.",
                 link = "${Constants.wikiURL}Translating/Translating/",
-                size = 15
+                size = UiTypography.size(TextRole.Supporting)
             )
             add(MarkupRenderer.render(listOf(translationDisclaimer),expectedWidth)).pad(5f).row()
 

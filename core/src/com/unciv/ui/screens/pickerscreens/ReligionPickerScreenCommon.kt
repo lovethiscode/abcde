@@ -27,6 +27,7 @@ import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.WrappableLabel
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.civilopediascreen.MarkupRenderer
+import com.unciv.ui.screens.overviewscreen.OverviewUi
 import yairm210.purity.annotations.Readonly
 
 abstract class ReligionPickerScreenCommon(
@@ -45,6 +46,9 @@ abstract class ReligionPickerScreenCommon(
         fun switch(newButton: Button) {
             button?.enable()
             button = newButton
+            newButton.style = Button.ButtonStyle(newButton.style).apply {
+                disabled = OverviewUi.rounded(OverviewUi.selected)
+            }
             newButton.disable()
         }
         fun clear() { button = null }
@@ -64,6 +68,8 @@ abstract class ReligionPickerScreenCommon(
 
         closeButton.isVisible = true
         setDefaultCloseAction()
+        bottomTable.background = OverviewUi.surface(OverviewUi.panel)
+        rightSideButton.labelCell.minWidth(OverviewUi.pt(168f))
 
         globalShortcuts.add(KeyboardBinding.Civilopedia) { openCivilopedia(civilopediaLink) }
     }
@@ -83,8 +89,17 @@ abstract class ReligionPickerScreenCommon(
         beliefType: BeliefType? = null,
         withTypeLabel: Boolean = true
     ): Button {
-        val labelWidth = stage.width * 0.5f - 52f  // 32f empirically measured padding inside button, 20f outside padding
+        val labelWidth = if (stage.height > stage.width)
+            stage.width - OverviewUi.pt(64f)
+        else stage.width * 0.5f - OverviewUi.pt(52f)
         return Button(skin).apply {
+            style = Button.ButtonStyle(style).apply {
+                up = OverviewUi.rounded(OverviewUi.panel, 9f)
+                over = OverviewUi.rounded(OverviewUi.raised, 9f)
+                down = OverviewUi.rounded(OverviewUi.selected, 9f)
+                checked = down
+            }
+            pad(OverviewUi.pt(10f))
             when {
                 belief != null -> {
                     if (withTypeLabel)

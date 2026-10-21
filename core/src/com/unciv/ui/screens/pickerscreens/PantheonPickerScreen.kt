@@ -6,6 +6,9 @@ import com.unciv.models.ruleset.BeliefType
 import com.unciv.models.ruleset.unique.GameContext
 import com.unciv.models.ruleset.unique.UniqueType
 import com.unciv.models.translations.tr
+import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.screens.overviewscreen.OverviewUi
 
 class PantheonPickerScreen(
     choosingCiv: Civilization
@@ -14,7 +17,9 @@ class PantheonPickerScreen(
     private val selection = Selection()
 
     init {
-        topTable.defaults().pad(10f).fillX()
+        pickerPane.setNavigationContent("Choose a pantheon".toLabel(TextRole.PageTitle))
+        topTable.defaults().fillX().minWidth(0f)
+        topTable.pad(OverviewUi.pt(16f))
 
         for (belief in ruleset.beliefs.values) {
             if (belief.type != BeliefType.Pantheon) continue
@@ -28,7 +33,8 @@ class PantheonPickerScreen(
             } else {
                 beliefButton.disable(redDisableColor)
             }
-            topTable.add(beliefButton).row()
+            topTable.add(beliefButton).growX().minHeight(OverviewUi.touch)
+                .padBottom(OverviewUi.pt(8f)).row()
         }
 
         setOKAction("Choose a pantheon") {

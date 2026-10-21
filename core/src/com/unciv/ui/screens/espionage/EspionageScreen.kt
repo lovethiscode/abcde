@@ -39,6 +39,7 @@ import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.AnimatedMenuPopup
 import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.screens.basescreen.BaseScreen
+import com.unciv.ui.screens.overviewscreen.OverviewUi
 import com.unciv.ui.screens.worldscreen.WorldScreen
 import yairm210.purity.annotations.Pure
 import kotlin.collections.iterator
@@ -54,7 +55,12 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
     private val spyScrollPane = AutoScrollPane(spySelectionTable)
     private val locationSelectionTable = Table()
     private val locationScrollPane = AutoScrollPane(locationSelectionTable)
-    private val middlePanes = SplitPane(spyScrollPane, locationScrollPane, false, skin)
+    private val spyCount = OverviewUi.plainLabel("", TextRole.Supporting, OverviewUi.accent)
+    private val locationCount = OverviewUi.plainLabel("", TextRole.Supporting, OverviewUi.accent)
+    private val spyPanel = taskPanel("Spy", spyCount, spyScrollPane)
+    private val locationPanel = taskPanel("City", locationCount, locationScrollPane)
+    private val middlePanes = SplitPane(spyPanel, locationPanel, false, skin)
+    private val root = Table()
 
     private var selectedSpyButton: TextButton? = null
     private var selectedSpy: Spy? = null
@@ -73,14 +79,15 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
     /** Readability shortcut */
     private val manager get() = civInfo.espionageManager
 
+    override val screenClearColor: Color get() = OverviewUi.background
+
     private val isPortrait: Boolean // To detect when a resize needs re-layout
 
     init {
-        val topPad = if (UiNavigation.isIos) UiNavigation.minimumTouchSize() + 16f else 10f
-        spySelectionTable.defaults().space(10f)
-        spySelectionTable.pad(10f).padTop(topPad).top()
-        locationSelectionTable.defaults().space(5f)
-        locationSelectionTable.pad(10f).padTop(topPad).top()
+        spySelectionTable.defaults().fillX().minWidth(0f)
+        spySelectionTable.pad(OverviewUi.pt(8f)).top()
+        locationSelectionTable.defaults().fillX().minWidth(0f)
+        locationSelectionTable.pad(OverviewUi.pt(8f)).top()
 
         update()
 
@@ -94,9 +101,6 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
             middlePanes.splitAmount = getPrefSplitAmount()
             false
         }
-        middlePanes.setFillParent(true)
-        stage.addActor(middlePanes)
-
         fun navigateBack() {
             civInfo.cache.updateViewableTiles()
             game.popScreen()
@@ -104,52 +108,49 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
         closeButton = if (UiNavigation.isIos) UiNavigation.backButton("Map").apply { onActivation { navigateBack() } }
             else getCloseButton { navigateBack() }
         closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
-        positionCloseButton()
-        stage.addActor(closeButton)
+
+        val header = Table().apply {
+            if (UiNavigation.isIos)
+                add(closeButton).minSize(OverviewUi.touch).padRight(OverviewUi.pt(12f))
+            add(OverviewUi.plainLabel("Espionage", TextRole.PageTitle).apply { wrap = true })
+                .growX().minWidth(0f).left()
+            if (!UiNavigation.isIos)
+                add(closeButton).minSize(OverviewUi.touch).padLeft(OverviewUi.pt(12f))
+        }
+        root.apply {
+            setFillParent(true)
+            background = OverviewUi.surface(OverviewUi.background)
+            pad(OverviewUi.pt(16f))
+            add(header).growX().minHeight(OverviewUi.touch).padBottom(OverviewUi.pt(12f)).row()
+            add(middlePanes).grow().minWidth(0f).minHeight(0f)
+        }
+        stage.addActor(root)
         globalShortcuts.add(KeyboardBinding.Civilopedia) { openCivilopedia("Tutorial/Espionage") }
+    }
+
+    private fun taskPanel(title: String, count: Actor, content: Actor) = Table().apply {
+        background = OverviewUi.rounded(OverviewUi.panel, 12f)
+        pad(OverviewUi.pt(8f))
+        add(OverviewUi.plainLabel(title, TextRole.SectionTitle)).growX().minWidth(0f).left()
+        add(count).right().row()
+        add(content).colspan(2).grow().minWidth(0f).minHeight(0f).padTop(OverviewUi.pt(6f))
     }
 
     private fun getPrefSplitAmount(): Float {
         val handleWidth = middlePanes.style.handle.minWidth
-        val freeSpace = stage.width - handleWidth - spySelectionTable.prefWidth - locationSelectionTable.prefWidth
-        val x = spySelectionTable.prefWidth + freeSpace.coerceAtLeast(handleWidth) / 2
+        val freeSpace = stage.width - handleWidth - spyPanel.prefWidth - locationPanel.prefWidth
+        val x = spyPanel.prefWidth + freeSpace.coerceAtLeast(handleWidth) / 2
         return (x / stage.width).coerceIn(0.3f, 0.7f)
-    }
-
-    private fun positionCloseButton() {
-        if (UiNavigation.isIos) {
-            val safe = safeAreaBoundsInWorld()
-            closeButton.setPosition(safe.x + 8f, safe.y + safe.height - 8f, Align.topLeft)
-        } else closeButton.setPosition(stage.width - 10f, stage.height - 10f, Align.topRight)
     }
 
     // Not using `RecreateOnResize` because this one is fine with resizes, exept we want to flip SplitPane arrangement for portrait
     override fun resize(width: Int, height: Int) {
         super.resize(width, height)
-        positionCloseButton()
         if (isPortrait() == isPortrait) return
         game.replaceCurrentScreen { EspionageScreen(civInfo, worldScreen) }
     }
 
     //region Update
-    private fun initSpyHeader() = spySelectionTable.apply {
-        add("Spy".toLabel(TextRole.Body))
-        add("Rank".toLabel(TextRole.Body))
-        add() // icon column
-        add("Location".toLabel(TextRole.Body)).left()
-        add("Action".toLabel(TextRole.Body))
-        // button column: No header cell
-        row()
-    }
-
-    private fun initLocationHeader() = locationSelectionTable.apply {
-        add() // Empty column for location icon
-        add("City".toLabel(TextRole.Body)).left()
-        add("Spy present".toLabel(TextRole.Body))
-        // button column: no header cell
-        row()
-    }
-
     private fun update() {
         updateSpyList()
         updateLocationList()
@@ -158,7 +159,7 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
     private fun updateSpyList() {
         spySelectionTable.clear()
         moveSpyButtons.clear()
-        initSpyHeader()
+        spyCount.setText(manager.spyList.size.toString())
         // Show spies in insertion order = order of seniority
         for (spy in manager.spyList) {
             addSpyToSelectionTable(spy)
@@ -166,27 +167,15 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
     }
 
     private fun addSpyToSelectionTable(spy: Spy) {
-        // "Spy" column
-        spySelectionTable.add(spy.name.toLabel(hideIcons = true, role = TextRole.Body))
-        // "Rank" column — show effective rank (includes counter-intel building bonuses)
-        spySelectionTable.add(spy.getEffectiveRank().toLabel(TextRole.Body))
-        // icon column
-        val spyLocation = spy.getCityOrNull()
-        spySelectionTable.add(spyLocation.getIcon()).padRight(5f)
-        // "Location" column
         val key = spy.getCityOrNull()?.id
         val label = spy.getLocationName().toLabel(hideIcons = true, role = TextRole.Body)
-        spySelectionTable.add(label).left()
         label.onActivation {
             val actor = locationLabels[key]
             if (actor != null) locationScrollPane.scrollTo(actor, true)
         }
-        // "Action" column
         val actionString = if (spy.action.showTurns)
             "[${spy.action.displayString}] ${spy.turnsRemainingForAction}${Fonts.turn}"
         else spy.action.displayString
-        spySelectionTable.add(actionString.toLabel(TextRole.Body))
-        // Move button column
         val moveSpyButton = "Move".toTextButton()
         moveSpyButton.onClick {
             onSpyClicked(moveSpyButton, spy)
@@ -200,15 +189,37 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
         } else {
             AnimatedMenuPopup.Helpers.addIndicator(moveSpyButton, 0.5f)
         }
-        spySelectionTable.add(moveSpyButton).minWidth(moveButtonWidth).row()
         moveSpyButtons[spy] = moveSpyButton
+
+        val identity = Table().apply {
+            add(getSpyIcon(spy)).size(OverviewUi.pt(40f)).padRight(OverviewUi.pt(10f))
+            add(Table().apply {
+                add(spy.name.toLabel(hideIcons = true, role = TextRole.SectionTitle)).growX().left().row()
+                add(("Rank".tr() + " " + spy.getEffectiveRank()).toLabel(
+                    hideIcons = true, role = TextRole.Supporting
+                ))
+                    .growX().left()
+            }).growX().minWidth(0f)
+        }
+        val status = Table().apply {
+            add(label).growX().minWidth(0f).left().row()
+            add(actionString.toLabel(TextRole.Supporting)).growX().minWidth(0f).left()
+        }
+        val card = Table().apply {
+            background = OverviewUi.rounded(OverviewUi.background, 9f)
+            pad(OverviewUi.pt(8f))
+            add(identity).growX().minWidth(0f)
+            add(status).growX().minWidth(0f).padLeft(OverviewUi.pt(12f))
+            add(moveSpyButton).minWidth(maxOf(moveButtonWidth, OverviewUi.pt(84f)))
+                .minHeight(OverviewUi.touch).padLeft(OverviewUi.pt(10f))
+        }
+        spySelectionTable.add(card).growX().minWidth(0f).padBottom(OverviewUi.pt(8f)).row()
     }
 
     private fun updateLocationList() {
         locationSelectionTable.clear()
         spyActionButtons.clear()
         locationLabels.clear()
-        initLocationHeader()
 
         @Suppress("DEPRECATION") // The replacement doesn't allow chaining filters
         val sortedLocations =
@@ -226,13 +237,14 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
                     it.name.tr(hideIcons = true)
                 }
             )
-        for (location in sortedLocations) {
+        val locations = sortedLocations.toList()
+        locationCount.setText(locations.size.toString())
+        for (location in locations) {
             addLocationToSelectionTable(location)
         }
     }
 
     private fun addLocationToSelectionTable(location: Location) {
-        locationSelectionTable.add(location.getIcon()).padLeft(20f).padRight(10f)
         val key = location?.id
         val label = location.getLocationName().toLabel(hideIcons = true, role = TextRole.Body)
         locationLabels[key] = label
@@ -242,19 +254,25 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
                 worldScreen.mapHolder.setCenterPosition(location.location.toHexCoord())
             }
         }
-        locationSelectionTable.add(label).left()
         val spies = location.getSpies()
-        locationSelectionTable.add(getSpyIcons(spies))
 
         val spy = spies.firstOrNull()
-        if (location != null && location.civ.isCityState && spy != null && spy.canDoCoup()) {
-            val coupButton = CoupButton(location, spy.action == SpyAction.Coup)
-            locationSelectionTable.add(coupButton)
-        } else {
-            val moveSpyHereButton = MoveToLocationButton(location)
-            locationSelectionTable.add(moveSpyHereButton)
+        val actionButton = if (location != null && location.civ.isCityState && spy != null && spy.canDoCoup())
+            CoupButton(location, spy.action == SpyAction.Coup)
+        else MoveToLocationButton(location)
+        val context = location?.civ?.civName?.toLabel(hideIcons = true, role = TextRole.Supporting)
+        val card = Table().apply {
+            background = OverviewUi.rounded(OverviewUi.background, 9f)
+            pad(OverviewUi.pt(8f))
+            add(location.getIcon()).size(OverviewUi.pt(36f)).padRight(OverviewUi.pt(10f))
+            add(Table().apply {
+                add(label).growX().minWidth(0f).left().row()
+                if (context != null) add(context).growX().minWidth(0f).left()
+            }).growX().minWidth(0f)
+            add(getSpyIcons(spies)).padLeft(OverviewUi.pt(8f))
+            add(actionButton).minSize(OverviewUi.touch).padLeft(OverviewUi.pt(8f))
         }
-        locationSelectionTable.row()
+        locationSelectionTable.add(card).growX().minWidth(0f).padBottom(OverviewUi.pt(8f)).row()
     }
 
     private fun getSpyIcon(spy: Spy) = Table().apply {
