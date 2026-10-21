@@ -271,11 +271,18 @@ class GlobalPoliticsDiagramGroup(
         val checkBoxes = mutableMapOf<Relation, CheckBox>()
 
         override fun createContentTable(): Table {
+            val unit = UiTypography.unitsPerPoint(stageToShowOn)
+            val columns = if (stageToShowOn.width / unit >= 600f) 2 else 1
             val legend = Table()
             legend.background = ImageGetter.getDrawable("OtherIcons/Politics-diagram-bg")
-            legend.add(ShadowedLabel("Diagram line colors",UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize))).colspan(3).row()
-            for (relation in Relation.entries) {
-                legend.addLegendRow(relation)
+            legend.add(ShadowedLabel("Diagram line colors", UiTypography.size(
+                TextRole.SectionTitle, unit, Constants.headingFontSize
+            ))).colspan(columns).padBottom(4f * unit).row()
+            for (row in Relation.entries.chunked(columns)) {
+                for (relation in row) legend.add(createLegendRow(relation, unit, columns > 1))
+                    .minHeight(44f * unit).padLeft(6f * unit).padRight(6f * unit)
+                repeat(columns - row.size) { legend.add() }
+                legend.row()
             }
             return super.createContentTable()!!.apply {
                 add(legend).grow()
@@ -288,24 +295,26 @@ class GlobalPoliticsDiagramGroup(
             checkBoxes.values.forEach { it.isChecked = true }
         }
 
-        fun Table.addLegendRow(relation: Relation) {
+        private fun createLegendRow(relation: Relation, unit: Float, compact: Boolean) = Table().apply {
             val checkBox = CheckBox(null, BaseScreen.skin)
             checkBox.isChecked = relation in selectedRelations
-            checkBox.onClick {
+            checkBox.touchable = Touchable.disabled
+            onClick {
                 toggleSelection(relation)
                 updateCheckBoxes()
             }
             checkBoxes[relation] = checkBox
-            add(checkBox)
+            add(checkBox).size(28f * unit).padRight(8f * unit)
 
             // empiric hack to equalize the "visual impact" a little. Afraid is worst at contrast 1.4, Enemy has 9.8
             val contrast = getContrastRatio(Color.DARK_GRAY, relation.color).toFloat()
             val width = legendLineWidth + (legendLowContrastWidth - legendLineWidth) / contrast.coerceAtLeast(1f)
-            val line = ImageGetter.getLine(0f, width / 2, legendLineLength, width / 2, width)
+            val lineLength = (if (compact) 64f else legendLineLength) * unit
+            val line = ImageGetter.getLine(0f, width / 2, lineLength, width / 2, width)
             line.color = relation.color
-            add(line).size(legendLineLength, width).padTop(5f)
+            add(line).size(lineLength, width).padRight(8f * unit)
 
-            add(ShadowedLabel(relation.label)).padLeft(5f).padTop(10f).row()
+            add(ShadowedLabel(relation.label, UiTypography.size(TextRole.Control, unit))).left()
         }
     }
 }

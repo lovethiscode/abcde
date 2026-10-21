@@ -75,8 +75,9 @@ internal class GameList(
             gameDisplays[game.name] = gameDisplay
             add(gameDisplay).growX().minWidth(0f).minHeight(appearance.px(62f)).padBottom(appearance.px(4f)).row()
         }
-        if (gameDisplays.isEmpty() && games.isNotEmpty()) {
-            add("No games in this filter".toLabel(appearance.muted, fontSize = appearance.font(TextRole.Supporting)).apply { wrap = true })
+        if (gameDisplays.isEmpty()) {
+            val emptyText = if (games.isEmpty()) "No multiplayer games yet" else "No games in this filter"
+            add(emptyText.toLabel(appearance.muted, fontSize = appearance.font(TextRole.Supporting)).apply { wrap = true })
                 .growX().minWidth(0f).pad(appearance.px(16f))
         }
         select(selectedName)

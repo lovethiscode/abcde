@@ -1,6 +1,7 @@
 package com.unciv.ui.popups
 
 import com.unciv.Constants
+import com.unciv.models.translations.tr
 import com.unciv.ui.screens.LoadingScreen
 import com.unciv.ui.screens.basescreen.BaseScreen
 
@@ -18,8 +19,8 @@ class LoadingPopup(screen: BaseScreen) : Popup(screen,
     init {
         if (ordinaryPresentation) {
             ordinaryPreferredWidth = 420f
-            addDialogTitle("Loading game", "Please wait", dismissible = false)
-            addGoodSizedLabel("Preparing the map and civilization data…").row()
+            addDialogTitle("Loading game", dismissible = false)
+            addGoodSizedLabel("Preparing the map and civilization data…".tr().replace("…", "...")).row()
             // Indeterminate progress only: no invented completion percentage.
             add(com.unciv.ui.components.widgets.LoadingImage(32f * popupUnit).apply { show() })
                 .size(32f * popupUnit).padTop(12f * popupUnit)

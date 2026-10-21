@@ -3,10 +3,10 @@ package com.unciv.ui.screens.mapeditorscreen.tabs
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
-import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
 import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.Constants
 import com.unciv.logic.map.MapParameters
 import com.unciv.models.ruleset.Ruleset
@@ -139,13 +139,35 @@ class MapEditorModsTab(
         onOK: () -> Unit
     ): Popup(editorScreen) {
         init {
+            if (UiNavigation.isIos) addDialogTitle("Change map to fit selected ruleset?", "Map editor")
             val incompatibilityTable = Table().apply {
                 for (inc in incompatibilities)
-                    add(inc.toLabel(TextRole.Body)).row()
+                    add(inc.toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
+                        .growX().minWidth(0f).padBottom(8f * popupUnit).row()
             }
-            add(ScrollPane(incompatibilityTable)).colspan(2)
-                .maxHeight(stageToShowOn.height * 0.8f).row()
-            addGoodSizedLabel("Change map to fit selected ruleset?",UiTypography.size(TextRole.PageTitle, legacySize = 24)).colspan(2).row()
+            if (UiNavigation.isIos) {
+                add("The following map objects are not available in the selected ruleset."
+                    .toLabel(TextRole.Body, unit = popupUnit).apply {
+                        wrap = true
+                        setAlignment(Align.left)
+                    }).width(popupContentWidth).growX().minWidth(0f).row()
+                add("Incompatible map objects".toLabel(TextRole.SectionTitle, unit = popupUnit).apply {
+                    setAlignment(Align.left)
+                }).width(popupContentWidth).growX().minWidth(0f).padTop(16f * popupUnit).row()
+                add(AutoScrollPane(incompatibilityTable).apply {
+                    setScrollingDisabled(true, false)
+                    setOverscroll(false, false)
+                    style = com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle(style).apply {
+                        vScroll = null
+                        vScrollKnob = null
+                    }
+                }).width(popupContentWidth).maxHeight(stageToShowOn.height * 0.42f).row()
+            } else {
+                add(AutoScrollPane(incompatibilityTable)).colspan(2)
+                    .maxHeight(stageToShowOn.height * 0.8f).row()
+                addGoodSizedLabel("Change map to fit selected ruleset?", UiTypography.size(TextRole.PageTitle, legacySize = 24))
+                    .colspan(2).row()
+            }
             if (UiNavigation.isIos) {
                 addCloseButton(Constants.cancel, com.unciv.ui.components.input.KeyCharAndCode('n'))
                 addOKButton("Change map", com.unciv.ui.components.input.KeyCharAndCode('y'), action = onOK)

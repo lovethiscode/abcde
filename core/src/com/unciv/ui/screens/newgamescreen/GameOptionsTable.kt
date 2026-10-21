@@ -835,8 +835,15 @@ private class RandomNationPickerPopup(
     // This Popup's body has two halves of same size, either side by side or arranged vertically
     // depending on screen proportions - determine height for one of those
     private val isPortrait = (previousScreen as BaseScreen).isPortrait()
-    private val civBlocksWidth = stageToShowOn.width / 3 - 5f
-    private val partHeight = stageToShowOn.height * (if (isPortrait) 0.45f else 0.8f)
+    private val unit = UiTypography.unitsPerPoint(stageToShowOn)
+    private val civBlocksWidth = if (isPortrait)
+        minOf(300f * unit, stageToShowOn.width * 0.76f)
+    else stageToShowOn.width / 3 - 5f
+    private val partHeight = if (isPortrait) {
+        val reservedHeight = 220f * unit // close, two section titles, separator and fixed actions
+        ((stageToShowOn.height * 0.9f - reservedHeight) / 2f)
+            .coerceAtLeast(120f * unit)
+    } else stageToShowOn.height * 0.8f
     /** Widget offering Nations for the Pool (those that would be excluded) goes on the left/top */
     private val availableNationsListTable = Table()
     private val availableNationsListScroll = AutoScrollPane(availableNationsListTable)
@@ -864,14 +871,14 @@ private class RandomNationPickerPopup(
 
         availableNationsListScroll.setOverscroll(false, false)
         // size below uses civBlocksWidth +10, because the nation table has a 5f pad, for a total of +10f
-        add("Banned nations".tr())
+        add("Banned nations".toLabel(TextRole.SectionTitle))
         if (isPortrait) {
             row()
             add(availableNationsListScroll).size( civBlocksWidth + 10f, partHeight ).row()
             addSeparator()
-            add("Available nations".tr()).row()
+            add("Available nations".toLabel(TextRole.SectionTitle)).row()
         } else {
-            add("Available nations".tr()).row()
+            add("Available nations".toLabel(TextRole.SectionTitle)).row()
             add(availableNationsListScroll).size( civBlocksWidth + 10f, partHeight )
         }
         selectedNationsListScroll.setOverscroll(false, false)

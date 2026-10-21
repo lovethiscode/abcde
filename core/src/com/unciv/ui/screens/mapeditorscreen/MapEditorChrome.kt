@@ -158,16 +158,32 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
 
     private fun morePopup() {
         Popup(editor).apply {
-            addGoodSizedLabel("Map editor").row()
-            listOf(1 to "Generate", 0 to "View", 3 to "Load", 4 to "Save", 5 to "Mods", 6 to "Options").forEach { (page, caption) ->
-                add(MapEditorStyle.button(caption) { close(); editor.tabs.selectPage(page) }).growX().height(44*u).pad(4*u).row()
+            if (UiNavigation.isIos) addTitleWithCloseButton(Table().apply {
+                add("Map editor".toLabel(TextRole.PageTitle, unit = u))
+                    .minWidth(minOf(220f * u, editor.stage.width - 140f * u)).left()
+            }) else addGoodSizedLabel("Map editor").row()
+            val pages = listOf(1 to "Generate", 0 to "View", 3 to "Load", 4 to "Save", 5 to "Mods", 6 to "Options")
+            if (UiNavigation.isIos) add(Table().apply {
+                pages.forEachIndexed { index, (page, caption) ->
+                    add(MapEditorStyle.button(caption) { close(); editor.tabs.selectPage(page) })
+                        .growX().minWidth(104f * u).height(44f * u).pad(4f * u)
+                    if (index % 2 == 1) row()
+                }
+            }).growX().row()
+            else pages.forEach { (page, caption) ->
+                add(MapEditorStyle.button(caption) { close(); editor.tabs.selectPage(page) })
+                    .growX().height(44f * u).pad(4f * u).row()
             }
-            addCloseButton(); open()
+            if (!UiNavigation.isIos) addCloseButton()
+            open()
         }
     }
     private fun rangePopup() {
         Popup(editor).apply {
-            add("Brush size".toLabel(fontSize = UiTypography.size(TextRole.Body, unit = u))).row()
+            if (UiNavigation.isIos) addTitleWithCloseButton(Table().apply {
+                add("Brush size".toLabel(TextRole.PageTitle, unit = u))
+                    .minWidth(minOf(260f * u, editor.stage.width - 140f * u)).left()
+            }) else add("Brush size".toLabel(fontSize = UiTypography.size(TextRole.Body, unit = u))).row()
             val popup = this
             val sizes = Table().apply {
                 for (size in 1..5) add(MapEditorStyle.button(size.toString()) {
@@ -180,7 +196,8 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
             }).growX().height(44*u).pad(4*u).row()
             add("Floodfill follows the matching rule in Options.".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = u)).apply { wrap = true })
                 .width(minOf(340*u, editor.stage.width-80*u)).row()
-            addCloseButton(); open()
+            if (!UiNavigation.isIos) addCloseButton()
+            open()
         }
     }
 }

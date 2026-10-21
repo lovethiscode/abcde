@@ -41,7 +41,7 @@ abstract class ScrollableAnimatedMenuPopup(
         val paddedMaxWidth = maxPopupWidth()
         val desiredTotalWidth = table.prefWidth
         val desiredContentWidth = table.getColumnPrefWidth(0)
-        val scrollWidth = if (desiredTotalWidth <= paddedMaxHeight) desiredContentWidth
+        val scrollWidth = if (desiredTotalWidth <= paddedMaxWidth) desiredContentWidth
             else paddedMaxWidth - (desiredTotalWidth - desiredContentWidth)
 
         scrollCell.size(scrollWidth, scrollHeight)

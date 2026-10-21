@@ -8,6 +8,7 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.UncivGame
@@ -42,7 +43,6 @@ import com.unciv.ui.images.IconTextButton
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.multiplayerscreens.FriendPickerList
-import com.unciv.ui.screens.pickerscreens.PickerPane
 import com.unciv.ui.screens.pickerscreens.PickerScreen
 import com.unciv.utils.isUUID
 import com.unciv.utils.removeRange
@@ -530,36 +530,36 @@ class FriendSelectionPopup(
     screen: BaseScreen,
 ) : Popup(screen) {
 
-    private val pickerPane = PickerPane()
     private var selectedFriendId: String? = null
+    private val selectButton: TextButton
 
     init {
-        val pickerCell = add()
-            .width(700f).fillX().expandX()
-            .minHeight(screen.stage.height * 0.5f)
-            .maxHeight(screen.stage.height * 0.8f)
-
+        val unit = UiTypography.unitsPerPoint(screen.stage)
+        val contentWidth = minOf(700f * unit, screen.stage.width * 0.9f)
+        addTitleWithCloseButton("Select friend".toLabel(TextRole.PageTitle, unit = unit))
         val friendList = FriendPickerList(playerPicker, ::friendSelected)
-        pickerPane.topTable.add(friendList)
-        pickerPane.rightSideButton.setText("Select friend".tr())
-        if (UiNavigation.isIos) {
-            pickerPane.closeButton.remove()
-            addCloseButton()
-            clickBehindToClose = false
-        } else {
-            pickerPane.closeButton.onActivation(::close)
-        pickerPane.closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
-        }
-        pickerCell.setActor(pickerPane)
-        pickerPane.rightSideButton.onClick {
+        val maxListHeight = minOf(screen.stage.height * 0.35f, 360f * unit)
+        val minListHeight = minOf(96f * unit, maxListHeight)
+        val listHeight = (friendList.prefHeight + 12f * unit)
+            .coerceIn(minListHeight, maxListHeight)
+        add(ScrollPane(friendList).apply {
+            setScrollingDisabled(true, false)
+            setOverscroll(false, false)
+        }).width(contentWidth)
+            .height(listHeight)
+            .row()
+
+        selectButton = addButton("Select friend") {
             close()
             val friendId = selectedFriendId
             if (friendId != null) {
                 player.playerId = selectedFriendId.toString()
-                close()
                 playerPicker.update()
             }
-        }
+        }.width((contentWidth - 20f * unit).coerceAtLeast(44f * unit))
+            .minHeight(44f * unit).actor
+        selectButton.isDisabled = true
+        selectButton.label.wrap = true
 
         clickBehindToClose = true
     }
@@ -570,8 +570,8 @@ class FriendSelectionPopup(
         if (friend != null) {
             selectedFriendId = friend.playerID
         }
-        pickerPane.setRightSideButtonEnabled(true)
-        pickerPane.rightSideButton.setText("Select [$friendName]".tr())
+        selectButton.isDisabled = false
+        selectButton.setText("Select [$friendName]".tr())
     }
 
 }

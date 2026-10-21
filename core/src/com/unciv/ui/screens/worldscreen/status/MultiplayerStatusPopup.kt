@@ -20,16 +20,21 @@ class MultiplayerStatusPopup(
     private val gameList = GameList(::gameSelected)
 
     init {
+        val empty = gameList.models().isEmpty()
+        val preferredHeight = if (empty) minOf(180f * popupUnit, screen.stage.height * 0.45f)
+            else screen.stage.height * 0.5f
         val pickerCell = add()
             .width(if (ordinaryPresentation) popupContentWidth else minOf(700f, screen.stage.width * .9f)).fillX().expandX()
-            .minHeight(screen.stage.height * 0.5f)
+            .height(preferredHeight)
             .maxHeight(screen.stage.height * 0.8f)
 
-        pickerPane.topTable.add(gameList)
+        pickerPane.topTable.add(gameList).growX().minWidth(0f).row()
+        pickerPane.useContentSizedFooter = empty
         pickerPane.rightSideButton.setText("Load game".tr())
+        pickerPane.setRightSideButtonEnabled(false)
         if (UiNavigation.isIos) {
             pickerPane.closeButton.remove()
-            addDialogTitle("Multiplayer games")
+            addDialogTitle("Multiplayer")
             clickBehindToClose = false
         } else {
             pickerPane.closeButton.onClick(::close)

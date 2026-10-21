@@ -13,7 +13,11 @@ class GreatPersonPointsBreakdownPopup(cityScreen: CityScreen, gppBreakdown: Grea
         val headerText = "«GOLD»{${greatPerson ?: "Great person points"}}«» ({${cityScreen.cityView.name}})"
         val title = FormattedLine(headerText, header = 2, centered = true)
         if (ordinaryPresentation) {
-            addDialogTitle(greatPerson ?: "Great person points", "{${cityScreen.cityView.name}} · {Great person points}")
+            addDialogTitle(
+                greatPerson ?: "Great person points",
+                "{${cityScreen.cityView.name}} · {Great person points}",
+                dismissible = false,
+            )
             if (greatPerson != null) {
                 val civ = cityScreen.cityView.viewingCiv()
                 addFactRow("Current progress", "${civ.getGreatPersonPoints(greatPerson)} / ${civ.getPointsRequiredForGreatPerson(greatPerson)}")

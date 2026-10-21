@@ -35,7 +35,7 @@ import kotlin.math.max
 
 class DetailedStatsPopup(
     private val cityScreen: CityScreen
-) : Popup(cityScreen, Scrollability.None) {
+) : Popup(cityScreen) {
     private var embedded = false
     private val headerTable = Table()
     private val totalTable = Table()
@@ -60,17 +60,28 @@ class DetailedStatsPopup(
 
     init {
         headerTable.defaults().pad(3f, 0f)
-        add(headerTable).padBottom(0f).row()
-
         totalTable.defaults().pad(3f, 0f)
-
-        val scrollPane = AutoScrollPane(totalTable)
-        scrollPane.setOverscroll(false, false)
-        val scrollPaneCell = add(scrollPane).padTop(0f)
-        scrollPaneCell.maxHeight(cityScreen.stage.height * 3 / 4)
-
-        row()
-        addCloseButton(additionalKey = KeyCharAndCode.SPACE)
+        if (ordinaryPresentation) {
+            addDialogTitle("Stats", cityScreen.cityView.name)
+            val matrix = Table().apply {
+                add(headerTable).growX().row()
+                add(totalTable).growX()
+            }
+            val scrollPane = AutoScrollPane(matrix).apply {
+                setOverscroll(false, false)
+                // The matrix needs horizontal panning on a phone; vertical overflow
+                // remains owned by Popup's single body scroll view.
+                setScrollingDisabled(false, true)
+            }
+            add(scrollPane).width(popupContentWidth).padTop(0f).row()
+        } else {
+            add(headerTable).padBottom(0f).row()
+            val scrollPane = AutoScrollPane(totalTable)
+            scrollPane.setOverscroll(false, false)
+            add(scrollPane).padTop(0f).maxHeight(cityScreen.stage.height * 3 / 4)
+            row()
+            addCloseButton(additionalKey = KeyCharAndCode.SPACE)
+        }
         update()
 
         showListeners.add { cityScreen.pauseFireworks = true }
