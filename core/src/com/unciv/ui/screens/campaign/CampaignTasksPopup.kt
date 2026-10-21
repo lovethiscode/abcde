@@ -31,6 +31,10 @@ import com.unciv.utils.Concurrency
 class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
     init {
         val state = requireNotNull(screen.gameInfo.campaign)
+        if (!state.briefingSeen) {
+            state.briefingSeen = true
+            state.hintsDismissed = true
+        }
         val d = state.definition
         // Refresh explanatory copy for compatible saves without replacing their scoring snapshot.
         val copy = CampaignCatalog.definition(d.id).takeIf {
@@ -38,33 +42,40 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         } ?: d
         val result = CampaignRules.evaluate(screen.gameInfo)
         val terminal = state.resultStars > 0 || result.failed
-        val boardWidth = (maxPopupWidth - 50f).coerceAtMost(1100f)
-        val wide = boardWidth >= 700f
+        val unit = UiNavigation.minimumTouchSize() / 44f
+        val boardWidth = (maxPopupWidth - 50f).coerceAtMost((if (terminal) 720f else 1100f) * unit)
+        val wide = !terminal && boardWidth / unit >= 700f
         val goalsWidth = if (wide) (boardWidth - 24f) * .61f else boardWidth
         val sideWidth = if (wide) boardWidth - goalsWidth - 24f else boardWidth
         innerTable.background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.panel)
 
-        val heading = Table().apply {
-            add(d.number.toString().padStart(2, '0').toLabel(Theme.gold, UiTypography.size(TextRole.PageTitle, legacySize = 28))).padRight(16f)
-            add(Table().apply {
-                defaults().left()
-                add((if (d.id == CivilWarCampaign.id) "历史战役 / 联邦" else "文明的诞生 / [${CampaignCatalog.chapters[(d.number - 1) / 4]}]").toLabel(Theme.muted, UiTypography.size(TextRole.Supporting, legacySize = 14))).row()
-                add(d.title.toLabel(Theme.text, UiTypography.size(TextRole.PageTitle, legacySize = 25))).padTop(3f).row()
-                add("行动回合 [${if (d.hardTurnLimit > 0) (state.completedRounds + 1).coerceAtMost(d.hardTurnLimit) else state.completedRounds + 1}] · 已完成 [${state.completedRounds}] 回合".toLabel(Theme.muted, UiTypography.size(TextRole.Control, legacySize = 15))).padTop(4f)
-            }).expandX().left()
-        }
-        addTitleWithCloseButton(heading)
+        addDialogTitle(
+            when {
+                result.failed -> "本次挑战结束"
+                terminal -> "关卡完成"
+                else -> "战役任务"
+            },
+            "[${d.number.toString().padStart(2, '0')}] · [${d.title}] · 行动回合 [${if (d.hardTurnLimit > 0) (state.completedRounds + 1).coerceAtMost(d.hardTurnLimit) else state.completedRounds + 1}]",
+            dismissible = false
+        )
 
         val goals = Table().apply { top(); defaults().left().growX() }
         if (terminal) {
             screen.campaignResultShown = true
-            goals.add(bodyText(if (result.failed) "本次挑战失败" else "战役通关", goalsWidth,
+            goals.add(bodyText(if (result.failed) (result.failureReason.ifBlank { "本次挑战失败" }) else d.title, goalsWidth,
                 if (result.failed) Theme.danger else Theme.gold, TextRole.PageTitle)).padBottom(6f).row()
             val best = runCatching { CampaignStore(screen.game.files).progress().bestStars["${d.id}:${d.scoringVersion}"] ?: 0 }.getOrNull()
-            goals.add(bodyText(if (result.failed) result.failureReason else
+            goals.add(bodyText(if (result.failed) "本次获得 0 星 · 战役进度仍保留" else
                 if (best == null) "Latest attempt: [${state.resultStars}] / 3 stars" else
                 "本次获得 [${state.resultStars}] 星 · 本版本最高 [$best] 星", goalsWidth, Theme.muted, TextRole.Control))
                 .padBottom(12f).row()
+            if (result.failed) goals.add(Table().apply {
+                background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.background)
+                pad(12f)
+                add(bodyText("下一步建议", goalsWidth - 24f, Theme.gold, TextRole.Control)).row()
+                add(bodyText("先查看地图确认局势，再返回战役重新挑战。教学提示仍会保留，并默认收起。",
+                    goalsWidth - 24f, Theme.muted, TextRole.Supporting)).padTop(5f)
+            }).width(goalsWidth).padBottom(12f).row()
         }
         val met = listOf(result.main, result.worker, result.population)
         for ((i, goal) in copy.objectives.withIndex()) {
@@ -90,8 +101,9 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         }
 
         val side = Table().apply { top(); defaults().left().growX().spaceBottom(8f) }
-        if (screen.game.campaignSharingAvailable && state.resultStars > 0 && !state.failed &&
-            runCatching { CampaignStore(screen.game.files).shareResult(d.id, state.attemptId) }.getOrNull() != null) {
+        val canShare = screen.game.campaignSharingAvailable && state.resultStars > 0 && !state.failed &&
+            runCatching { CampaignStore(screen.game.files).shareResult(d.id, state.attemptId) }.getOrNull() != null
+        if (canShare && !terminal) {
             side.add(boardButton("Share: [${"Battle report".tr()}]") {
                 showCampaignShare(screen) { CampaignStore(screen.game.files).shareResult(d.id, state.attemptId) }
             }.apply { name = "ui-campaign-share-result" }).width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).row()
@@ -116,23 +128,30 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
                     .width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).row()
             }
         }
-        side.add(boardButton(if (state.hintsDismissed) "展开教学提示 ›" else "收起教学提示 ⌄") {
-            state.hintsDismissed = !state.hintsDismissed
-            close(); CampaignTasksPopup(screen)
-        }).width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).row()
-        if (!state.hintsDismissed) {
-            for ((i, hint) in copy.hints.withIndex())
-                side.add(bodyText("${i + 1}. ${hint.tr()}", sideWidth, Theme.text, TextRole.Control)).row()
-            side.add(bodyText("本关设置", sideWidth, Theme.gold, TextRole.Control)).padTop(6f).row()
-            for (restriction in copy.restrictions) side.add(bodyText(restriction, sideWidth, Theme.muted, TextRole.Supporting)).row()
+        if (!terminal) {
+            side.add(boardButton(if (state.hintsDismissed) "展开教学提示 ›" else "收起教学提示 ⌄") {
+                state.hintsDismissed = !state.hintsDismissed
+                close(); CampaignTasksPopup(screen)
+            }).width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).row()
+            if (!state.hintsDismissed) {
+                for ((i, hint) in copy.hints.withIndex())
+                    side.add(bodyText("${i + 1}. ${hint.tr()}", sideWidth, Theme.text, TextRole.Control)).row()
+                side.add(bodyText("本关设置", sideWidth, Theme.gold, TextRole.Control)).padTop(6f).row()
+                for (restriction in copy.restrictions) side.add(bodyText(restriction, sideWidth, Theme.muted, TextRole.Supporting)).row()
+            }
+            side.add(boardButton("保存并返回战役") { leave(d.id) }.apply {
+                name = "ui-campaign-return"
+            }).width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).padTop(8f).row()
         }
-        side.add(boardButton(if (terminal) "返回战役 / 重新挑战" else "保存并返回战役") { leave(d.id) }.apply {
-            name = "ui-campaign-return"
-        }).width(sideWidth).minHeight(UiNavigation.minimumTouchSize()).padTop(8f).row()
+        if (canShare && terminal) goals.add(boardButton("分享本次战报") {
+            showCampaignShare(screen) { CampaignStore(screen.game.files).shareResult(d.id, state.attemptId) }
+        }.apply { name = "ui-campaign-share-result" }).width(goalsWidth).minHeight(UiNavigation.minimumTouchSize()).padTop(4f).row()
         val board = Table().apply {
             add(goals).width(goalsWidth).top()
-            if (wide) add(side).width(sideWidth).padLeft(24f).top()
-            else { row(); add(side).width(sideWidth).padTop(16f) }
+            if (!terminal) {
+                if (wide) add(side).width(sideWidth).padLeft(24f).top()
+                else { row(); add(side).width(sideWidth).padTop(16f) }
+            }
         }
         add(board).width(boardWidth).row()
         getScrollPane()?.setScrollingDisabled(true, false)

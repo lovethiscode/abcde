@@ -177,6 +177,10 @@ class WorldScreen(
     internal var campaignResultShown = false
     private val campaignButton = "Campaign objectives".toTextButton().apply {
         name = "ui-campaign-objectives"
+        label.setFontSize(UiTypography.size(TextRole.Control, legacySize = 16))
+        label.wrap = true
+        label.setAlignment(Align.left)
+        pad(8f, 14f, 8f, 14f)
         onActivation { com.unciv.ui.screens.campaign.CampaignTasksPopup(this@WorldScreen) }
     }
     internal val tutorialTaskTable = TutorialTaskTable(this).apply { name = "ui-tutorial-task" }
@@ -513,11 +517,15 @@ class WorldScreen(
             val state = gameInfo.campaign!!
             val result = com.unciv.logic.campaign.CampaignRules.evaluate(gameInfo)
             val progress = "${listOf(result.main, result.worker, result.population).count { it }} / 3"
+            val round = if (state.definition.hardTurnLimit > 0)
+                "第 [${(state.completedRounds + 1).coerceAtMost(state.definition.hardTurnLimit)}] / [${state.definition.hardTurnLimit}] 回合"
+            else "第 [${state.completedRounds + 1}] 回合"
             campaignButton.setText(when {
-                state.resultStars > 0 || state.failed -> "查看战役结果"
-                result.main && !state.definition.automatic -> "战役可结算 · [$progress]"
-                else -> "战役任务 · [$progress]"
+                state.resultStars > 0 || state.failed -> "查看战役结果 · [${state.definition.title}]\n[$progress] 目标 · [$round]"
+                result.main && !state.definition.automatic -> "战役可结算 · [${state.definition.title}]\n[$progress] 目标 · [$round]"
+                else -> "战役任务 · [${state.definition.title}]\n[$progress] 目标 · [$round]"
             }.tr())
+            campaignButton.labelCell.prefWidth((stage.width * .42f).coerceIn(220f, 420f))
             campaignButton.pack()
             campaignButton.setPosition((stage.width - campaignButton.width) / 2, stage.height - topBar.height - campaignButton.height - 6f)
         }

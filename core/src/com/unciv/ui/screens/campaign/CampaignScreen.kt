@@ -58,10 +58,10 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     private val unit = UiNavigation.minimumTouchSize() / 44f
     private fun px(value: Float) = value * unit
     private val compact get() = this@CampaignScreen.stage.width > this@CampaignScreen.stage.height && this@CampaignScreen.stage.height / unit < 600f
-    private val stacked get() = (this@CampaignScreen.stage.width < this@CampaignScreen.stage.height &&
-        (chapter >= 0 || this@CampaignScreen.stage.width / unit < 700f)) ||
+    private val narrowPortrait get() = this@CampaignScreen.stage.width < this@CampaignScreen.stage.height &&
+        this@CampaignScreen.stage.width / unit < 700f
+    private val stacked get() = narrowPortrait ||
         this@CampaignScreen.stage.width / unit / game.settings.fontSizeMultiplier < 520f
-    private val narrowPortrait get() = this@CampaignScreen.stage.width < this@CampaignScreen.stage.height && this@CampaignScreen.stage.width / unit < 700f
     private val margin get() = px(if (stacked) 16f else 24f)
     private val contentWidth get() = this@CampaignScreen.stage.width - margin * 2f
     private val artwork = CampaignMapArtwork()
@@ -111,13 +111,15 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     private var historicalScrollY = 0f
     private var detailTop = 0f
     private var renderedChapter = -1
+    private var renderedSyncState = sync.status.state
     private var disposed = false
     private val syncListener: (CampaignSyncStatus) -> Unit = { status ->
         Concurrency.runOnGLThread {
             if (!disposed) {
+                val captionChanged = renderedSyncState != status.state
                 updateSyncPanel(status)
                 val latest = runCatching { store.progress() }.getOrNull()
-                if (latest == null || !progress.samePermanentFacts(latest)) rebuild()
+                if (captionChanged || latest == null || !progress.samePermanentFacts(latest)) rebuild()
             }
         }
     }
@@ -180,7 +182,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         }.apply { add(artwork.icon("share", Theme.muted)).size(px(20f)) }).size(px(44f))
         root.add(header).growX().padBottom(px(if (compact) 6f else 12f)).row()
         root.add(ImageGetter.getWhiteDot().apply { color = Theme.border }).growX().height(px(1f)).row()
-        if (chapter < 0) {
+        if (chapter < 0 && !(historical && selected.isNotEmpty())) {
             val themes = Table().apply {
                 add(control("新手", "ui-campaign-theme:0", quiet = true) { historical = false; selected = ""; rebuild() }.apply { isChecked = !historical })
                     .minHeight(px(44f)).padRight(px(8f))
@@ -209,6 +211,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             val persisted = runCatching { store.progress() }.getOrNull()
             progressReadable = persisted != null
             progress = persisted ?: CampaignProgress()
+            renderedSyncState = sync.status.state
             updateSyncPanel(sync.status)
             if (historical) historicalCatalog()
             else if (chapter < 0) overview() else chapter()
@@ -225,25 +228,41 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
 
     private fun historicalCatalog() {
         if (selected.isNotEmpty()) {
-            val panel = details(historicalDefinitions.first { it.id == selected }, contentWidth)
-            if (stacked) root.add(AutoScrollPane(Table().apply {
-                add(panel).width(contentWidth).height(px(620f * game.settings.fontSizeMultiplier))
-            })).grow().minHeight(0f)
-            else root.add(panel).grow().minHeight(0f)
+            val d = historicalDefinitions.first { it.id == selected }
+            if (narrowPortrait) {
+                val panel = details(d, contentWidth, includeActions = false)
+                root.add(AutoScrollPane(Table().apply {
+                    top()
+                    add(panel).width(contentWidth).top().row()
+                    add().growY()
+                }).apply {
+                    setScrollingDisabled(true, false)
+                    setOverscroll(false, false)
+                }).grow().minHeight(0f).row()
+                root.add(levelActions(d, contentWidth)).growX().padTop(px(10f))
+            } else {
+                val gap = px(18f)
+                val contextWidth = (contentWidth * .34f).coerceIn(px(280f), px(390f))
+                val detailWidth = contentWidth - contextWidth - gap
+                root.add(Table().apply {
+                    add(historicalContext(d, contextWidth)).width(contextWidth).growY().minHeight(0f).padRight(gap)
+                    add(details(d, detailWidth)).width(detailWidth).growY().minHeight(0f)
+                }).grow().minHeight(0f)
+            }
             return
         }
         val content = Table().apply { top() }
         val stars = historicalDefinitions.sumOf { store.stars(it, progress) }
-        content.add(label("[${historicalDefinitions.size}] 个战役 · 当前版本 [$stars] / [${historicalDefinitions.size * 3}] 星", TextRole.Supporting, Theme.muted))
-            .width(contentWidth).left().padBottom(px(16f)).row()
+        content.add(label("重回历史转折点", TextRole.PageTitle)).width(contentWidth).left().padBottom(px(5f)).row()
+        content.add(label("历史战役采用独立规则与固定开局，不影响文明之路进度 · [${historicalDefinitions.size}] 个战役 · [$stars] / [${historicalDefinitions.size * 3}] 星", TextRole.Supporting, Theme.muted))
+            .width(contentWidth).left().padBottom(px(14f)).row()
         for (d in historicalDefinitions) {
-            val copyWidth = contentWidth - px(40f)
+            val yearWidth = px(if (narrowPortrait) 58f else 76f)
+            val copyWidth = contentWidth - yearWidth - px(62f)
             content.add(control("", "ui-campaign-historical:${d.id}") {
                 selected = d.id; detailTab = 0; rebuild()
             }.apply {
-                clearChildren(); pad(px(20f)); left()
-                add(label(d.title, TextRole.PageTitle, Theme.gold)).width(copyWidth).left().row()
-                add(label(d.description, TextRole.Supporting)).width(copyWidth).left().padTop(px(12f)).row()
+                clearChildren(); pad(px(12f)); left()
                 val saved = store.saved(d.id)?.campaign
                 val status = when {
                     saved?.failed == true -> "本次挑战失败"
@@ -251,11 +270,35 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                     d.id in progress.cleared -> if (store.stars(d, progress) == 0) "已通关 · 新版待挑战" else "已通关"
                     else -> "未挑战"
                 }
-                add(label(status, TextRole.Supporting, Theme.muted)).width(copyWidth).left().padTop(px(12f)).row()
-                add(campaignStars(store.stars(d, progress), px(18f))).left().padTop(px(12f))
-            }).width(contentWidth).minHeight(px(210f)).padBottom(px(12f)).row()
+                add(label(if (d.id == CivilWarCampaign.id) "[1861]" else "历史", TextRole.SectionTitle, Theme.gold).apply {
+                    setAlignment(Align.center)
+                }).width(yearWidth).left().padRight(px(12f))
+                add(Table().apply {
+                    defaults().left()
+                    add(label(d.title, TextRole.SectionTitle)).width(copyWidth).row()
+                    add(label(status, TextRole.Supporting, Theme.muted)).width(copyWidth).padTop(px(5f)).row()
+                    add(campaignStars(store.stars(d, progress), px(13f))).left().padTop(px(5f))
+                }).width(copyWidth).growX().minWidth(0f)
+                add(artwork.icon("arrow", Theme.muted)).size(px(18f)).padLeft(px(10f))
+            }).width(contentWidth).minHeight(px(96f)).padBottom(px(10f)).row()
         }
         root.add(AutoScrollPane(content)).grow().minHeight(0f)
+    }
+
+    private fun historicalContext(d: CampaignDefinition, width: Float) = Table().apply {
+        background = campaignSurface(Theme.panel, px(14f))
+        pad(px(22f)); top(); left(); defaults().left()
+        add(label(if (d.id == CivilWarCampaign.id) "独立战役 · [1861]" else "独立战役", TextRole.Supporting, Theme.gold))
+            .width(width - px(44f)).row()
+        add(label(d.title, TextRole.Display)).width(width - px(44f)).padTop(px(8f)).row()
+        add(label(d.description, TextRole.Body, Theme.muted)).width(width - px(44f)).padTop(px(14f)).row()
+        add(ImageGetter.getWhiteDot().apply { color = Theme.border }).width(width - px(44f)).height(px(1f)).padTop(px(20f)).row()
+        val copyWidth = width - px(44f)
+        add(label("固定开局", TextRole.Supporting, Theme.muted)).width(copyWidth).padTop(px(16f)).row()
+        add(label(if (d.id == CivilWarCampaign.id) "联邦" else "历史阵营", TextRole.SectionTitle))
+            .width(copyWidth).padTop(px(4f)).row()
+        add(label("版本最高", TextRole.Supporting, Theme.muted)).width(copyWidth).padTop(px(18f)).row()
+        add(score(store.stars(d, progress), 3, TextRole.SectionTitle)).width(copyWidth).padTop(px(4f))
     }
 
     private fun syncCaption() = when (sync.status.state) {
@@ -318,6 +361,10 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     }
 
     private fun overview() {
+        if (narrowPortrait) {
+            overviewPortrait()
+            return
+        }
         val width = contentWidth
         val gap = px(20f)
         val introWidth = if (stacked) width else px(if (compact) 210f else 280f)
@@ -326,16 +373,26 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         val intro = Table().apply {
             top(); left()
             val stars = definitions.sumOf { store.stars(it, progress) }
+            val journeyComplete = definitions.all { it.id in progress.cleared }
             val heading = Table().apply {
-                add(label("文明，从这里\n开始生长。", TextRole.Display)).growX().minWidth(0f).left()
+                add(label(if (journeyComplete) "你的文明，\n已经写入史册。" else "文明，从这里\n开始生长。", TextRole.Display)).growX().minWidth(0f).left()
                 if (stacked) add(score(stars, 48, TextRole.SectionTitle)).top().right()
             }
             add(heading).width(introWidth).left().row()
-            add(label("沿河谷出发，穿过未知边境。\n四个章节，十六次策略抉择。", TextRole.Supporting, Theme.muted))
+            add(label(if (journeyComplete) "全部关卡均已通关。回顾章节、挑战更高成绩，或分享这段旅程。"
+                else "沿河谷出发，穿过未知边境。\n四个章节，十六次策略抉择。", TextRole.Supporting, Theme.muted))
                 .width(introWidth).left().padTop(px(12f)).row()
             if (!stacked) add(score(stars, 48, if (compact) TextRole.SectionTitle else TextRole.PageTitle)).left().padTop(px(16f)).row()
             val recent = progress.lastPlayed.takeIf { id -> definitions.any { it.id == id } }?.let(store::saved)
-            if (recent?.campaign?.let { it.resultStars == 0 && !it.failed } == true) {
+            if (journeyComplete) {
+                add(label("最高完成度 · [${definitions.count { store.stars(it, progress) == 3 }}] / 16 关三星", TextRole.Supporting, Theme.gold))
+                    .width(introWidth).left().padTop(px(16f)).row()
+                add(exploreButton("回顾章节", "ui-campaign-review") { openChapter(3) })
+                    .width(introWidth).minHeight(px(44f)).padTop(px(18f)).row()
+                if (game.campaignSharingAvailable && progressReadable) add(control("分享旅程", "ui-campaign-share-complete") {
+                    showCampaignShare(this@CampaignScreen, { rebuild(recoverResults = false) }) { CampaignShareData.journey(store.progress()) }
+                }).width(introWidth).minHeight(px(44f)).padTop(px(8f)).row()
+            } else if (recent?.campaign?.let { it.resultStars == 0 && !it.failed } == true) {
                 val d = recent.campaign!!.definition
                 add(exploreButton("继续探索", "ui-campaign-recent") { enter(d.id, false) })
                     .width(introWidth).minHeight(px(44f)).padTop(px(22f)).row()
@@ -389,12 +446,109 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         }
     }
 
+    private fun overviewPortrait() {
+        val stars = definitions.sumOf { store.stars(it, progress) }
+        val journeyComplete = definitions.all { it.id in progress.cleared }
+        val recent = progress.lastPlayed.takeIf { id -> definitions.any { it.id == id } }?.let(store::saved)
+        val unfinished = recent?.campaign?.takeIf { it.resultStars == 0 && !it.failed }
+        val next = unfinished?.definition ?: definitions.firstOrNull {
+            store.isUnlocked(it, progress) && store.stars(it, progress) < 3
+        } ?: definitions.last()
+        val currentChapter = (next.number - 1) / 4
+        val content = Table().apply {
+            top(); defaults().left()
+            add(label(if (journeyComplete) "你的文明，已经写入史册" else "从一座城，开拓你的山河", TextRole.Display))
+                .width(contentWidth).row()
+            add(label(if (journeyComplete) "全部十六关均已通关，可以回顾章节或分享旅程。" else "四章循序渐进的文明挑战。",
+                TextRole.Supporting, Theme.muted)).width(contentWidth).padTop(px(6f)).row()
+
+            val strip = Table()
+            val rowCopyWidth = (contentWidth - px(91f)).coerceAtLeast(px(160f))
+            for ((index, title) in CampaignCatalog.chapters.withIndex()) {
+                val levels = definitions.subList(index * 4, index * 4 + 4)
+                val enabled = levels.any { store.isUnlocked(it, progress) }
+                strip.add(control("", "ui-campaign-journey-step:$index", quiet = true) { if (enabled) openChapter(index) }.apply {
+                    clearChildren(); pad(px(4f))
+                    add(label("${index + 1}", TextRole.Control, if (index == currentChapter) Theme.primaryInk else Theme.muted).apply {
+                        setAlignment(Align.center)
+                    }).growX().row()
+                    add(ImageGetter.getWhiteDot().apply { color = if (index == currentChapter) Theme.gold else Theme.border })
+                        .growX().height(px(if (index == currentChapter) 4f else 2f)).padTop(px(4f)).row()
+                    add(label(if (index == 3) "终章" else "第${index + 1}章", TextRole.Metadata,
+                        if (index == currentChapter) Theme.text else Theme.muted).apply { setAlignment(Align.center) })
+                        .growX().padTop(px(4f))
+                }).width(contentWidth / 4f).minHeight(px(58f))
+            }
+            add(strip).width(contentWidth).padTop(px(12f)).padBottom(px(12f)).row()
+
+            val levels = definitions.subList(currentChapter * 4, currentChapter * 4 + 4)
+            add(Table().apply {
+                background = campaignSurface(Theme.panel, px(14f)); pad(px(16f)); defaults().left()
+                add(label(if (journeyComplete) "旅程完成" else "当前章节", TextRole.Supporting, Theme.gold)).growX().row()
+                val titleRow = Table().apply {
+                    add(label(CampaignCatalog.chapters[currentChapter], TextRole.PageTitle)).growX().minWidth(0f).left()
+                    add(score(levels.sumOf { store.stars(it, progress) }, 12, TextRole.Body)).padLeft(px(8f))
+                }
+                add(titleRow).width(contentWidth - px(32f)).padTop(px(5f)).row()
+                val stateCopy = if (unfinished != null) "下一关 · [${unfinished.definition.title}] · 继续第 [${unfinished.completedRounds + 1}] 回合"
+                    else "[${levels.count { it.id in progress.cleared }}] / 4 关已完成"
+                add(label(stateCopy, TextRole.Supporting, Theme.muted)).width(contentWidth - px(32f)).padTop(px(8f))
+            }).width(contentWidth).padBottom(px(16f)).row()
+
+            add(label("章节路线", TextRole.SectionTitle)).width(contentWidth).padBottom(px(6f)).row()
+            for ((index, title) in CampaignCatalog.chapters.withIndex()) {
+                val chapterLevels = definitions.subList(index * 4, index * 4 + 4)
+                val enabled = chapterLevels.any { store.isUnlocked(it, progress) }
+                val complete = chapterLevels.all { it.id in progress.cleared }
+                val status = when {
+                    chapterLevels.all { store.stars(it, progress) == 3 } -> "精通 · 12 星"
+                    complete -> "已完成 · [${chapterLevels.sumOf { store.stars(it, progress) }}] 星"
+                    enabled -> "进行中 · [${chapterLevels.sumOf { store.stars(it, progress) }}] 星"
+                    else -> "尚未解锁"
+                }
+                add(control("", "ui-campaign-chapter-row:$index") { if (enabled) openChapter(index) }.apply {
+                    clearChildren(); pad(px(10f)); left(); isDisabled = !enabled
+                    add(label("${index + 1}", TextRole.Control, if (enabled) Theme.gold else Theme.muted).apply {
+                        setAlignment(Align.center)
+                    }).size(px(36f))
+                    add(Table().apply {
+                        defaults().left()
+                        add(label(title.tr(), TextRole.Control).apply { wrap = false }).width(rowCopyWidth).row()
+                        add(label(status, TextRole.Supporting, Theme.muted).apply { wrap = false })
+                            .width(rowCopyWidth).padTop(px(3f))
+                    }).width(rowCopyWidth).minWidth(0f).padLeft(px(10f))
+                    add(artwork.icon(if (enabled) "arrow" else "lock", Theme.muted)).size(px(17f)).padLeft(px(8f))
+                }).width(contentWidth).minHeight(px(64f)).padBottom(px(7f)).row()
+            }
+            add(label("当前版本共获得 [$stars] / 48 星", TextRole.Supporting, Theme.muted)).width(contentWidth).padTop(px(4f))
+        }
+        root.add(AutoScrollPane(content).apply { setScrollingDisabled(true, false) }).grow().minHeight(0f).row()
+        val actions = Table()
+        if (journeyComplete && game.campaignSharingAvailable && progressReadable) {
+            actions.add(control("分享旅程", "ui-campaign-share-complete") {
+                showCampaignShare(this@CampaignScreen, { rebuild(recoverResults = false) }) { CampaignShareData.journey(store.progress()) }
+            }).minHeight(px(44f)).growX().padRight(px(8f))
+        } else actions.add(control("历史战役", "ui-campaign-history-shortcut") {
+            historical = true; selected = ""; rebuild()
+        }).minHeight(px(44f)).growX().padRight(px(8f))
+        val primaryCopy = when {
+            journeyComplete -> "回顾章节"
+            unfinished != null -> "继续关卡"
+            else -> "进入第 [${currentChapter + 1}] 章"
+        }
+        actions.add(control(primaryCopy, "ui-campaign-overview-primary", true) {
+            if (unfinished != null) enter(unfinished.definition.id, false) else openChapter(currentChapter)
+        }).minHeight(px(44f)).growX()
+        root.add(actions).growX().padTop(px(10f))
+    }
+
     private fun chapter() {
         val levels = definitions.subList(chapter * 4, chapter * 4 + 4)
         val d = levels.firstOrNull { it.id == selected } ?: levels.first().also { selected = it.id }
         val navigation = Table().apply { left() }
         for ((i, title) in CampaignCatalog.chapters.withIndex()) navigation.add(
-            control("${(i + 1).toString().padStart(2, '0')}  ${title.tr()}", "ui-campaign-chapter:$i", quiet = true) { openChapter(i) }.apply {
+            control(if (narrowPortrait) "${i + 1}" else "${(i + 1).toString().padStart(2, '0')}  ${title.tr()}",
+                "ui-campaign-chapter:$i", quiet = true) { openChapter(i) }.apply {
                 isChecked = i == chapter
                 label.setFontSize(UiTypography.size(TextRole.Control, unit))
                 if (narrowPortrait) { padLeft(px(4f)); padRight(px(4f)); label.wrap = false; labelCell.prefWidth(label.prefWidth) }
@@ -411,6 +565,17 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             add(heading).growX()
             add(score(levels.sumOf { store.stars(it, progress) }, 12, TextRole.Body)).padLeft(px(16f)).right()
         }).growX().padBottom(px(16f)).row()
+        if (narrowPortrait) {
+            root.add(compactLevelTrack(levels)).width(contentWidth).padBottom(px(10f)).row()
+            val panel = details(d, contentWidth, includeActions = false)
+            root.add(AutoScrollPane(Table().apply { add(panel).width(contentWidth) }).apply {
+                name = "ui-campaign-detail-scroll"
+                setScrollingDisabled(true, false)
+                setOverscroll(false, false)
+            }).grow().minHeight(0f).row()
+            root.add(levelActions(d, contentWidth)).growX().padTop(px(10f))
+            return
+        }
         val gap = px(16f)
         val detailWidth = if (stacked) contentWidth else px(if (compact) (if (this@CampaignScreen.stage.height / unit < 420f) 260f else 300f) else 360f)
         val mapWidth = if (stacked) contentWidth else contentWidth - detailWidth - gap
@@ -442,6 +607,21 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 .width(mapWidth).growY().minHeight(0f).padRight(gap)
             body.add(detail).width(detailWidth).growY().minHeight(0f)
             root.add(body).grow().minHeight(0f)
+        }
+    }
+
+    private fun compactLevelTrack(levels: List<CampaignDefinition>) = Table().apply {
+        background = campaignSurface(Theme.panel, px(12f))
+        pad(px(10f))
+        for ((index, d) in levels.withIndex()) {
+            val unlocked = store.isUnlocked(d, progress) || store.saved(d.id) != null
+            val active = d.id == selected
+            add(control("${index + 1}", "ui-campaign-level:${d.id}", primary = active, quiet = !active) {
+                if (unlocked) { selected = d.id; detailTab = 0; rebuild() }
+            }.apply { isDisabled = !unlocked }).size(px(44f))
+            if (index < levels.lastIndex) add(ImageGetter.getWhiteDot().apply {
+                color = if (d.id in progress.cleared) Theme.gold else Theme.border
+            }).growX().height(px(2f)).padLeft(px(5f)).padRight(px(5f))
         }
     }
 
@@ -555,13 +735,13 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         }
     }
 
-    private fun details(d: CampaignDefinition, width: Float): Table = Table().apply {
+    private fun details(d: CampaignDefinition, width: Float, includeActions: Boolean = true): Table = Table().apply {
         name = "ui-campaign-detail-panel"
         background = campaignSurface(Theme.panel, px(14f))
         val inset = px(if (compact) 12f else 20f)
         val copyWidth = width - inset * 2f
         pad(inset).top(); defaults().left()
-        if (stacked && !historical) add(control("返回章节地图", "ui-campaign-return-map", quiet = true) {
+        if (stacked && !historical && !narrowPortrait) add(control("返回章节地图", "ui-campaign-return-map", quiet = true) {
             mapScrollPane?.apply { scrollY = 0f; updateVisualScroll() }
         }).minHeight(px(44f)).row()
         val titleRow = Table().apply {
@@ -578,7 +758,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         val terminal = saved?.campaign
         val unfinished = terminal?.let { it.resultStars == 0 && !it.failed } == true
         val state = when {
-            unfinished -> "本地续玩 · 行动回合 [${terminal!!.completedRounds + 1}]"
+            unfinished -> "本地续玩 · 行动回合 [${terminal.completedRounds + 1}]"
             !store.isUnlocked(d, progress) -> "尚未解锁"
             d.id in progress.cleared -> "已通关"
             else -> "可挑战"
@@ -675,22 +855,27 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         detailScrollPane = pane
         if (stacked) add(content).width(copyWidth).padTop(px(6f)).row()
         else add(pane).width(copyWidth).growY().minHeight(0f).padTop(px(6f)).row()
-        val actions = Table()
+        if (includeActions) add(levelActions(d, copyWidth)).width(copyWidth).padTop(px(10f)).row()
+    }
+
+    private fun levelActions(d: CampaignDefinition, width: Float) = Table().apply {
+        val saved = store.saved(d.id)
+        val terminal = saved?.campaign
+        val unfinished = terminal?.let { it.resultStars == 0 && !it.failed } == true
         if (unfinished) {
-            actions.add(control("Continue campaign", "ui-campaign-continue", true) { enter(d.id, false) }.apply {
+            add(control("Continue campaign", "ui-campaign-continue", true) { enter(d.id, false) }.apply {
                 add(artwork.icon("arrow", Theme.primaryInk)).size(px(18f)).padLeft(px(10f))
             })
                 .growX().minHeight(px(44f))
-            actions.add(control("Restart campaign", "ui-campaign-start", quiet = true) { confirmRestart(d, saved) })
+            add(control("Restart campaign", "ui-campaign-start", quiet = true) { confirmRestart(d, saved) })
                 .minHeight(px(44f)).padLeft(px(8f))
         } else if (store.isUnlocked(d, progress) || saved != null) {
-            actions.add(control(if (saved == null) "Start campaign" else "Restart campaign", "ui-campaign-start", true) {
+            add(control(if (saved == null) "Start campaign" else "Restart campaign", "ui-campaign-start", true) {
                 if (saved == null) enter(d.id, true) else confirmRestart(d, saved)
             }.apply { add(artwork.icon("arrow", Theme.primaryInk)).size(px(18f)).padLeft(px(10f)) }).growX().minHeight(px(44f))
         } else {
-            actions.add(label("上一关至少获得一星后解锁。", TextRole.Supporting, Theme.muted)).width(copyWidth).minHeight(px(44f))
+            add(label("上一关至少获得一星后解锁。", TextRole.Supporting, Theme.muted)).width(width).minHeight(px(44f))
         }
-        add(actions).width(copyWidth).padTop(px(10f)).row()
     }
 
     private fun confirmRestart(d: CampaignDefinition, saved: GameInfo) {

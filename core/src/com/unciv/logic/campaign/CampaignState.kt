@@ -77,7 +77,7 @@ class CampaignState : IsPartOfGameInfoSerialization {
     var lossReasons = hashMapOf<String, String>()
     var killRoles = hashSetOf<String>()
     var enemyEliminated = false
-    var hintsDismissed = false
+    var hintsDismissed = true
     var briefingSeen = false
     /** Zero means still playing or failed. A positive result is frozen before progress is written. */
     var resultStars = 0
