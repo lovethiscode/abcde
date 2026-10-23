@@ -80,6 +80,10 @@ class ToastPopup (message: String, stageToShowOn: Stage, val time: Long = 2000) 
     }
 
     private fun layoutCompactToast() {
+        // Popup.open() adds stage-relative padding to center modal content.
+        // This toast positions its packed bounds directly, so keeping that padding
+        // would apply the visible-area offset a second time inside the toast.
+        pad(0f)
         val unit = popupUnit
         val safe = (stageToShowOn.viewport as? SafeAreaViewport)?.safeAreaBoundsInWorld
             ?: Rectangle(0f, 0f, stageToShowOn.width, stageToShowOn.height)
