@@ -56,6 +56,7 @@ import com.unciv.ui.popups.Popup
 import com.unciv.ui.popups.ToastPopup
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.basescreen.RecreateOnResize
+import com.unciv.ui.popups.activePopup
 import com.unciv.ui.screens.pickerscreens.PickerScreen
 import com.unciv.utils.Concurrency
 import com.unciv.utils.Log
@@ -189,6 +190,7 @@ class NewGameScreen(
                 resetToDefaultsButton.add(ImageGetter.getImage("OtherIcons/Load", ExpeditionBlueTheme.gold)).size(20f).padRight(8f)
                 resetToDefaultsButton.add(resetLabel)
                 resetToDefaultsButton.pad(12f, 18f, 12f, 18f)
+                resetToDefaultsButton.labelCell.minHeight((UiNavigation.minimumTouchSize() - 24f).coerceAtLeast(0f))
             }
             horizontalGroup.addActor(resetToDefaultsButton)
         }
@@ -218,6 +220,7 @@ class NewGameScreen(
                 rotation = -90f
             }).size(20f).padRight(10f)
             startGameButton.add(startLabel)
+            startGameButton.labelCell.minHeight((UiNavigation.minimumTouchSize() - 24f).coerceAtLeast(0f))
             horizontalGroup.addActor(rightSideButton)
             descriptionLabel.setFontSize(UiTypography.size(TextRole.Control, legacySize = 16))
             bottomTable.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel, ExpeditionBlueTheme.border)
@@ -244,14 +247,14 @@ class NewGameScreen(
                     .grow().row()
             } else {
                 val summary = Table().apply {
-                    add(summaryTitle).growX().left().pad(10f, 12f, 2f, 12f).row()
+                    add(summaryTitle).growX().left().pad(4f, 12f, 2f, 12f).row()
                     add(pickerPane.descriptionScroll).minWidth(0f)
-                        .minHeight(descriptionLabel.style.font.data.lineHeight * descriptionLabel.fontScaleY * 3f + 20f)
+                        .minHeight(descriptionLabel.style.font.data.lineHeight * descriptionLabel.fontScaleY * 2f + 8f)
                         .grow()
                 }
                 bottomTable.add(summary).minWidth(0f).grow()
             }
-            bottomTable.add(rightSideGroup).minWidth(0f).pad(10f).right()
+            bottomTable.add(rightSideGroup).minWidth(0f).pad(if (stackedLayout) 10f else 6f).right()
         } else {
             horizontalGroup.addActor(startGameButton)
             pickerPane.rightSideButton.remove()
@@ -790,6 +793,15 @@ class NewGameScreen(
         playerPickerTable.update()
         newGameOptionsTable.changeGameParameters(gameSetupInfo.gameParameters)
         newGameOptionsTable.update()
+    }
+
+    override fun resize(width: Int, height: Int) {
+        val picker = activePopup as? NationPickerPopup
+        if (UiNavigation.isIos && picker != null && width > 0 && height > 0 && hasSafeAreaChanged(width, height)) {
+            picker.close()
+            super.resize(width, height)
+            (game.screen as? NewGameScreen)?.let { picker.recreateOn(it).open() }
+        } else super.resize(width, height)
     }
 
     override fun recreate(): BaseScreen = NewGameScreen(gameSetupInfo)

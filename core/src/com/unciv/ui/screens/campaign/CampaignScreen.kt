@@ -479,11 +479,11 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                         .growX().padTop(px(4f))
                 }).width(contentWidth / 4f).minHeight(px(58f))
             }
-            add(strip).width(contentWidth).padTop(px(12f)).padBottom(px(12f)).row()
+            add(strip).width(contentWidth).padTop(px(6f)).padBottom(px(6f)).row()
 
             val levels = definitions.subList(currentChapter * 4, currentChapter * 4 + 4)
             add(Table().apply {
-                background = campaignSurface(Theme.panel, px(14f)); pad(px(16f)); defaults().left()
+                background = campaignSurface(Theme.panel, px(14f)); pad(px(12f)); defaults().left()
                 add(label(if (journeyComplete) "旅程完成" else "当前章节", TextRole.Supporting, Theme.gold)).growX().row()
                 val titleRow = Table().apply {
                     add(label(CampaignCatalog.chapters[currentChapter], TextRole.PageTitle)).growX().minWidth(0f).left()
@@ -493,7 +493,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 val stateCopy = if (unfinished != null) "下一关 · [${unfinished.definition.title}] · 继续第 [${unfinished.completedRounds + 1}] 回合"
                     else "[${levels.count { it.id in progress.cleared }}] / 4 关已完成"
                 add(label(stateCopy, TextRole.Supporting, Theme.muted)).width(contentWidth - px(32f)).padTop(px(8f))
-            }).width(contentWidth).padBottom(px(16f)).row()
+            }).width(contentWidth).padBottom(px(8f)).row()
 
             add(label("章节路线", TextRole.SectionTitle)).width(contentWidth).padBottom(px(6f)).row()
             for ((index, title) in CampaignCatalog.chapters.withIndex()) {

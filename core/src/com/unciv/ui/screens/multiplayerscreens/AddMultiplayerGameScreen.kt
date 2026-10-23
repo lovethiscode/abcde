@@ -16,6 +16,7 @@ import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.UncivTextField
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.popups.Popup
 import com.unciv.ui.popups.ToastPopup
 import com.unciv.ui.screens.savescreens.LoadGameScreen
@@ -26,7 +27,7 @@ import kotlinx.coroutines.CancellationException
 
 class AddMultiplayerGamePopup(
     private val multiplayerScreen: MultiplayerScreen,
-) : Popup(multiplayerScreen, Scrollability.WithoutButtons, 0.9f) {
+) : Popup(multiplayerScreen, Scrollability.WithoutButtons, if (UiNavigation.isIos) 1f else .9f, ordinaryShell = true) {
     private val gameIdTextField = UncivTextField("Paste the Game ID or invitation link")
     private val gameNameTextField = UncivTextField("For example: Weekend game")
 

@@ -144,14 +144,14 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         header.add(ImageGetter.getNationPortrait(civ.nation, ui.px(if (layout.wide) 52f else 42f)))
             .size(ui.px(if (layout.wide) 60f else 50f)).padRight(ui.px(14f))
         val text = Table()
-        text.add(ui.label(civ.civName, TextRole.PageTitle, wrap = true, hideIcons = true)).growX().minWidth(0f).left().row()
+        text.add(ui.label(civ.civName, TextRole.SectionTitle, wrap = true, hideIcons = true)).growX().minWidth(0f).left().row()
         val subtitle = if (civ.isCityState) "{City-State} · {${civ.cityStateType.name}} · {${civ.cityStatePersonality}}"
             else "{Civilization} · {${civ.nation.leaderName}}"
         text.add(ui.label(subtitle, TextRole.Supporting, ui.muted, true)).growX().left().padTop(ui.px(5f))
         header.add(text).growX().minWidth(0f)
         header.add(ui.label(if (civ.isAtWarWith(player)) "War" else "Peace", TextRole.Supporting,
             if (civ.isAtWarWith(player)) ui.danger else ui.positive)).padLeft(ui.px(8f))
-        detail.add(header).growX().pad(ui.px(18f), ui.px(layout.contentPadding), ui.px(14f), ui.px(layout.contentPadding)).row()
+        detail.add(header).growX().pad(ui.px(10f), ui.px(layout.contentPadding), ui.px(8f), ui.px(layout.contentPadding)).row()
     }
 
     private fun section(title: String, width: Float): Table = Table().apply {

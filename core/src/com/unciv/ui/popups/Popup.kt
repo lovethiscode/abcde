@@ -191,6 +191,7 @@ open class Popup(
     private fun layoutOrdinaryPopup() {
         if (!ordinaryPresentation) return
         val unit = popupUnit
+        val compactKeyboard = lastKnownVisibleArea().height / unit < 260f
         if (unit != typographyUnit) {
             updatePopupScale(innerTable, unit / typographyUnit)
             typographyUnit = unit
@@ -199,8 +200,10 @@ open class Popup(
                 (button.parent as? Table)?.getCell(button)?.size(44f * unit)
                 button.cells.firstOrNull()?.size(20f * unit)
             }
-            titleTable.pad(16f * unit, 20f * unit, 16f * unit, 20f * unit)
         }
+        val titlePadding = (if (compactKeyboard) 4f else 16f) * unit
+        if (titleTable.hasChildren()) titleTable.pad(titlePadding, 20f * unit, titlePadding, 20f * unit)
+        else titleTable.pad(0f)
         if (ExpeditionBlueTheme.enabled) {
             val ui = OrdinaryPopupStyle(unit)
             innerTable.background = ui.surface(ui.background, 16f)
@@ -208,10 +211,12 @@ open class Popup(
             bottomTable.background = if (bottomTable.hasChildren()) ui.divider(atTop = true, fill = ui.deep) else null
             ordinaryButtons.forEach { (button, kind) -> button.style = ui.button(kind.first, kind.second) }
         }
-        topTable.pad(20f * unit, 20f * unit, 20f * unit, 20f * unit)
+        val bodyPadding = (if (compactKeyboard) 4f else 20f) * unit
+        topTable.pad(bodyPadding, 20f * unit, bodyPadding, 20f * unit)
         topTable.defaults().pad(4f * unit, 0f, 4f * unit, 0f)
         getScrollPane()?.setScrollingDisabled(true, false)
-        if (bottomTable.hasChildren()) bottomTable.pad(14f * unit, 20f * unit, 18f * unit, 20f * unit)
+        if (bottomTable.hasChildren()) bottomTable.pad((if (compactKeyboard) 4f else 14f) * unit,
+            20f * unit, (if (compactKeyboard) 4f else 18f) * unit, 20f * unit)
         else bottomTable.pad(0f)
         bottomTable.right()
         val buttons = bottomTable.cells.mapNotNull { it.actor as? TextButton }

@@ -26,6 +26,7 @@ import com.unciv.ui.components.extensions.setSize
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.input.*
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.basescreen.SafeAreaViewport
 import com.unciv.utils.Concurrency
@@ -123,6 +124,7 @@ open class AnimatedMenuPopup private constructor (stage: Stage) : Popup(stage, S
      */
     open fun createContentTable(): Table? = Table().apply {
         defaults().pad(5f, 15f, 5f, 15f).growX()
+        if (UiNavigation.isIos) defaults().minHeight(UiNavigation.minimumTouchSize()).fillY().padTop(2f).padBottom(2f)
         background = BaseScreen.skinStrings.getUiBackground("General/AnimatedMenu", BaseScreen.skinStrings.roundedEdgeRectangleShape, Color.DARK_GRAY)
     }
 
@@ -133,6 +135,11 @@ open class AnimatedMenuPopup private constructor (stage: Stage) : Popup(stage, S
      */
     fun getButton(text: String, binding: KeyboardBinding, action: () -> Unit) =
         text.toTextButton(smallButtonStyle).apply {
+            if (UiNavigation.isIos) {
+                val extra = (UiNavigation.minimumTouchSize() - prefHeight).coerceAtLeast(0f) / 2f
+                padTop(padTop + extra)
+                padBottom(padBottom + extra)
+            }
             onActivation(binding = binding) {
                 anyButtonWasClicked = true
                 action()

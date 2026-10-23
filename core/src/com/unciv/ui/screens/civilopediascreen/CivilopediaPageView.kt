@@ -143,7 +143,10 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
         val flavour = entry.flavour ?: return finish()
         val source = (flavour as? com.unciv.models.ruleset.IRulesetObject)?.originRuleset
         builtinArticle = source != null && (source.isEmpty() || com.unciv.models.ruleset.RulesetCache[source]?.let { it.folderLocation == null } == true)
-        val article = CivilopediaArticle(flavour.assembleCivilopediaText(screen.ruleset).civilopediaText)
+        val lines = flavour.assembleCivilopediaText(screen.ruleset).civilopediaText
+        val welcome = builtinArticle && entry.name == "Civilopedia" && flavour is com.unciv.models.ruleset.Tutorial
+        val article = CivilopediaArticle(if (welcome && lines.firstOrNull()?.let { it.text == entry.name && it.header > 0 } == true)
+            lines.drop(1) else lines)
         val width = contentWidth
         val art = article.sections["art"].orEmpty()
         if (art.any { it.extraImage.isNotEmpty() }) {

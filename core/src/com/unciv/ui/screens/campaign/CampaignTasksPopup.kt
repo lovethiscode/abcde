@@ -80,10 +80,10 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
         val met = listOf(result.main, result.worker, result.population)
         for ((i, goal) in copy.objectives.withIndex()) {
             if (i < 2) goals.add(bodyText(if (i == 0) "通关目标 · 必做 1 星" else "挑战目标 · 可选，各 1 星",
-                goalsWidth, Theme.gold, TextRole.Control)).padTop(if (i == 0) 0f else 12f).padBottom(7f).row()
+                goalsWidth, Theme.gold, TextRole.Control)).padTop(if (i == 0) 0f else 6f).padBottom(4f).row()
             val card = Table().apply {
                 background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", if (i == 0) Theme.raised else Theme.background)
-                pad(12f)
+                pad(8f, 12f, 8f, 12f)
                 add((if (met[i] && !result.failed) "✓" else "○").toLabel(
                     if (met[i] && !result.failed) Theme.gold else Theme.muted, UiTypography.size(TextRole.SectionTitle, legacySize = 22))).top().width(26f).padRight(8f)
                 val textWidth = goalsWidth - 58f
@@ -97,7 +97,7 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
                         textWidth, Theme.danger, TextRole.Control)).padTop(5f).row()
                 }).width(textWidth)
             }
-            goals.add(card).width(goalsWidth).padBottom(8f).row()
+            goals.add(card).width(goalsWidth).padBottom(4f).row()
         }
 
         val side = Table().apply { top(); defaults().left().growX().spaceBottom(8f) }

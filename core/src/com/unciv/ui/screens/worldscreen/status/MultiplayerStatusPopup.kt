@@ -21,7 +21,7 @@ class MultiplayerStatusPopup(
 
     init {
         val empty = gameList.models().isEmpty()
-        val preferredHeight = if (empty) minOf(180f * popupUnit, screen.stage.height * 0.45f)
+        val preferredHeight = if (empty) minOf((if (UiNavigation.isIos) 112f else 180f) * popupUnit, screen.stage.height * 0.45f)
             else screen.stage.height * 0.5f
         val pickerCell = add()
             .width(if (ordinaryPresentation) popupContentWidth else minOf(700f, screen.stage.width * .9f)).fillX().expandX()

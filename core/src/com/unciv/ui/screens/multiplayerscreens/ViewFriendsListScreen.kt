@@ -54,6 +54,7 @@ class ViewFriendsListScreen : PickerScreen() {
         addFriendButton.onClick {
             game.pushScreen{ AddFriendScreen() }
         }
+        if (UiNavigation.isIos) addFriendButton.labelCell.minHeight(44f * unit)
         addFriendButton.setSize(maxOf(addFriendButton.prefWidth, 160f * unit), maxOf(addFriendButton.prefHeight, 44f * unit))
         rightSideGroup.addActor(addFriendButton)
 
@@ -61,6 +62,7 @@ class ViewFriendsListScreen : PickerScreen() {
             game.pushScreen{ EditFriendScreen(selectedFriend) }
             editFriendButton.disable()
         }
+        if (UiNavigation.isIos) editFriendButton.labelCell.minHeight(44f * unit)
         editFriendButton.setSize(maxOf(editFriendButton.prefWidth, 160f * unit), maxOf(editFriendButton.prefHeight, 44f * unit))
         rightSideGroup.addActor(editFriendButton)
         editFriendButton.disable()

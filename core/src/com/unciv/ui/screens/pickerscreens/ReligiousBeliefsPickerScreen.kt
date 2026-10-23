@@ -19,6 +19,7 @@ import com.unciv.models.ruleset.unique.GameContext
 import com.unciv.models.ruleset.unique.UniqueType
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.widgets.AutoScrollPane
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.extensions.disable
 import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.input.onClick
@@ -61,7 +62,8 @@ class ReligiousBeliefsPickerScreen (
             if (stacked != shouldStack) {
                 clear()
                 if (shouldStack) {
-                    add(leftPane).growX().height(Value.percentHeight(.36f, this)).minHeight(OverviewUi.touch * 3f).row()
+                    add(leftPane).growX().height(Value.percentHeight(if (UiNavigation.isIos) .28f else .36f, this))
+                        .minHeight(OverviewUi.touch * if (UiNavigation.isIos) 2f else 3f).row()
                     add(rightPane).grow().minWidth(0f).minHeight(0f).padTop(OverviewUi.pt(10f))
                 } else {
                     add(leftPane).width(Value.percentWidth(.34f, this)).growY().minWidth(0f)

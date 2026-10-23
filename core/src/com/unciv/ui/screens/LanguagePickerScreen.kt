@@ -12,9 +12,11 @@ import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.LanguageTable
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.components.widgets.LanguageTable.Companion.addLanguageKeyShortcuts
 import com.unciv.ui.components.widgets.LanguageTable.Companion.addLanguageTables
 import com.unciv.ui.popups.options.OptionsPopup
+import com.unciv.ui.screens.basescreen.RecreateOnResize
 import com.unciv.ui.screens.mainmenuscreen.MainMenuScreen
 import com.unciv.ui.screens.overviewscreen.OverviewUi
 import com.unciv.ui.screens.pickerscreens.PickerScreen
@@ -23,7 +25,7 @@ import com.unciv.ui.screens.pickerscreens.PickerScreen
  *  After that, [OptionsPopup] provides the functionality.
  *  Reusable code is in [LanguageTable] and [addLanguageTables].
  */
-class LanguagePickerScreen : PickerScreen() {
+class LanguagePickerScreen(private val initialLanguage: String? = null) : PickerScreen(), RecreateOnResize {
     private var chosenLanguage: String
 
     private val languageTables: ArrayList<LanguageTable>
@@ -33,7 +35,7 @@ class LanguagePickerScreen : PickerScreen() {
     }
 
     init {
-        chosenLanguage = LocaleCode.getSystemLanguage()
+        chosenLanguage = initialLanguage ?: LocaleCode.getSystemLanguage()
 
         closeButton.isVisible = false
         pickerPane.setNavigationContent(
@@ -42,12 +44,13 @@ class LanguagePickerScreen : PickerScreen() {
         )
         bottomTable.background = OverviewUi.surface(OverviewUi.panel)
 
-        val contentWidth = OverviewUi.pt(620f)
+        val contentWidth = if (UiNavigation.isIos)
+            minOf(OverviewUi.pt(620f), stage.width - OverviewUi.pt(32f)) else OverviewUi.pt(620f)
         val languageList = Table().apply {
             background = OverviewUi.rounded(OverviewUi.panel, 12f)
             pad(OverviewUi.pt(8f))
         }
-        languageTables = languageList.addLanguageTables(contentWidth - OverviewUi.pt(16f))
+        languageTables = languageList.addLanguageTables(contentWidth - OverviewUi.pt(16f) - if (UiNavigation.isIos) 10f else 0f)
         languageTables.forEach {
             it.useTaskStyle = true
             it.update(chosenLanguage)
@@ -76,6 +79,8 @@ class LanguagePickerScreen : PickerScreen() {
         rightSideButton.keyShortcuts.add(KeyCharAndCode.RETURN)
         if (chosenLanguage.isNotEmpty()) onChoice()
     }
+
+    override fun recreate() = LanguagePickerScreen(chosenLanguage)
 
     private fun onChoice(choice: String) {
         chosenLanguage = choice

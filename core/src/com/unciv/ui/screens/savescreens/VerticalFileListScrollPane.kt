@@ -15,6 +15,7 @@ import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onDoubleClick
 import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.components.widgets.LoadingImage
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.utils.Concurrency
 import com.unciv.utils.launchOnGLThread
@@ -105,7 +106,9 @@ open class VerticalFileListScrollPane(
                         onDoubleClickListener?.invoke(saveGameFile)
                     }
                     beforeRowCallback?.invoke(saveGameFile)
-                    existingSavesTable.add(button).growX().minWidth(0f).pad(5f).row()
+                    existingSavesTable.add(button).growX().minWidth(0f).apply {
+                        if (UiNavigation.isIos) minHeight(UiNavigation.minimumTouchSize())
+                    }.pad(5f).row()
                 }
             }
         }

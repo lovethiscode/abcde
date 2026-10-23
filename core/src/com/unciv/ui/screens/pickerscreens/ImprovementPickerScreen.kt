@@ -28,6 +28,7 @@ import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onDoubleClick
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.cityscreen.CityScreen
 import com.unciv.ui.screens.overviewscreen.OverviewUi
 import com.unciv.view.MapUnitView
@@ -241,16 +242,16 @@ class ImprovementPickerScreen(
         }
 
         val optionCard = Table().apply {
-            background = OverviewUi.rounded(OverviewUi.background, 9f)
-            pad(OverviewUi.pt(6f))
+            if (!UiNavigation.isIos) background = OverviewUi.rounded(OverviewUi.background, 9f)
+            pad(OverviewUi.pt(if (UiNavigation.isIos) 2f else 6f))
             add(improvementButton).growX().minWidth(0f).minHeight(OverviewUi.touch)
             add(statIcons).right().padLeft(OverviewUi.pt(8f))
             getExplanationActor(improvement, problemReport)?.let { explanation ->
                 row()
-                add(explanation).colspan(2).growX().right().padTop(OverviewUi.pt(6f))
+                add(explanation).colspan(2).growX().right().padTop(OverviewUi.pt(if (UiNavigation.isIos) 2f else 6f))
             }
         }
-        add(optionCard).growX().minWidth(0f).padBottom(OverviewUi.pt(8f)).row()
+        add(optionCard).growX().minWidth(0f).padBottom(OverviewUi.pt(if (UiNavigation.isIos) 4f else 8f)).row()
     }
 
     /** Sets the PickerPane's description and where in Civilopedia a click on it should go - but not the right side button */

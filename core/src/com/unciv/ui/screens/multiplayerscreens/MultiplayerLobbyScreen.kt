@@ -594,7 +594,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val gameContent = if (editable) gameSettings!! else readOnlyGameSettings(columnWidth)
         val mapContent = Table().apply {
             top()
-            val previewHeight = (columnWidth / 1.85f).coerceAtMost(190f)
+            val previewHeight = (columnWidth / 1.85f).coerceAtMost(if (portrait) 120f else 96f)
             add(mapSettings!!.createOverviewPreview(columnWidth, previewHeight))
                 .size(columnWidth,previewHeight).padBottom(6f).row()
             add("Example map".toLabel(ExpeditionBlueTheme.muted, UiTypography.size(TextRole.Supporting, legacySize = 14))).padBottom(8f).row()
@@ -625,11 +625,11 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 }
                 val section = if (portrait) Table().apply {
                     top()
-                    add(part.first).growX().minWidth(0f).left().padBottom(12f).row()
+                    add(part.first).growX().minWidth(0f).left().padBottom(6f).row()
                     add(part.second).growX().minWidth(0f)
                 } else scrollColumn(part.first,part.second,part.third)
                 add(section).width(if (index == 2) playersWidth else columnWidth).growY().top()
-                    .padBottom(if (portrait) 16f else 0f)
+                    .padBottom(if (portrait) 8f else 0f)
             }
         }
         if (portrait) {
@@ -760,8 +760,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     add(ImageGetter.getImage("OtherIcons/Checkmark",ExpeditionBlueTheme.success)).size(18f).padRight(5f)
                 add((if (!s.human) "AI" else if (s.ready) "Prepared" else "Not ready")
                     .toLabel(if (s.human && s.ready) ExpeditionBlueTheme.success else ExpeditionBlueTheme.muted, UiTypography.size(TextRole.Control, legacySize = 16))
-                    .apply { wrap = true }).minWidth(0f).growX()
-            }).width(72f).padLeft(8f)
+                    .apply { wrap = false })
+            }).minWidth(72f).padLeft(8f)
             if (!mine && r.hostId == userId && own != null && r.state == "WAITING") {
                 add("".toTextButton().apply {
                     SinglePlayerSetup.style(this,formFont)

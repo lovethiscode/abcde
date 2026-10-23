@@ -155,18 +155,22 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
     internal fun workbenchContent(width: Float, queueOpen: Boolean, toggleQueue: () -> Unit): Actor {
         val scrollY = nativePane.scrollY
         nativeContent.clear()
-        nativeContent.top().pad(12f)
+        val compact = cityScreen.stage.width > cityScreen.stage.height
+        nativeContent.top().pad(if (compact) 8f else 12f)
         nativeContent.defaults().growX().minWidth(0f)
         val current = cityView.constructions.currentConstructionName()
         val queue = cityView.constructions.constructionQueue
         val summary = Table()
         summary.add("Current construction".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 12))).left().growX()
-        summary.add(("{Queue} " + maxOf(0, queue.size - 1)).toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply {
+        val queueButton = ("{Queue} " + maxOf(0, queue.size - 1)).toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply {
             name = "ui-city-queue"
             label.setFontSize(UiTypography.size(TextRole.Control, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 13))
             onClick { toggleQueue() }
-        }).minHeight(44f)
-        nativeContent.add(summary).row()
+        }
+        if (!compact) {
+            summary.add(queueButton).minHeight(44f)
+            nativeContent.add(summary).row()
+        }
         if (queueOpen) {
             for ((index, name) in queue.withIndex()) {
                 val entry = Table()
@@ -197,7 +201,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
                     .setBackground(Color.valueOf("102b35"))
                     .setProgress(Color.valueOf("e4c48a"), progress)).height(4f).padTop(6f).row()
             }
-        } else nativeContent.add("Pick a construction".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).minHeight(54f).row()
+        } else if (!compact) nativeContent.add("Pick a construction".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).minHeight(54f).row()
         val category = cityWorkbenchSelectBox()
         val keys = listOf("All", "Units", "Buildings", "Wonders", "National Wonders", "Other", "Disabled")
         category.setItems(*keys.map { it.tr() }.toTypedArray())
@@ -208,9 +212,10 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
             cityScreen.updateWithoutConstructionAndMap()
         }
         val categoryRow = Table()
-        categoryRow.add("Pick a construction".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 13))).growX().minWidth(0f)
+        if (compact) categoryRow.add(queueButton).growX().minWidth(0f).minHeight(44f).padRight(8f)
+        else categoryRow.add("Pick a construction".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 13))).growX().minWidth(0f)
         categoryRow.add(category).width(width * .48f).height(44f)
-        nativeContent.add(categoryRow).padTop(12f).padBottom(4f).row()
+        nativeContent.add(categoryRow).padTop(if (compact) 4f else 12f).padBottom(4f).row()
         val rows = if (nativeCategory == "All") nativeCategories.values.flatten()
             else nativeCategories[nativeCategory].orEmpty()
         for (row in rows) nativeContent.add(row).width(width).minHeight(60f).row()

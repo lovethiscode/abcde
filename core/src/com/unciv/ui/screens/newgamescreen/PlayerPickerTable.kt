@@ -539,7 +539,7 @@ class FriendSelectionPopup(
         addTitleWithCloseButton("Select friend".toLabel(TextRole.PageTitle, unit = unit))
         val friendList = FriendPickerList(playerPicker, ::friendSelected)
         val maxListHeight = minOf(screen.stage.height * 0.35f, 360f * unit)
-        val minListHeight = minOf(96f * unit, maxListHeight)
+        val minListHeight = minOf((if (UiNavigation.isIos) 44f else 96f) * unit, maxListHeight)
         val listHeight = (friendList.prefHeight + 12f * unit)
             .coerceIn(minListHeight, maxListHeight)
         add(ScrollPane(friendList).apply {

@@ -35,13 +35,13 @@ internal class LanguageTable(val language: String, val percentComplete: Int) : T
     var useTaskStyle = false
 
     init{
-        pad(10f)
-        defaults().pad(10f)
+        pad(if (UiNavigation.isIos) 4f else 10f)
+        defaults().pad(if (UiNavigation.isIos) 6f else 10f)
         left()
         if (ImageGetter.imageExists("FlagIcons/$language"))
-            add(ImageGetter.getImage("FlagIcons/$language")).size(40f)
+            add(ImageGetter.getImage("FlagIcons/$language")).size(if (UiNavigation.isIos) UiNavigation.minimumTouchSize() * 28f / 44f else 40f)
         else
-            add(Actor()).minWidth(40f)
+            add(Actor()).minWidth(if (UiNavigation.isIos) UiNavigation.minimumTouchSize() * 28f / 44f else 40f)
 
         val nativeName = LocaleCode.find(language)?.nativeName ?: language.replace("_"," ")
         add(Label(nativeNameDiacritics.remapDiacritics("$nativeName ($percentComplete%)"), BaseScreen.skin).apply { setFontSize(UiTypography.size(TextRole.Control)) })
@@ -78,7 +78,8 @@ internal class LanguageTable(val language: String, val percentComplete: Int) : T
             add(MarkupRenderer.render(listOf(translationDisclaimer),expectedWidth)).pad(5f).row()
 
             val tableLanguages = Table()
-            tableLanguages.defaults().uniformX().fillX().pad(10.0f)
+            tableLanguages.defaults().uniformX().fillX().pad(if (UiNavigation.isIos) 4f else 10f)
+            if (UiNavigation.isIos) tableLanguages.defaults().minHeight(UiNavigation.minimumTouchSize())
 
             val systemLanguage = LocaleCode.getSystemLanguage()
 

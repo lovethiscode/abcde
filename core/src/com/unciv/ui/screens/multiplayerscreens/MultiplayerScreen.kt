@@ -75,6 +75,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
         UiNavigation.isIos && stage.height / appearance.unit < 600f)
     private val filterButtons = linkedMapOf<MultiplayerGameFilter, TextButton>()
     private val detailsPanel = Table()
+    private val detailsActions = Table()
     private val gamesPanelContent = Table()
     private val gameActionsButton = appearance.button("", MultiplayerIcon.More, outlined = true).apply {
         name = "multiplayer-game-actions"
@@ -413,8 +414,8 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
         return Table().apply {
             name = "multiplayer-games-panel"
             background = appearance.surface(appearance.panel, 12f)
-            pad(u(16f))
-            add(gamesHeader).growX().minWidth(0f).padBottom(u(10f)).row()
+            pad(u(if (UiNavigation.isIos) 12f else 16f))
+            add(gamesHeader).growX().minWidth(0f).padBottom(u(if (UiNavigation.isIos) 4f else 10f)).row()
             add(gamesPanelContent).grow().minWidth(0f).minHeight(0f)
         }
     }
@@ -429,18 +430,22 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
         return Table().apply {
             name = "multiplayer-details-panel"
             background = appearance.surface(appearance.panel, 12f)
-            add(scroll).grow().minWidth(0f).minHeight(0f)
+            add(scroll).grow().minWidth(0f).minHeight(0f).row()
+            if (UiNavigation.isIos) add(detailsActions).growX().minWidth(0f)
         }
     }
 
     private fun showSelectedDetails() {
         val u = appearance::px
         detailsPanel.clearChildren()
-        detailsPanel.pad(u(16f))
+        detailsActions.clearChildren()
+        detailsActions.pad(0f)
+        if (UiNavigation.isIos) detailsPanel.top()
+        detailsPanel.pad(u(if (UiNavigation.isIos) 12f else 16f))
         val header = Table().apply {
             val titleCopy = Table().apply {
                 add(detailTitleLabel).growX().minWidth(0f).left().row()
-                add(detailRulesetLabel).growX().minWidth(0f).left().padTop(u(5f))
+                add(detailRulesetLabel).growX().minWidth(0f).left().padTop(u(if (UiNavigation.isIos) 2f else 5f))
             }
             add(titleCopy).growX().minWidth(0f)
             add(detailStatusBadge).minWidth(0f).top().padLeft(u(8f))
@@ -449,15 +454,16 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
             defaults().growX().minWidth(0f)
             add(createInfoItem("Current turn", currentTurnValue)).padRight(u(12f))
             add(createInfoItem("Time remaining", timeRemainingValue)).row()
-            add(createInfoItem("My civilization", ownCivilizationValue)).padRight(u(12f)).padTop(u(8f))
-            add(createInfoItem("This turn has lasted", turnDurationValue)).padTop(u(8f))
+            add(createInfoItem("My civilization", ownCivilizationValue)).padRight(u(12f)).padTop(u(if (UiNavigation.isIos) 4f else 8f))
+            add(createInfoItem("This turn has lasted", turnDurationValue)).padTop(u(if (UiNavigation.isIos) 4f else 8f))
         }
-        detailsPanel.add(header).growX().minWidth(0f).padBottom(u(8f)).row()
-        detailsPanel.add(grid).growX().minWidth(0f).padBottom(u(8f)).row()
-        detailsPanel.add(detailNoteLabel).growX().minWidth(0f).left().padBottom(u(6f)).row()
+        detailsPanel.add(header).growX().minWidth(0f).padBottom(u(if (UiNavigation.isIos) 4f else 8f)).row()
+        detailsPanel.add(grid).growX().minWidth(0f).padBottom(u(if (UiNavigation.isIos) 4f else 8f)).row()
+        detailsPanel.add(detailNoteLabel).growX().minWidth(0f).left().padBottom(u(if (UiNavigation.isIos) 4f else 6f)).row()
+        val actionHolder = if (UiNavigation.isIos) detailsActions.apply { pad(0f, u(12f), u(12f), u(12f)) } else detailsPanel
         rightSideButton.label.setWrap(false)
         rightSideButton.labelCell.maxWidth(appearance.px(layout.detailsWidth - 88f))
-        detailsPanel.add(rightSideButton).growX().minWidth(0f).height(u(44f)).padBottom(u(6f)).row()
+        actionHolder.add(rightSideButton).growX().minWidth(0f).height(u(44f)).padBottom(u(6f)).row()
         val actions = Table().apply {
             if (game.platformCapabilities.multiplayerInviteLinks) {
                 add(shareGameButton).growX().minWidth(0f).height(u(44f)).padRight(u(8f))
@@ -465,17 +471,19 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
             }
             add(gameActionsButton).size(u(44f))
         }
-        detailsPanel.add(actions).growX().minWidth(0f)
+        actionHolder.add(actions).growX().minWidth(0f)
     }
 
     private fun createInfoItem(title: String, value: Label): Table = Table().apply {
         add(title.toLabel(appearance.muted, fontSize = appearance.font(TextRole.Metadata))).growX().minWidth(0f).left().row()
-        add(value).growX().minWidth(0f).left().padTop(appearance.px(4f))
+        add(value).growX().minWidth(0f).left().padTop(appearance.px(if (UiNavigation.isIos) 2f else 4f))
     }
 
     private fun showEmptyDetails(noGames: Boolean) {
         val u = appearance::px
         detailsPanel.clearChildren()
+        detailsActions.clearChildren()
+        detailsActions.pad(0f)
         detailsPanel.pad(u(24f))
         detailsPanel.center()
         if (noGames) {

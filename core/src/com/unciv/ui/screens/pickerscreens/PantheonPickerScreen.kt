@@ -9,6 +9,7 @@ import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.screens.overviewscreen.OverviewUi
+import com.unciv.ui.components.widgets.UiNavigation
 
 class PantheonPickerScreen(
     choosingCiv: Civilization
@@ -34,7 +35,7 @@ class PantheonPickerScreen(
                 beliefButton.disable(redDisableColor)
             }
             topTable.add(beliefButton).growX().minHeight(OverviewUi.touch)
-                .padBottom(OverviewUi.pt(8f)).row()
+                .padBottom(OverviewUi.pt(if (UiNavigation.isIos) 4f else 8f)).row()
         }
 
         setOKAction("Choose a pantheon") {

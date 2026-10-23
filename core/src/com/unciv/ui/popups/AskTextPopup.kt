@@ -49,7 +49,7 @@ class AskTextPopup(
         wrapper.add(icon).padRight(10f)
         wrapper.add(label.toLabel(TextRole.Body))
         if (ordinaryPresentation) {
-            addDialogTitle(dialogTitle, subtitle)
+            addDialogTitle(dialogTitle, subtitle.takeUnless { it == defaultText }.orEmpty())
             addGoodSizedLabel(fieldLabel, UiTypography.size(TextRole.Control, popupUnit)).row()
         }
         else add(wrapper).colspan(2).row()

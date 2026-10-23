@@ -14,6 +14,7 @@ import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onDoubleClick
 import com.unciv.ui.components.widgets.AutoScrollPane
+import com.unciv.ui.components.widgets.UiNavigation
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -45,7 +46,7 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
             rows.add(row)
             row.button.onClick { select(row) }
             row.button.onDoubleClick { select(row); onDoubleSelected(file) }
-            table.add(row.button).growX().minWidth(0f).minHeight(ui.px(70f)).padBottom(ui.px(3f)).row()
+            table.add(row.button).growX().minWidth(0f).minHeight(ui.px(if (UiNavigation.isIos) 58f else 70f)).padBottom(ui.px(3f)).row()
         }
         val initial = rows.firstOrNull { it.file.path() == previous?.path() } ?: rows.firstOrNull()
         initial?.let { select(it, reveal = false) }
@@ -81,13 +82,15 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
         select(rows[((index + delta) % rows.size + rows.size) % rows.size])
     }
     private fun movePage(direction: Int) {
-        val rowHeight = selected?.button?.height ?: ui.px(70f)
+        val rowHeight = selected?.button?.height ?: ui.px(if (UiNavigation.isIos) 58f else 70f)
         move(direction * (height / rowHeight).toInt().coerceAtLeast(1))
     }
 
     private inner class SaveRow(val file: FileHandle) {
         val button = TextButton("", ui.buttonStyle(ghost = true)).apply {
-            name = "load-save-${file.name()}"; pad(ui.px(10f), ui.px(12f), ui.px(10f), ui.px(12f))
+            name = "load-save-${file.name()}"
+            val verticalPadding = ui.px(if (UiNavigation.isIos) 6f else 10f)
+            pad(verticalPadding, ui.px(12f), verticalPadding, ui.px(12f))
         }
         private val title = ui.label("", TextRole.Control).apply { setText(file.name()); setEllipsis(true); setAlignment(Align.left) }
         val metadata = ui.label("Loading...", TextRole.Supporting, ui.muted).apply { setEllipsis(true) }

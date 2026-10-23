@@ -22,6 +22,7 @@ import com.unciv.ui.components.extensions.formatShort
 import com.unciv.ui.components.extensions.setFontColor
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.onClick
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
 
 internal class GameList(
@@ -73,7 +74,8 @@ internal class GameList(
         for (game in games.filter { filter.matches(model(it)) }) {
             val gameDisplay = GameDisplay(game, userId, onSelected, appearance, game.name in refreshingNames)
             gameDisplays[game.name] = gameDisplay
-            add(gameDisplay).growX().minWidth(0f).minHeight(appearance.px(62f)).padBottom(appearance.px(4f)).row()
+            add(gameDisplay).growX().minWidth(0f).minHeight(appearance.px(if (UiNavigation.isIos) 52f else 62f))
+                .padBottom(appearance.px(if (UiNavigation.isIos) 2f else 4f)).row()
         }
         if (gameDisplays.isEmpty()) {
             val emptyText = if (games.isEmpty()) "No multiplayer games yet" else "No games in this filter"
@@ -125,12 +127,12 @@ private class GameDisplay(
     init {
         name = "multiplayer-game-${multiplayerGame.name}"
         touchable = Touchable.enabled
-        pad(appearance.px(8f))
+        pad(appearance.px(if (UiNavigation.isIos) 6f else 8f))
         nameLabel.setFontColor(appearance.text)
 
         val copy = Table().apply {
             add(nameLabel).growX().minWidth(0f).left().row()
-            add(metadataLabel).growX().minWidth(0f).left().padTop(appearance.px(5f))
+            add(metadataLabel).growX().minWidth(0f).left().padTop(appearance.px(if (UiNavigation.isIos) 2f else 5f))
         }
         statusBadge.add(statusLabel).minWidth(0f).maxWidth(appearance.px(88f)).pad(appearance.px(4f), appearance.px(7f), appearance.px(4f), appearance.px(7f))
         add(civilizationBadge).size(appearance.px(36f)).padRight(appearance.px(10f))

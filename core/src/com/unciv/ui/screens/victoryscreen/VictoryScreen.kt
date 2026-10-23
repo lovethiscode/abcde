@@ -52,7 +52,7 @@ class VictoryScreen private constructor(
     private val compact = stage.width < pt(640f)
     private val tablet = minOf(stage.width, stage.height) > pt(600f)
     private val contentWidth = stage.width - pt(if (tablet) 72f else 24f)
-    private val contentHeight = stage.height - pt(if (compact) 192f else if (tablet) 172f else 144f) -
+    private val contentHeight = stage.height - pt(if (compact) 188f else if (tablet) 172f else 140f) -
         (if (worldScreen.gameInfo.victoryData != null || worldScreen.selectedGameView.civView.getCiv().isDefeated()) pt(90f) else 0f)
     private val music get() = UncivGame.Current.musicController
     private val gameInfo = worldScreen.gameInfo
@@ -278,7 +278,7 @@ class VictoryScreen private constructor(
             if (ordinaryResult) add(resultHeadline.toLabel(fontSize = font(TextRole.SectionTitle)).apply { wrap = true })
                 .growX().minWidth(0f).padTop(pt(8f)).padBottom(pt(8f)).row()
             add(navScroll).growX().minWidth(0f).height(pt(52f)).row()
-            add(metadata).growX().minWidth(0f).padBottom(pt(9f)).row()
+            add(metadata).growX().minWidth(0f).padBottom(pt(5f)).row()
             add(tabs).grow().minWidth(0f).minHeight(0f).row()
             if (rightSideButton.isVisible) {
                 val footer = Table().apply {

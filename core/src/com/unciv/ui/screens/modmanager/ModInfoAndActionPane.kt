@@ -25,6 +25,7 @@ import com.unciv.utils.Log
 import java.io.IOException
 import kotlin.math.max
 import com.unciv.ui.components.fonts.Fonts
+import com.unciv.ui.components.widgets.UiNavigation
 
 internal class ModInfoAndActionPane(
     private val description: Label,
@@ -49,7 +50,7 @@ internal class ModInfoAndActionPane(
 
     init {
         top()
-        defaults().growX().minWidth(0f).padBottom(12f)
+        defaults().growX().minWidth(0f).padBottom(if (UiNavigation.isIos) 6f else 12f)
     }
 
     /** Recreate the information part of the right-hand column
@@ -105,14 +106,14 @@ internal class ModInfoAndActionPane(
         }
         val heading = Table()
         val title = Table().apply {
-            add(ModManagementStyle.label(cleanModName(modName), TextRole.PageTitle)).growX().minWidth(0f).row()
+            add(ModManagementStyle.label(cleanModName(modName), if (UiNavigation.isIos) TextRole.SectionTitle else TextRole.PageTitle)).growX().minWidth(0f).row()
             if (author.isNotEmpty())
                 add(ModManagementStyle.label("Author: [$author]", TextRole.Supporting, ModManagementStyle.muted))
                     .growX().minWidth(0f).padTop(8f)
         }
         heading.add(imageHolder).size(48f).top().padRight(14f)
         heading.add(title).growX().minWidth(0f)
-        add(heading).growX().minWidth(0f).padBottom(16f).row()
+        add(heading).growX().minWidth(0f).padBottom(if (UiNavigation.isIos) 8f else 16f).row()
 
         val facts = Table().apply { defaults().growX().minWidth(0f).top().padRight(18f) }
         fun metric(value: Label, caption: String): Table = Table().apply {
@@ -142,7 +143,7 @@ internal class ModInfoAndActionPane(
         add(com.unciv.ui.images.ImageGetter.getWhiteDot().apply { color = ModManagementStyle.line })
             .height(1f).pad(4f, 0f, 16f, 0f).row()
         add(ModManagementStyle.label("About this mod", TextRole.SectionTitle)).growX().minWidth(0f).row()
-        add(description).growX().minWidth(0f).padBottom(16f).row()
+        add(description).growX().minWidth(0f).padBottom(if (UiNavigation.isIos) 8f else 16f).row()
 
         if (repoUrl.isNotEmpty()) {
             val githubButton = ModManagementStyle.button("Open Github page")

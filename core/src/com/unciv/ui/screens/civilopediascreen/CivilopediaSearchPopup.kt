@@ -1,6 +1,5 @@
 package com.unciv.ui.screens.civilopediascreen
 
-import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
@@ -25,8 +24,6 @@ import com.unciv.ui.components.extensions.enable
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.onClick
-import com.unciv.ui.components.input.onActivation
-import com.unciv.ui.components.input.keyShortcuts
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.components.widgets.ExpanderTab
 import com.unciv.ui.popups.Popup
@@ -43,7 +40,8 @@ import com.badlogic.gdx.utils.Array as GdxArray
 class CivilopediaSearchPopup(
     private val pediaScreen: CivilopediaScreen,
     private val linkAction: (String) -> Unit
-) : Popup(pediaScreen, maxSizePercentage = if (pediaScreen.usesPages) 1f else .9f) {
+) : Popup(pediaScreen, maxSizePercentage = if (pediaScreen.usesPages) 1f else .9f,
+    ordinaryShell = pediaScreen.usesPages) {
     private var ruleset = pediaScreen.ruleset
     private val searchText = UncivTextField("")   // Always focused, "hint" never seen
     private val modSelect = ModSelectBox()
@@ -57,11 +55,14 @@ class CivilopediaSearchPopup(
     private var submittedText: String? = null
     private var submittedScope: String? = null
     private var restoredScrollY: Float? = null
+    private var restoredInputState: SearchState? = null
 
     internal class SearchState(val text: String, val scope: String, val submittedText: String?,
-                                    val submittedScope: String?, val expanded: Boolean, val scrollY: Float)
+                                    val submittedScope: String?, val expanded: Boolean, val scrollY: Float,
+                                    val editing: Boolean, val cursor: Int, val selectionStart: Int, val selectionLength: Int)
     internal fun snapshot() = SearchState(searchText.text, modSelect.selected.key, submittedText, submittedScope,
-        !::resultExpander.isInitialized || resultExpander.isOpen, getScrollPane()?.scrollY ?: 0f)
+        !::resultExpander.isInitialized || resultExpander.isOpen, getScrollPane()?.scrollY ?: 0f,
+        keyboardFocus === searchText, searchText.cursorPosition, searchText.selectionStart, searchText.selection.length)
     internal fun restore(state: SearchState) {
         searchText.text = state.text
         modSelect.items.firstOrNull { it.key == state.submittedScope }?.let { modSelect.selected = it }
@@ -69,9 +70,10 @@ class CivilopediaSearchPopup(
         modSelect.items.firstOrNull { it.key == state.scope }?.let { modSelect.selected = it }
         if (::resultExpander.isInitialized) resultExpander.isOpen = state.expanded
         restoredScrollY = state.scrollY
+        restoredInputState = state
     }
     internal fun openResults() {
-        focusOnOpen = false
+        focusOnOpen = restoredInputState?.editing ?: false
         open(true)
         focusOnOpen = true
     }
@@ -87,20 +89,20 @@ class CivilopediaSearchPopup(
             innerTable.top()
             getCell(innerTable).grow()
             addTitleWithCloseButton("Civilopedia".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 25)))
-            val width = (pediaScreen.stage.width - 80f).coerceAtLeast(240f)
+            val width = if (ordinaryPresentation) popupContentWidth
+                else (pediaScreen.stage.width - 80f).coerceAtLeast(240f)
             val touch = UiNavigation.minimumTouchSize()
             val fields = Table().apply { defaults().left().padBottom(10f) }
             fields.add("Search text:".toLabel(fontColor = ExpeditionBlueTheme.muted, role = TextRole.Body)).row()
             fields.add(searchText).width(width).minHeight(touch).growX().row()
             fields.add("Mod filter:".toLabel(fontColor = ExpeditionBlueTheme.muted, role = TextRole.Body)).padTop(8f).row()
             fields.add(modSelect).width(width).minHeight(touch).growX().row()
-            searchButton = TextButton("Search!".tr(), BaseScreen.skin, "positive").apply {
-                label.setFontSize(UiTypography.size(TextRole.Control))
+            searchButton = addButton("Search!", KeyCharAndCode.RETURN,
+                BaseScreen.skin.get("positive", TextButton.TextButtonStyle::class.java)) {
+                startSearch(searchText.text)
+            }.actor.apply {
                 name = "civilopedia-run-search"
-                onActivation { startSearch(searchText.text) }
-                keyShortcuts.add(KeyCharAndCode.RETURN)
             }
-            fields.add(searchButton).width(width).minHeight(touch).padTop(8f).row()
             add(fields).growX().row()
             resultCell = add().width(width).growX()
             row()
@@ -121,9 +123,16 @@ class CivilopediaSearchPopup(
             if (!UiNavigation.isIos) addCloseButton()
         }
         showListeners.add {
+            val restored = restoredInputState
+            restoredInputState = null
             if (focusOnOpen) {
                 keyboardFocus = searchText
-                searchText.selectAll()
+                when {
+                    restored == null -> searchText.selectAll()
+                    restored.selectionLength > 0 -> searchText.setSelection(restored.selectionStart,
+                        restored.selectionStart + restored.selectionLength)
+                    else -> searchText.cursorPosition = restored.cursor
+                }
             } else {
                 keyboardFocus = null
                 Gdx.input.setOnscreenKeyboardVisible(false)
@@ -225,7 +234,8 @@ class CivilopediaSearchPopup(
             val link = entry.makeLink()
             if (pediaScreen.usesPages) {
                 actor.wrap = true
-                resultExpander.innerTable.add(actor).width(pediaScreen.stage.width - 130f)
+                resultExpander.innerTable.add(actor).width(if (ordinaryPresentation) popupContentWidth - 24f * popupUnit
+                    else pediaScreen.stage.width - 130f)
                     .minHeight(UiNavigation.minimumTouchSize()).fillY().left().pad(8f, 4f, 8f, 4f).row()
             } else resultExpander.innerTable.add(actor).row()
             actor.onClick {

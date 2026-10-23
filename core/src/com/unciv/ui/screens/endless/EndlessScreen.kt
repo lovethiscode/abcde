@@ -65,7 +65,8 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
             val mapPanel = panel(mapWidth).apply {
                 text("Border Bastion", mapWidth - 36f, Theme.gold, TextRole.PageTitle)
                 text("Five waves per stage. Clear the stage before its deadline; queued enemies do not extend it.", mapWidth - 36f, Theme.muted)
-                val height = (mapWidth * .60f).coerceIn(200f, 380f)
+                val phone = UiNavigation.isIos && minOf(this@EndlessScreen.stage.width, this@EndlessScreen.stage.height) < UiNavigation.minimumTouchSize() * 600f / 44f
+                val height = if (phone) (mapWidth * .45f).coerceIn(140f, 240f) else (mapWidth * .60f).coerceIn(200f, 380f)
                 add(mapPreview(scene, mapWidth - 36f, height)).size(mapWidth - 36f, height).padTop(10f).row()
                 text("Explored terrain · enemy units remain under fog of war", mapWidth - 36f, Theme.muted, TextRole.Supporting)
                 text("Up to 3 cities. Clear stages 2 and 4 to unlock city slots; side cities are destroyed when captured.", mapWidth - 36f, Theme.text, TextRole.Control)
@@ -102,7 +103,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
             val hero = Table().apply {
                 add(mapPanel).width(mapWidth).top()
                 if (wide) add(status).width(statusWidth).top().padLeft(18f)
-                else { row(); add(status).width(statusWidth).padTop(14f) }
+                else { row(); add(status).width(statusWidth).padTop(if (UiNavigation.isIos) 8f else 14f) }
             }
             content.add(hero).width(width).row()
             content.add(panel(width).apply {
@@ -174,7 +175,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
 
     private fun panel(width: Float) = Table().apply {
         background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.panel)
-        pad(18f); top(); left(); defaults().left().spaceBottom(10f)
+        pad(18f); top(); left(); defaults().left().spaceBottom(if (UiNavigation.isIos) 6f else 10f)
         this.width = width
     }
 

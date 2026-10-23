@@ -25,6 +25,7 @@ import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.WrappableLabel
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.civilopediascreen.MarkupRenderer
 import com.unciv.ui.screens.overviewscreen.OverviewUi
@@ -99,7 +100,7 @@ abstract class ReligionPickerScreenCommon(
                 down = OverviewUi.rounded(OverviewUi.selected, 9f)
                 checked = down
             }
-            pad(OverviewUi.pt(10f))
+            pad(OverviewUi.pt(if (UiNavigation.isIos) 6f else 10f))
             when {
                 belief != null -> {
                     if (withTypeLabel)
@@ -107,7 +108,7 @@ abstract class ReligionPickerScreenCommon(
                             Color.valueOf(belief.type.color),
                             if (belief.type == BeliefType.Founder) ExpeditionBlueTheme.danger else Color.valueOf(belief.type.color)
                         ), role = TextRole.Body)).row()
-                    val nameLabel = WrappableLabel(belief.name, labelWidth,fontSize = UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize))
+                    val nameLabel = WrappableLabel(belief.name, labelWidth,fontSize = UiTypography.size(if (UiNavigation.isIos) TextRole.Control else TextRole.SectionTitle, legacySize = Constants.headingFontSize))
                     add(nameLabel.apply { wrap = true }).row()
                     val effectLabel = WrappableLabel(belief.uniqueObjects.filter { !it.isHiddenToUsers() }.map { it.getDisplayText() }
                         .joinToString("\n") { it.tr() }, labelWidth)

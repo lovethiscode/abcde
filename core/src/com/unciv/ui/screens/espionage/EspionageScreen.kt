@@ -122,7 +122,9 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
             background = OverviewUi.surface(OverviewUi.background)
             pad(OverviewUi.pt(16f))
             add(header).growX().minHeight(OverviewUi.touch).padBottom(OverviewUi.pt(12f)).row()
-            add(middlePanes).grow().minWidth(0f).minHeight(0f)
+            add(middlePanes).grow().minWidth(0f).minHeight(0f).apply {
+                if (UiNavigation.isIos) maxHeight(com.badlogic.gdx.scenes.scene2d.ui.Value.prefHeight).top()
+            }
         }
         stage.addActor(root)
         globalShortcuts.add(KeyboardBinding.Civilopedia) { openCivilopedia("Tutorial/Espionage") }

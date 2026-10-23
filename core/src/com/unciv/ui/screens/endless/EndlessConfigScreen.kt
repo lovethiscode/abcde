@@ -84,8 +84,10 @@ class EndlessConfigScreen(
                 else ConfirmPopup(this@EndlessConfigScreen, "Replace the current defense?", "Start new defense") { start() }.open()
             }
         }
+        val contentMaxHeight = stage.height - root.prefHeight - 14f
         root.add(AutoScrollPane(content).apply { name = "ui-endless-config-scroll"; setScrollingDisabled(true, false) })
-            .width(width).growY().minHeight(0f).pad(0f, 22f, 14f, 22f)
+            .width(width).maxHeight(contentMaxHeight).fillY().minHeight(0f).top().pad(0f, 22f, 14f, 22f)
+        root.top()
     }
 
     private fun start() {

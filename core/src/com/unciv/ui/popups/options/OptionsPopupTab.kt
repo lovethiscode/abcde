@@ -44,17 +44,17 @@ internal abstract class OptionsPopupTab(
         }
         val card = ExpanderTab(title, fontSize = OptionsPopupStyle.fontSize(TextRole.Body), startsOutOpened = opened,
             defaultPad = OptionsPopupStyle.points(4f), topPad = 0f,
-            headerPad = OptionsPopupStyle.points(12f), expanderWidth = 1f) {
+            headerPad = OptionsPopupStyle.points(6f), expanderWidth = 1f) {
             it.defaults().pad(OptionsPopupStyle.points(4f)).expand(0, 0).fill(false, false)
             it.block()
             OptionsPopupStyle.enlargeText(it, optionsPopup.contentFont)
         }
         card.background = OptionsPopupStyle.surface(OptionsPopupStyle.sectionBackground)
         card.header.background = null
-        card.getCell(card.header).minHeight(OptionsPopupStyle.points(48f))
+        card.getCell(card.header).minHeight(OptionsPopupStyle.points(44f))
         card.headerIcon.color = OptionsPopupStyle.muted
         card.header.getCell(card.headerIcon).size(OptionsPopupStyle.points(14f))
-        add(card).colspan(2).growX().padBottom(OptionsPopupStyle.points(16f)).row()
+        add(card).colspan(2).growX().padBottom(OptionsPopupStyle.points(8f)).row()
     }
 
     open fun lateInitialize() {

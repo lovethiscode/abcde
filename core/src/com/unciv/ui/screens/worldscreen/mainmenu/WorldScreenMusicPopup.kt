@@ -96,19 +96,20 @@ class WorldScreenMusicPopup(
     }
 
     private fun buildOrdinaryControls(settings: GameSettings) {
-        addDialogTitle("Music", "Playback controls")
+        addDialogTitle("Music")
         val current = "".toLabel(TextRole.Supporting, unit = popupUnit).apply { wrap = true }
         fun updateStatus() {
             val track = if (musicController.isPlaying()) musicController.getHistory().lastOrNull()?.toString().orEmpty() else "—Paused—".tr()
             current.setText("Currently playing: [$track]".tr())
         }
         updateStatus()
-        add(current).width(popupContentWidth).left().row()
+        val playlist = Table().apply { defaults().growX().minWidth(0f) }
+        playlist.add(current).growX().left().row()
         val groups = musicController.getAllMusicFileInfo().groupBy { it.mod }
         val default = "—Default—"
         val history = "—History—"
         val playlists = listOf(default, history) + groups.keys.filter { it.isNotEmpty() }.sorted()
-        add("Playlist".toLabel(TextRole.Control, unit = popupUnit)).left().padTop(12f * popupUnit).row()
+        playlist.add("Playlist".toLabel(TextRole.Control, unit = popupUnit)).left().padTop(4f * popupUnit).row()
         val selector = TranslatedSelectBox(playlists, default).apply {
             val controlFont = UiTypography.controlFont(popupUnit)
             style = com.badlogic.gdx.scenes.scene2d.ui.SelectBox.SelectBoxStyle(style).apply {
@@ -120,11 +121,33 @@ class WorldScreenMusicPopup(
                 backgroundOver = background; backgroundOpen = background; backgroundDisabled = background
             }
         }
-        add(selector).width(popupContentWidth).minHeight(48f * popupUnit).row()
+        playlist.add(selector).growX().minHeight(48f * popupUnit).row()
         val controls = Table(skin).apply { defaults().growX().minWidth(0f) }
         controls.addMusicVolumeSlider(settings, musicController)
         controls.addMusicPauseSlider(settings, musicController)
-        add(controls).width(popupContentWidth).growX().row()
+        val fields = object : Table() {
+            private var lastWidth = -1f
+            private var lastLandscape = false
+            private fun arrange() {
+                val landscape = stageToShowOn.width > stageToShowOn.height
+                val width = popupContentWidth
+                if (width == lastWidth && landscape == lastLandscape) return
+                lastWidth = width
+                lastLandscape = landscape
+                clearChildren()
+                if (landscape) {
+                    val columnWidth = (width - 16f * popupUnit) / 2f
+                    add(playlist).width(columnWidth).top().padRight(16f * popupUnit)
+                    add(controls).width(columnWidth).top()
+                } else {
+                    add(playlist).width(width).row()
+                    add(controls).width(width)
+                }
+            }
+            init { arrange() }
+            override fun layout() { arrange(); super.layout() }
+        }
+        add(fields).width(popupContentWidth).growX().row()
         fun tracks() = if (selector.selected.value == history) musicController.getHistory()
             else groups[if (selector.selected.value == default) "" else selector.selected.value].orEmpty().asSequence()
         val browser = ExpanderTab("Choose a track", UiTypography.size(TextRole.Control, popupUnit),

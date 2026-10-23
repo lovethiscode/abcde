@@ -10,6 +10,8 @@ import com.unciv.logic.multiplayer.FriendList
 import com.unciv.ui.screens.newgamescreen.PlayerPickerTable
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.components.input.onClick
+import com.unciv.ui.components.widgets.UiNavigation
+import com.unciv.ui.components.extensions.toLabel
 
 class FriendPickerList(
     playerPicker: PlayerPickerTable,
@@ -24,6 +26,8 @@ class FriendPickerList(
         padBottom(10f)
 
         friendList = playerPicker.getAvailableFriends().toMutableList()
+        if (friendList.isEmpty() && UiNavigation.isIos)
+            addActor("No friends added yet".toLabel(TextRole.Body))
 
         for (friend in friendList) {
             addFriend(friend, onSelected)
@@ -48,7 +52,7 @@ private class FriendDisplay(
     init {
         padBottom(5f)
 
-        add(friendButton)
+        add(friendButton).apply { if (UiNavigation.isIos) minHeight(UiNavigation.minimumTouchSize()).fillY() }
         onClick { onSelected(friendName) }
     }
 }

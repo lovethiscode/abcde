@@ -55,6 +55,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
     private val ui = LoadGameScreenStyle(UiNavigation.minimumTouchSize() / 44f)
     private val narrow = stage.width / ui.unit <= 700f
     private val wide = stage.width / ui.unit >= 1150f
+    private val compact = UiNavigation.isIos && stage.height / ui.unit < 450f
     private var showingDetails = initialDetails
     private var restoringFiles = false
     @Volatile private var disposed = false
@@ -118,7 +119,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         pickerPane.remove()
         root.name = "load-game-root"; root.setFillParent(true)
         root.background = ui.surface(ui.background, 0f)
-        root.pad(ui.px(if (wide) 28f else 16f), ui.px(16f), ui.px(if (wide) 32f else 16f), ui.px(16f))
+        root.pad(ui.px(if (wide) 28f else if (compact) 8f else 16f), ui.px(16f), ui.px(if (wide) 32f else if (compact) 8f else 16f), ui.px(16f))
         stage.addActor(root)
         closeButton.name = "load-back"
         if (UiNavigation.isIos) UiNavigation.styleBackButton(closeButton)
@@ -206,7 +207,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             if (narrow) { row(); add(actions).colspan(2).growX().minWidth(0f).padTop(ui.px(8f)) }
             else add(actions).padLeft(ui.px(16f))
         }
-        root.add(header).growX().minWidth(0f).padBottom(ui.px(if (wide) 24f else 14f)).row()
+        root.add(header).growX().minWidth(0f).padBottom(ui.px(if (wide) 24f else if (compact) 8f else 14f)).row()
         val listHeader = Table().apply {
             add(countLabel).growX().minWidth(0f).left().padRight(ui.px(8f))
             add(showAutosavesCheckbox).minHeight(ui.px(44f)).right()
@@ -215,12 +216,12 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         savesPane.add(listContent).grow().minWidth(0f).minHeight(0f)
         detailsPane.background = ui.surface(ui.panel, 16f)
         val inset = ui.px(if (wide) 28f else 20f)
-        detailsPane.add(detailScroll).grow().minWidth(0f).minHeight(0f).pad(ui.px(16f), inset, 0f, inset).row()
+        detailsPane.add(detailScroll).grow().minWidth(0f).minHeight(0f).pad(ui.px(if (compact) 10f else 16f), inset, 0f, inset).row()
         val footer = Table().apply {
             add(rightSideButton).growX().minWidth(0f).minHeight(ui.px(44f)).row()
             add(managementActions).padTop(ui.px(4f)).center()
         }
-        detailsPane.add(footer).growX().minWidth(0f).pad(ui.px(10f), inset, ui.px(14f), inset)
+        detailsPane.add(footer).growX().minWidth(0f).pad(ui.px(if (compact) 6f else 10f), inset, ui.px(if (compact) 8f else 14f), inset)
         root.add(body).grow().minWidth(0f).minHeight(0f)
         layoutBody(); showDetails()
     }
@@ -348,14 +349,14 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             val icon = Table().apply { background = ui.surface(ui.raised); add(SaveIcon.Flag.image(ui.gold)).size(ui.px(25f)) }
             add(icon).size(ui.px(44f)).padRight(ui.px(12f)).top()
             val text = Table().apply {
-                add(ui.label(if (info == null) file.name() else civilizationAndTurn(info), TextRole.PageTitle, wrap = true).apply {
+                add(ui.label(if (info == null) file.name() else civilizationAndTurn(info), if (UiNavigation.isIos) TextRole.SectionTitle else TextRole.PageTitle, wrap = true).apply {
                     if (info == null) setText(file.name())
                 }).width((detailInnerWidth()-ui.px(56f)).coerceAtLeast(ui.px(80f))).left().row()
                 if (info != null) add(ui.label("", TextRole.Supporting, ui.muted, true).apply { setText(file.name()) }).growX().minWidth(0f).padTop(ui.px(3f))
             }
             add(text).growX().minWidth(0f)
         }
-        detailContent.add(title).growX().minWidth(0f).left().padBottom(ui.px(if (wide) 24f else 12f)).row()
+        detailContent.add(title).growX().minWidth(0f).left().padBottom(ui.px(if (wide) 24f else if (compact) 8f else 12f)).row()
         if (info == null) {
             detailContent.add(ui.label(if (selectedPreview?.error != null) "Could not load game!" else "Loading...", TextRole.Supporting,
                 if (selectedPreview?.error != null) ui.danger else ui.muted, true)).growX().minWidth(0f).left().row()

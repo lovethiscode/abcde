@@ -145,7 +145,7 @@ class OptionsPopup(
             navigationButtons.add(button)
             val cell = navigation.add(button).minHeight(UiNavigation.minimumTouchSize())
             if (compactNavigation) cell.padRight(OptionsPopupStyle.points(8f))
-            else cell.width(sidebarWidth - OptionsPopupStyle.points(24f)).padBottom(OptionsPopupStyle.points(8f)).row()
+            else cell.width(sidebarWidth - OptionsPopupStyle.points(24f)).padBottom(OptionsPopupStyle.points(4f)).row()
         }
         val sidebarScroll = AutoScrollPane(navigation).apply {
             setScrollingDisabled(!compactNavigation, compactNavigation)
@@ -160,7 +160,7 @@ class OptionsPopup(
             add(pageDescription).minWidth(0f).left().growX().row()
         }
         header = Table().apply {
-            pad(OptionsPopupStyle.points(10f), 0f, OptionsPopupStyle.points(12f), 0f)
+            pad(OptionsPopupStyle.points(6f), 0f, OptionsPopupStyle.points(6f), 0f)
             headingCell = add(heading).minWidth(0f).growX().left()
         }
         val content = Table().apply {

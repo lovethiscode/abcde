@@ -81,7 +81,8 @@ internal class NationPickerPopup(
 
     // This Popup's body has two halves of same size, either side by side or arranged vertically
     // depending on screen proportions - determine height for one of those
-    private val partHeight = if (councilStyle) (stageToShowOn.height * .84f - 140f).coerceAtLeast(140f)
+    private val partHeight = if (councilStyle) ((stageToShowOn.height * .84f - 140f) /
+        if (stageToShowOn.isNarrowerThan4to3()) 2f else 1f).coerceAtLeast(140f)
         else stageToShowOn.height * (if (stageToShowOn.isNarrowerThan4to3()) 0.45f else 0.8f)
     private val stackedLayout = stageToShowOn.isNarrowerThan4to3()
     private val civBlocksWidth = if (councilStyle) councilWidth * (if (stackedLayout) 1f else .34f)
@@ -206,6 +207,11 @@ internal class NationPickerPopup(
         close()
         playerPicker!!.update()
     }
+
+    internal fun recreateOn(screen: NewGameScreen) = NationPickerPopup(
+        screen.playerPickerTable, player, noRandom,
+        initialCiv = selection?.nation?.name ?: initialCiv
+    )
 
     private data class NationIterationElement(
         val nation: Nation,
@@ -392,8 +398,8 @@ internal class NationPickerPopup(
     private fun councilDetails(nation: Nation) = Table().apply {
         val textWidth = detailsWidth - 16f
         top()
-        padBottom(44f)
-        defaults().left().growX().padBottom(8f)
+        padBottom(8f)
+        defaults().left().growX().padBottom(4f)
         fun heading(caption: String, icon: String) = Table().apply {
             add(ImageGetter.getImage(icon, ExpeditionBlueTheme.gold)).size(20f).padRight(8f)
             add(caption.toLabel(ExpeditionBlueTheme.gold, UiTypography.size(TextRole.Body, legacySize = 18), hideIcons = true)).left().growX()
@@ -411,7 +417,7 @@ internal class NationPickerPopup(
             add(banner).size(128f, 104f).top().padRight(18f)
             add(Table().apply {
                 val introWidth = textWidth - 146f
-                add(councilHeading(nation.name, TextRole.PageTitle).apply { color = ExpeditionBlueTheme.gold }).left().growX().row()
+                add(councilHeading(nation.name, TextRole.SectionTitle).apply { color = ExpeditionBlueTheme.gold }).left().growX().row()
                 if (nation.leaderName.isNotEmpty())
                     add(text("{Leader}: {${nation.leaderName}}", introWidth)).width(introWidth).left().padTop(4f).row()
                 if (nation.startIntroPart1.isNotEmpty()) {
@@ -421,7 +427,7 @@ internal class NationPickerPopup(
                     add(text(intro, introWidth)).width(introWidth).left().padTop(4f)
                 }
             }).minWidth(0f).growX()
-        }).width(textWidth).padBottom(10f).row()
+        }).width(textWidth).padBottom(4f).row()
         if (nation.uniqueName.isNotEmpty()) add(heading(nation.uniqueName, "OtherIcons/Star")).row()
         val ability = nation.uniqueText.ifEmpty {
             nation.uniqueObjects.filterNot { it.isHiddenToUsers() }.joinToString("\n") { it.getDisplayText() }

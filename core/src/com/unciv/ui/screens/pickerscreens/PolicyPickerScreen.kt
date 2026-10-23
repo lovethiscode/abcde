@@ -279,7 +279,7 @@ class PolicyPickerScreen(
     private fun buildBranch(branch: PolicyBranch): Table = Table().apply {
         val active = selected?.branch == branch
         background = appearance.outline(appearance.deep, if (active) appearance.gold else appearance.line)
-        pad(u(9f))
+        pad(u(if (UiNavigation.isIos) 6f else 9f))
         val title = Table().apply {
             touchable = Touchable.enabled
             name = "ui-policy-fold:${branch.name}"
@@ -341,7 +341,7 @@ class PolicyPickerScreen(
         val nodeWidth = if (metrics.branchWidth < 360f)
             ((availableWidth - 28f) / 3f).coerceIn(64f, 76f) else 88f
         val nodeHeight = if (metrics.compact) 64f else 94f
-        val rowStep = nodeHeight + 18f
+        val rowStep = nodeHeight + if (UiNavigation.isIos) 10f else 18f
         val minColumnDistance = entries.groupBy { it.row }.values.flatMap { row ->
             row.map { it.column }.distinct().sorted().zipWithNext { a, b -> b - a }
         }.minOrNull()?.coerceAtLeast(1) ?: 2

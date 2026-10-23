@@ -863,7 +863,16 @@ private class RandomNationPickerPopup(
                 .filterNot { it.hasUnique(UniqueType.WillNotBeChosenForNewGames) }
                 .sortedWith(compareBy(UncivGame.Current.settings.getCollatorFromLocale()) { it.name.tr(hideIcons = true) })
         allNationTables = ArrayList(
-            sortedNations.map { NationTable(it, civBlocksWidth, 0f) }  // no need for min height
+            sortedNations.map { nation -> NationTable(nation, civBlocksWidth, 0f).apply {
+                if (UiNavigation.isIos) {
+                    clearChildren()
+                    background = SinglePlayerSetup.surface()
+                    pad(4f * unit)
+                    add(ImageGetter.getNationPortrait(nation, 28f * unit)).size(28f * unit).padRight(8f * unit)
+                    add(nation.name.toLabel(TextRole.Control, unit = unit, hideIcons = true).apply { wrap = true })
+                        .width(civBlocksWidth - 44f * unit).left()
+                }
+            } }
         )
         availableNations = sortedNations.map { it.name }.toMutableSet()
         selectedNations = gameParameters.randomNationsPool.intersect(availableNations) as MutableSet<String>
@@ -894,14 +903,18 @@ private class RandomNationPickerPopup(
         }
         clickBehindToClose = true
 
-        val okButton = "OtherIcons/Checkmark".toImageButton(Color.LIME)
+        val okButton = if (UiNavigation.isIos)
+            "OtherIcons/Checkmark".toImageButton(20f * unit, 44f * unit, buttonsBackColor, Color.LIME)
+        else "OtherIcons/Checkmark".toImageButton(Color.LIME)
         okButton.onClick { returnSelected() }
 
-        val switchButton = "OtherIcons/NationSwap".toImageButton(Color.YELLOW)
+        val switchButton = if (UiNavigation.isIos)
+            "OtherIcons/NationSwap".toImageButton(20f * unit, 44f * unit, buttonsBackColor, Color.YELLOW)
+        else "OtherIcons/NationSwap".toImageButton(Color.YELLOW)
         switchButton.onClick { switchAllNations() }
         if (UiNavigation.isIos) {
             addCloseButton()
-            val touchSize = maxOf(buttonsCircleSize, UiNavigation.minimumTouchSize())
+            val touchSize = UiNavigation.minimumTouchSize()
             bottomTable.add(switchButton).size(touchSize)
             bottomTable.add(okButton).size(touchSize)
         } else {
@@ -930,7 +943,7 @@ private class RandomNationPickerPopup(
         for (nationTable in allNationTables) {
             if (nationTable.nation.name !in nations) continue
             nationTable.onClick(actionFactory(nationTable.nation))
-            table.add(nationTable).row()
+            table.add(nationTable).apply { if (UiNavigation.isIos) minHeight(UiNavigation.minimumTouchSize()).fillY() }.row()
         }
     }
 
