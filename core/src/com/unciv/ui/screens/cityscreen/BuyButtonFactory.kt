@@ -37,21 +37,21 @@ class BuyButtonFactory(val cityScreen: CityScreen) {
 
     fun hasBuyButtons(construction: IConstruction?): Boolean = getBuyButtons(construction).isNotEmpty()
 
-    fun getBuyButtons(construction: IConstruction?): List<TextButton> {
+    fun getBuyButtons(construction: IConstruction?, unit: Float = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), showRestrictions: Boolean = false): List<TextButton> {
         val selection = cityScreen.selectedConstruction!=null || cityScreen.selectedQueueEntry >= 0
         if (selection && construction != null && construction !is PerpetualConstruction)
             return Stat.statsUsableToBuy.mapNotNull {
-                getBuyButton(construction as INonPerpetualConstruction, it)
+                getBuyButton(construction as INonPerpetualConstruction, it, unit, showRestrictions)
             }
         return emptyList()
     }
 
-    private fun getBuyButton(construction: INonPerpetualConstruction?, stat: Stat = Stat.Gold): TextButton? {
+    private fun getBuyButton(construction: INonPerpetualConstruction?, stat: Stat = Stat.Gold, unit: Float = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), showRestrictions: Boolean = false): TextButton? {
         if (stat !in Stat.statsUsableToBuy || construction == null)
             return null
 
         val cityView = cityScreen.cityView
-        val button = "".toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply { name = "ui-buy:${stat.name}:${construction.name}" }
+        val button = "".toTextButton(unit = unit).apply { name = "ui-buy:${stat.name}:${construction.name}" }
 
         if (!isConstructionPurchaseShown(construction, stat)) {
             // This can't ever be bought with the given currency.
@@ -81,7 +81,19 @@ class BuyButtonFactory(val cityScreen: CityScreen) {
             }
         }
 
-        button.labelCell.pad(5f)
+        if (showRestrictions && !button.isEnabled) {
+            val reason = when {
+                !cityScreen.canChangeState -> "This city is currently read-only.".tr()
+                cityView.constructions.isCampaignPurchaseBlocked(construction, stat) -> "This campaign objective must be produced.".tr()
+                cityView.constructions.isConstructionPurchaseBlockedByUnit(construction) -> "Move unit out of city first".tr()
+                cityView.constructions.getStatBuyCost(construction, stat)?.let { cityView.getStatReserve(stat) < it } == true ->
+                    "Currently you have [${cityView.getStatReserve(stat)}] [${stat.name}].".tr()
+                else -> "Cannot purchase this item now.".tr()
+            }
+            button.setText(button.text.toString() + "\n" + reason)
+            button.label.wrap = true
+        }
+        button.labelCell.pad(5f * unit)
 
         return button
     }

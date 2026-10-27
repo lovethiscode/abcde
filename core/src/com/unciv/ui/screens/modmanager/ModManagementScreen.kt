@@ -94,19 +94,20 @@ class ModManagementScreen private constructor(
     }
 
     private val singleColumn = stage.width < 820f * game.settings.fontSizeMultiplier
+    private val compact = UiNavigation.isMobile && stage.height / UiTypography.unitsPerPoint(stage) < 450f
     private val root = Table()
     private val body = Table()
     private val listPane = Table()
     private val detailPane = Table()
     private val listHolder = Table()
     private val actionFooter = Table()
-    private val closeButton = if (UiNavigation.isIos) UiNavigation.backButton() else ModManagementStyle.button("Close")
+    private val actionButtons = Table()
+    private val closeButton = if (UiNavigation.isMobile) UiNavigation.backButton() else ModManagementStyle.button("Close")
     private val rightSideButton = ModManagementStyle.button("Download", primary = true)
     private val discoverButton = ModManagementStyle.button("Discover mods")
     private val installedButton = ModManagementStyle.button("Installed")
     private val detailsBackButton = ModManagementStyle.button("Back to mod list")
     private val modDescriptionLabel = ModManagementStyle.label("", TextRole.Body, ModManagementStyle.muted)
-    private val actionHint = ModManagementStyle.label("", TextRole.Supporting, ModManagementStyle.muted)
     private val detailWidth = if (singleColumn) stage.width - 32f else (stage.width - 48f) * 0.54f
     private val listWidth = if (singleColumn) stage.width - 32f else stage.width - 48f - detailWidth
     private val countLabel = ModManagementStyle.label("", TextRole.Supporting, ModManagementStyle.muted)
@@ -120,7 +121,8 @@ class ModManagementScreen private constructor(
     private val scrollInstalledMods = ModsScrollPane(installedModsTable)
     private val onlineModsTable = Table().apply { top(); defaults().growX().padBottom(6f) }
     private val scrollOnlineMods = ModsScrollPane(onlineModsTable)
-    private val modActionTable = ModInfoAndActionPane(modDescriptionLabel, detailWidth - 40f)
+    private val modActionTable = ModInfoAndActionPane(modDescriptionLabel, detailWidth - 40f,
+        if (UiNavigation.isMobile) ::updateGithubAction else null)
     private val scrollActionTable = ModsScrollPane(modActionTable)
     private val optionsManager = ModManagementOptions(this, previousOptions)
 
@@ -157,7 +159,7 @@ class ModManagementScreen private constructor(
     init {
         root.setFillParent(true)
         root.background = ModManagementStyle.fill(ModManagementStyle.background)
-        root.pad(12f, 16f, 12f, 16f)
+        root.pad(12f, 16f, if (compact) 0f else 12f, 16f)
         stage.addActor(root)
         rightSideButton.isVisible = false
         closeButton.onActivation {
@@ -199,7 +201,6 @@ class ModManagementScreen private constructor(
 
     private fun initLayout() {
         val header = Table()
-        val title = "Mods".toLabel(ModManagementStyle.text, fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 28))
         val addButton = ModManagementStyle.button("Add mods")
         addButton.label.wrap = false
         addButton.add(ModIcon.Plus.image(ModManagementStyle.text)).size(24f).padLeft(8f)
@@ -213,7 +214,7 @@ class ModManagementScreen private constructor(
             add(installedButton).width(if (singleColumn) 180f else 192f).minHeight(ModManagementStyle.touchHeight)
         }
         header.add(closeButton).minWidth(100f).height(headerControlHeight).padRight(16f)
-        header.add(title).left().expandX().padRight(16f)
+        header.add().expandX()
         if (singleColumn) {
             header.add(addButton).width(addButtonWidth).height(headerControlHeight)
             header.row()
@@ -259,15 +260,25 @@ class ModManagementScreen private constructor(
             scroll.setOverscroll(false, false)
         }
         detailPane.background = ModManagementStyle.rounded(ModManagementStyle.surface)
-        detailPane.pad(16f, 20f, 14f, 20f)
-        if (singleColumn && !UiNavigation.isIos) detailPane.add(detailsBackButton).left().minHeight(58f).padBottom(8f).row()
+        detailPane.pad(16f, 20f, if (compact) 6f else 14f, 20f)
+        if (singleColumn && !UiNavigation.isMobile) detailPane.add(detailsBackButton).left().minHeight(58f).padBottom(8f).row()
         detailPane.add(scrollActionTable).grow().minHeight(0f).row()
-        actionFooter.add(rightSideButton).growX().minWidth(0f).minHeight(ModManagementStyle.touchHeight).row()
-        actionFooter.add(actionHint).growX().minWidth(0f).padTop(8f)
-        detailPane.add(actionFooter).growX().padTop(12f)
+        updateGithubAction(null)
+        actionFooter.add(actionButtons).growX().minWidth(0f)
+        detailPane.add(actionFooter).growX().minWidth(0f).padTop(if (compact) 6f else 12f)
         modActionTable.add(ModManagementStyle.label("Select a mod to view its details", TextRole.Body, ModManagementStyle.muted))
             .width(detailWidth - 40f).padTop(30f)
         refreshBody()
+    }
+
+    private fun updateGithubAction(button: TextButton?) {
+        actionButtons.clear()
+        if (button != null) {
+            actionButtons.add(button).growX().fillY().uniformX().minWidth(0f)
+                .minHeight(ModManagementStyle.touchHeight).padRight(8f * UiTypography.unitsPerPoint(stage))
+        }
+        actionButtons.add(rightSideButton).growX().fillY().uniformX().minWidth(0f)
+            .minHeight(ModManagementStyle.touchHeight)
     }
 
     private fun refreshBody() {
@@ -314,7 +325,7 @@ class ModManagementScreen private constructor(
             selectedModName = null
             selectedMod = null
             rightSideButton.isVisible = false
-            actionHint.setText("")
+            updateGithubAction(null)
             modActionTable.clear()
             modActionTable.add(ModManagementStyle.label("Select a mod to view its details", TextRole.Body, ModManagementStyle.muted))
                 .width(detailWidth - 40f).padTop(30f)
@@ -372,7 +383,7 @@ class ModManagementScreen private constructor(
 
     private fun openAddMods() {
         val popup = Popup(this)
-        popup.addTitleWithCloseButton("Add mods".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24)))
+        popup.addTitleWithCloseButton()
         val link = getDownloadFromUrlButton { popup.close() }.also {
             it.isEnabled = game.platformCapabilities.onlineModManagement
             ModManagementStyle.styleButton(it)
@@ -541,7 +552,7 @@ class ModManagementScreen private constructor(
         downloadButton.onClick {
             beforeOpen()
             val popup = Popup(this)
-            val columns = if (UiNavigation.isIos) 2 else 1
+            val columns = if (UiNavigation.isMobile) 2 else 1
             popup.addGoodSizedLabel("Please enter the mod repository -or- archive zip -or- branch -or- release -or- commit url:").colspan(columns).row()
             val textField = UncivTextField("").apply { maxLength = 666 }
             popup.add(textField).width(stage.width / 2).colspan(columns).row()
@@ -571,7 +582,7 @@ class ModManagementScreen private constructor(
                     }
                 }
             }
-            if (UiNavigation.isIos) {
+            if (UiNavigation.isMobile) {
                 popup.addCloseButton(com.unciv.Constants.cancel).growX()
                 actualDownloadButton = popup.addButton("Download", action = downloadAction).growX().actor
             } else {
@@ -617,7 +628,7 @@ class ModManagementScreen private constructor(
             if (localModTransferServer === receiver) localModTransferServer = null
         }
         val closeButton = popup.addCloseButton().actor
-        if (!UiNavigation.isIos) {
+        if (!UiNavigation.isMobile) {
             closeButton.remove()
             popup.add(Table().apply {
                 add().expandX()
@@ -686,7 +697,6 @@ class ModManagementScreen private constructor(
         }
 
         rightSideButton.isVisible = true
-        actionHint.setText("Choose this mod in the new game settings.".tr())
         val installed = installedModInfo[repo.name]
         if (installed != null && !installed.hasUpdate) {
             ModManagementStyle.styleButton(rightSideButton)
@@ -905,7 +915,6 @@ class ModManagementScreen private constructor(
     private fun installedButtonAction(mod: ModUIData, button: ModDecoratedButton) {
         rightSideButton.isVisible = true
         revealDetails(mod.name)
-        actionHint.setText("Choose this mod in the new game settings.".tr())
 
         syncInstalledSelected(mod.name, button)
         refreshInstalledModActions(mod.ruleset!!)

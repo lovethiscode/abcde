@@ -41,7 +41,7 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
     /** Identifies the content currently built, so an [update] that changes nothing keeps it */
     private var contentHash = 0
     private var battlefieldBounds: Rectangle? = null
-    private val ordinary get() = UiNavigation.isIos && worldScreen.gameInfo.campaign == null && worldScreen.gameInfo.endless == null
+    private val ordinary get() = UiNavigation.isMobile && worldScreen.gameInfo.campaign == null && worldScreen.gameInfo.endless == null
     private val unit get() = UiTypography.unitsPerPoint(worldScreen.stage)
     private var ordinaryScrollCell: Cell<AutoScrollPane>? = null
     private var ordinaryHeader: Table? = null
@@ -52,6 +52,7 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
     }
 
     init {
+        name = "ui-tutorial-task"
         background = BaseScreen.skinStrings.getUiBackground("WorldScreen/TutorialTaskTable",
             tintColor = BaseScreen.skinStrings.skinConfig.baseColor.darken(0.5f))
         // Once, here: onClick appends to the actions of this actor instead of replacing them, so an
@@ -161,7 +162,8 @@ internal class TutorialTaskTable(private val worldScreen: WorldScreen) : Table()
                 worldScreen.shouldUpdate = true
             }
             // Font glyphs may overhang their measured advance at the beginning of a line.
-            content.pad(0f, 4f * unit, 0f, 4f * unit)
+            val glyphInset = if (UiNavigation.isAndroid) 4f * unit else 0f
+            content.pad(glyphInset, 4f * unit, glyphInset, 4f * unit)
             if (!content.isValid) return false
             clearChildren()
             background = OrdinaryPopupStyle(unit).surface(OrdinaryPopupStyle(unit).background, 16f)

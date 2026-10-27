@@ -105,7 +105,7 @@ class PolicyPickerScreen(
         setOverscroll(false, false)
         setFadeScrollBars(false)
         style = ScrollPane.ScrollPaneStyle(style).apply {
-            if (UiNavigation.isIos) {
+            if (UiNavigation.isMobile) {
                 vScroll = null
                 vScrollKnob = null
             } else {
@@ -205,8 +205,7 @@ class PolicyPickerScreen(
         closeButton.add(ImageGetter.getImage("OtherIcons/BackArrow")).size(u(16f))
         if (!metrics.portrait && !metrics.compact) closeButton.add(label("Back", 13)).padLeft(u(6f))
         header.add(closeButton).minSize(u(44f)).padRight(u(if (metrics.compact) 6f else 10f))
-        header.add(label("Social policies", if (metrics.compact) 18 else 23).apply { setEllipsis(true) })
-            .growX().minWidth(0f).left()
+        header.add().growX()
         val progress = Table().apply {
             val caption = when {
                 branches.isEmpty() -> "No policies available".tr()
@@ -251,9 +250,25 @@ class PolicyPickerScreen(
     }
 
     private fun catalogToolbar() = Table().apply {
-        add(label("Policy codex", 18)).growX().minWidth(0f).left()
-        add(branchLocator()).height(u(44f)).padLeft(u(8f))
-        add(foldAllAction()).height(u(44f)).padLeft(u(4f))
+        val title = label("Policy codex", 18)
+        val locate = branchLocator()
+        val fold = foldAllAction()
+        val stacked = UiNavigation.isAndroid && title.prefWidth + locate.prefWidth + fold.prefWidth + u(12f) > u(metrics.catalogWidth)
+        if (stacked) {
+            title.wrap = true
+            add(title).colspan(2).growX().minWidth(0f).left().padBottom(u(8f)).row()
+            for ((index, button) in listOf(locate, fold).withIndex()) {
+                button.label.setEllipsis(false)
+                button.label.wrap = true
+                button.labelCell.minWidth(0f).growX()
+                add(button).growX().minWidth(0f).minHeight(UiNavigation.minimumTouchSize())
+                    .padLeft(if (index == 0) 0f else u(4f))
+            }
+        } else {
+            add(title).growX().minWidth(0f).left()
+            add(locate).height(u(44f)).padLeft(u(8f))
+            add(fold).height(u(44f)).padLeft(u(4f))
+        }
     }
 
     private fun branchStatus(branch: PolicyBranch) = when {
@@ -279,7 +294,7 @@ class PolicyPickerScreen(
     private fun buildBranch(branch: PolicyBranch): Table = Table().apply {
         val active = selected?.branch == branch
         background = appearance.outline(appearance.deep, if (active) appearance.gold else appearance.line)
-        pad(u(if (UiNavigation.isIos) 6f else 9f))
+        pad(u(if (UiNavigation.isMobile) 6f else 9f))
         val title = Table().apply {
             touchable = Touchable.enabled
             name = "ui-policy-fold:${branch.name}"
@@ -341,7 +356,7 @@ class PolicyPickerScreen(
         val nodeWidth = if (metrics.branchWidth < 360f)
             ((availableWidth - 28f) / 3f).coerceIn(64f, 76f) else 88f
         val nodeHeight = if (metrics.compact) 64f else 94f
-        val rowStep = nodeHeight + if (UiNavigation.isIos) 10f else 18f
+        val rowStep = nodeHeight + if (UiNavigation.isMobile) 10f else 18f
         val minColumnDistance = entries.groupBy { it.row }.values.flatMap { row ->
             row.map { it.column }.distinct().sorted().zipWithNext { a, b -> b - a }
         }.minOrNull()?.coerceAtLeast(1) ?: 2
@@ -514,7 +529,7 @@ class PolicyPickerScreen(
 
     private fun overlayHeader(title: String) = Table().apply {
         add(label(title,18,wrap=true)).growX().minWidth(0f).left()
-        val ordinary = UiNavigation.isIos && viewingCiv.gameInfo.campaign == null && viewingCiv.gameInfo.endless == null
+        val ordinary = UiNavigation.isMobile && viewingCiv.gameInfo.campaign == null && viewingCiv.gameInfo.endless == null
         val dismiss = if (ordinary)
             UiNavigation.dismissButton(appearance.unit).apply {
                 name = "ui-policy-overlay-close"

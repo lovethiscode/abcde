@@ -34,7 +34,7 @@ internal class DisplayTab(
             addScreenSizeSelectBox()
             addAutoSizeButton()
             addScreenOrientationSelectBox()
-            if (Gdx.app.type == Application.ApplicationType.iOS) {
+            if (com.unciv.ui.components.widgets.UiNavigation.isIos) {
                 addCheckbox("Extend to fullscreen", settings::iosUseDisplayCutout) {
                     Display.setCutout(it)
                     settings.save()
@@ -85,7 +85,7 @@ internal class DisplayTab(
         section("Performance", opened = false) {
             addCheckbox("Continuous rendering", settings::continuousRendering) {
                 Gdx.graphics.isContinuousRendering = it ||
-                    (Gdx.app.type == Application.ApplicationType.iOS && game.screen is OptionsScreen)
+                    (com.unciv.ui.components.widgets.UiNavigation.isMobile && game.screen is OptionsScreen)
             }
 
             val continuousRenderingDescription = "When disabled, saves battery life but certain animations will be suspended"
@@ -213,7 +213,7 @@ internal class DisplayTab(
         if (!Display.hasOrientation()) return
         addSelectBox("Screen orientation", settings::displayOrientation, ScreenOrientation.entries) { orientation, _ ->
             Display.setOrientation(orientation)
-            if (Gdx.app.type == Application.ApplicationType.iOS) settings.save()
+            if (com.unciv.ui.components.widgets.UiNavigation.isMobile) settings.save()
             else reloadWorldAndOptions()
         }
     }

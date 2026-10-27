@@ -82,7 +82,10 @@ class AlertPopup(
 
     /** One reading flow: rules first, auxiliary quote beside it only when it fits. */
     private fun addReadingSpread(description: String, quote: String, content: Table? = null) {
-        val body = description.toLabel(fontSize = UiTypography.size(TextRole.Body, popupUnit)).apply { wrap = true }
+        val body = description.toLabel(fontSize = UiTypography.size(TextRole.Body, popupUnit)).apply {
+            wrap = true
+            name = "ui-alert-reading-description"
+        }
         val quoteLabel = quote.toLabel(fontSize = UiTypography.size(TextRole.Supporting, popupUnit),
             fontColor = Color.LIGHT_GRAY).apply { wrap = true }
         val main = Table().apply { top().left() }
@@ -280,7 +283,7 @@ class AlertPopup(
         addCloseButton(text, KeyboardBinding.NextTurnAlternate, null).apply { actor.name = "ui-alert-close" }
 
     private fun addInformationTitle(text: String) {
-        if (UiNavigation.isIos)
+        if (UiNavigation.isMobile)
             addTitleWithCloseButton(text.toLabel(TextRole.Body), KeyboardBindings[KeyboardBinding.NextTurnAlternate])
                 .name = "ui-alert-close"
         else addGoodSizedLabel(text)
@@ -362,13 +365,13 @@ class AlertPopup(
     private fun addTilesStolen(): Boolean {
         val civInfo = getCiv(popupAlert.value)
         if (civInfo.isDefeated()) return false
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             addTitleWithCloseButton(LeaderIntroTable(civInfo, popupStage = if (ordinaryPresentation) stageToShowOn else null), KeyboardBindings[KeyboardBinding.NextTurnAlternate])
                 .name = "ui-alert-close"
             addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
         } else addLeaderName(civInfo)
         addGoodSizedLabel("Those lands were not yours to take. This has not gone unnoticed.")
-        if (!UiNavigation.isIos) addCloseButton()
+        if (!UiNavigation.isMobile) addCloseButton()
         return true
     }
 
@@ -639,7 +642,7 @@ class AlertPopup(
             addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
             addGoodSizedLabel("Your citizens have been happy with your rule for so long that the empire enters a Golden Age!").row()
         }
-        if (!UiNavigation.isIos) addCloseButton()
+        if (!UiNavigation.isMobile) addCloseButton()
         music.chooseTrack(viewingCiv.civName, MusicMood.Golden, MusicTrackChooserFlags.setSpecific)
     }
 
@@ -721,14 +724,27 @@ class AlertPopup(
             return
         }
         addInformationTitle(tech.name)
+        if (UiNavigation.isAndroid && stageWidth < stageHeight) {
+            add(ImageGetter.getTechIconPortrait(tech.name, 56f * popupUnit))
+                .padTop(8f * popupUnit).padBottom(12f * popupUnit).row()
+            addReadingSpread(tech.getDescription(viewingCiv), tech.quote)
+            music.chooseTrack(tech.name, MusicMood.Researched, MusicTrackChooserFlags.setSpecific)
+            return
+        }
         addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
         val centerTable = Table()
         centerTable.add(tech.quote.toLabel(TextRole.Body).apply { wrap = true }).width(stageWidth / 3)
         centerTable.add(ImageGetter.getTechIconPortrait(tech.name, 100f)).pad(20f)
-        val descriptionScroll = ScrollPane(tech.getDescription(viewingCiv).toLabel(TextRole.Body).apply { wrap = true })
+        val descriptionLabel = tech.getDescription(viewingCiv).toLabel(TextRole.Body).apply { wrap = true }
+        val descriptionContent = if (UiNavigation.isAndroid) Table().apply {
+            add(descriptionLabel).growX().minWidth(0f)
+            val inset = 4f * UiTypography.unitsPerPoint(worldScreen.stage)
+            pad(inset, 0f, inset, 0f)
+        } else descriptionLabel
+        val descriptionScroll = ScrollPane(descriptionContent)
         centerTable.add(descriptionScroll).width(stageWidth / 3).maxHeight(stageHeight / 2)
         add(centerTable).row()
-        if (!UiNavigation.isIos) addCloseButton()
+        if (!UiNavigation.isMobile) addCloseButton()
         music.chooseTrack(tech.name, MusicMood.Researched, MusicTrackChooserFlags.setSpecific)
     }
 
@@ -796,7 +812,7 @@ class AlertPopup(
             .width(centerTableColumnWidth)
             .pad(10f)
         add(centerTable).row()
-        if (!UiNavigation.isIos) addCloseButton()
+        if (!UiNavigation.isMobile) addCloseButton()
         music.chooseTrack(wonder.name, MusicMood.Wonder, MusicTrackChooserFlags.setSpecific)
     }
 

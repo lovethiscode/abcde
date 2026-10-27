@@ -47,7 +47,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         val header = Table()
         UiNavigation.styleBackButton(back)
         header.add(back).height(ui.px(44f)).padRight(ui.px(12f))
-        header.add(ui.label("Diplomacy", TextRole.PageTitle)).left().growX()
+        header.add().growX()
         root.add(header).growX().height(ui.px(44f)).padBottom(ui.px(12f)).row()
         val body = Table()
         if (layout.narrow) {
@@ -80,7 +80,12 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
                 val button = ui.decorate(key.toTextButton(), ghost = filter != key)
                 button.name = "ui-diplomacy-filter:$key"
                 button.onActivation { filter = key; shell() }
-                filters.add(button).growX().minWidth(0f).height(ui.px(44f)).padRight(ui.px(4f))
+                if (UiNavigation.isAndroid) {
+                    button.label.setEllipsis(null)
+                    button.label.wrap = true
+                    button.labelCell.minWidth(0f).growX()
+                    filters.add(button).growX().minWidth(0f).minHeight(UiNavigation.minimumTouchSize()).padBottom(ui.px(4f)).row()
+                } else filters.add(button).growX().minWidth(0f).height(ui.px(44f)).padRight(ui.px(4f))
             }
             roster.add(filters).growX().pad(0f, ui.px(8f), ui.px(8f), ui.px(4f)).row()
         }
@@ -337,7 +342,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
             }
             popup.addCloseButton(); popup.open()
         }
-        if (moreActions.isNotEmpty()) bar.add(more).width(ui.px(moreWidth)).height(ui.px(44f))
+        if (moreActions.isNotEmpty()) bar.add(more).width(if (UiNavigation.isAndroid) maxOf(ui.px(moreWidth), more.prefWidth) else ui.px(moreWidth)).minHeight(UiNavigation.minimumTouchSize())
         detail.add(com.badlogic.gdx.scenes.scene2d.ui.Image(ui.surface(com.unciv.models.skins.ExpeditionBlueTheme.border,0f)))
             .growX().height(ui.px(1f)).row()
         detail.add(bar).growX().pad(ui.px(10f),ui.px(16f),ui.px(12f),ui.px(16f)).row()

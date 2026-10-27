@@ -62,6 +62,13 @@ internal class AdvancedTab(
     optionsPopup: OptionsPopup
 ): OptionsPopupTab(optionsPopup) {
     override fun lateInitialize() {
+        val platformSettingsCaption = if (com.unciv.ui.components.widgets.UiNavigation.isAndroid &&
+            game.files.cloudSaveSync === com.unciv.logic.files.cloud.CloudSaveSync.None) "Privacy settings" else "Privacy and sync"
+        if (game.platformSettingsAvailable) section(platformSettingsCaption) {
+            add(platformSettingsCaption.toTextButton().apply {
+                onActivation { game.showPlatformSettings() }
+            }).colspan(2).growX().minHeight(com.unciv.ui.components.widgets.UiNavigation.minimumTouchSize()).row()
+        }
         section("Autosave") {
             addAutosaveField()
             addSelectBox("Turns between autosaves", settings::turnsBetweenAutosaves, listOf(1,2,5,10,20,50,100,1000))
@@ -105,7 +112,7 @@ internal class AdvancedTab(
     }
 
     private fun Table.addAutosaveField() {
-        add("Number of autosave files stored".toLabel(TextRole.Body).apply { wrap = true }).minWidth(0f).left().growX()
+        add("Number of autosave files stored".toLabel(TextRole.Body).apply { wrap = true }).minWidth(0f).left().growX().apply { if (stackOptionRows) colspan(2).row() }
 
         val autoSaveTurnsTextField = UncivTextField("", settings.maxAutosavesStored.toString())
         autoSaveTurnsTextField.maxLength = 8
@@ -128,7 +135,7 @@ internal class AdvancedTab(
                 if (optionsPopup.useSidebar) minSize(OptionsPopupStyle.points(44f)).fillY()
             }
         }
-        cell.minWidth(rightWidgetMinWidth).right().row()
+        cell.minWidth(if (stackOptionRows) 0f else rightWidgetMinWidth).right().apply { if (stackOptionRows) colspan(2).growX() }.row()
     }
 
     private fun setAutosaveButtonState(button: TextButton, text: String) {

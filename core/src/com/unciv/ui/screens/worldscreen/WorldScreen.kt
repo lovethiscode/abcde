@@ -1142,7 +1142,7 @@ class WorldScreen(
     private var resizeDeferTimer: Timer? = null
 
     override fun resize(width: Int, height: Int) {
-        if (Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
+        if (com.unciv.ui.components.widgets.UiNavigation.isMobile) {
             if (!hasSafeAreaChanged(width, height)) return
             super.resize(width, height)
             mapHolder.resizeViewport((stage.viewport as com.unciv.ui.screens.basescreen.SafeAreaViewport).drawingBounds)

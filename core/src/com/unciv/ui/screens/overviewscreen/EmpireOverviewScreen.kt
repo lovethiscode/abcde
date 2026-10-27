@@ -88,7 +88,7 @@ class EmpireOverviewScreen(
         }
         persistState.update(pageObjects)
 
-        val closeButton = (if (UiNavigation.isIos) UiNavigation.backButton("Map").apply {
+        val closeButton = (if (UiNavigation.isMobile) UiNavigation.backButton("Map").apply {
             onActivation { game.popScreen() }
         } else OverviewUi.button(flat = true) { game.popScreen() }.apply {
             add(ImageGetter.getImage("OtherIcons/BackArrow").apply { color = OverviewUi.accent }).size(pt(18f)).padRight(pt(7f))
@@ -100,8 +100,7 @@ class EmpireOverviewScreen(
         val header = Table().apply {
             padRight(pt(12f))
             add(closeButton).minWidth(pt(74f)).height(OverviewUi.touch).padRight(pt(14f))
-            add("Empire Overview".toLabel(fontSize = font(TextRole.SectionTitle), hideIcons = true).apply { setEllipsis(true) })
-                .left().growX().minWidth(0f)
+            add().growX()
             val info = viewingPlayer.getCiv().gameInfo
             val year = com.unciv.ui.components.YearTextUtil.toYearText(info.getYear(), viewingPlayer.getCiv().isLongCountDisplay())
             val context = Table().apply {

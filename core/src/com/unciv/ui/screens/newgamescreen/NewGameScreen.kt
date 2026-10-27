@@ -121,14 +121,14 @@ class NewGameScreen(
         rightSideButton.enable()  // now because PlayerPickerTable init might disable it again
         playerPickerTable = PlayerPickerTable(
             this, gameSetupInfo.gameParameters,
-            if (UiNavigation.isIos) getColumnWidth() else if (isPortrait) stage.width - 20f else 0f
+            if (UiNavigation.isMobile) getColumnWidth() else if (isPortrait) stage.width - 20f else 0f
         )
         newGameOptionsTable = GameOptionsTable(
-            this, UiNavigation.isIos || isPortrait,
+            this, UiNavigation.isMobile || isPortrait,
             updatePlayerPickerTable = { desiredCiv -> playerPickerTable.update(desiredCiv) },
             updatePlayerPickerRandomLabel = { playerPickerTable.updateRandomNumberLabel() },
             allowOnlineToggle = false,
-            directLayoutWidth = if (UiNavigation.isIos) directSetupWidth else null
+            directLayoutWidth = if (UiNavigation.isMobile) directSetupWidth else null
         )
         mapOptionsTable = MapOptionsTable(this)
         mapOptionsTableInitialized = true
@@ -138,19 +138,17 @@ class NewGameScreen(
         }
         closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
 
-        val heading = "Singleplayer".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 28))
         val roomHint = "Choose the rules, map and civilizations for your game.".toLabel(Color.LIGHT_GRAY, UiTypography.size(TextRole.Body, legacySize = 18)).apply { setWrap(true) }
         val banner = Table().apply {
-            if (!UiNavigation.isIos) {
+            if (!UiNavigation.isMobile) {
                 background = skinStrings.getUiBackground("NewGameScreen/RoomHeader",skinStrings.roundedEdgeRectangleSmallShape,Color.valueOf("0d2140"))
                 pad(14f)
             }
-            add(heading).left().growX().row()
             add(roomHint).left().growX().padTop(6f)
         }
-        if (!UiNavigation.isIos && game.platformCapabilities.multiplayerInviteLinks)
+        if (!UiNavigation.isMobile && game.platformCapabilities.multiplayerInviteLinks)
             topTable.add(banner).colspan(if (isPortrait) 1 else 5).width(stage.width-20f).padBottom(12f).row()
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             overviewReady = true
             initCouncilLayout()
         } else if (isPortrait) initPortrait()
@@ -165,7 +163,7 @@ class NewGameScreen(
         val horizontalGroup = HorizontalGroup().padBottom(5f).space(10f)
         rightSideGroup.addActorAt(0, horizontalGroup)
 
-        if (UiNavigation.isIos || UncivGame.Current.settings.lastGameSetup != null) {
+        if (UiNavigation.isMobile || UncivGame.Current.settings.lastGameSetup != null) {
             val resetToDefaultsButton = "Reset to defaults".toTextButton()
             resetToDefaultsButton.onClick {
                 ConfirmPopup(
@@ -179,7 +177,7 @@ class NewGameScreen(
                     game.replaceCurrentScreen{ NewGameScreen(gameSetupInfo) }
                 }.open(true)
             }
-            if (UiNavigation.isIos) {
+            if (UiNavigation.isMobile) {
                 SinglePlayerSetup.style(resetToDefaultsButton, formFont)
                 resetToDefaultsButton.name = "setup-reset"
                 resetToDefaultsButton.style = TextButtonStyle(resetToDefaultsButton.style).apply {
@@ -195,15 +193,15 @@ class NewGameScreen(
             horizontalGroup.addActor(resetToDefaultsButton)
         }
 
-        val startGameButton = (if (UiNavigation.isIos) rightSideButton else "Start game!".toTextButton()).apply {
-            setText((if (UiNavigation.isIos) "Start game" else "Start game!").tr())
+        val startGameButton = (if (UiNavigation.isMobile) rightSideButton else "Start game!".toTextButton()).apply {
+            setText((if (UiNavigation.isMobile) "Start game" else "Start game!").tr())
             if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get("positive", TextButtonStyle::class.java)
             if (!ExpeditionBlueTheme.enabled) color = Color.GREEN
             name = "setup-start"
         }
         startGameButton.onClick(this::startGameAvoidANRs)
         startGameButton.keyShortcuts.add(KeyCharAndCode.RETURN)
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             rightSideButton.remove()
             SinglePlayerSetup.style(startGameButton, formFont)
             startGameButton.style = TextButtonStyle(startGameButton.style).apply {
@@ -268,19 +266,7 @@ class NewGameScreen(
         pickerPane.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.controlBorder)
         scrollPane.setScrollingDisabled(true, true)
         val header = Table().apply {
-            if (stackedLayout) {
-                add(councilHeading("Singleplayer", TextRole.SectionTitle).apply { wrap = true })
-                    .growX().minWidth(0f).left()
-            } else {
-                add().width((190f - closeButton.prefWidth).coerceAtLeast(0f))
-                add(Table().apply {
-                    add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX()
-                    add("◇".toLabel(ExpeditionBlueTheme.gold, UiTypography.size(TextRole.Supporting, legacySize = 14))).padRight(22f)
-                    add(councilHeading("Singleplayer", TextRole.PageTitle)).pad(0f, 14f, 0f, 14f)
-                    add("◇".toLabel(ExpeditionBlueTheme.gold, UiTypography.size(TextRole.Supporting, legacySize = 14))).padLeft(22f)
-                    add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX()
-                }).growX().pad(0f, 30f, 0f, 30f)
-            }
+            add().growX()
             newGameOptionsTable.createBaseRulesetSelector()?.let {
                 SinglePlayerSetup.style(it, formFont)
                 add(it).width(if (stackedLayout) minOf(190f, (this@NewGameScreen.stage.width - closeButton.prefWidth - 64f) * .42f) else 190f)
@@ -471,7 +457,7 @@ class NewGameScreen(
     /** Subtables may need an upper limit to their width - they can ask this function. */
     // In sync with isPortrait in init, here so UI details need not know about 3-column vs 1-column layout
     internal fun getColumnWidth() = floor(
-        if (UiNavigation.isIos) directSetupWidth
+        if (UiNavigation.isMobile) directSetupWidth
         else if (stackedLayout) stage.width
         else (stage.width - 2f) / 3f
     )
@@ -797,7 +783,7 @@ class NewGameScreen(
 
     override fun resize(width: Int, height: Int) {
         val picker = activePopup as? NationPickerPopup
-        if (UiNavigation.isIos && picker != null && width > 0 && height > 0 && hasSafeAreaChanged(width, height)) {
+        if (UiNavigation.isMobile && picker != null && width > 0 && height > 0 && hasSafeAreaChanged(width, height)) {
             picker.close()
             super.resize(width, height)
             (game.screen as? NewGameScreen)?.let { picker.recreateOn(it).open() }

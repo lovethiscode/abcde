@@ -51,6 +51,7 @@ import com.unciv.ui.components.widgets.ExpanderTab
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.AnimatedMenuPopup.Companion.addContextMenu
 import com.unciv.ui.popups.AnimatedMenuPopup.Companion.adjustContextMenuIndicators
+import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.popups.CityScreenConstructionMenu
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.utils.Concurrency
@@ -92,11 +93,14 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
     private val pad = 10f
     private val miniQueueHeight = 54f
     private val posFromEdge = CityScreen.posFromEdge
-    private val stageHeight = cityScreen.stage.height - if (UiNavigation.isIos) UiNavigation.minimumTouchSize() + 20f else 0f
+    private val stageHeight = cityScreen.stage.height - if (UiNavigation.isMobile) UiNavigation.minimumTouchSize() + 20f else 0f
 
+    private var queueMutationPending = false
     private var nativeCategory = "All"
     private var nativeCategories = linkedMapOf<String, List<Table>>()
     private val nativeContent = Table()
+    private val nativeScrollPositions = mutableMapOf<String, Float>()
+    private var nativeScrollKey = ""
     private val nativePane = ScrollPane(nativeContent).apply { setOverscroll(false, false); setScrollingDisabled(true, false) }
 
     private val highlightColor = ExpeditionBlueTheme.color(Color.GREEN.darken(0.4f), ExpeditionBlueTheme.raised)
@@ -152,100 +156,244 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
 
     internal fun selectWorkbenchCategory(category: String) { nativeCategory = category }
 
+    internal fun restoreWorkbench(other: CityConstructionsTable) {
+        other.rememberWorkbenchScroll()
+        nativeCategory = other.nativeCategory
+        nativeScrollPositions.putAll(other.nativeScrollPositions)
+    }
+
+    private fun rememberWorkbenchScroll() {
+        if (nativePane.parent != null && nativeScrollKey.isNotEmpty())
+            nativeScrollPositions[nativeScrollKey] = nativePane.scrollY
+    }
+
     internal fun workbenchContent(width: Float, queueOpen: Boolean, toggleQueue: () -> Unit): Actor {
-        val scrollY = nativePane.scrollY
+        rememberWorkbenchScroll()
+        nativeScrollKey = if (queueOpen) "Queue" else nativeCategory
         nativeContent.clear()
-        val compact = cityScreen.stage.width > cityScreen.stage.height
-        nativeContent.top().pad(if (compact) 8f else 12f)
+        nativeContent.top().pad(0f)
         nativeContent.defaults().growX().minWidth(0f)
-        val current = cityView.constructions.currentConstructionName()
+        val result = Table().apply { top() }
         val queue = cityView.constructions.constructionQueue
-        val summary = Table()
-        summary.add("Current construction".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 12))).left().growX()
-        val queueButton = ("{Queue} " + maxOf(0, queue.size - 1)).toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply {
-            name = "ui-city-queue"
-            label.setFontSize(UiTypography.size(TextRole.Control, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 13))
-            onClick { toggleQueue() }
-        }
-        if (!compact) {
-            summary.add(queueButton).minHeight(44f)
-            nativeContent.add(summary).row()
-        }
         if (queueOpen) {
-            for ((index, name) in queue.withIndex()) {
+            result.add("Project turns exclude queue waiting time.".toLabel(TextRole.Supporting, unit = 1f).apply { wrap = true })
+                .width(width).pad(6f, 12f, 6f, 12f).row()
+            for ((index, constructionName) in queue.withIndex()) {
+                val construction = cityView.constructions.getConstruction(constructionName)
                 val entry = Table()
-                entry.add(name.toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply {
-                    this.name = "ui-construction-queue:$name"
-                    label.wrap = true
-                    onClick { selectQueueEntry(index) }
-                }).width(width - 12f).height(44f).colspan(3).row()
+                entry.add((index + 1).toString().toLabel(TextRole.CompactData, unit = 1f)).width(20f).padRight(4f)
+                val caption = constructionName.tr(hideIcons = true) + "\n" + cityView.constructions.getTurnsToConstructionString(construction).trim()
+                val select = Table().apply {
+                    name = "ui-construction-queue:$constructionName"
+                    add(caption.toLabel(TextRole.Control, unit = 1f, hideIcons = true).apply { wrap = true })
+                        .width((width - 164f).coerceAtLeast(80f)).growX().left()
+                    onActivation { selectQueueEntry(index) }
+                }
+                entry.add(select).growX().minWidth(0f).minHeight(56f)
                 if (cityScreen.canCityBeChanged()) {
-                    entry.add(getRaisePriorityButton(index, name).apply { isVisible = index > 0 }).size(44f)
-                    entry.add(getLowerPriorityButton(index, name).apply { isVisible = index < queue.lastIndex }).size(44f)
+                    entry.add(getRaisePriorityButton(index, constructionName).apply { isVisible = index > 0 }).size(44f)
+                    entry.add(getLowerPriorityButton(index, constructionName).apply { isVisible = index < queue.lastIndex }).size(44f)
                     entry.add(getRemoveFromQueueButton(index)).size(44f)
                 }
-                nativeContent.add(entry).padBottom(8f).row()
+                nativeContent.add(entry).width(width).minHeight(56f).row()
             }
-        } else if (current.isNotEmpty()) {
-            val construction = cityView.constructions.getConstruction(current)
-            val entry = Table()
-            entry.add(ImageGetter.getConstructionPortrait(current, 32f)).padRight(8f)
-            val caption = current.tr(hideIcons = true) + "\n" + cityView.constructions.getTurnsToConstructionString(construction).trim()
-            entry.add(caption.toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 14), hideIcons = true).apply { wrap = true }).width(width - 72f)
-            entry.onClick { selectQueueEntry(0) }
-            entry.name = "ui-city-current-production"
-            nativeContent.add(entry).padTop(8f).minHeight(54f).row()
-            if (construction is INonPerpetualConstruction) {
-                val progress = cityView.constructions.getWorkDone(current).toFloat() / cityView.getConstructionProductionCost(construction)
-                nativeContent.add(ImageGetter.ProgressBar(width, 4f, false)
-                    .setBackground(Color.valueOf("102b35"))
-                    .setProgress(Color.valueOf("e4c48a"), progress)).height(4f).padTop(6f).row()
+            if (queue.isEmpty()) nativeContent.add("Pick a construction".toLabel(TextRole.Body, unit = 1f).apply { wrap = true }).width(width).pad(12f).row()
+        } else {
+            val top = Table()
+            val current = queue.firstOrNull()
+            val compact = cityScreen.workbenchPhone
+            val queueButton = cityWorkbenchControl("{Queue} " + maxOf(0, queue.size - 1), "ui-city-queue", action = toggleQueue)
+            val keys = listOf("All", "Units", "Buildings", "Wonders", "National Wonders", "Other", "Disabled")
+            val category = cityWorkbenchSelectBox().apply {
+                setItems(*keys.map { it.tr() }.toTypedArray())
+                selectedIndex = keys.indexOf(nativeCategory).coerceAtLeast(0)
+                if (compact) setSelectedPrefWidth(true)
+                name = "ui-city-production-category"
+                onChange { nativeCategory = keys[selectedIndex]; cityScreen.updateWithoutConstructionAndMap() }
             }
-        } else if (!compact) nativeContent.add("Pick a construction".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).minHeight(54f).row()
-        val category = cityWorkbenchSelectBox()
-        val keys = listOf("All", "Units", "Buildings", "Wonders", "National Wonders", "Other", "Disabled")
-        category.setItems(*keys.map { it.tr() }.toTypedArray())
-        category.selectedIndex = keys.indexOf(nativeCategory)
-        category.name = "ui-city-production-category"
-        category.onChange {
-            nativeCategory = keys[category.selectedIndex]
-            cityScreen.updateWithoutConstructionAndMap()
+            val queueWidth = maxOf(44f, queueButton.prefWidth)
+            val categoryWidth = maxOf(44f, category.prefWidth)
+            val summaryWidth = if (compact) width - queueWidth - categoryWidth - 16f
+                else if (cityScreen.workbenchExpanded) width * .46f else width
+            val currentLabel = (current ?: "Pick a construction").toLabel(TextRole.Control, unit = 1f, hideIcons = true)
+            val turnsLabel = current?.takeIf { cityView.constructions.getConstruction(it) is INonPerpetualConstruction }?.let {
+                "[${cityView.constructions.turnsToConstruction(it)}] turns".toLabel(TextRole.Supporting, unit = 1f)
+            }
+            // Reflow the whole header when real text cannot fit; never squeeze a long name
+            // or the selected category into a narrow column to keep the single-row layout.
+            val minimumCopyWidth = maxOf(currentLabel.prefWidth, turnsLabel?.let { it.prefWidth + 24f } ?: 0f)
+            val inline = compact && minimumCopyWidth + (if (current != null) 52f else 0f) <= summaryWidth
+            currentLabel.wrap = true
+            val copyWidth = (if (inline) summaryWidth else width) - if (current != null) 52f else 0f
+            val summary = Table()
+            if (current != null) {
+                val construction = cityView.constructions.getConstruction(current)
+                summary.add(ImageGetter.getConstructionPortrait(current, if (compact) 24f else 28f))
+                    .size(if (compact) 24f else 28f).padRight(8f)
+                val copy = Table()
+                copy.add(currentLabel).width(if (compact) copyWidth else summaryWidth - 152f).left().row()
+                if (construction is INonPerpetualConstruction) {
+                    val progress = cityView.constructions.getWorkDone(current).toFloat() / cityView.getConstructionProductionCost(construction).coerceAtLeast(1)
+                    if (compact) {
+                        val status = Table()
+                        val turns = turnsLabel!!
+                        status.add(turns).left().padRight(8f)
+                        status.add(ImageGetter.ProgressBar((copyWidth - turns.prefWidth - 8f).coerceAtLeast(0f), 3f, false)
+                            .setBackground(Color.valueOf("102b35")).setProgress(Color.valueOf("e4c48a"), progress)).height(3f).growX()
+                        copy.add(status).width(copyWidth).left()
+                    } else copy.add(ImageGetter.ProgressBar(summaryWidth - 152f, 3f, false)
+                        .setBackground(Color.valueOf("102b35")).setProgress(Color.valueOf("e4c48a"), progress)).height(3f).padTop(4f)
+                }
+                summary.add(copy).growX().minWidth(0f)
+                if (!compact && construction is INonPerpetualConstruction) summary.add(
+                    "[${cityView.constructions.turnsToConstruction(current)}] turns".toLabel(TextRole.Control, unit = 1f)
+                ).padLeft(8f)
+                summary.add(ImageGetter.getImage("OtherIcons/ArrowRight")).size(if (compact) 12f else 16f).padLeft(8f)
+                summary.name = "ui-city-current-production"
+                summary.onActivation { selectQueueEntry(0) }
+            } else summary.add(currentLabel).width(if (inline) summaryWidth else width).left().growX()
+            val tools = Table()
+            tools.add(queueButton).minWidth(44f).minHeight(44f).padRight(8f)
+            tools.add(category).growX().minWidth(0f).minHeight(44f)
+            if (inline) {
+                top.add(summary).width(summaryWidth).minHeight(44f).padRight(8f)
+                top.add(tools).width(queueWidth + categoryWidth + 8f).minHeight(44f)
+            } else if (!compact && cityScreen.workbenchExpanded) {
+                top.add(summary).width(width * .46f).minHeight(44f).padRight(12f)
+                top.add(tools).growX().minWidth(0f).minHeight(44f)
+            } else {
+                top.add(summary).growX().minWidth(0f).minHeight(if (compact) 44f else 52f).row()
+                top.add(tools).growX().minWidth(0f).minHeight(44f)
+            }
+            result.add(top).width(width).padLeft(12f).padRight(12f).row()
+            val rows = if (nativeCategory == "All") nativeCategories.values.flatten() else nativeCategories[nativeCategory].orEmpty()
+            for (row in rows) nativeContent.add(row).width(width).minHeight(if (cityScreen.workbenchExpanded) 44f else 56f).row()
+            if (rows.isEmpty()) nativeContent.add("None".toLabel(TextRole.Body, unit = 1f)).pad(12f).row()
         }
-        val categoryRow = Table()
-        if (compact) categoryRow.add(queueButton).growX().minWidth(0f).minHeight(44f).padRight(8f)
-        else categoryRow.add("Pick a construction".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 13))).growX().minWidth(0f)
-        categoryRow.add(category).width(width * .48f).height(44f)
-        nativeContent.add(categoryRow).padTop(if (compact) 4f else 12f).padBottom(4f).row()
-        val rows = if (nativeCategory == "All") nativeCategories.values.flatten()
-            else nativeCategories[nativeCategory].orEmpty()
-        for (row in rows) nativeContent.add(row).width(width).minHeight(60f).row()
-        if (rows.isEmpty()) nativeContent.add("None".toLabel(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))).pad(12f).row()
+        result.add(nativePane).grow().minSize(0f).padLeft(12f).padRight(12f).row()
         nativePane.layout()
-        nativePane.scrollY = scrollY
+        nativePane.scrollY = nativeScrollPositions[nativeScrollKey] ?: 0f
         nativePane.updateVisualScroll()
-        return nativePane
+        return result
     }
 
     internal fun workbenchActions(construction: IConstruction): Table = Table().apply {
-        defaults().growX().minHeight(44f).space(8f)
-        add("Add to queue".toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply {
-            name = "ui-city-detail-add"
-            isDisabled = cannotAddConstructionToQueue(construction)
-            onClick {
+        val queueIndex = selectedQueueEntry.takeIf { it in cityView.constructions.constructionQueue.indices && cityView.constructions.constructionQueue[it] == construction.name }
+        lateinit var more: com.badlogic.gdx.scenes.scene2d.ui.TextButton
+        more = cityWorkbenchControl("More", "ui-city-construction-more") {
+            val popup = CityWorkbenchPopup(cityScreen, "More", construction.name)
+            val popupUnit = UiTypography.unitsPerPoint(cityScreen.stage)
+            for (buy in buyButtonFactory.getBuyButtons(construction, popupUnit, showRestrictions = true)) {
+                popup.add(buy).width(minOf(400f * popupUnit, cityScreen.stage.width - 64f * popupUnit)).minHeight(UiNavigation.minimumTouchSize()).row()
+            }
+            popup.addButton("City construction queue") {
+                popup.close()
+                if (cityScreen.canCityBeChanged()) CityScreenConstructionMenu(cityScreen.stage, more, cityView, construction) {
+                    cityView.tryReassignPopulation(); cityScreen.updateAsync()
+                }
+            }.apply { actor.isDisabled = !cityScreen.canCityBeChanged() }.growX().row()
+            popup.addCloseButton()
+            popup.open()
+        }
+        add(more).minHeight(44f).padRight(8f)
+        if (queueIndex != null) {
+            add(cityWorkbenchControl("Remove from queue", "ui-city-detail-remove", cityScreen.canCityBeChanged()) {
+                removeWorkbenchQueueEntry(queueIndex)
+            }).growX().minWidth(0f).minHeight(44f)
+        } else {
+            add(cityWorkbenchControl("Add to queue", "ui-city-detail-add", !cannotAddConstructionToQueue(construction)) {
                 addConstructionToQueue(construction)
                 cityScreen.updateAsync()
-            }
-        }).row()
-        val more = "More".toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)).apply {
-            name = "ui-city-construction-more"
-            isDisabled = !cityScreen.canCityBeChanged()
+            }).growX().minWidth(0f).minHeight(44f)
         }
-        more.onClick {
-            CityScreenConstructionMenu(cityScreen.stage, more, cityView, construction) {
+    }
+
+    private fun removeWorkbenchQueueEntry(index: Int) {
+        if (!cityScreen.canCityBeChanged() || queueMutationPending) return
+        val expected = cityView.constructions.constructionQueue.getOrNull(index) ?: return
+        fun remove() {
+            if (queueMutationPending || cityView.constructions.constructionQueue.getOrNull(index) != expected) return
+            queueMutationPending = true
+            Concurrency.run {
+                val success = cityView.tryRemoveFromQueue(index, false)
+                if (success) cityView.tryReassignPopulation()
+                Concurrency.runOnGLThread {
+                    queueMutationPending = false
+                    if (success) cityScreen.clearSelection()
+                    cityScreen.updateAsync()
+                }
+            }
+        }
+        if (index == 0) ConfirmPopup(cityScreen,
+            "Remove [${cityView.constructions.constructionQueue[index]}] from the queue?", "Remove from queue",
+            restoreDefault = { cityScreen.updateAsync() }) { remove() }.open()
+        else remove()
+    }
+
+    private fun getWorkbenchConstructionButton(dto: ConstructionButtonDTO): Table {
+        val construction = dto.construction
+        val expanded = cityScreen.workbenchExpanded
+        val width = cityScreen.workbenchWidth
+        val available = (width - 88f).coerceAtLeast(80f)
+        val row = Table().apply { top(); name = "ui-construction-row:${construction.name}" }
+        val select = Table().apply {
+            name = "ui-construction:${construction.name}"
+            touchable = Touchable.enabled
+            add(ImageGetter.getConstructionPortrait(construction.name, if (expanded) 24f else 28f)).size(if (expanded) 24f else 28f).padRight(8f)
+        }
+        val copy = Table()
+        val name = construction.name.toLabel(TextRole.Control, unit = 1f, hideIcons = true).apply { wrap = true }
+        val info = dto.buttonText.toLabel(TextRole.Supporting, unit = 1f).apply { wrap = true }
+        if (expanded) {
+            copy.add(name).width((available - 180f).coerceAtLeast(80f)).left().growX()
+            copy.add(info).width(172f).padLeft(8f).left()
+        } else {
+            copy.add(name).width(available).left().row()
+            copy.add(info).width(available).left().padTop(2f)
+        }
+        select.add(copy).growX().minWidth(0f)
+        select.onActivation {
+            if (cityScreen.selectedConstruction == construction) addConstructionToQueue(construction)
+            else cityScreen.selectConstruction(construction)
+            selectedQueueEntry = -1
+            cityScreen.updateAsync()
+        }
+        if (cityScreen.canCityBeChanged()) select.addContextMenu(isAllowed = { cityScreen.canCityBeChanged() }) {
+            CityScreenConstructionMenu(cityScreen.stage, select, cityView, construction) {
                 cityView.tryReassignPopulation(); cityScreen.updateAsync()
             }
         }
-        add(more).row()
+        row.add(select).growX().minWidth(0f).minHeight(if (expanded) 44f else 56f)
+        val add = cityWorkbenchIcon("OtherIcons/New", "Add to queue", "ui-construction-add:${construction.name}", !cannotAddConstructionToQueue(construction)) {
+            selectedQueueEntry = -1
+            addConstructionToQueue(construction)
+            cityScreen.updateAsync()
+        }
+        row.add(add).size(44f).padLeft(4f)
+        val resources = (dto.resourcesRequired?.entries?.map { it.key to it.value } ?: emptyList()) +
+            cityView.getStockpiledResourceRequirements(construction).map { it.key to it.value }
+        if (resources.isNotEmpty()) {
+            row.row()
+            val requirements = Table()
+            var used = 0f
+            for ((resource, amount) in resources) {
+                val group = Table().apply {
+                    add(amount.toString().toLabel(TextRole.CompactData, unit = 1f)).padRight(4f)
+                    add(ImageGetter.getResourcePortrait(resource, 16f)).size(16f)
+                }
+                val groupWidth = group.prefWidth + 12f
+                if (used + groupWidth > width && used > 0f) { requirements.row(); used = 0f }
+                requirements.add(group).left().padRight(12f)
+                used += groupWidth
+            }
+            row.add(requirements).colspan(2).left().width(width).padBottom(4f)
+        }
+        dto.rejectionReason?.let {
+            row.row()
+            row.add(it.errorMessage.toLabel(TextRole.Body, unit = 1f, fontColor = ExpeditionBlueTheme.gold).apply { wrap = true })
+                .colspan(2).width(width).padBottom(8f).left()
+        }
+        return row
     }
 
     /** Forces layout calculation and returns the upper Table's (construction queue) width */
@@ -624,6 +772,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
     }
 
     private fun getConstructionButton(constructionButtonDTO: ConstructionButtonDTO): Table {
+        if (cityScreen.usesWorkbench) return getWorkbenchConstructionButton(constructionButtonDTO)
         val construction = constructionButtonDTO.construction
         val pickConstructionButton = Table().apply {
             name = "ui-construction:${construction.name}"
@@ -822,7 +971,8 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
         movePriority: (Int) -> Int?
     ): Table {
         val button = Table()
-        button.add(ImageGetter.getArrowImage(arrowDirection).apply { color = ImageGetter.CHARCOAL }.surroundWithCircle(40f))
+        if (cityScreen.usesWorkbench) button.add(ImageGetter.getArrowImage(arrowDirection).apply { setSize(20f, 20f); setOrigin(Align.center) }).size(20f)
+        else button.add(ImageGetter.getArrowImage(arrowDirection).apply { color = ImageGetter.CHARCOAL }.surroundWithCircle(40f))
         button.touchable = Touchable.enabled
         // Don't bind the queue reordering keys here - those should affect only the selected entry, not all of them
         button.onActivation {
@@ -853,9 +1003,11 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
     private fun getRemoveFromQueueButton(constructionQueueIndex: Int): Table {
         val tab = Table()
         tab.name = "ui-construction-remove:$constructionQueueIndex"
-        tab.add(ImageGetter.getImage("OtherIcons/Stop").surroundWithCircle(40f))
+        if (cityScreen.usesWorkbench) tab.add(ImageGetter.getImage("OtherIcons/Stop")).size(20f)
+        else tab.add(ImageGetter.getImage("OtherIcons/Stop").surroundWithCircle(40f))
         tab.touchable = Touchable.enabled
         tab.onClick {
+            if (cityScreen.usesWorkbench) { removeWorkbenchQueueEntry(constructionQueueIndex); return@onClick }
             tab.touchable = Touchable.disabled
             Concurrency.run {
                 val success = cityView.tryRemoveFromQueue(constructionQueueIndex, false)

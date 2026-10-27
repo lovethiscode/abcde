@@ -51,13 +51,13 @@ class OptionsScreen(
 
     override fun show() {
         super.show()
-        if (Gdx.app.type != ApplicationType.iOS) return
+        if (!com.unciv.ui.components.widgets.UiNavigation.isMobile) return
         // Keep editing, glyph uploads and expander animations drawing while this screen is visible.
         Gdx.graphics.isContinuousRendering = true
     }
 
     override fun hide() {
-        if (Gdx.app.type == ApplicationType.iOS)
+        if (com.unciv.ui.components.widgets.UiNavigation.isMobile)
             Gdx.graphics.isContinuousRendering = game.settings.continuousRendering
         super.hide()
     }

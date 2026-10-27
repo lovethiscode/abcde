@@ -29,7 +29,8 @@ import com.unciv.ui.components.widgets.UiNavigation
 
 internal class ModInfoAndActionPane(
     private val description: Label,
-    private val availableWidth: Float
+    private val availableWidth: Float,
+    private val githubActionChanged: ((TextButton?) -> Unit)? = null
 ) : Table() {
     private val repoUrlToPreviewImage = HashMap<String, Texture?>()
     private val imageHolder = Table()
@@ -50,7 +51,7 @@ internal class ModInfoAndActionPane(
 
     init {
         top()
-        defaults().growX().minWidth(0f).padBottom(if (UiNavigation.isIos) 6f else 12f)
+        defaults().growX().minWidth(0f).padBottom(if (UiNavigation.isMobile) 6f else 12f)
     }
 
     /** Recreate the information part of the right-hand column
@@ -99,6 +100,7 @@ internal class ModInfoAndActionPane(
 
         imageHolder.clear()
         secondaryActions.clear()
+        githubActionChanged?.invoke(null)
         when {
             isBuiltin -> addUncivLogo(modName)
             isLocal -> addLocalPreviewImage(modName)
@@ -106,20 +108,23 @@ internal class ModInfoAndActionPane(
         }
         val heading = Table()
         val title = Table().apply {
-            add(ModManagementStyle.label(cleanModName(modName), if (UiNavigation.isIos) TextRole.SectionTitle else TextRole.PageTitle)).growX().minWidth(0f).row()
+            add(ModManagementStyle.label(cleanModName(modName), if (UiNavigation.isMobile) TextRole.SectionTitle else TextRole.PageTitle)).growX().minWidth(0f).row()
             if (author.isNotEmpty())
                 add(ModManagementStyle.label("Author: [$author]", TextRole.Supporting, ModManagementStyle.muted))
                     .growX().minWidth(0f).padTop(8f)
         }
         heading.add(imageHolder).size(48f).top().padRight(14f)
         heading.add(title).growX().minWidth(0f)
-        add(heading).growX().minWidth(0f).padBottom(if (UiNavigation.isIos) 8f else 16f).row()
+        add(heading).growX().minWidth(0f).padBottom(if (UiNavigation.isMobile) 8f else 16f).row()
 
         val facts = Table().apply { defaults().growX().minWidth(0f).top().padRight(18f) }
         fun metric(value: Label, caption: String): Table = Table().apply {
-            add(value).growX().minWidth(0f).left().row()
-            add(ModManagementStyle.label(caption, TextRole.Supporting, ModManagementStyle.muted))
-                .growX().minWidth(0f).padTop(4f)
+            add(value).growX().minWidth(0f).left()
+            if (!UiNavigation.isMobile) {
+                row()
+                add(ModManagementStyle.label(caption, TextRole.Supporting, ModManagementStyle.muted))
+                    .growX().minWidth(0f).padTop(4f)
+            }
         }
         val factValues = ArrayList<Pair<Label, String>>()
         updateSize(modSize)
@@ -143,7 +148,7 @@ internal class ModInfoAndActionPane(
         add(com.unciv.ui.images.ImageGetter.getWhiteDot().apply { color = ModManagementStyle.line })
             .height(1f).pad(4f, 0f, 16f, 0f).row()
         add(ModManagementStyle.label("About this mod", TextRole.SectionTitle)).growX().minWidth(0f).row()
-        add(description).growX().minWidth(0f).padBottom(if (UiNavigation.isIos) 8f else 16f).row()
+        add(description).growX().minWidth(0f).padBottom(if (UiNavigation.isMobile) 8f else 16f).row()
 
         if (repoUrl.isNotEmpty()) {
             val githubButton = ModManagementStyle.button("Open Github page")
@@ -152,7 +157,8 @@ internal class ModInfoAndActionPane(
                 Gdx.app.clipboard.contents = repoUrl
                 ToastPopup("Link copied to clipboard", stage)
             }
-            addSecondaryAction(githubButton)
+            if (githubActionChanged != null) githubActionChanged.invoke(githubButton)
+            else addSecondaryAction(githubButton)
         }
     }
 

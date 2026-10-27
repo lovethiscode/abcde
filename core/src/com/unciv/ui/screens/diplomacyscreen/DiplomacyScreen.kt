@@ -86,7 +86,7 @@ class DiplomacyScreen(
 
     private val splitPane = SplitPaneCenteringLeftSide()
 
-    internal val usesAdaptiveLayout get() = UiNavigation.isIos && skinStrings.usesExpeditionBlue
+    internal val usesAdaptiveLayout get() = UiNavigation.isMobile && skinStrings.usesExpeditionBlue
     private var adaptive: AdaptiveDiplomacyView? = null
     private var page: String? = null
     private var activeTradeTable: TradeTable? = null
@@ -95,10 +95,10 @@ class DiplomacyScreen(
 
     private fun navigateBack() {
         val civ = subPageCiv
-        if (UiNavigation.isIos && civ != null) updateRightSide(civ) else game.popScreen()
+        if (UiNavigation.isMobile && civ != null) updateRightSide(civ) else game.popScreen()
     }
 
-    private val closeButton = (if (UiNavigation.isIos) UiNavigation.backButton().apply {
+    private val closeButton = (if (UiNavigation.isMobile) UiNavigation.backButton().apply {
         onActivation { navigateBack() }; keyShortcuts.add(KeyCharAndCode.BACK)
     } else getCloseButton(closeButtonSize) { game.popScreen() }).apply { name = "ui-diplomacy-close" }
 
@@ -114,7 +114,7 @@ class DiplomacyScreen(
 
         updateLeftSideTable(selectCiv)
 
-        splitPane.setFillParent(!UiNavigation.isIos)
+        splitPane.setFillParent(!UiNavigation.isMobile)
         stage.addActor(splitPane)
 
         positionCloseButton()
@@ -172,7 +172,7 @@ class DiplomacyScreen(
 
     private fun positionCloseButton() {
         if (adaptive != null) return
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             closeButton.setPosition(closeButtonPad, stage.height - closeButtonPad, Align.topLeft)
             splitPane.setSize(stage.width, stage.height - closeButton.height - 2 * closeButtonPad)
         } else closeButton.setPosition(stage.width - closeButtonPad, stage.height - closeButtonPad, Align.topRight)
@@ -278,7 +278,7 @@ class DiplomacyScreen(
         rightSideTable.add(ScrollPane(
             if (otherCiv.isCityState) CityStateDiplomacyTable(this).getCityStateDiplomacyTable(otherCiv)
             else MajorCivDiplomacyTable(this).getMajorCivDiplomacyTable(otherCiv)
-        )).height(if (UiNavigation.isIos) splitPane.height else stage.height)
+        )).height(if (UiNavigation.isMobile) splitPane.height else stage.height)
     }
 
     //region Major Civ Diplomacy

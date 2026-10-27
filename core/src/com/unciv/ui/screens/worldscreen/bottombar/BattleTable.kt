@@ -160,7 +160,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         } else {
             val closeButton = addRoundCloseButton(this) { isVisible = false }
             closeButton.name = "ui-battle-close"
-            if (UiNavigation.isIos) {
+            if (UiNavigation.isMobile) {
                 pack()
                 height = height.coerceAtMost(stage.height - 15f)
                 validate()

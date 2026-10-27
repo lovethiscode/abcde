@@ -277,7 +277,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             demandsTable.add(button).row()
         }
 
-        if (!UiNavigation.isIos) demandsTable.add(Constants.close.toTextButton().onClick { diplomacyScreen.updateRightSide(otherCiv) })
+        if (!UiNavigation.isMobile) demandsTable.add(Constants.close.toTextButton().onClick { diplomacyScreen.updateRightSide(otherCiv) })
         return demandsTable
     }
 }

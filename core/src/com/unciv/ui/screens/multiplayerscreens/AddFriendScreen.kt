@@ -33,7 +33,6 @@ class AddFriendScreen(
         val playerIDTextField = UncivTextField("Please input a player ID for your friend!", initialID)
         val friendlist = FriendList()
 
-        pickerPane.setNavigationContent("Add friend".toLabel(TextRole.PageTitle))
         topTable.defaults().minWidth(0f)
         topTable.add("Friend name".toLabel(TextRole.Control)).width(formWidth).left().padTop(16f * unit).row()
         topTable.add(friendNameTextField).width(formWidth).minHeight(48f * unit).padTop(8f * unit).padBottom(20f * unit).row()
@@ -48,9 +47,7 @@ class AddFriendScreen(
 
         //CloseButton Setup
         closeButton.setText(UiNavigation.backCaption)
-        closeButton.onClick {
-            UncivGame.Current.popScreen()
-        }
+        setDefaultCloseAction()
 
         //RightSideButton Setup
         rightSideButton.setText("Add friend".tr())

@@ -102,13 +102,12 @@ class AuthPopup(
     }
     
     private fun addComponents(headerLabelText: String) {
-        if (ordinaryPresentation) addDialogTitle("Authentication", targetServerUrl.orEmpty())
         addGoodSizedLabel(headerLabelText).colspan(2).row()
-        if (!ordinaryPresentation) targetServerUrl?.let { addGoodSizedLabel(it).colspan(2).row() }
+        targetServerUrl?.let { addGoodSizedLabel(it).colspan(2).row() }
         add(passwordField).colspan(2).growX().apply {
             if (ordinaryPresentation) width(popupContentWidth).minHeight(48f * popupUnit)
         }.pad(16f * if (ordinaryPresentation) popupUnit else 1f, 0f, 16f * if (ordinaryPresentation) popupUnit else 1f, 0f).row()
-        addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.cancel else com.unciv.Constants.close, style = if (UiNavigation.isIos) null else negativeButtonStyle).growX().padRight(8f)
+        addCloseButton(if (UiNavigation.isMobile) com.unciv.Constants.cancel else com.unciv.Constants.close, style = if (UiNavigation.isMobile) null else negativeButtonStyle).growX().padRight(8f)
         if (ordinaryPresentation) {
             button.label.setFontSize(UiTypography.size(TextRole.Control, popupUnit))
             styleOrdinaryButton(button, primary = true)

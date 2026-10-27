@@ -45,10 +45,10 @@ class WorldScreenMenuPopup(
         innerTable.pad(0f)
         innerTable.defaults().pad(0f)
         clickBehindToClose = true
-        val ordinary = UiNavigation.isIos && worldScreen.gameInfo.campaign == null && worldScreen.gameInfo.endless == null
+        val ordinary = UiNavigation.isMobile && worldScreen.gameInfo.campaign == null && worldScreen.gameInfo.endless == null
         val unit = when {
             ordinary -> UiTypography.unitsPerPoint(worldScreen.stage)
-            UiNavigation.isIos -> worldScreen.stage.width / Gdx.graphics.width
+            UiNavigation.isMobile -> UiTypography.unitsPerPoint(worldScreen.stage)
             else -> 1f
         }
         val ui = WorldScreenMenuStyle(unit)
@@ -73,8 +73,6 @@ class WorldScreenMenuPopup(
             keyShortcuts.add(KeyCharAndCode.BACK)
         }
         val title = Table().apply {
-            add("Game menu".toLabel(ui.text, ui.font(TextRole.PageTitle)).apply { wrap = true })
-                .minWidth(0f).growX().left().row()
             add("[${worldScreen.viewingCiv.civName}] · Turn [${worldScreen.gameInfo.turns}]"
                 .toLabel(ui.muted, ui.font(TextRole.Supporting)).apply { wrap = true })
                 .minWidth(0f).growX().padTop(ui.px(4f))

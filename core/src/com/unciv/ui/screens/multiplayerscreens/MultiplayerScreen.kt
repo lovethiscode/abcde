@@ -29,6 +29,7 @@ import com.unciv.logic.multiplayer.MultiplayerGameUpdateStarted
 import com.unciv.logic.multiplayer.MultiplayerGameInvite
 import com.unciv.logic.multiplayer.MultiplayerGamePreview
 import com.unciv.logic.multiplayer.MultiplayerPlayerAction
+import com.unciv.logic.multiplayer.lobby.LobbySession
 import com.unciv.logic.multiplayer.performPlayerAction
 import com.unciv.logic.multiplayer.playerActionError
 import com.unciv.logic.multiplayer.retryPlayerAction
@@ -59,6 +60,7 @@ import com.unciv.utils.Concurrency
 import com.unciv.utils.Log
 import com.unciv.utils.launchOnGLThread
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import org.threeten.bp.Duration
 import com.unciv.ui.components.widgets.AutoScrollPane as ScrollPane
 
@@ -72,9 +74,10 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
     private val appearance = MultiplayerScreenStyle(UiNavigation.minimumTouchSize() / 44f)
     override val screenClearColor: Color get() = appearance.background
     private val layout = MultiplayerScreenLayout(stage.width / appearance.unit, stage.height / appearance.unit,
-        UiNavigation.isIos && stage.height / appearance.unit < 600f)
+        UiNavigation.isMobile && stage.height / appearance.unit < 600f)
     private val filterButtons = linkedMapOf<MultiplayerGameFilter, TextButton>()
     private val detailsPanel = Table()
+    private val lobbyHeader = Table()
     private val detailsActions = Table()
     private val gamesPanelContent = Table()
     private val gameActionsButton = appearance.button("", MultiplayerIcon.More, outlined = true).apply {
@@ -96,6 +99,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
     private var isDisposed = false
     private var isDownloadingMods = false
     private var playerActionInProgress = false
+    private var openingRoom = false
 
     private val copyGameIdButton = createCopyGameIdButton()
     private val copyInviteButton = createCopyInviteButton()
@@ -114,7 +118,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
     private val addGameButton = createAddGameButton()
     private val createRoomButton = "Create room".toTextButton().apply {
         isEnabled = !game.multiplayerLobbyServerUrl.isNullOrBlank()
-        onClick { MultiplayerLobbyScreen.openRoom() }
+        onClick { openRoomWithFeedback() }
     }
     private val copyUserIdButton = createCopyUserIdButton()
     private val friendsListButton = createFriendsListButton()
@@ -285,7 +289,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
         bottomTable.clear()
         pickerPane.remove()
         val u = appearance::px
-        if (UiNavigation.isIos) UiNavigation.styleBackButton(closeButton)
+        if (UiNavigation.isMobile) UiNavigation.styleBackButton(closeButton)
         else { closeButton.setText(""); appearance.decorate(closeButton, MultiplayerIcon.Back, ghost = true) }
         closeButton.name = "multiplayer-back"
         appearance.decorate(createRoomButton, MultiplayerIcon.Plus, outlined = true)
@@ -325,7 +329,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
             name = "multiplayer-screen"
             setFillParent(true)
             pad(u(layout.topPadding), u(layout.horizontalPadding), u(layout.bottomPadding), u(layout.horizontalPadding))
-            add(createHeader()).growX().minWidth(0f).minHeight(u(if (layout.twoColumns) 50f else 102f)).padBottom(u(10f)).row()
+            add(lobbyHeader).growX().minWidth(0f).minHeight(u(if (layout.twoColumns) 50f else 102f)).padBottom(u(10f)).row()
             val body = Table()
             body.add(createGamesPanel()).grow().minWidth(0f).minHeight(0f).width(u(layout.gamesWidth))
             if (layout.twoColumns) body.add(createDetailsPanel()).grow().minWidth(0f).minHeight(0f)
@@ -338,37 +342,81 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
             add(createServerBar()).growX().minWidth(0f).height(u(if (layout.phone && layout.twoColumns) 28f else 44f))
                 .padTop(u(10f))
         }
+        updateLobbyHeader()
         stage.addActor(root)
         updateServerStatus()
         updateGameCount()
     }
 
+    private fun updateLobbyHeader() {
+        createRoomButton.setText((if (LobbySession.current() == null) "Create room" else "Continue room").tr())
+        appearance.decorate(createRoomButton, MultiplayerIcon.Plus, outlined = true)
+        lobbyHeader.clearChildren()
+        lobbyHeader.add(createHeader()).growX().minWidth(0f)
+    }
+
+    override fun show() {
+        super.show()
+        updateLobbyHeader()
+    }
+
+    private fun openRoomWithFeedback() {
+        if (openingRoom) return
+        openingRoom = true
+        val loading = Popup(this, Popup.Scrollability.WithoutButtons, ordinaryShell = true).apply {
+            addGoodSizedLabel("Connecting to room...").row()
+            add(com.unciv.ui.components.widgets.LoadingImage(32f * appearance.unit).apply { show() })
+                .size(32f * appearance.unit)
+            open(force = true)
+        }
+        Concurrency.runOnGLThread {
+            // Let the waiting state reach the screen before constructing the room UI.
+            delay(80)
+            if (isDisposed || game.screen !== this@MultiplayerScreen) {
+                loading.close()
+                openingRoom = false
+                return@runOnGLThread
+            }
+            try {
+                MultiplayerLobbyScreen.openRoom {
+                    loading.close()
+                    openingRoom = false
+                }
+            } catch (e: Exception) {
+                loading.close()
+                openingRoom = false
+                Popup(this@MultiplayerScreen).apply {
+                    addGoodSizedLabel(e.message ?: "Room request failed. Please retry.").row()
+                    addCloseButton()
+                    open()
+                }
+            }
+        }
+    }
+
     private fun createHeader(): Table {
         val u = appearance::px
-        val title = "Multiplayer".toLabel(appearance.text, fontSize = appearance.font(TextRole.PageTitle))
-        val subtitle = "Take your turn when you are ready".toLabel(appearance.muted, fontSize = appearance.font(TextRole.Supporting)).apply {
-            setEllipsis(true)
-        }
-        val heading = Table().apply {
-            add(title).growX().minWidth(0f).left().row()
-            add(subtitle).growX().minWidth(0f).left().padTop(u(4f))
-        }
+        val inlineActions = layout.twoColumns && (!UiNavigation.isAndroid ||
+            closeButton.prefWidth + createRoomButton.prefWidth + addGameButton.prefWidth +
+                playerMenuButton.prefWidth + u(44f) <= u(layout.contentWidth))
         val actions = Table().apply {
             val widths = listOf(createRoomButton.prefWidth / appearance.unit, addGameButton.prefWidth / appearance.unit)
             if (layout.twoColumns || fitsInOneRow(layout.contentWidth, widths, 8f)) {
-                add(createRoomButton).height(u(44f)).minWidth(u(112f))
-                add(addGameButton).height(u(44f)).minWidth(u(140f)).padLeft(u(8f))
+                add(createRoomButton).apply { if (UiNavigation.isAndroid) minHeight(u(44f)) else height(u(44f)) }
+                    .minWidth(maxOf(u(112f), if (UiNavigation.isAndroid) createRoomButton.prefWidth else 0f))
+                add(addGameButton).apply { if (UiNavigation.isAndroid) minHeight(u(44f)) else height(u(44f)) }
+                    .minWidth(maxOf(u(140f), if (UiNavigation.isAndroid) addGameButton.prefWidth else 0f)).padLeft(u(8f))
             } else {
                 add(createRoomButton).growX().minWidth(0f).height(u(44f)).row()
                 add(addGameButton).growX().minWidth(0f).height(u(44f)).padTop(u(8f))
             }
         }
         return Table().apply {
-            add(closeButton).width(if (UiNavigation.isIos) closeButton.prefWidth else u(44f)).height(u(44f))
-            add(heading).growX().minWidth(0f).left().padLeft(u(12f))
-            if (layout.twoColumns) add(actions).padLeft(u(12f))
+            add(closeButton).width(if (UiNavigation.isMobile) closeButton.prefWidth else u(44f)).height(u(44f))
+            add().growX()
+            if (inlineActions) add(actions).padLeft(u(12f))
             add(playerMenuButton).size(u(44f)).padLeft(u(8f))
-            if (!layout.twoColumns) {
+            if (!inlineActions) {
                 row(); add(actions).colspan(3).growX().minWidth(0f).padTop(u(8f))
             }
         }
@@ -414,8 +462,8 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
         return Table().apply {
             name = "multiplayer-games-panel"
             background = appearance.surface(appearance.panel, 12f)
-            pad(u(if (UiNavigation.isIos) 12f else 16f))
-            add(gamesHeader).growX().minWidth(0f).padBottom(u(if (UiNavigation.isIos) 4f else 10f)).row()
+            pad(u(if (UiNavigation.isMobile) 12f else 16f))
+            add(gamesHeader).growX().minWidth(0f).padBottom(u(if (UiNavigation.isMobile) 4f else 10f)).row()
             add(gamesPanelContent).grow().minWidth(0f).minHeight(0f)
         }
     }
@@ -431,7 +479,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
             name = "multiplayer-details-panel"
             background = appearance.surface(appearance.panel, 12f)
             add(scroll).grow().minWidth(0f).minHeight(0f).row()
-            if (UiNavigation.isIos) add(detailsActions).growX().minWidth(0f)
+            if (UiNavigation.isMobile) add(detailsActions).growX().minWidth(0f)
         }
     }
 
@@ -440,12 +488,12 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
         detailsPanel.clearChildren()
         detailsActions.clearChildren()
         detailsActions.pad(0f)
-        if (UiNavigation.isIos) detailsPanel.top()
-        detailsPanel.pad(u(if (UiNavigation.isIos) 12f else 16f))
+        if (UiNavigation.isMobile) detailsPanel.top()
+        detailsPanel.pad(u(if (UiNavigation.isMobile) 12f else 16f))
         val header = Table().apply {
             val titleCopy = Table().apply {
                 add(detailTitleLabel).growX().minWidth(0f).left().row()
-                add(detailRulesetLabel).growX().minWidth(0f).left().padTop(u(if (UiNavigation.isIos) 2f else 5f))
+                add(detailRulesetLabel).growX().minWidth(0f).left().padTop(u(if (UiNavigation.isMobile) 2f else 5f))
             }
             add(titleCopy).growX().minWidth(0f)
             add(detailStatusBadge).minWidth(0f).top().padLeft(u(8f))
@@ -454,13 +502,13 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
             defaults().growX().minWidth(0f)
             add(createInfoItem("Current turn", currentTurnValue)).padRight(u(12f))
             add(createInfoItem("Time remaining", timeRemainingValue)).row()
-            add(createInfoItem("My civilization", ownCivilizationValue)).padRight(u(12f)).padTop(u(if (UiNavigation.isIos) 4f else 8f))
-            add(createInfoItem("This turn has lasted", turnDurationValue)).padTop(u(if (UiNavigation.isIos) 4f else 8f))
+            add(createInfoItem("My civilization", ownCivilizationValue)).padRight(u(12f)).padTop(u(if (UiNavigation.isMobile) 4f else 8f))
+            add(createInfoItem("This turn has lasted", turnDurationValue)).padTop(u(if (UiNavigation.isMobile) 4f else 8f))
         }
-        detailsPanel.add(header).growX().minWidth(0f).padBottom(u(if (UiNavigation.isIos) 4f else 8f)).row()
-        detailsPanel.add(grid).growX().minWidth(0f).padBottom(u(if (UiNavigation.isIos) 4f else 8f)).row()
-        detailsPanel.add(detailNoteLabel).growX().minWidth(0f).left().padBottom(u(if (UiNavigation.isIos) 4f else 6f)).row()
-        val actionHolder = if (UiNavigation.isIos) detailsActions.apply { pad(0f, u(12f), u(12f), u(12f)) } else detailsPanel
+        detailsPanel.add(header).growX().minWidth(0f).padBottom(u(if (UiNavigation.isMobile) 4f else 8f)).row()
+        detailsPanel.add(grid).growX().minWidth(0f).padBottom(u(if (UiNavigation.isMobile) 4f else 8f)).row()
+        detailsPanel.add(detailNoteLabel).growX().minWidth(0f).left().padBottom(u(if (UiNavigation.isMobile) 4f else 6f)).row()
+        val actionHolder = if (UiNavigation.isMobile) detailsActions.apply { pad(0f, u(12f), u(12f), u(12f)) } else detailsPanel
         rightSideButton.label.setWrap(false)
         rightSideButton.labelCell.maxWidth(appearance.px(layout.detailsWidth - 88f))
         actionHolder.add(rightSideButton).growX().minWidth(0f).height(u(44f)).padBottom(u(6f)).row()
@@ -476,7 +524,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
 
     private fun createInfoItem(title: String, value: Label): Table = Table().apply {
         add(title.toLabel(appearance.muted, fontSize = appearance.font(TextRole.Metadata))).growX().minWidth(0f).left().row()
-        add(value).growX().minWidth(0f).left().padTop(appearance.px(if (UiNavigation.isIos) 2f else 4f))
+        add(value).growX().minWidth(0f).left().padTop(appearance.px(if (UiNavigation.isMobile) 2f else 4f))
     }
 
     private fun showEmptyDetails(noGames: Boolean) {
@@ -494,21 +542,6 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
             detailsPanel.add("Create a room and share its invitation, or join a friend's game.".toLabel(
                 appearance.muted, fontSize = appearance.font(TextRole.Supporting)).apply { wrap = true })
                 .growX().minWidth(0f).maxWidth(u(330f)).left().padBottom(u(16f)).row()
-            val actions = Table().apply {
-                val create = appearance.button("Create room", MultiplayerIcon.Plus, primary = true).apply {
-                    name = "multiplayer-empty-create"; isEnabled = createRoomButton.isEnabled
-                    onClick { createRoomButton.activate() }
-                }
-                val join = appearance.button("Join by invitation", MultiplayerIcon.Link, outlined = true).apply {
-                    name = "multiplayer-empty-join"; onClick { addGameButton.activate() }
-                }
-                if (fitsInOneRow(layout.detailsWidth - 32f, listOf(create.prefWidth / appearance.unit, join.prefWidth / appearance.unit), 8f)) {
-                    add(create).height(u(44f)); add(join).height(u(44f)).padLeft(u(8f))
-                } else {
-                    add(create).growX().height(u(44f)).row(); add(join).growX().height(u(44f)).padTop(u(8f))
-                }
-            }
-            detailsPanel.add(actions).left().row()
             detailsPanel.add("Asynchronous turns, no need to be online together".toLabel(appearance.muted,
                 fontSize = appearance.font(TextRole.Metadata))).growX().minWidth(0f).left().padTop(u(10f))
         } else {
@@ -906,7 +939,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
 
     private fun showHelpPopup() {
         val helpPopup = Popup(this)
-        if (UiNavigation.isIos)
+        if (UiNavigation.isMobile)
             helpPopup.addTitleWithCloseButton("How multiplayer works".toLabel(fontSize = multiplayerTitleFontSize))
         else helpPopup.addGoodSizedLabel("How multiplayer works", size = multiplayerTitleFontSize).row()
 
@@ -940,7 +973,7 @@ class MultiplayerScreen : PickerScreen(disableScroll = true), RecreateOnResize {
             "All players must use the same game server and compatible game versions and rulesets.",
             "For chat, set or check your server password in Options → Multiplayer. Saving it reconnects chat automatically without leaving the game.",
         )
-        if (!UiNavigation.isIos) helpPopup.addCloseButton("Got it")
+        if (!UiNavigation.isMobile) helpPopup.addCloseButton("Got it")
         helpPopup.open()
     }
 

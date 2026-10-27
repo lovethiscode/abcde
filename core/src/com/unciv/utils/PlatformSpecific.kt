@@ -90,6 +90,8 @@ interface PlatformSpecific {
         get() = false
     fun showAchievements() {}
     fun showAchievementGuide() {}
+    val platformSettingsAvailable: Boolean get() = false
+    fun showPlatformSettings() {}
 
     val campaignSharingAvailable: Boolean get() = false
     fun showCampaignShare(data: com.unciv.logic.campaign.CampaignShareData) {}

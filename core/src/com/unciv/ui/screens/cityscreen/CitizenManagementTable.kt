@@ -8,6 +8,9 @@ import com.unciv.Constants
 import com.unciv.logic.city.CityFocus
 import com.unciv.ui.components.widgets.ExpanderTab
 import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.input.onChange
+import com.unciv.ui.popups.ConfirmPopup
+import com.unciv.models.translations.tr
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.screens.basescreen.BaseScreen
@@ -18,6 +21,7 @@ class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin
 
     fun update() {
         clear()
+        if (cityScreen.usesWorkbench) { updateWorkbench(); return }
 
         val colorSelected = BaseScreen.skin.getColor("selection")
         val colorButton = BaseScreen.skin.getColor("color")
@@ -114,6 +118,57 @@ class CitizenManagementTable(val cityScreen: CityScreen) : Table(BaseScreen.skin
         }
 
         pack()
+    }
+
+    private fun resetWorkbenchCitizens() {
+        if (!cityScreen.canCityBeChanged()) return
+        ConfirmPopup(cityScreen, "Resetting citizens unlocks worked tiles and reallocates population.", "Reset Citizens") {
+            cityView.tryReassignPopulation(resetLocked = true)
+            cityScreen.updateAsync()
+        }.open()
+    }
+
+    private fun updateWorkbench() {
+        val focuses = CityFocus.entries.filter { it.tableEnabled &&
+            (it != CityFocus.FaithFocus || cityView.viewingCiv().isReligionEnabled()) }
+        fun caption(focus: CityFocus) = when (focus) {
+            CityFocus.GoldGrowthFocus -> "{Gold} + {Growth}"
+            CityFocus.ProductionGrowthFocus -> "{Production} + {Growth}"
+            else -> focus.stat?.name ?: focus.label
+        }.tr(hideIcons = true)
+        val selector = cityWorkbenchSelectBox().apply {
+            setItems(*focuses.map(::caption).toTypedArray())
+            selectedIndex = focuses.indexOf(cityView.getCityFocus()).coerceAtLeast(0)
+            name = "ui-city-focus-picker"
+            isDisabled = !cityScreen.canCityBeChanged()
+            onChange {
+                if (cityScreen.canCityBeChanged()) {
+                    cityView.trySetCityFocus(focuses[selectedIndex])
+                    cityScreen.updateAsync()
+                }
+            }
+        }
+        add("Citizen Focus".toLabel(TextRole.Control, unit = 1f)).padRight(8f)
+        add(selector).growX().minWidth(0f).minHeight(44f)
+        add(cityWorkbenchIcon("OtherIcons/Options", "Citizen Management", "ui-city-citizen-actions") {
+            val popup = CityWorkbenchPopup(cityScreen, "Citizen Management")
+            popup.addButton("Reset Citizens") { popup.close(); resetWorkbenchCitizens() }.apply {
+                actor.name = "ui-city-reset-citizens"
+                actor.isDisabled = !cityScreen.canCityBeChanged()
+            }.growX().row()
+            popup.addButton("{Avoid Growth}: {" + if (cityView.avoidGrowth) "On}" else "Off}") {
+                if (cityScreen.canCityBeChanged()) { cityView.tryToggleAvoidGrowth(); popup.close(); cityScreen.updateAsync() }
+            }.apply {
+                actor.name = "ui-city-avoid-growth"
+                actor.isDisabled = !cityScreen.canCityBeChanged()
+            }.growX().row()
+            popup.addCloseButton()
+            popup.open()
+        }).size(44f).padLeft(8f)
+        cityScreen.globalShortcuts.add(KeyboardBinding.ResetCitizens) { resetWorkbenchCitizens() }
+        cityScreen.globalShortcuts.add(KeyboardBinding.AvoidGrowth) {
+            if (cityScreen.canCityBeChanged()) { cityView.tryToggleAvoidGrowth(); cityScreen.updateAsync() }
+        }
     }
 
     fun asExpander(onChange: (() -> Unit)?): ExpanderTab {

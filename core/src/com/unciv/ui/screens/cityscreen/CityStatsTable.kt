@@ -117,13 +117,12 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
     internal fun workbenchPage(section: String): Table {
         lowerTable.clear()
         lowerTable.top().left()
-        lowerTable.defaults().growX().minWidth(0f).space(8f)
+        lowerTable.defaults().growX().minWidth(0f).space(4f)
         when (section) {
             "Citizens" -> {
                 addText(includeStatus = false)
                 lowerTable.add(CitizenManagementTable(cityScreen).apply { update() }).row()
                 if (cityView.getMaxSpecialists().isNotEmpty()) {
-                    lowerTable.add("Specialists".toLabel(fontSize = UiTypography.size(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 18))).left().padTop(16f).row()
                     lowerTable.add(SpecialistAllocationTable(cityScreen).apply { update() }).row()
                 }
             }
@@ -159,8 +158,10 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
     private fun addText(includePopulation: Boolean = true, includeStatus: Boolean = true) {
         val unassignedPopString = "{Unassigned population}: ".tr() +
                 cityView.getFreePopulation().tr() + "/" + cityView.getPopulationCount().tr()
-        val unassignedPopLabel = unassignedPopString.toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (cityScreen.usesWorkbench) 14 else Constants.defaultFontSize))
-        if (cityScreen.canChangeState)
+        val populationSummary = if (cityScreen.usesWorkbench) unassignedPopString + " · " +
+            ("{Avoid Growth}: {" + if (cityView.avoidGrowth) "On}" else "Off}").tr() else unassignedPopString
+        val unassignedPopLabel = populationSummary.toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (cityScreen.usesWorkbench) 14 else Constants.defaultFontSize))
+        if (cityScreen.canChangeState && !cityScreen.usesWorkbench)
             unassignedPopLabel.onClick { 
                 cityView.tryReassignPopulation()
                 cityScreen.updateAsync()
@@ -189,7 +190,7 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
         turnsToPopString += " (${cityView.getFoodStored()}${Fonts.food}/${cityView.getFoodToNextPopulation()}${Fonts.food})"
 
         if (includePopulation) {
-        lowerTable.add(unassignedPopLabel).minHeight(if (cityScreen.usesWorkbench) 44f else 0f).row()
+        lowerTable.add(unassignedPopLabel.apply { if (cityScreen.usesWorkbench) wrap = true }).width(if (cityScreen.usesWorkbench) cityScreen.workbenchManagementWidth else unassignedPopLabel.prefWidth).row()
         for (text in listOf(turnsToExpansionString, turnsToPopString)) {
             val label = text.toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (cityScreen.usesWorkbench) 13 else Constants.defaultFontSize))
             if (cityScreen.usesWorkbench) label.wrap = true
@@ -299,7 +300,8 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
         otherBuildings.sortBy { it.name }
 
         val totalTable = Table()
-        lowerTable.addCategory("Buildings", totalTable, KeyboardBinding.BuildingsDetail, false)
+        if (cityScreen.usesWorkbench) lowerTable.add(totalTable).growX().row()
+        else lowerTable.addCategory("Buildings", totalTable, KeyboardBinding.BuildingsDetail, false)
 
         if (specialistBuildings.isNotEmpty()) {
             val specialistBuildingsTable = Table()
@@ -331,6 +333,26 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
     }
 
     private fun addBuildingButton(building: Building, destinationTable: Table) {
+        if (cityScreen.usesWorkbench) {
+            val width = cityScreen.workbenchManagementWidth
+            val name = if (cityScreen.hasFreeBuilding(building)) "{${building.name}} ({Free})" else building.name
+            val yields = cityView.getBuildingStats(building).joinToString(" ") { "${it.value.toInt()} ${it.key.character}" }
+            val seats = building.newSpecialists().map { (specialist, amount) ->
+                "{${specialist}} ${minOf(cityView.getNewSpecialists()[specialist], amount)}/$amount".tr(hideIcons = true)
+            }.joinToString(" · ")
+            val copy = Table()
+            copy.add(name.toLabel(TextRole.Control, unit = 1f, hideIcons = true).apply { wrap = true }).width(width - 44f).left().row()
+            if (yields.isNotEmpty() || seats.isNotEmpty()) copy.add(listOf(yields, seats).filter { it.isNotEmpty() }.joinToString(" · ")
+                .toLabel(TextRole.Supporting, unit = 1f).apply { wrap = true }).width(width - 44f).left().padTop(2f)
+            val button = Table().apply {
+                this.name = "ui-city-built:${building.name}"
+                add(ImageGetter.getConstructionPortrait(building.name, 28f)).size(28f).padRight(10f)
+                add(copy).growX().minWidth(0f)
+                onActivation { cityScreen.selectConstruction(building); cityScreen.updateAsync() }
+            }
+            destinationTable.add(button).width(width).minHeight(56f).growX().left().row()
+            return
+        }
 
         val button = Table()
 
@@ -406,8 +428,11 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
         val greatPeopleTable = Table()
 
         val gppBreakdown = cityView.getGreatPersonPointsBreakdown()
-        if (gppBreakdown.allNames.isEmpty())
+        if (gppBreakdown.allNames.isEmpty()) {
+            if (cityScreen.usesWorkbench) lowerTable.add("No great person points yet.".toLabel(TextRole.Body, unit = 1f).apply { wrap = true })
+                .width(cityScreen.workbenchManagementWidth).row()
             return
+        }
         val greatPersonPoints = gppBreakdown.sum()
 
         // Iterating over allNames instead of greatPersonPoints will include those where the aggregation had points but ended up zero
@@ -437,21 +462,24 @@ class CityStatsTable(private val cityScreen: CityScreen) : Table() {
                 addActor(bar)
                 bar.toBack()
             }
-            progressBar.setLabel(Color.WHITE, "$gppCurrent/$gppNeeded", fontSize = UiTypography.size(TextRole.CompactData, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 14))
+            if (cityScreen.usesWorkbench) {
+                info.add("$gppCurrent/$gppNeeded".toLabel(TextRole.CompactData, unit = 1f)).colspan(2).left().row()
+            } else progressBar.setLabel(Color.WHITE, "$gppCurrent/$gppNeeded", fontSize = UiTypography.size(TextRole.CompactData, unit = UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 14))
 
             info.add(progressBar).colspan(2).left().expandX().row()
             info.onClick {
                 GreatPersonPointsBreakdownPopup(cityScreen, gppBreakdown, greatPersonName)
             }
             greatPeopleTable.add(info).growX().top().padBottom(10f)
-            val icon = ImageGetter.getConstructionPortrait(greatPersonName, 50f)
+            val icon = ImageGetter.getConstructionPortrait(greatPersonName, if (cityScreen.usesWorkbench) 28f else 50f)
             icon.onClick {
                 GreatPersonPointsBreakdownPopup(cityScreen, gppBreakdown, null)
             }
-            greatPeopleTable.add(icon).row()
+            greatPeopleTable.add(icon).minSize(if (cityScreen.usesWorkbench) 44f else 0f).row()
         }
 
-        lowerTable.addCategory("Great People", greatPeopleTable, KeyboardBinding.GreatPeopleDetail)
+        if (cityScreen.usesWorkbench) lowerTable.add(greatPeopleTable).growX().row()
+        else lowerTable.addCategory("Great People", greatPeopleTable, KeyboardBinding.GreatPeopleDetail)
     }
 
     private inner class MiniStatsTable(wasOpen: Boolean?) : Table() {

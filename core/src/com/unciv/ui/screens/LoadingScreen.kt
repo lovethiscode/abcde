@@ -34,7 +34,7 @@ class LoadingScreen(
         val bounds = (stage.viewport as SafeAreaViewport).drawingBounds
         image.setBounds(bounds.x, bounds.y, bounds.width, bounds.height)
         stage.addActor(image)
-        val ordinary = com.unciv.ui.components.widgets.UiNavigation.isIos &&
+        val ordinary = com.unciv.ui.components.widgets.UiNavigation.isMobile &&
             com.unciv.UncivGame.getGameInfoOrNull()?.let { it.campaign == null && it.endless == null } != false
         if (ordinary) {
             // Build before the first frame: world creation can occupy the next GL frame,

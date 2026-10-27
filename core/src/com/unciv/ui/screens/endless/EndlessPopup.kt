@@ -57,7 +57,7 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
         } else if (mode.offer != null) {
             val offer = mode.offer!!
             text("Stage [${offer.stage}] cleared · choose one reward")
-            val wide = width >= 750f
+            val wide = width / UiTypography.unitsPerPoint(screen.stage) >= 750f
             val repairAllowed = mode.stageState?.pace != "wild"
             val cardCount = if (repairAllowed) 3 else 2
             val cardWidth = if (wide) (width - 12f * (cardCount - 1)) / cardCount else width

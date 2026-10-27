@@ -62,8 +62,8 @@ class ReligiousBeliefsPickerScreen (
             if (stacked != shouldStack) {
                 clear()
                 if (shouldStack) {
-                    add(leftPane).growX().height(Value.percentHeight(if (UiNavigation.isIos) .28f else .36f, this))
-                        .minHeight(OverviewUi.touch * if (UiNavigation.isIos) 2f else 3f).row()
+                    add(leftPane).growX().height(Value.percentHeight(if (UiNavigation.isMobile) .28f else .36f, this))
+                        .minHeight(OverviewUi.touch * if (UiNavigation.isMobile) 2f else 3f).row()
                     add(rightPane).grow().minWidth(0f).minHeight(0f).padTop(OverviewUi.pt(10f))
                 } else {
                     add(leftPane).width(Value.percentWidth(.34f, this)).growY().minWidth(0f)
@@ -132,7 +132,9 @@ class ReligiousBeliefsPickerScreen (
     }
 
     private fun setupChoosableReligionIcons() {
-        val descriptionLabel = "Choose an Icon and name for your Religion".toLabel(TextRole.Body)
+        val descriptionLabel = "Choose an Icon and name for your Religion".toLabel(TextRole.Body).apply {
+            name = "ui-religion-name-caption"
+        }
 
         fun changeDisplayedReligionName(newReligionName: String) {
             displayName = newReligionName
@@ -156,9 +158,17 @@ class ReligiousBeliefsPickerScreen (
         }
 
         val labelTable = Table()
-        labelTable.add(descriptionLabel).pad(5f)
-        labelTable.add(changeReligionNameButton).pad(5f).row()
-        topReligionIcons.add(labelTable).center().pad(5f).row()
+        if (UiNavigation.isAndroid) {
+            descriptionLabel.wrap = true
+            labelTable.add(descriptionLabel).growX().minWidth(0f).pad(5f)
+            labelTable.add(changeReligionNameButton).minSize(UiNavigation.minimumTouchSize()).pad(5f).row()
+            topReligionIcons.add(labelTable)
+                .width((stage.width - OverviewUi.pt(24f) - 10f).coerceAtLeast(1f)).minWidth(0f).pad(5f).row()
+        } else {
+            labelTable.add(descriptionLabel).pad(5f)
+            labelTable.add(changeReligionNameButton).pad(5f).row()
+            topReligionIcons.add(labelTable).center().pad(5f).row()
+        }
 
         changeReligionNameButton.onClick {
             AskTextPopup(

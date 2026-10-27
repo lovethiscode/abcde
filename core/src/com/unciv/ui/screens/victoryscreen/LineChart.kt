@@ -170,6 +170,12 @@ class LineChart(
         val yAxisLabelMinY =
                 xAxisLabelsHeight + axisToLabelPadding + axisLineWidth / 2 - zeroYAxisLabelHeight / 2
         val yAxisLabelYRange = yAxisLabelMaxY - yAxisLabelMinY
+        // Preserve the scale and data while thinning labels to fit the actual font and
+        // plot height. Fixed tick counts overlap on short mobile landscape charts.
+        val yLabelStride = if (overviewStyle && yLabels.size > 1)
+            ceil((labelHeight + com.unciv.ui.screens.overviewscreen.OverviewUi.pt(4f)) /
+                (yAxisLabelYRange / (yLabels.size - 1)).coerceAtLeast(1f)).toInt().coerceAtLeast(1)
+        else 1
 
         // We draw the y-axis labels first. They will take away some space on the left of the
         // widget which we need to consider when drawing the rest of the graph.
@@ -177,9 +183,11 @@ class LineChart(
         var zeroAxisYPosition = 0f // Pixel position of zero axis
         yLabels.forEachIndexed { index, value ->
             val label = yLabelsAsLabels[index] // we assume yLabels.size == yLabelsAsLabels.size
-            val yPos = yAxisLabelMinY + index * (yAxisLabelYRange / (yLabels.size - 1))
+            val yPos = yAxisLabelMinY + index * (yAxisLabelYRange / (yLabels.size - 1).coerceAtLeast(1))
             label.setPosition((widestYLabelWidth - label.width) / 2, yPos)
-            addActor(label)
+            if (index == yLabels.lastIndex ||
+                index % yLabelStride == 0 && (index == 0 || yLabels.lastIndex - index >= yLabelStride))
+                addActor(label)
 
             // Draw y-axis orientation lines and x-axis
             val zeroIndex = value == 0
@@ -205,7 +213,7 @@ class LineChart(
         val xAxisLabelMaxX = width - lastXAxisLabelWidth / 2
         val xAxisLabelXRange = xAxisLabelMaxX - xAxisLabelMinX
         xLabelsAsLabels.forEachIndexed { index, label ->
-            val xPos = xAxisLabelMinX + index * (xAxisLabelXRange / (xLabels.size - 1))
+            val xPos = xAxisLabelMinX + index * (xAxisLabelXRange / (xLabels.size - 1).coerceAtLeast(1))
             label.setPosition(xPos - label.width / 2, 0f)
             addActor(label)
 

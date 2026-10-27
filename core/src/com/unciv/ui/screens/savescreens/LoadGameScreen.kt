@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.savescreens
 
 import com.unciv.ui.components.fonts.TextRole
+import com.unciv.ui.components.fonts.UiTypography
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
@@ -52,10 +53,13 @@ import java.util.concurrent.ConcurrentHashMap
 
 class LoadGameScreen(private val initialSavePath: String? = null, initialDetails: Boolean = false) :
     PickerScreen(disableScroll = true), RecreateOnResize {
-    private val ui = LoadGameScreenStyle(UiNavigation.minimumTouchSize() / 44f)
+    // Layout uses dp/pt; the platform's minimum touch target is a separate constraint.
+    private val ui = LoadGameScreenStyle(if (UiNavigation.isAndroid) UiTypography.unitsPerPoint(stage)
+        else UiNavigation.minimumTouchSize() / 44f)
+    private val touchSize = UiNavigation.minimumTouchSize()
     private val narrow = stage.width / ui.unit <= 700f
     private val wide = stage.width / ui.unit >= 1150f
-    private val compact = UiNavigation.isIos && stage.height / ui.unit < 450f
+    private val compact = UiNavigation.isMobile && stage.height / ui.unit < 450f
     private var showingDetails = initialDetails
     private var restoringFiles = false
     @Volatile private var disposed = false
@@ -82,7 +86,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
     private val showAutosavesCheckbox = CheckBox("Show autosaves".tr(), skin)
     private val errorLabel = ui.label("", TextRole.Supporting, ui.danger, true)
     private val cloudStatusLabel = ui.label("", TextRole.Supporting, ui.muted, true)
-    private val cloudButton = ui.button("iCloud", SaveIcon.Cloud, size = TextRole.Control)
+    private val cloudButton = ui.button(game.files.cloudSaveSync.displayName, SaveIcon.Cloud, size = TextRole.Control)
     private val importSaveButton = ui.button("Import save", SaveIcon.Import, outline = true)
     private val copySavedGameToClipboardButton = getCopyExistingSaveToClipboardButton()
     private val deleteSaveButton = ui.button("Delete", SaveIcon.Delete, ghost = true, size = TextRole.Control)
@@ -119,10 +123,10 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         pickerPane.remove()
         root.name = "load-game-root"; root.setFillParent(true)
         root.background = ui.surface(ui.background, 0f)
-        root.pad(ui.px(if (wide) 28f else if (compact) 8f else 16f), ui.px(16f), ui.px(if (wide) 32f else if (compact) 8f else 16f), ui.px(16f))
+        root.pad(ui.px(if (wide) 28f else if (compact) 8f else 16f), ui.px(16f), ui.px(if (wide) 32f else if (compact) 0f else 16f), ui.px(16f))
         stage.addActor(root)
         closeButton.name = "load-back"
-        if (UiNavigation.isIos) UiNavigation.styleBackButton(closeButton)
+        if (UiNavigation.isMobile) UiNavigation.styleBackButton(closeButton, unit = ui.unit)
         else { closeButton.setText(""); ui.decorate(closeButton, SaveIcon.Back) }
         closeButton.onActivation {
             if (narrow && showingDetails) { showingDetails = false; layoutBody() }
@@ -172,7 +176,9 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             else onLoadGame(file)
         }
         detailScroll.setScrollingDisabled(true, false); detailScroll.setOverscroll(false, false)
-        detailContent.top(); detailContent.defaults().growX().minWidth(0f)
+        // Native glyphs may extend above the label's nominal height; keep that ink
+        // inside the scroll viewport rather than under its top clipping edge.
+        detailContent.top().padTop(ui.px(6f)); detailContent.defaults().growX().minWidth(0f)
         initLayout()
         refreshSaves()
         if (cloudSaveSync.isSupported) {
@@ -184,11 +190,6 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
     override fun recreate() = LoadGameScreen(selectedSave?.path(), showingDetails)
 
     private fun initLayout() {
-        val heading = Table().apply {
-            add(ui.label("Load game", TextRole.PageTitle)).growX().minWidth(0f).left().row()
-            add(ui.label("Choose a save and continue your civilization", TextRole.Supporting, ui.muted).apply { setEllipsis(true) })
-                .growX().minWidth(0f).left().padTop(ui.px(3f))
-        }
         val actions = Table().apply {
             val available = this@LoadGameScreen.stage.width - root.padLeft - root.padRight
             val actionWidth = if (cloudSaveSync.isSupported) (available - ui.px(12f)) / 2 else available
@@ -197,20 +198,21 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
                 button.label.wrap = true
                 button.labelCell.growX().minWidth(0f)
             }
-            if (cloudSaveSync.isSupported) add(cloudButton).minHeight(ui.px(44f)).padRight(ui.px(12f))
+            if (cloudSaveSync.isSupported) add(cloudButton).minHeight(touchSize).padRight(ui.px(12f))
                 .apply { if (narrow) width(actionWidth).minWidth(0f) }
-            add(importSaveButton).minHeight(ui.px(44f)).apply { if (narrow) width(actionWidth).minWidth(0f) }
+            add(importSaveButton).minHeight(touchSize).apply { if (narrow) width(actionWidth).minWidth(0f) }
         }
         val header = Table().apply {
-            add(closeButton).width(if (UiNavigation.isIos) closeButton.prefWidth else ui.px(44f)).height(ui.px(44f)).padRight(ui.px(12f))
-            add(heading).growX().minWidth(0f).left()
+            add(closeButton).width(if (UiNavigation.isMobile) closeButton.prefWidth.coerceAtLeast(touchSize) else touchSize)
+                .minHeight(touchSize).padRight(ui.px(12f))
+            add().growX()
             if (narrow) { row(); add(actions).colspan(2).growX().minWidth(0f).padTop(ui.px(8f)) }
             else add(actions).padLeft(ui.px(16f))
         }
         root.add(header).growX().minWidth(0f).padBottom(ui.px(if (wide) 24f else if (compact) 8f else 14f)).row()
         val listHeader = Table().apply {
             add(countLabel).growX().minWidth(0f).left().padRight(ui.px(8f))
-            add(showAutosavesCheckbox).minHeight(ui.px(44f)).right()
+            add(showAutosavesCheckbox).minHeight(touchSize).right()
         }
         savesPane.top().add(listHeader).growX().minWidth(0f).padBottom(ui.px(4f)).row()
         savesPane.add(listContent).grow().minWidth(0f).minHeight(0f)
@@ -218,10 +220,11 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         val inset = ui.px(if (wide) 28f else 20f)
         detailsPane.add(detailScroll).grow().minWidth(0f).minHeight(0f).pad(ui.px(if (compact) 10f else 16f), inset, 0f, inset).row()
         val footer = Table().apply {
-            add(rightSideButton).growX().minWidth(0f).minHeight(ui.px(44f)).row()
-            add(managementActions).padTop(ui.px(4f)).center()
+            // Reclaim spacing in short windows while retaining full-height touch targets.
+            add(rightSideButton).growX().minWidth(0f).minHeight(touchSize).row()
+            add(managementActions).padTop(ui.px(if (compact) 0f else 4f)).center()
         }
-        detailsPane.add(footer).growX().minWidth(0f).pad(ui.px(if (compact) 6f else 10f), inset, ui.px(if (compact) 8f else 14f), inset)
+        detailsPane.add(footer).growX().minWidth(0f).pad(ui.px(if (compact) 2f else 10f), inset, ui.px(if (compact) 0f else 14f), inset)
         root.add(body).grow().minWidth(0f).minHeight(0f)
         layoutBody(); showDetails()
     }
@@ -329,10 +332,10 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         val file = selectedSave
         managementActions.clear()
         if (file != null) {
-            managementActions.add(copySavedGameToClipboardButton).minHeight(ui.px(44f)).minWidth(0f)
+            managementActions.add(copySavedGameToClipboardButton).minHeight(touchSize).minWidth(0f)
             managementActions.add(Table().apply { background = ui.surface(ui.border, 0f) })
                 .size(ui.px(1f), ui.px(14f)).pad(0f, ui.px(6f), 0f, ui.px(6f))
-            managementActions.add(deleteSaveButton).minHeight(ui.px(44f)).minWidth(0f)
+            managementActions.add(deleteSaveButton).minHeight(touchSize).minWidth(0f)
         }
         if (file == null) {
             val blank = Table().apply {
@@ -349,7 +352,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             val icon = Table().apply { background = ui.surface(ui.raised); add(SaveIcon.Flag.image(ui.gold)).size(ui.px(25f)) }
             add(icon).size(ui.px(44f)).padRight(ui.px(12f)).top()
             val text = Table().apply {
-                add(ui.label(if (info == null) file.name() else civilizationAndTurn(info), if (UiNavigation.isIos) TextRole.SectionTitle else TextRole.PageTitle, wrap = true).apply {
+                add(ui.label(if (info == null) file.name() else civilizationAndTurn(info), if (UiNavigation.isMobile) TextRole.SectionTitle else TextRole.PageTitle, wrap = true).apply {
                     if (info == null) setText(file.name())
                 }).width((detailInnerWidth()-ui.px(56f)).coerceAtLeast(ui.px(80f))).left().row()
                 if (info != null) add(ui.label("", TextRole.Supporting, ui.muted, true).apply { setText(file.name()) }).growX().minWidth(0f).padTop(ui.px(3f))
@@ -399,20 +402,20 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         val symbol = Table().apply { background = ui.surface(ui.panel, 16f); add(SaveIcon.Archive.image(ui.muted)).size(ui.px(28f)) }
         add(symbol).size(ui.px(56f)).padBottom(ui.px(16f)).row()
         add(ui.label(if (filtered) "No manual saves" else "No saves yet", TextRole.SectionTitle, wrap = true)).growX().minWidth(0f).padBottom(ui.px(12f)).row()
-        add(ui.label(if (filtered) "Show autosaves or import a save." else "Import a save file or restore from iCloud.", TextRole.Supporting, ui.muted, true)).growX().minWidth(0f).padBottom(ui.px(16f)).row()
+        add(ui.label(if (filtered) "Enable “Show autosaves” above, or import a save." else if (!cloudSaveSync.isSupported) "Import a save file." else cloudText("Import a save file or restore from iCloud."), TextRole.Supporting, ui.muted, true)).growX().minWidth(0f).padBottom(ui.px(16f)).row()
         val actions = Table().apply {
-            add(ui.button(if (filtered) "Show autosaves" else "Import save", if (filtered) SaveIcon.Clock else SaveIcon.Import, primary = true).apply {
-                name = "load-empty-import"; onActivation { if (filtered) showAutosavesCheckbox.isChecked = true else ImportSaveMenu(this) }
-            }).minHeight(ui.px(44f))
+            if (!filtered) add(ui.button("Import save", SaveIcon.Import, primary = true).apply {
+                name = "load-empty-import"; onActivation { ImportSaveMenu(this) }
+            }).minHeight(touchSize)
             if (cloudSaveSync.isSupported) {
                 val stack = game.settings.fontSizeMultiplier > 1.2f || narrow
-                if (stack) row()
-                add(ui.button("Restore from iCloud", SaveIcon.Cloud, outline = true).apply {
+                if (stack && !filtered) row()
+                add(ui.button(cloudText("Restore from iCloud"), SaveIcon.Cloud, outline = true).apply {
                 name = "load-empty-restore"; onActivation { openCloudSyncConfirmation(confirmRestoreSaves, "Restore saves from iCloud", CloudSyncTrigger.Restore) }
-            }).minHeight(ui.px(44f)).padLeft(if (stack) 0f else ui.px(12f)).padTop(if (stack) ui.px(8f) else 0f)
+            }).minHeight(touchSize).padLeft(if (stack || filtered) 0f else ui.px(12f)).padTop(if (stack && !filtered) ui.px(8f) else 0f)
             }
         }
-        add(actions)
+        if (!filtered || cloudSaveSync.isSupported) add(actions)
     }
 
     private fun openCloudMenu() {
@@ -423,10 +426,16 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             popup.add(ui.button(caption, SaveIcon.Cloud, ghost = true).apply {
                 this.name = name
                 onActivation { popup.close(); openCloudSyncConfirmation(question, caption, trigger) }
-            }).growX().minHeight(ui.px(44f)).row()
+            }).growX().minHeight(touchSize).row()
         }
         action("Sync saves now", "load-cloud-sync", CloudSyncTrigger.Manual, confirmSyncSaves)
-        action("Restore saves from iCloud", "load-cloud-restore", CloudSyncTrigger.Restore, confirmRestoreSaves)
+        if (cloudSaveSync.canConfigure) {
+            popup.add(ui.button("Cloud sync settings", SaveIcon.Cloud, ghost = true).apply {
+                name = "load-cloud-settings"
+                onActivation { popup.close(); cloudSaveSync.configure() }
+            }).growX().minHeight(UiNavigation.minimumTouchSize()).row()
+        }
+        action(cloudText("Restore saves from iCloud"), "load-cloud-restore", CloudSyncTrigger.Restore, confirmRestoreSaves)
         popup.addCloseButton(); popup.open()
     }
 
@@ -442,13 +451,14 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             CloudSaveState.AccountChanged -> "Account changed"
             else -> "Available"
         }
-        cloudButton.setText("iCloud ${caption.tr()}")
+        cloudButton.setText(if (UiNavigation.isAndroid && status.state == CloudSaveState.NoAccount)
+            cloudSaveSync.displayName else "${cloudSaveSync.displayName} ${caption.tr()}")
     }
 
     private fun deleteSelectedSave() {
         val file = selectedSave ?: return
         val localOnly = cloudSaveSync.isSupported
-        val question = if (localOnly) "Are you sure you want to delete this save from this device? It will remain in iCloud."
+        val question = if (localOnly) cloudText("Are you sure you want to delete this save from this device? It will remain in iCloud.")
             else "Are you sure you want to delete this save?"
         ConfirmPopup(this, question, "Delete save") {
             val message = try {
@@ -481,7 +491,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
     }
 
     private fun openCloudSyncConfirmation(question: String, confirmText: String, trigger: CloudSyncTrigger) {
-        ConfirmPopup(this, question, confirmText) {
+        ConfirmPopup(this, cloudText(question), cloudText(confirmText)) {
             cloudSaveSync.requestSync(trigger)
         }.apply {
         }.open()
@@ -498,6 +508,8 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
         }
     }
 
+    private fun cloudText(text: String) = text.tr().replace("iCloud", cloudSaveSync.displayName)
+
     private fun cloudStatusText(status: CloudSaveStatus): String {
         val stateText = when (status.state) {
             CloudSaveState.Unsupported -> ""
@@ -510,9 +522,9 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
             CloudSaveState.Syncing -> "Syncing saves with iCloud..."
             CloudSaveState.Failed -> "iCloud save sync failed."
             CloudSaveState.Synced -> "Saves are synced with iCloud."
-        }.tr()
+        }.let(::cloudText)
         if (status.lastSuccessfulSyncAt <= 0L) return stateText
-        return "$stateText\n${"Last successful iCloud sync:".tr()} ${Date(status.lastSuccessfulSyncAt).formatDate()}"
+        return "$stateText\n${cloudText("Last successful iCloud sync:")} ${Date(status.lastSuccessfulSyncAt).formatDate()}"
     }
 
     override fun dispose() {
@@ -533,7 +545,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
                 game.loadGame(loadedGame, callFromLoadScreen = true)
             } catch (notAPlayer: UncivShowableException) {
                 launchOnGLThread {
-                    val ordinary = UiNavigation.isIos && com.unciv.UncivGame.getGameInfoOrNull()?.let {
+                    val ordinary = UiNavigation.isMobile && com.unciv.UncivGame.getGameInfoOrNull()?.let {
                         it.campaign == null && it.endless == null
                     } != false
                     if (ordinary) loadingPopup.close()
@@ -646,7 +658,7 @@ class LoadGameScreen(private val initialSavePath: String? = null, initialDetails
 
     private fun handleLoadGameException(ex: Exception, primaryText: String = "Could not load game!", retry: (() -> Unit)? = null) {
         val isUserFixable = handleException(ex, primaryText)
-        val ordinary = UiNavigation.isIos && com.unciv.UncivGame.getGameInfoOrNull()?.let {
+        val ordinary = UiNavigation.isMobile && com.unciv.UncivGame.getGameInfoOrNull()?.let {
             it.campaign == null && it.endless == null
         } != false
         if (ordinary && retry != null) {

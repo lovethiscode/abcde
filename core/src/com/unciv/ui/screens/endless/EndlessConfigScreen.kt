@@ -30,10 +30,22 @@ class EndlessConfigScreen(
     private val savedState: EndlessState? = null,
     private var pace: String = "casual"
 ) : BaseScreen(), RecreateOnResize {
+    private val layoutUnit = if (UiNavigation.isAndroid) UiTypography.unitsPerPoint(stage) else 1f
+    private val layoutWidth get() = stage.width / layoutUnit
+    private val layoutHeight get() = stage.height / layoutUnit
+    private val touch get() = if (UiNavigation.isAndroid) 48f else UiNavigation.minimumTouchSize()
+    private fun screenFont(role: TextRole, legacySize: Int = role.legacySize) =
+        UiTypography.size(role, if (UiNavigation.isAndroid) 1f else UiTypography.unitsPerPoint(stage), legacySize)
     private val root = Table()
 
     init {
-        root.setFillParent(true)
+        if (UiNavigation.isAndroid) globalShortcuts.add(com.unciv.ui.components.input.KeyCharAndCode.BACK) { game.popScreen() }
+        root.setFillParent(!UiNavigation.isAndroid)
+        if (UiNavigation.isAndroid) {
+            root.setTransform(true)
+            root.setSize(layoutWidth, layoutHeight)
+            root.setScale(layoutUnit)
+        }
         root.background = ImageGetter.getWhiteDotDrawable().tint(Theme.background)
         stage.addActor(root)
         build()
@@ -41,28 +53,28 @@ class EndlessConfigScreen(
 
     private fun build() {
         root.clearChildren()
-        val width = (stage.width - 44f).coerceAtMost(680f)
+        val width = (layoutWidth - 44f).coerceAtMost(680f)
         val inner = width - 36f
         root.add(Table().apply {
-            add(UiNavigation.backButton().apply { onActivation { game.popScreen() } }).minHeight(UiNavigation.minimumTouchSize())
-            add("Endless settings".toLabel(Theme.gold, UiTypography.size(TextRole.PageTitle, legacySize = 28)).apply { wrap = true }).expandX().fillX().left().padLeft(14f)
+            add(UiNavigation.backButton(unit = if (UiNavigation.isAndroid) 1f else touch / 44f).apply { onActivation { game.popScreen() } }).minHeight(touch)
+            add().expandX()
         }).growX().pad(12f, 18f, 10f, 18f).row()
         val content = Table().apply {
             background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.panel)
             pad(18f); top(); defaults().left().spaceBottom(12f)
             fun text(value: String, muted: Boolean = false, size: TextRole = TextRole.Body) {
-                add(value.toLabel(size, if (muted) Theme.muted else Theme.text).apply { wrap = true }).width(inner).row()
+                add(value.toLabel(if (muted) Theme.muted else Theme.text, screenFont(size)).apply { wrap = true }).width(inner).row()
             }
             fun action(value: String, id: String, primary: Boolean = false, run: () -> Unit) {
                 add(value.toTextButton().apply {
-                    name = id; label.setFontSize(UiTypography.size(TextRole.Control, legacySize = 20))
+                    name = id; label.setFontSize(screenFont(TextRole.Control, legacySize = 20))
                     if (primary) style = TextButton.TextButtonStyle(style).apply {
                         up = ImageGetter.getWhiteDotDrawable().tint(Theme.gold)
                         down = ImageGetter.getWhiteDotDrawable().tint(Theme.muted)
                         fontColor = Theme.primaryInk
                     }
                     onActivation { run() }
-                }).width(inner).minHeight(maxOf(48f, UiNavigation.minimumTouchSize())).row()
+                }).width(inner).minHeight(maxOf(48f, touch)).row()
             }
             text(if (savedState == null) "New defense" else "Current defense", size = TextRole.PageTitle)
             text("Settings cannot be changed after the defense starts.", muted = true)
@@ -84,7 +96,7 @@ class EndlessConfigScreen(
                 else ConfirmPopup(this@EndlessConfigScreen, "Replace the current defense?", "Start new defense") { start() }.open()
             }
         }
-        val contentMaxHeight = stage.height - root.prefHeight - 14f
+        val contentMaxHeight = layoutHeight - root.prefHeight - 14f
         root.add(AutoScrollPane(content).apply { name = "ui-endless-config-scroll"; setScrollingDisabled(true, false) })
             .width(width).maxHeight(contentMaxHeight).fillY().minHeight(0f).top().pad(0f, 22f, 14f, 22f)
         root.top()

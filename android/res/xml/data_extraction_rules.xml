@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" path="androidx.work.workdb" />
+        <exclude domain="sharedpref" path="secure-multiplayer.xml" />
+        <exclude domain="sharedpref" path="android-cloud.xml" />
+        <exclude domain="file" path="CloudSave/" />
+        <exclude domain="file" path="analytics/" />
+        <exclude domain="file" path="Campaigns/cloud-receipt.json" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="database" path="androidx.work.workdb" />
+        <exclude domain="sharedpref" path="secure-multiplayer.xml" />
+        <exclude domain="sharedpref" path="android-cloud.xml" />
+        <exclude domain="file" path="CloudSave/" />
+        <exclude domain="file" path="analytics/" />
+        <exclude domain="file" path="Campaigns/cloud-receipt.json" />
+    </device-transfer>
+</data-extraction-rules>

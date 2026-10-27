@@ -39,10 +39,10 @@ object ExpeditionBlueTheme {
     val danger = Color.valueOf("F0B3AA")
     val dangerSurface = Color.valueOf("603D43")
 
-    fun isDefaultSkin(skin: String) = Gdx.app?.type == ApplicationType.iOS &&
+    fun isDefaultSkin(skin: String) = com.unciv.ui.components.widgets.UiNavigation.isMobile &&
         skin == Constants.defaultSkin && SkinCache[skin] == null
 
-    val enabled get() = Gdx.app?.type == ApplicationType.iOS &&
+    val enabled get() = com.unciv.ui.components.widgets.UiNavigation.isMobile &&
         (!UncivGame.isCurrentInitialized() || isDefaultSkin(UncivGame.Current.settings.skin))
 
     fun color(original: Color, themed: Color) = if (enabled) themed else original
@@ -177,7 +177,7 @@ object ExpeditionBlueTheme {
             checkedDownFontColor = gold
         }
         for (style in skin.getAll(ScrollPaneStyle::class.java).values()) {
-            if (Gdx.app?.type == ApplicationType.iOS) {
+            if (com.unciv.ui.components.widgets.UiNavigation.isMobile) {
                 // Touch scrolling remains available, but mobile pages do not show scrollbars.
                 style.hScroll = null
                 style.hScrollKnob = null

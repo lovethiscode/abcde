@@ -50,7 +50,7 @@ class AskTextPopup(
         wrapper.add(label.toLabel(TextRole.Body))
         if (ordinaryPresentation) {
             addDialogTitle(dialogTitle, subtitle.takeUnless { it == defaultText }.orEmpty())
-            addGoodSizedLabel(fieldLabel, UiTypography.size(TextRole.Control, popupUnit)).row()
+            addGoodSizedLabel(fieldLabel, UiTypography.size(TextRole.Control, popupUnit)).apply { actor.name = "ui-form-field-label" }.row()
         }
         else add(wrapper).colspan(2).row()
 
@@ -73,7 +73,7 @@ class AskTextPopup(
         if (ordinaryPresentation) errorLabel.wrap = true
         errorLabel.color = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
 
-        addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.cancel else com.unciv.Constants.close)
+        addCloseButton(if (UiNavigation.isMobile) com.unciv.Constants.cancel else com.unciv.Constants.close)
         val confirmButton = addOKButton(
             text = if (ordinaryPresentation) confirmText else com.unciv.Constants.OK,
             validate = {

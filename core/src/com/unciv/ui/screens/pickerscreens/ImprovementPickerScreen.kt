@@ -76,7 +76,6 @@ class ImprovementPickerScreen(
 
     init {
         setDefaultCloseAction()
-        pickerPane.setNavigationContent("Pick improvement".toLabel(TextRole.PageTitle))
         pickerPane.useSideDescription("Details".toLabel(TextRole.SectionTitle))
         bottomTable.background = OverviewUi.surface(OverviewUi.panel)
 
@@ -242,16 +241,16 @@ class ImprovementPickerScreen(
         }
 
         val optionCard = Table().apply {
-            if (!UiNavigation.isIos) background = OverviewUi.rounded(OverviewUi.background, 9f)
-            pad(OverviewUi.pt(if (UiNavigation.isIos) 2f else 6f))
+            if (!UiNavigation.isMobile) background = OverviewUi.rounded(OverviewUi.background, 9f)
+            pad(OverviewUi.pt(if (UiNavigation.isMobile) 2f else 6f))
             add(improvementButton).growX().minWidth(0f).minHeight(OverviewUi.touch)
             add(statIcons).right().padLeft(OverviewUi.pt(8f))
             getExplanationActor(improvement, problemReport)?.let { explanation ->
                 row()
-                add(explanation).colspan(2).growX().right().padTop(OverviewUi.pt(if (UiNavigation.isIos) 2f else 6f))
+                add(explanation).colspan(2).growX().right().padTop(OverviewUi.pt(if (UiNavigation.isMobile) 2f else 6f))
             }
         }
-        add(optionCard).growX().minWidth(0f).padBottom(OverviewUi.pt(if (UiNavigation.isIos) 4f else 8f)).row()
+        add(optionCard).growX().minWidth(0f).padBottom(OverviewUi.pt(if (UiNavigation.isMobile) 4f else 8f)).row()
     }
 
     /** Sets the PickerPane's description and where in Civilopedia a click on it should go - but not the right side button */

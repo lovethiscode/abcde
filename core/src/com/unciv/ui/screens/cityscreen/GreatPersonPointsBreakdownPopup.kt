@@ -26,7 +26,7 @@ class GreatPersonPointsBreakdownPopup(cityScreen: CityScreen, gppBreakdown: Grea
             addGoodSizedLabel("Point sources", com.unciv.ui.components.fonts.UiTypography.size(com.unciv.ui.components.fonts.TextRole.SectionTitle, popupUnit))
                 .padTop(16f * popupUnit).row()
         }
-        else if (UiNavigation.isIos) addTitleWithCloseButton(MarkupRenderer.render(listOf(title)))
+        else if (UiNavigation.isMobile) addTitleWithCloseButton(MarkupRenderer.render(listOf(title)))
         else lines += title
         if (!ordinaryPresentation) lines += FormattedLine(separator = true)
 
@@ -68,7 +68,7 @@ class GreatPersonPointsBreakdownPopup(cityScreen: CityScreen, gppBreakdown: Grea
         })
 
         if (ordinaryPresentation) styleOrdinaryButton(addButton("Return to city") { close() }.actor, primary = true)
-        else if (!UiNavigation.isIos) addCloseButton()
+        else if (!UiNavigation.isMobile) addCloseButton()
         open(true)
     }
 

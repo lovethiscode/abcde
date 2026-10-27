@@ -40,7 +40,7 @@ interface MusicControls {
             getTipText = UncivSlider::formatPercent,
             onChange = onChange
         )
-        add(volumeSlider).apply { if (stackMusicSliders) growX() }.pad(5f).row()
+        add(volumeSlider).apply { if (stackMusicSliders) growX() }.pad(5f).apply { if (stackMusicSliders) padTop(UiTypography.size(TextRole.Control).toFloat() + 8f * UiTypography.unitsPerPoint()) }.row()
     }
 
     fun Table.addSoundEffectsVolumeSlider(settings: GameSettings) =
@@ -102,7 +102,7 @@ interface MusicControls {
             music.silenceLength = posToLength(it)
             settings.pauseBetweenTracks = music.silenceLength.toInt()
         }
-        add(pauseLengthSlider).apply { if (stackMusicSliders) growX() }.pad(5f).row()
+        add(pauseLengthSlider).apply { if (stackMusicSliders) growX() }.pad(5f).apply { if (stackMusicSliders) padTop(UiTypography.size(TextRole.Control).toFloat() + 8f * UiTypography.unitsPerPoint()) }.row()
     }
 
     fun Table.addMusicCurrentlyPlaying(music: MusicController) {

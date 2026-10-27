@@ -80,7 +80,7 @@ open class Popup(
 
     /** Ordinary game presentation is isolated from campaign/endless and specialised tools. */
     protected val ordinaryPresentation = scrollable == Scrollability.WithoutButtons &&
-        UiNavigation.isIos && (UncivGame.getGameInfoOrNull()?.let {
+        UiNavigation.isMobile && (UncivGame.getGameInfoOrNull()?.let {
             it.campaign == null && it.endless == null
         } ?: ordinaryShell) && !javaClass.name.let {
             it.contains(".options.") || it.contains(".chat.") || it.contains(".devconsole.")
@@ -201,7 +201,8 @@ open class Popup(
                 button.cells.firstOrNull()?.size(20f * unit)
             }
         }
-        val titlePadding = (if (compactKeyboard) 4f else 16f) * unit
+        val tightKeyboard = compactKeyboard && UiNavigation.isAndroid
+        val titlePadding = (if (tightKeyboard) 0f else if (compactKeyboard) 4f else 16f) * unit
         if (titleTable.hasChildren()) titleTable.pad(titlePadding, 20f * unit, titlePadding, 20f * unit)
         else titleTable.pad(0f)
         if (ExpeditionBlueTheme.enabled) {
@@ -211,12 +212,17 @@ open class Popup(
             bottomTable.background = if (bottomTable.hasChildren()) ui.divider(atTop = true, fill = ui.deep) else null
             ordinaryButtons.forEach { (button, kind) -> button.style = ui.button(kind.first, kind.second) }
         }
-        val bodyPadding = (if (compactKeyboard) 4f else 20f) * unit
+        val bodyPadding = (if (tightKeyboard) 0f else if (compactKeyboard) 4f else 20f) * unit
         topTable.pad(bodyPadding, 20f * unit, bodyPadding, 20f * unit)
-        topTable.defaults().pad(4f * unit, 0f, 4f * unit, 0f)
+        topTable.defaults().pad((if (tightKeyboard) 0f else 4f) * unit, 0f, (if (tightKeyboard) 0f else 4f) * unit, 0f)
+        for (cell in topTable.cells) if (cell.actor?.name == "ui-form-field-label") {
+            cell.actor.isVisible = !tightKeyboard
+            cell.height(if (tightKeyboard) Value.Fixed.valueOf(0f) else Value.prefHeight)
+            if (tightKeyboard) cell.padTop(0f).padBottom(0f)
+        }
         getScrollPane()?.setScrollingDisabled(true, false)
-        if (bottomTable.hasChildren()) bottomTable.pad((if (compactKeyboard) 4f else 14f) * unit,
-            20f * unit, (if (compactKeyboard) 4f else 18f) * unit, 20f * unit)
+        if (bottomTable.hasChildren()) bottomTable.pad((if (tightKeyboard) 0f else if (compactKeyboard) 4f else 14f) * unit,
+            20f * unit, (if (tightKeyboard) 0f else if (compactKeyboard) 4f else 18f) * unit, 20f * unit)
         else bottomTable.pad(0f)
         bottomTable.right()
         val buttons = bottomTable.cells.mapNotNull { it.actor as? TextButton }
@@ -237,7 +243,7 @@ open class Popup(
                 button.label.wrap = true
                 button.label.setAlignment(Align.center)
                 button.labelCell.minWidth(0f).growX()
-                button.pad(10f * unit, 12f * unit, 10f * unit, 12f * unit)
+                button.pad((if (tightKeyboard) 0f else 10f) * unit, 12f * unit, (if (tightKeyboard) 0f else 10f) * unit, 12f * unit)
                 val width = when {
                     stacked -> popupContentWidth - 8f * unit
                     buttons.size > 1 -> (popupContentWidth - 8f * unit * buttons.size) / buttons.size
@@ -247,7 +253,7 @@ open class Popup(
                 button.label.invalidate()
                 bottomTable.add(button).width(width)
                     .expand(0, 0).fill(false, true)
-                    .minHeight(maxOf(44f * unit, button.label.prefHeight + 20f * unit)).pad(4f * unit)
+                    .minHeight(maxOf(UiNavigation.minimumTouchSize(), button.label.prefHeight + (if (tightKeyboard) 0f else 20f) * unit)).pad((if (tightKeyboard) 0f else 4f) * unit, 4f * unit, (if (tightKeyboard) 0f else 4f) * unit, 4f * unit)
                 if (stacked) bottomTable.row()
             }
         }
@@ -306,7 +312,11 @@ open class Popup(
             }
         }
     }
-    protected val maxPopupHeight get() = (if (ordinaryPresentation) lastKnownVisibleArea().height else stageToShowOn.height) * maxSizePercentage
+    protected val maxPopupHeight get(): Float {
+        val height = if (ordinaryPresentation) lastKnownVisibleArea().height else stageToShowOn.height
+        return if (ordinaryPresentation && UiNavigation.isAndroid && height / popupUnit < 260f)
+            (height - 4f * popupUnit).coerceAtLeast(0f) else height * maxSizePercentage
+    }
 
     /** This exists to differentiate the actual popup (this table)
      *  from the 'screen blocking' part of the popup (which covers the entire screen).
@@ -472,7 +482,7 @@ open class Popup(
 
     protected open fun onVisibleAreaChanged(visibleArea: Rectangle) {
         layoutOrdinaryPopup()
-        if (com.badlogic.gdx.Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
+        if (com.unciv.ui.components.widgets.UiNavigation.isMobile) {
             val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight + titleTable.prefHeight
             topTableCell.maxSize(maxPopupWidth, (visibleArea.height * maxSizePercentage - buttonsHeight).coerceAtLeast(0f))
             innerTable.invalidateHierarchy()
@@ -643,7 +653,7 @@ open class Popup(
         if (ordinaryPresentation) button.label.setFontSize(UiTypography.size(TextRole.Control, popupUnit))
         button.onActivation { if (!ordinaryPresentation || !closed) action() }
         button.keyShortcuts.add(key)
-        return bottomTable.add(button).apply { if (UiNavigation.isIos) minSize(UiNavigation.minimumTouchSize()) }
+        return bottomTable.add(button).apply { if (UiNavigation.isMobile) minSize(UiNavigation.minimumTouchSize()) }
     }
     fun addButton(text: String, key: Char, style: TextButtonStyle? = null, action: () -> Unit)
         = addButton(text, KeyCharAndCode(key), style, action)
@@ -655,7 +665,7 @@ open class Popup(
         if (style == null) styleOrdinaryButton(button)
         if (ordinaryPresentation) button.label.setFontSize(UiTypography.size(TextRole.Control, popupUnit))
         button.onActivation(binding = binding) { if (!ordinaryPresentation || !closed) action() }
-        return bottomTable.add(button).apply { if (UiNavigation.isIos) minSize(UiNavigation.minimumTouchSize()) }
+        return bottomTable.add(button).apply { if (UiNavigation.isMobile) minSize(UiNavigation.minimumTouchSize()) }
     }
 
     /**
@@ -678,17 +688,17 @@ open class Popup(
             close()
             action?.invoke()
         }
-        if (UiNavigation.isIos && text == Constants.close) {
+        if (UiNavigation.isMobile && text == Constants.close) {
             val button = headerDismissButton { dismiss() }.apply {
                 keyShortcuts.add(additionalKey)
                 keyShortcuts.add(KeyCharAndCode.BACK)
             }
             return addDismissControl(button)
         }
-        val closeStyle = if (UiNavigation.isIos && text == Constants.cancel) UiNavigation.buttonStyle() else style
+        val closeStyle = if (UiNavigation.isMobile && text == Constants.cancel) UiNavigation.buttonStyle() else style
         val cell = addButton(text, additionalKey, closeStyle) { dismiss() }
         cell.actor.keyShortcuts.add(KeyCharAndCode.BACK)
-        if (UiNavigation.isIos && text == Constants.cancel) {
+        if (UiNavigation.isMobile && text == Constants.cancel) {
             UiNavigation.styleTextButton(cell.actor, if (ordinaryPresentation) popupUnit else UiNavigation.minimumTouchSize() / 44f)
             styleOrdinaryButton(cell.actor)
             if (ordinaryPresentation) cancelButton = cell.actor
@@ -702,8 +712,8 @@ open class Popup(
     private fun removeEquivalentHeaderDismissControl() {
         val button = headerCloseButton ?: return
         val parent = button.parent as? Table
-        if (parent === titleTable && parent.children.size == 1) {
-            titleTable.clearChildren()
+        if (parent != null && parent.children.size == 1 && (parent === titleTable || parent.parent === titleTable)) {
+            titleTable.clear()
             titleTable.pad(0f)
         } else {
             parent?.getCell(button)?.size(0f)?.pad(0f)
@@ -787,16 +797,17 @@ open class Popup(
         }
     }
 
-    /** Adds a fixed title and, unless an equivalent Cancel already exists, a right-hand X. */
+    /** Adds a fixed header and, unless an equivalent Cancel already exists, a right-hand X.
+     * Omit [title] for utility windows whose controls already identify their purpose. */
     fun addTitleWithCloseButton(
-        title: Actor,
+        title: Actor? = null,
         additionalKey: KeyCharAndCode? = null,
         action: (() -> Unit)? = null
     ): Group {
         clickBehindToClose = true
         onCloseCallback = action
-        val closeButton = if (UiNavigation.isIos && hasEquivalentCancelButton) null
-        else if (UiNavigation.isIos) headerDismissButton { if (!ordinaryPresentation || !closed) { close(); action?.invoke() } }.apply {
+        val closeButton = if (UiNavigation.isMobile && hasEquivalentCancelButton) null
+        else if (UiNavigation.isMobile) headerDismissButton { if (!ordinaryPresentation || !closed) { close(); action?.invoke() } }.apply {
             keyShortcuts.add(KeyCharAndCode.BACK)
         } else getCloseButton { close(); action?.invoke() }
         if (additionalKey != null) closeButton?.keyShortcuts?.add(additionalKey)
@@ -807,15 +818,23 @@ open class Popup(
                 title.setAlignment(Align.left)
             }
             Table(skin).apply {
-                add(title).minWidth(0f).growX().left()
-                if (closeButton != null) add(closeButton).size(44f * popupUnit).top().padLeft(12f * popupUnit)
+                if (title != null) add(title).minWidth(0f).growX().left()
+                else add().expandX()
+                if (closeButton != null) add(closeButton).size(44f * popupUnit).top()
+                    .padLeft(if (title != null) 12f * popupUnit else 0f)
             }
-        } else if (closeButton != null) UiNavigation.popupHeader(title, closeButton)
-        else Table(skin).apply { add(title).minWidth(0f).growX() }
+        } else if (title != null && closeButton != null) UiNavigation.popupHeader(title, closeButton)
+        else Table(skin).apply {
+            if (title != null) add(title).minWidth(0f).growX()
+            else add().expandX()
+            if (closeButton != null) add(closeButton).right()
+        }
+        if (title == null && closeButton == null) return header
         if (topTable === bottomTable) add(header).growX().row()
         else {
-            if (ordinaryPresentation) titleTable.pad(16f * popupUnit, 20f * popupUnit, 16f * popupUnit, 20f * popupUnit)
-            else titleTable.pad(20f, 25f, 0f, 25f)
+            if (ordinaryPresentation) titleTable.pad((if (title == null) 4f else 16f) * popupUnit,
+                20f * popupUnit, (if (title == null) 4f else 16f) * popupUnit, 20f * popupUnit)
+            else titleTable.pad(if (title == null) 4f else 20f, 25f, 0f, 25f)
             titleTable.add(header).growX()
         }
         return closeButton ?: header

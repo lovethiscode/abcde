@@ -99,7 +99,7 @@ object MayaCalendar {
     fun openPopup(previousScreen: BaseScreen, civInfo: Civilization, year: Int) {
         Popup(previousScreen).apply {
             name = "MayaCalendar"
-            if (UiNavigation.isIos) addTitleWithCloseButton(
+            if (UiNavigation.isMobile) addTitleWithCloseButton(
                 "The Mayan Long Count".toLabel(fontSize = UiTypography.size(TextRole.PageTitle), fontColor = civInfo.nation.getOuterColor())
             )
             else addGoodSizedLabel("The Mayan Long Count",UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize)).apply {
@@ -112,7 +112,7 @@ object MayaCalendar {
             val mayaYear = MayaYear(year)
             addGoodSizedLabel(mayaYear.toString(),UiTypography.size(TextRole.Display, legacySize = 42)).row()
             addGoodSizedLabel("[${mayaYear.baktuns}] b'ak'tun, [${mayaYear.katuns}] k'atun, [${mayaYear.tuns}] tun").padBottom(10f).row()
-            if (!UiNavigation.isIos) addCloseButton()
+            if (!UiNavigation.isMobile) addCloseButton()
         }.open(true)
     }
 }

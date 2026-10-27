@@ -4,18 +4,67 @@ import android.content.pm.ActivityInfo
 import android.os.Build
 import android.view.Display
 import android.view.Display.Mode
-import android.view.View
 import android.view.WindowManager
 import androidx.annotation.RequiresApi
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.math.Rectangle
+import com.badlogic.gdx.math.Vector2
+import com.badlogic.gdx.scenes.scene2d.Stage
+import com.unciv.UncivGame
+import com.unciv.logic.event.EventBus
+import com.unciv.ui.screens.basescreen.UncivStage
 import com.badlogic.gdx.backends.android.AndroidApplication
 import com.unciv.models.metadata.GameSettings
 import com.unciv.models.translations.tr
 import com.unciv.utils.PlatformDisplay
 import com.unciv.utils.ScreenMode
 import com.unciv.utils.ScreenOrientation
+import com.unciv.utils.SafeInsets
 
 
 class AndroidDisplay(private val activity: AndroidApplication) : PlatformDisplay {
+    @Volatile private var safeInsets = SafeInsets()
+    @Volatile private var keyboardBottom = 0
+    @Volatile private var legacyKeyboardBottom = 0
+    @Volatile private var edgeToEdge = false
+    private var lastVisible: Rectangle? = null
+    private var lastStage: Stage? = null
+
+    override fun getSafeInsets() = safeInsets
+    override fun isEdgeToEdgeEnabled() = edgeToEdge
+    fun updateLegacyKeyboard(bottom: Int) { legacyKeyboardBottom = bottom }
+
+    /** Android values are physical pixels; Scene2D converts them at the viewport boundary. */
+    fun updateInsets(insets: WindowInsetsCompat) {
+        val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+        val next = SafeInsets(bars.left, bars.top, bars.right, bars.bottom)
+        keyboardBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+        if (next == safeInsets) return
+        safeInsets = next
+        refreshLayout()
+    }
+
+    private fun refreshLayout() {
+        Gdx.app?.postRunnable {
+            if (UncivGame.isCurrentInitialized())
+                UncivGame.Current.screen?.resize(Gdx.graphics.width, Gdx.graphics.height)
+        }
+    }
+
+    fun updateVisibleArea(stage: Stage?) {
+        if (stage == null) return
+        val keyboard = if (Build.VERSION.SDK_INT < 30) legacyKeyboardBottom else keyboardBottom
+        val bottom = if (keyboard <= 0) 0f else stage.screenToStageCoordinates(
+            Vector2(0f, (Gdx.graphics.height - keyboard).toFloat())).y.coerceIn(0f, stage.height)
+        val visible = Rectangle(0f, bottom, stage.width, (stage.height - bottom).coerceAtLeast(0f))
+        if (lastStage === stage && visible == lastVisible) return
+        lastStage = stage
+        lastVisible = Rectangle(visible)
+        EventBus.send(UncivStage.VisibleAreaChanged(visible))
+    }
 
     private var display: Display? = null
     private var displayModes: HashMap<Int, ScreenMode> = hashMapOf()
@@ -66,15 +115,13 @@ class AndroidDisplay(private val activity: AndroidApplication) : PlatformDisplay
         }
     }
     internal fun setSystemUiVisibilityFromUiThread(hide: Boolean) {
-        @Suppress("DEPRECATION") // Avoids @RequiresApi(Build.VERSION_CODES.R)
-        activity.window.decorView.systemUiVisibility =
-            if (hide)
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            else
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+        WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+            if (hide) hide(WindowInsetsCompat.Type.systemBars()) else show(WindowInsetsCompat.Type.systemBars())
+        }
     }
 
     override fun hasCutout(): Boolean {
@@ -96,13 +143,17 @@ class AndroidDisplay(private val activity: AndroidApplication) : PlatformDisplay
         }
     }
     internal fun setCutoutFromUiThread(enabled: Boolean) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
-        val params = activity.window.attributes
-        params.layoutInDisplayCutoutMode = when {
-            enabled -> WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            else -> WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_NEVER
+        val changed = edgeToEdge != enabled
+        edgeToEdge = enabled
+        WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val params = activity.window.attributes
+            params.layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                else WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            activity.window.attributes = params
         }
-        activity.window.attributes = params  // This is the only line to actually need to be running on the Ui Thread
+        if (changed) refreshLayout()
     }
 
 

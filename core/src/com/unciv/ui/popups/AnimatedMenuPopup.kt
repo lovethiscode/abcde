@@ -62,10 +62,10 @@ open class AnimatedMenuPopup private constructor (stage: Stage) : Popup(stage, S
 
         private fun Actor.getAlignedPosition(align: Int) = localToStageCoordinates(getEdgePoint(align))
 
-        fun Group.addContextMenu(indicatorMinSizeRelative: Float = 0.5f, factory: () -> AnimatedMenuPopup) {
+        fun Group.addContextMenu(indicatorMinSizeRelative: Float = 0.5f, isAllowed: () -> Boolean = { true }, factory: () -> AnimatedMenuPopup) {
             Helpers.addIndicator(this, indicatorMinSizeRelative)
             onRightClick {
-                if (isActive())
+                if (isActive() && isAllowed())
                     factory()
             }
         }
@@ -124,7 +124,7 @@ open class AnimatedMenuPopup private constructor (stage: Stage) : Popup(stage, S
      */
     open fun createContentTable(): Table? = Table().apply {
         defaults().pad(5f, 15f, 5f, 15f).growX()
-        if (UiNavigation.isIos) defaults().minHeight(UiNavigation.minimumTouchSize()).fillY().padTop(2f).padBottom(2f)
+        if (UiNavigation.isMobile) defaults().minHeight(UiNavigation.minimumTouchSize()).fillY().padTop(2f).padBottom(2f)
         background = BaseScreen.skinStrings.getUiBackground("General/AnimatedMenu", BaseScreen.skinStrings.roundedEdgeRectangleShape, Color.DARK_GRAY)
     }
 
@@ -135,7 +135,7 @@ open class AnimatedMenuPopup private constructor (stage: Stage) : Popup(stage, S
      */
     fun getButton(text: String, binding: KeyboardBinding, action: () -> Unit) =
         text.toTextButton(smallButtonStyle).apply {
-            if (UiNavigation.isIos) {
+            if (UiNavigation.isMobile) {
                 val extra = (UiNavigation.minimumTouchSize() - prefHeight).coerceAtLeast(0f) / 2f
                 padTop(padTop + extra)
                 padBottom(padBottom + extra)

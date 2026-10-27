@@ -68,7 +68,6 @@ class MultiplayerTurnCheckWorker(appContext: Context, workerParams: WorkerParame
         private const val CONFIGURED_DELAY = "CONFIGURED_DELAY"
         private const val PERSISTENT_NOTIFICATION_ENABLED = "PERSISTENT_NOTIFICATION_ENABLED"
         private const val FILE_STORAGE = "FILE_STORAGE"
-        private const val AUTH_HEADER = "AUTH_HEADER"
 
         private val constraints = Constraints.Builder()
             // If no internet is available, worker waits before becoming active.
@@ -137,7 +136,7 @@ class MultiplayerTurnCheckWorker(appContext: Context, workerParams: WorkerParame
             val flags = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) FLAG_IMMUTABLE else 0) or
                 FLAG_UPDATE_CURRENT
             val pendingIntent: PendingIntent =
-                    Intent(appContext, AndroidLauncher::class.java).let { notificationIntent ->
+                    (appContext.packageManager.getLaunchIntentForPackage(appContext.packageName) ?: Intent(appContext, AndroidLauncher::class.java)).let { notificationIntent ->
                         PendingIntent.getActivity(appContext, 0, notificationIntent, flags)
                     }
 
@@ -164,7 +163,7 @@ class MultiplayerTurnCheckWorker(appContext: Context, workerParams: WorkerParame
         @SuppressLint("MissingPermission") // POST_NOTIFICATIONS declared in manifest; NotificationManagerCompat handles denial gracefully
         fun notifyUserAboutTurn(applicationContext: Context, game: Pair<String, String>) {
             Log.i(LOG_TAG, "notifyUserAboutTurn ${game.first}")
-            val intent = Intent(applicationContext, AndroidLauncher::class.java).apply {
+            val intent = (applicationContext.packageManager.getLaunchIntentForPackage(applicationContext.packageName) ?: Intent(applicationContext, AndroidLauncher::class.java)).apply {
                 action = Intent.ACTION_VIEW
                 data = Uri.parse("https://unciv.app/multiplayer?id=${game.second}")
             }
@@ -229,8 +228,7 @@ class MultiplayerTurnCheckWorker(appContext: Context, workerParams: WorkerParame
                 val inputData = workDataOf(Pair(FAIL_COUNT, 0), Pair(GAME_ID, gameIds), Pair(GAME_NAME, gameNames),
                         Pair(USER_ID, settings.getUserId()), Pair(CONFIGURED_DELAY, settings.turnCheckerDelay.seconds),
                         Pair(PERSISTENT_NOTIFICATION_ENABLED, settings.turnCheckerPersistentNotificationEnabled),
-                        Pair(FILE_STORAGE, settings.getServer()),
-                        Pair(AUTH_HEADER, settings.getAuthHeader()))
+                        Pair(FILE_STORAGE, settings.getServer()))
 
                 if (settings.turnCheckerPersistentNotificationEnabled) {
                     showPersistentNotification(applicationContext, "—", settings.turnCheckerDelay)
@@ -291,7 +289,12 @@ class MultiplayerTurnCheckWorker(appContext: Context, workerParams: WorkerParame
         val showPersistNotific = inputData.getBoolean(PERSISTENT_NOTIFICATION_ENABLED, true)
         val configuredDelay = getConfiguredDelay(inputData)
         val fileStorage = inputData.getString(FILE_STORAGE)
-        val authHeader = inputData.getString(AUTH_HEADER)!!
+        val credentialStore = AndroidCredentials(applicationContext)
+        val server = fileStorage.orEmpty()
+        val password = if (credentialStore.available) credentialStore.get(server.trimEnd('/')).orEmpty()
+            else files.getGeneralSettings().multiplayer.getPassword(server).orEmpty()
+        val user = inputData.getString(USER_ID).orEmpty()
+        val authHeader = "Basic " + com.badlogic.gdx.utils.Base64Coder.encodeString("$user:$password")
 
         try {
             val gameIds = inputData.getStringArray(GAME_ID)!!
@@ -405,7 +408,7 @@ class MultiplayerTurnCheckWorker(appContext: Context, workerParams: WorkerParame
         val flags = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) FLAG_IMMUTABLE else 0) or
                 FLAG_UPDATE_CURRENT
         val pendingLaunchGameIntent: PendingIntent =
-                Intent(applicationContext, AndroidLauncher::class.java).let { notificationIntent ->
+                (applicationContext.packageManager.getLaunchIntentForPackage(applicationContext.packageName) ?: Intent(applicationContext, AndroidLauncher::class.java)).let { notificationIntent ->
                     PendingIntent.getActivity(applicationContext, 0, notificationIntent, flags)
                 }
 

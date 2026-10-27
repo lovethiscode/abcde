@@ -21,7 +21,7 @@ class MultiplayerStatusPopup(
 
     init {
         val empty = gameList.models().isEmpty()
-        val preferredHeight = if (empty) minOf((if (UiNavigation.isIos) 112f else 180f) * popupUnit, screen.stage.height * 0.45f)
+        val preferredHeight = if (empty) minOf((if (UiNavigation.isMobile) 112f else 180f) * popupUnit, screen.stage.height * 0.45f)
             else screen.stage.height * 0.5f
         val pickerCell = add()
             .width(if (ordinaryPresentation) popupContentWidth else minOf(700f, screen.stage.width * .9f)).fillX().expandX()
@@ -32,9 +32,9 @@ class MultiplayerStatusPopup(
         pickerPane.useContentSizedFooter = empty
         pickerPane.rightSideButton.setText("Load game".tr())
         pickerPane.setRightSideButtonEnabled(false)
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             pickerPane.closeButton.remove()
-            addDialogTitle("Multiplayer")
+            addTitleWithCloseButton()
             clickBehindToClose = false
         } else {
             pickerPane.closeButton.onClick(::close)

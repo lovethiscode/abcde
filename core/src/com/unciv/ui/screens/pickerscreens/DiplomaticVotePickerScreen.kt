@@ -12,7 +12,7 @@ import com.unciv.ui.images.ImageGetter
 class DiplomaticVotePickerScreen(private val votingCiv: Civilization, private val initialChoice: String? = null, private val initiallySelected: Boolean = false) : OrdinaryGamePopupScreen(), com.unciv.ui.screens.basescreen.RecreateOnResize {
     private var chosenCiv: String? = initialChoice
     private var hasSelection = initiallySelected
-    private val ordinary = com.unciv.ui.components.widgets.UiNavigation.isIos && votingCiv.gameInfo.campaign == null && votingCiv.gameInfo.endless == null
+    private val ordinary = com.unciv.ui.components.widgets.UiNavigation.isMobile && votingCiv.gameInfo.campaign == null && votingCiv.gameInfo.endless == null
 
     init {
         setDefaultCloseAction()

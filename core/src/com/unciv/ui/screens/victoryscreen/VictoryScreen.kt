@@ -57,7 +57,7 @@ class VictoryScreen private constructor(
     private val music get() = UncivGame.Current.musicController
     private val gameInfo = worldScreen.gameInfo
     private val playerCiv = worldScreen.selectedGameView.civView.getCiv()
-    private val tabs = if (UiNavigation.isIos) TabbedPager(
+    private val tabs = if (UiNavigation.isMobile) TabbedPager(
         contentWidth, contentWidth, contentHeight, contentHeight,
         backgroundColor = OverviewUi.background, shortcutScreen = this, showHeader = false
     ).apply { background = OverviewUi.surface(OverviewUi.background) }
@@ -121,12 +121,13 @@ class VictoryScreen private constructor(
         open fun isHidden(playerCiv: Civilization) = false
     }
 
-    private val orderedTabs get() = if (UiNavigation.isIos) listOf(
+    private val orderedTabs get() = if (UiNavigation.isMobile) listOf(
         VictoryTabs.OurStatus, VictoryTabs.Global, VictoryTabs.Illustration, VictoryTabs.Rankings,
         VictoryTabs.Demographics, VictoryTabs.Charts, VictoryTabs.Replay
     ) else VictoryTabs.entries
 
     init {
+        if (UiNavigation.isAndroid) globalShortcuts.add(com.unciv.ui.components.input.KeyCharAndCode.BACK) { game.popScreen() }
         worldScreen.autoPlay.stopAutoPlay()
         //**************** Set up the tabs ****************
         splitPane.setFirstWidget(tabs)
@@ -139,7 +140,7 @@ class VictoryScreen private constructor(
             val icon = ImageGetter.getImage("VictoryScreenIcons/${tab.name}")
             tabs.addPage(
                 tab.caption ?: tab.name,
-                if (UiNavigation.isIos) nativeContent(tab) else tab.getContent(this),
+                if (UiNavigation.isMobile) nativeContent(tab) else tab.getContent(this),
                 icon, iconSize,
                 scrollAlign = Align.topLeft,
                 shortcutKey = KeyCharAndCode(tab.key),
@@ -165,7 +166,7 @@ class VictoryScreen private constructor(
         //**************** Set up floating info panels ****************
         // When horizontal screen space is scarce so they would overlap, insert
         // them into the scrolling portion of the TabbedPager header instead
-        if (UiNavigation.isIos) buildNativeChrome() else {
+        if (UiNavigation.isMobile) buildNativeChrome() else {
             tabs.pack()
             val topRightPanel = VerticalGroup().apply {
                 space(5f)
@@ -177,7 +178,7 @@ class VictoryScreen private constructor(
             }
             val difficultyLabel = "{Difficulty}: {${gameInfo.difficulty}}".toLabel(TextRole.Body)
             val neededSpace = topRightPanel.width.coerceAtLeast(difficultyLabel.width) * 2 + tabs.getHeaderPrefWidth()
-            if (UiNavigation.isIos || neededSpace > stage.width) {
+            if (UiNavigation.isMobile || neededSpace > stage.width) {
                 // Let additions take part in TabbedPager's header scrolling
                 tabs.decorateHeader(difficultyLabel, leftSide = true, fixed = false)
                 tabs.decorateHeader(topRightPanel, leftSide = false, fixed = false)
@@ -196,11 +197,20 @@ class VictoryScreen private constructor(
     private fun nativeContent(tab: VictoryTabs): Table = when (tab) {
         VictoryTabs.OurStatus, VictoryTabs.Global -> VictoryProgressPage(worldScreen, pageState,
             tab == VictoryTabs.Global, compact, tablet, contentWidth, contentHeight)
-        VictoryTabs.Rankings -> VictoryStatisticsPage(worldScreen, pageState, false, compact)
+        VictoryTabs.Rankings -> VictoryStatisticsPage(worldScreen, pageState, false, compact, gameMetadata(stacked = true))
         VictoryTabs.Demographics -> VictoryStatisticsPage(worldScreen, pageState, true, compact)
-        VictoryTabs.Charts -> VictoryScreenCharts(worldScreen, pageState, compact)
+        VictoryTabs.Charts -> VictoryScreenCharts(worldScreen, pageState, compact, gameMetadata(stacked = true))
         VictoryTabs.Replay -> VictoryScreenReplay(worldScreen, pageState, contentWidth, contentHeight)
         else -> tab.getContent(this)
+    }
+
+    private fun gameMetadata(stacked: Boolean = compact) = Table().apply {
+        val info = "{Difficulty}: {${gameInfo.difficulty}} · {Game Speed}: {${gameInfo.gameParameters.speed}}" +
+            if ("Time" in gameInfo.gameParameters.victoryTypes) " · {Max Turns}: ${gameInfo.gameParameters.maxTurns.tr()}" else ""
+        add(OverviewUi.plainLabel(info, TextRole.Supporting, OverviewUi.muted).apply { wrap = true }).growX().minWidth(0f).left()
+        if (stacked) row()
+        val status = if (gameInfo.victoryData != null || playerCiv.isDefeated()) "Game ended" else "Game in progress"
+        add(OverviewUi.plainLabel(status, TextRole.Supporting, OverviewUi.muted)).left().padLeft(if (stacked) 0f else pt(12f))
     }
 
     private fun buildNativeChrome() {
@@ -243,7 +253,7 @@ class VictoryScreen private constructor(
         val back = UiNavigation.backButton("Map").apply { onActivation { game.popScreen() } }
         val header = Table().apply {
             add(back).height(OverviewUi.touch).padRight(pt(16f))
-            add(OverviewUi.plainLabel("Victory status", TextRole.SectionTitle).apply { setEllipsis(true) }).growX().minWidth(0f).left()
+            add().growX()
             val context = Table().apply {
                 add(ImageGetter.getNationPortrait(playerCiv.nation, pt(24f))).size(pt(24f)).padRight(pt(7f))
                 add(OverviewUi.plainLabel(playerCiv.civName, TextRole.Supporting).apply { setEllipsis(true) }).minWidth(0f).padRight(pt(12f))
@@ -252,18 +262,21 @@ class VictoryScreen private constructor(
             }
             if (compact) { row(); add(context).colspan(2).left().growX().minWidth(0f) } else add(context)
         }
-        val metadata = Table().apply {
-            val info = "{Difficulty}: {${gameInfo.difficulty}} · {Game Speed}: {${gameInfo.gameParameters.speed}}" +
-                if ("Time" in gameInfo.gameParameters.victoryTypes) " · {Max Turns}: ${gameInfo.gameParameters.maxTurns.tr()}" else ""
-            add(OverviewUi.plainLabel(info, TextRole.Supporting, OverviewUi.muted).apply { wrap = true }).growX().minWidth(0f).left()
-            if (compact) row()
-            val status = if (gameInfo.victoryData != null || playerCiv.isDefeated()) "Game ended" else "Game in progress"
-            add(OverviewUi.plainLabel(status, TextRole.Supporting, OverviewUi.muted)).left().padLeft(if (compact) 0f else pt(12f))
-        }
+        val metadata = gameMetadata()
         val ordinaryResult = gameInfo.campaign == null && gameInfo.endless == null &&
             (gameInfo.victoryData != null || playerCiv.isDefeated())
         val resultHeadline = if (ordinaryResult) descriptionLabel.text.toString().substringBefore('\n') else ""
         val root = object : Table() {
+            override fun layout() {
+                super.layout()
+                // The header, metadata and result actions can wrap. Give the pager the
+                // space actually left by those rows instead of retaining its initial estimate.
+                if (tabs.width > 0f && tabs.height > 0f &&
+                    (kotlin.math.abs(tabs.prefWidth - tabs.width) > .5f ||
+                        kotlin.math.abs(tabs.prefHeight - tabs.height) > .5f))
+                    tabs.resizePageArea(tabs.width, tabs.height)
+            }
+
             override fun act(delta: Float) {
                 super.act(delta)
                 if (tabs.pageCount() != buttons.size) refreshNavigation()
@@ -277,9 +290,9 @@ class VictoryScreen private constructor(
             add(ImageGetter.getWhiteDot().apply { color = OverviewUi.border }).growX().height(pt(1f)).row()
             if (ordinaryResult) add(resultHeadline.toLabel(fontSize = font(TextRole.SectionTitle)).apply { wrap = true })
                 .growX().minWidth(0f).padTop(pt(8f)).padBottom(pt(8f)).row()
-            add(navScroll).growX().minWidth(0f).height(pt(52f)).row()
+            add(navScroll).growX().minWidth(0f).height(OverviewUi.touch).row()
             add(metadata).growX().minWidth(0f).padBottom(pt(5f)).row()
-            add(tabs).grow().minWidth(0f).minHeight(0f).row()
+            add(tabs).grow().minWidth(0f).minHeight(0f).maxHeight(Float.MAX_VALUE).row()
             if (rightSideButton.isVisible) {
                 val footer = Table().apply {
                     if (!ordinaryResult) {
@@ -292,8 +305,17 @@ class VictoryScreen private constructor(
                 add(footer).growX().minWidth(0f).padTop(pt(10f))
             }
         }
+        val metadataCell = root.getCell(metadata)
+        fun refreshMetadata() {
+            val merged = listOf(VictoryTabs.Rankings, VictoryTabs.Charts).any {
+                tabs.getPageIndex(it.caption ?: it.name) == tabs.activePage
+            }
+            metadataCell.setActor(if (merged) null else metadata).padBottom(if (merged) 0f else pt(5f))
+            root.invalidateHierarchy()
+        }
         tabs.onSelection { _, _, _ ->
             refreshNavigation()
+            refreshMetadata()
             buttons.values.firstOrNull { it.isChecked }?.let {
                 root.validate(); navScroll.validate()
                 navScroll.scrollTo(it.x, it.y, it.width, it.height, false, false)
@@ -301,6 +323,7 @@ class VictoryScreen private constructor(
             }
         }
         refreshNavigation()
+        refreshMetadata()
         stage.addActor(root)
         if (ordinaryResult && !pageState.resultDetailsOpened) showOrdinaryResult()
     }

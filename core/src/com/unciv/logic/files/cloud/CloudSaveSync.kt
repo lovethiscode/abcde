@@ -33,6 +33,9 @@ data class CloudSaveStatus(
 )
 
 interface CloudSaveSync {
+    val displayName: String get() = "iCloud"
+    val canConfigure: Boolean get() = false
+    fun configure() {}
     val isSupported: Boolean
     val status: CloudSaveStatus
 

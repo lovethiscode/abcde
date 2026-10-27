@@ -378,15 +378,15 @@ class CivilopediaScreen(
             val searchButton = "OtherIcons/Search".toImageButton(imageSize - 16f, imageSize, skinStrings.skinConfig.baseColor, Color.GOLD)
             searchButton.onActivation(binding = KeyboardBinding.PediaSearch) { searchPopup.open(true) }
 
-            val closeButton = if (UiNavigation.isIos) UiNavigation.backButton().apply {
+            val closeButton = if (UiNavigation.isMobile) UiNavigation.backButton().apply {
                 onActivation { game.popScreen() }; keyShortcuts.add(KeyCharAndCode.BACK)
             } else getCloseButton(imageSize) { game.popScreen() }
 
             val topTable = Table()
-            if (UiNavigation.isIos) topTable.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
+            if (UiNavigation.isMobile) topTable.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
             topTable.add(buttonTableScroll).growX()
             topTable.add(searchButton).padLeft(10f)
-            if (!UiNavigation.isIos) topTable.add(closeButton).padLeft(10f).padRight(10f)
+            if (!UiNavigation.isMobile) topTable.add(closeButton).padLeft(10f).padRight(10f)
             topTable.width = stage.width
             topTable.layout()
 

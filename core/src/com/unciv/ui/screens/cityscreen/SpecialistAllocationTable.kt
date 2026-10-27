@@ -47,7 +47,12 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
                     }
             }
             toggleButton.name = "ui-city-specialists-toggle"
-            add(toggleButton).minHeight(if (cityScreen.usesWorkbench) 44f else 0f).colspan(5).row()
+            if (cityScreen.usesWorkbench) {
+                val header = Table()
+                header.add("Specialists".toLabel(TextRole.SectionTitle, unit = 1f)).growX().left()
+                header.add(toggleButton).minHeight(44f)
+                add(header).colspan(5).growX().row()
+            } else add(toggleButton).colspan(5).row()
         }
 
         // Since getMaxSpecialists is a Counter, iteration is potentially in random order. Ensure consistency by simplified sorting (no collator)
@@ -60,10 +65,16 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
             if (cityScreen.usesWorkbench) {
                 val row = Table()
                 row.add(specialistName.toLabel(fontSize = UiTypography.size(TextRole.Control, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 15))).minWidth(0f).growX()
-                row.add(getUnassignButton(assignedSpecialists, specialistName)).size(44f)
+                row.add(cityWorkbenchMinus("ui-city-specialist-remove:$specialistName",
+                    cityScreen.canCityBeChanged() && cityView.manualSpecialists && assignedSpecialists > 0) {
+                    cityView.tryUnassignSpecialist(specialistName); cityScreen.updateAsync()
+                }).size(44f)
                 row.add("$assignedSpecialists/$maxSpecialists".toLabel(fontSize = UiTypography.size(TextRole.Control, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 16))).pad(6f)
-                row.add(getAssignButton(assignedSpecialists, maxSpecialists, specialistName)).size(44f)
-                add(row).colspan(5).growX().padTop(12f).row()
+                row.add(cityWorkbenchIcon("OtherIcons/New", "Assign Specialist", "ui-city-specialist-add:$specialistName",
+                    cityScreen.canCityBeChanged() && cityView.manualSpecialists && assignedSpecialists < maxSpecialists && cityView.getFreePopulation() > 0) {
+                    cityView.tryAssignSpecialist(specialistName); cityScreen.updateAsync()
+                }).size(44f)
+                add(row).colspan(5).growX().padTop(4f).row()
                 add(getSpecialistStatsTable(specialistName)).colspan(5).left().row()
                 continue
             }
@@ -126,7 +137,7 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
 
 
     private fun getSpecialistStatsTable(specialistName: String): Table {
-        val specialistStatTable = Table().apply { defaults().padBottom(5f).padTop(5f) }
+        val specialistStatTable = Table().apply { defaults().padBottom(if (cityScreen.usesWorkbench) 2f else 5f).padTop(if (cityScreen.usesWorkbench) 2f else 5f) }
         val specialistStats = cityView.getStatsOfSpecialist(specialistName)
         val specialist = cityView.getRuleset().specialists[specialistName]!!
         val maxStat = specialistStats.maxOf { it.value }
@@ -134,7 +145,7 @@ class SpecialistAllocationTable(private val cityScreen: CityScreen) : Table(Base
         var itemsInRow = 0
 
         fun addWrapping(value: Int, labelColor: Color, icon: Actor) {
-            specialistStatTable.add(value.tr().toLabel(fontColor = labelColor, role = TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)))
+            specialistStatTable.add(value.tr().toLabel(fontColor = labelColor, role = if (cityScreen.usesWorkbench) TextRole.Supporting else TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage)))
             specialistStatTable.add(icon).size(20f).padRight(10f)
 
             itemsInRow++

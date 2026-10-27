@@ -324,7 +324,7 @@ fun getCloseButton(
     overColor: Color = Color.RED,
     action: () -> Unit
 ): Group {
-    val closeButton = if (UiNavigation.isIos) Group().apply {
+    val closeButton = if (UiNavigation.isMobile) Group().apply {
         val button = UiNavigation.dismissButton()
         setSize(button.width, button.height)
         addActor(button)
@@ -342,7 +342,7 @@ fun addRoundCloseButton(
     parent: Group,
     action: () -> Unit
 ): Group {
-    if (UiNavigation.isIos) {
+    if (UiNavigation.isMobile) {
         val button = getCloseButton(action = action)
         if (parent is Table) parent.padRight(maxOf(parent.padRight, button.width + 8f))
         parent.addActor(button)

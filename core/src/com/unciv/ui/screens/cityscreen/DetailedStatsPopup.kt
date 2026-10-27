@@ -9,6 +9,8 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.Constants
 import com.unciv.ui.components.input.onChange
+import com.unciv.ui.components.input.activate
+import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.utils.Align
 import com.unciv.logic.city.StatTreeNode
 import com.unciv.models.stats.Stat
@@ -26,6 +28,7 @@ import com.unciv.ui.components.extensions.packIfNeeded
 import com.unciv.ui.components.extensions.pad
 import com.unciv.ui.components.extensions.surroundWithCircle
 import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.extensions.setTextRole
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.images.IconCircleGroup
 import com.unciv.ui.popups.Popup
@@ -62,7 +65,7 @@ class DetailedStatsPopup(
         headerTable.defaults().pad(3f, 0f)
         totalTable.defaults().pad(3f, 0f)
         if (ordinaryPresentation) {
-            addDialogTitle("Stats", cityScreen.cityView.name)
+            addDialogTitle(cityScreen.cityView.name)
             val matrix = Table().apply {
                 add(headerTable).growX().row()
                 add(totalTable).growX()
@@ -88,32 +91,66 @@ class DetailedStatsPopup(
         closeListeners.add { cityScreen.pauseFireworks = false }
     }
 
-    internal fun workbenchContent(): Table {
+    internal fun workbenchContent(
+        initialStat: Stat? = Stat.Production,
+        initialDetailed: Boolean = false,
+        onSelection: (Stat?, Boolean) -> Unit = { _, _ -> }
+    ): Table {
         embedded = true
-        update()
-        val combined = Table().apply {
-            add(headerTable).growX().row()
-            add(totalTable).growX()
-        }
+        onlyWithStat = initialStat
+        isDetailed = initialDetailed
+        val combined = Table().apply { top().left() }
+        val matrixPane = AutoScrollPane(combined).apply { setOverscroll(false, false) }
         val filters = cityWorkbenchSelectBox()
         val filterStats = Stat.entries.filter { it != Stat.Faith || cityScreen.cityView.viewingCiv().isReligionEnabled() }
         filters.setItems(*listOf("All".tr()).plus(filterStats.map { cityWorkbenchIconText(it.name.tr(hideIcons = true)) }).toTypedArray())
-        filters.onChange {
-            onlyWithStat = filterStats.getOrNull(filters.selectedIndex - 1)
+        filters.selectedIndex = if (onlyWithStat == null) 0 else filterStats.indexOf(onlyWithStat) + 1
+        filters.name = "ui-city-stat-filter"
+        lateinit var toggle: com.badlogic.gdx.scenes.scene2d.ui.TextButton
+        fun refresh() {
             update()
+            combined.clear()
+            if (onlyWithStat == null) {
+                combined.add("Swipe horizontally to view all resources.".toLabel(TextRole.Supporting, unit = 1f).apply { wrap = true })
+                    .width(cityScreen.workbenchManagementWidth).left().padBottom(8f).row()
+            }
+            if (onlyWithStat == null) combined.add(headerTable).growX().row()
+            else {
+                val stat = onlyWithStat!!
+                val amount = if (stat == Stat.Happiness) cityScreen.cityView.getHappinessList().values.sum()
+                    else cityScreen.cityView.getCurrentCityStats()[stat]
+                val summary = Table().apply {
+                    add(stat.name.toLabel(TextRole.Body, unit = 1f)).growX().left()
+                    add(amount.toOneDecimalLabel().apply { setTextRole(TextRole.SectionTitle, unit = 1f); color = ExpeditionBlueTheme.gold }).right()
+                }
+                combined.add(summary).width(cityScreen.workbenchManagementWidth).minHeight(32f).padBottom(4f).row()
+            }
+            combined.add(totalTable).growX().row()
+            matrixPane.setScrollingDisabled(onlyWithStat != null, false)
+            toggle.setText((if (isDetailed) "Collapse sources" else "Expand sources").tr())
+            onSelection(onlyWithStat, isDetailed)
         }
+        filters.onChange { onlyWithStat = filterStats.getOrNull(filters.selectedIndex - 1); refresh() }
+        toggle = cityWorkbenchControl(if (isDetailed) "Collapse sources" else "Expand sources", "ui-city-stat-details") {
+            isDetailed = !isDetailed
+            refresh()
+        }
+        val controls = Table().apply {
+            add(filters).growX().minWidth(0f).minHeight(44f).padRight(8f)
+            add(toggle).minHeight(44f)
+        }
+        refresh()
         return Table().apply {
-            add(filters).growX().height(44f).padBottom(8f).row()
-            add(AutoScrollPane(combined).apply {
-                setOverscroll(false, false)
-                setScrollingDisabled(false, true)
-            }).width(cityScreen.workbenchManagementWidth).growY()
+            top()
+            add(controls).growX().padLeft(12f).padRight(12f).row()
+            add(matrixPane).grow().minSize(0f).pad(8f, 12f, 8f, 12f)
         }
     }
 
     private fun update() {
         headerTable.clear()
         totalTable.clear()
+        if (embedded) { headerTable.defaults().pad(0f); totalTable.defaults().pad(0f) }
 
         val cityView = cityScreen.cityView
         val showFaith = cityView.viewingCiv().isReligionEnabled()
@@ -124,13 +161,15 @@ class DetailedStatsPopup(
             else -> Stat.entries
         }
         val columnCount = stats.size + 1
-        val statColMinWidth = if (embedded) 65f else if (onlyWithStat != null) 150f else 110f
+        val statColMinWidth = if (embedded) if (onlyWithStat != null) 88f else 65f else if (onlyWithStat != null) 150f else 110f
 
-        headerTable.add(getToggleButton(isDetailed)).minWidth(if (embedded) 110f else 150f).grow()
+        if (embedded) headerTable.add("Source".toLabel(TextRole.Control, unit = 1f))
+            .width(if (onlyWithStat != null) (cityScreen.workbenchManagementWidth - 88f).coerceAtLeast(120f) else 144f).left().minHeight(44f)
+        else headerTable.add(getToggleButton(isDetailed)).minWidth(150f).grow()
 
         for (stat in stats) {
             val label = stat.name.toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = if (embedded) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = if (embedded) 13 else Constants.defaultFontSize))
-            label.onClick {
+            if (!embedded) label.onClick {
                 onlyWithStat = if (onlyWithStat == null) stat else null
                 update()
             }
@@ -338,7 +377,18 @@ class DetailedStatsPopup(
             label?.color = ExpeditionBlueTheme.gold
         if (color != null)
             tbl.background = BaseScreen.skinStrings.getUiBackground("General/Border", tintColor = color)
-        tbl.add(label).growX()
+        if (embedded && align == Align.left && label != null) {
+            label.wrap = true
+            tbl.add(label).width(if (onlyWithStat != null) (cityScreen.workbenchManagementWidth - 96f).coerceAtLeast(112f) else 136f).growX()
+        } else tbl.add(label).growX()
+        if (embedded) {
+            tbl.pad(4f)
+            tbl.cells.forEach { it.minHeight(36f) }
+            if (align == Align.left && label != null) {
+                label.touchable = Touchable.disabled
+                tbl.onActivation { label.activate() }
+            }
+        }
         return tbl
     }
 

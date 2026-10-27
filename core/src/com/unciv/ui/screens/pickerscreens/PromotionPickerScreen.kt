@@ -66,7 +66,7 @@ class PromotionPickerScreen private constructor(
     // This if we should save the unit promotion or not.
     private var saveUnitPromotion = false
     private var atlas: PromotionAtlasView? = null
-    override val screenClearColor: Color get() = if (UiNavigation.isIos) ExpeditionBlueTheme.background else super.screenClearColor
+    override val screenClearColor: Color get() = if (UiNavigation.isMobile) ExpeditionBlueTheme.background else super.screenClearColor
 
     private fun isPickable(node: PromotionTree.PromotionNode) = canPromoteNow &&
         (!node.pathIsAmbiguous || node.distanceToAdopted == 1) && tree.canBuyUpTo(node.promotion)
@@ -79,7 +79,7 @@ class PromotionPickerScreen private constructor(
         }
         closeButton.keyShortcuts.add(KeyCharAndCode.BACK)
 
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             buttonCellMaxWidth = 0f
             buttonCellMinWidth = 0f
             pickerPane.remove()

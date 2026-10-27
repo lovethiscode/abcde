@@ -3,6 +3,7 @@ package com.unciv.ui.popups
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.Touchable
+import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.utils.Align
 import com.unciv.ui.components.extensions.addRoundCloseButton
@@ -31,7 +32,7 @@ import kotlinx.coroutines.delay
  * - Supports color markup via [ColorMarkupLabel], using «» instead of Gdx's [].
  * @param time Duration in milliseconds, defaults to 2 seconds
  */
-private fun ordinaryToast() = UiNavigation.isIos &&
+private fun ordinaryToast() = UiNavigation.isMobile &&
     UncivGame.getGameInfoOrNull()?.let { it.campaign == null && it.endless == null } != false
 
 class ToastPopup (message: String, stageToShowOn: Stage, val time: Long = 2000) :
@@ -43,6 +44,7 @@ class ToastPopup (message: String, stageToShowOn: Stage, val time: Long = 2000) 
     private val compact = ordinaryToast()
     private val messageLabel = ColorMarkupLabel(message)
     private var compactScroll: AutoScrollPane? = null
+    private val compactContent = Table()
     private var dismiss: com.badlogic.gdx.scenes.scene2d.ui.TextButton? = null
     private var layoutSignature = ""
 
@@ -56,7 +58,10 @@ class ToastPopup (message: String, stageToShowOn: Stage, val time: Long = 2000) 
         if (compact) {
             background = null
             touchable = Touchable.childrenOnly
-            compactScroll = AutoScrollPane(messageLabel).apply {
+            val content = if (UiNavigation.isAndroid) compactContent.apply {
+                add(messageLabel).growX().minWidth(0f)
+            } else messageLabel
+            compactScroll = AutoScrollPane(content).apply {
                 setScrollingDisabled(true, false)
                 setOverscroll(false, false)
             }
@@ -85,6 +90,7 @@ class ToastPopup (message: String, stageToShowOn: Stage, val time: Long = 2000) 
         // would apply the visible-area offset a second time inside the toast.
         pad(0f)
         val unit = popupUnit
+        if (UiNavigation.isAndroid) compactContent.pad(4f * unit, 0f, 4f * unit, 0f)
         val safe = (stageToShowOn.viewport as? SafeAreaViewport)?.safeAreaBoundsInWorld
             ?: Rectangle(0f, 0f, stageToShowOn.width, stageToShowOn.height)
         val available = (stageToShowOn as? com.unciv.ui.screens.basescreen.UncivStage)?.lastKnownVisibleArea ?: safe
@@ -150,7 +156,7 @@ class ToastPopup (message: String, stageToShowOn: Stage, val time: Long = 2000) 
         stopTimer()
         clearActivationActions(ActivationTypes.Tap, false)
         onClick(::close)
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             addCloseButton()
             pack()
             y = stageToShowOn.height - (height + 20f)

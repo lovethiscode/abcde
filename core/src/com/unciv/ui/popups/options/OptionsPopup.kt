@@ -2,6 +2,7 @@ package com.unciv.ui.popups.options
 
 import kotlin.math.roundToInt
 import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.utils.Concurrency
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Rectangle
@@ -123,8 +124,7 @@ class OptionsPopup(
                 onClick { close() }
             }
             add(back).minSize(UiNavigation.minimumTouchSize()).padRight(OptionsPopupStyle.points(10f))
-            add("Options".toLabel(OptionsPopupStyle.text, OptionsPopupStyle.fontSize(TextRole.PageTitle)).apply { wrap = true })
-                .minWidth(0f).growX().left()
+            add().growX()
         }
 
         navigation.top().pad(0f, OptionsPopupStyle.points(12f), OptionsPopupStyle.points(8f), OptionsPopupStyle.points(12f))
@@ -188,6 +188,13 @@ class OptionsPopup(
             }
             heading.invalidateHierarchy()
             header.invalidateHierarchy()
+            if (compactNavigation) Concurrency.runOnGLThread {
+                navigationButtons.getOrNull(index)?.let { button ->
+                    sidebarScroll.validate()
+                    sidebarScroll.scrollTo(button.x, button.y, button.width, button.height, true, false)
+                    sidebarScroll.updateVisualScroll()
+                }
+            }
             tabs.resizePageArea(tabs.prefWidth,
                 ((visibleHeight.takeIf { it > 0f } ?: stageToShowOn.height) - navigationHeight - header.prefHeight)
                     .coerceAtLeast(OptionsPopupStyle.points(44f)))
@@ -224,7 +231,7 @@ class OptionsPopup(
             headingCell.setActor(if (editing) null else heading)
             tabs.resizePageArea(stageToShowOn.width * 0.9f - sidebarWidth - contentPadding * 2,
                 (visibleArea.height * 0.9f - navigationHeight - header.prefHeight).coerceAtLeast(OptionsPopupStyle.points(44f)))
-        } else if (com.badlogic.gdx.Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
+        } else if (com.unciv.ui.components.widgets.UiNavigation.isMobile) {
             tabs.resizePageArea(
                 if (stageToShowOn.height > stageToShowOn.width) stageToShowOn.width - 10f else stageToShowOn.width * 0.8f,
                 visibleArea.height * 0.8f

@@ -100,7 +100,7 @@ abstract class ReligionPickerScreenCommon(
                 down = OverviewUi.rounded(OverviewUi.selected, 9f)
                 checked = down
             }
-            pad(OverviewUi.pt(if (UiNavigation.isIos) 6f else 10f))
+            pad(OverviewUi.pt(if (UiNavigation.isMobile) 6f else 10f))
             when {
                 belief != null -> {
                     if (withTypeLabel)
@@ -108,7 +108,7 @@ abstract class ReligionPickerScreenCommon(
                             Color.valueOf(belief.type.color),
                             if (belief.type == BeliefType.Founder) ExpeditionBlueTheme.danger else Color.valueOf(belief.type.color)
                         ), role = TextRole.Body)).row()
-                    val nameLabel = WrappableLabel(belief.name, labelWidth,fontSize = UiTypography.size(if (UiNavigation.isIos) TextRole.Control else TextRole.SectionTitle, legacySize = Constants.headingFontSize))
+                    val nameLabel = WrappableLabel(belief.name, labelWidth,fontSize = UiTypography.size(if (UiNavigation.isMobile) TextRole.Control else TextRole.SectionTitle, legacySize = Constants.headingFontSize))
                     add(nameLabel.apply { wrap = true }).row()
                     val effectLabel = WrappableLabel(belief.uniqueObjects.filter { !it.isHiddenToUsers() }.map { it.getDisplayText() }
                         .joinToString("\n") { it.tr() }, labelWidth)

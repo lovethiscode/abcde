@@ -26,7 +26,7 @@ class FriendPickerList(
         padBottom(10f)
 
         friendList = playerPicker.getAvailableFriends().toMutableList()
-        if (friendList.isEmpty() && UiNavigation.isIos)
+        if (friendList.isEmpty() && UiNavigation.isMobile)
             addActor("No friends added yet".toLabel(TextRole.Body))
 
         for (friend in friendList) {
@@ -52,7 +52,7 @@ private class FriendDisplay(
     init {
         padBottom(5f)
 
-        add(friendButton).apply { if (UiNavigation.isIos) minHeight(UiNavigation.minimumTouchSize()).fillY() }
+        add(friendButton).apply { if (UiNavigation.isMobile) minHeight(UiNavigation.minimumTouchSize()).fillY() }
         onClick { onSelected(friendName) }
     }
 }

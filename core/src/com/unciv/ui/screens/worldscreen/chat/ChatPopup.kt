@@ -130,7 +130,7 @@ class ChatPopup(
     private val scrollPane = ScrollPane(chatTable, skin)
     private val messageField = UncivTextField(hint = "Type something...")
     private val passwordReminder = Table(skin)
-    private val iosScale = if (UiNavigation.isIos) UiNavigation.minimumTouchSize() / 44f else 1f
+    private val iosScale = if (UiNavigation.isMobile) UiNavigation.minimumTouchSize() / 44f else 1f
     private val chatHeaderRow = Table(skin)
     private val composer = Table(skin)
     private val inputFont by lazy {
@@ -149,21 +149,19 @@ class ChatPopup(
          * | MessageField | SendButton |
          */
 
-        val chatHeader = Table(skin)
-        val chatLabel = "Chat".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, iosScale, legacySize = 30), alignment = Align.center)
-        val chatIcon = ImageGetter.getImage("OtherIcons/Chat")
-
-        chatHeader.add(chatIcon).size(chatLabel.height * 1.6f)
-            .padRight(chatLabel.height / 3).padBottom(chatLabel.height / 4)
-        chatHeader.add(chatLabel).apply { if (!UiNavigation.isIos) expandX() }
-
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             val closeButton = UiNavigation.dismissButton().apply { onClick { close() } }
             BattlefieldGeometry.fitControl(closeButton)
-            chatHeaderRow.add(chatHeader).minWidth(0f).growX().left()
+            chatHeaderRow.add().growX()
             chatHeaderRow.add(closeButton).size(UiNavigation.minimumTouchSize())
             add(chatHeaderRow).colspan(2).growX().row()
         } else {
+            val chatLabel = "Chat".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, iosScale, legacySize = 30), alignment = Align.center)
+            val chatHeader = Table(skin).apply {
+                add(ImageGetter.getImage("OtherIcons/Chat")).size(chatLabel.height * 1.6f)
+                    .padRight(chatLabel.height / 3).padBottom(chatLabel.height / 4)
+                add(chatLabel).expandX()
+            }
             add(chatHeader).left().pad(5f).expandX()
             add(ImageButton(ImageGetter.getImage("OtherIcons/Close").drawable).onClick {
                     ChatStore.chatPopup = null
@@ -178,7 +176,7 @@ class ChatPopup(
         val sendButton = Button(skin)
         sendButton.name = "ui-chat-send"
         messageField.name = "ui-chat-message"
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             innerTable.pad(8f * iosScale)
             innerTable.defaults().pad(0f)
             innerTable.getCell(chatHeaderRow).pad(0f).height(44f * iosScale)
@@ -219,7 +217,7 @@ class ChatPopup(
     // Size the panel inside both the window safe area and the keyboard-visible region.
     // Only the message list flexes; header, close and composer remain directly usable.
     override fun layout() {
-        if (!UiNavigation.isIos) { super.layout(); return }
+        if (!UiNavigation.isMobile) { super.layout(); return }
         setPosition(0f, 0f)
         val safe = worldScreen.safeAreaBoundsInWorld()
         val visible = (stageToShowOn as UncivStage).lastKnownVisibleArea
@@ -235,11 +233,11 @@ class ChatPopup(
         innerTable.validate()
     }
 
-    override fun getPrefWidth() = if (UiNavigation.isIos) stageToShowOn.width else super.getPrefWidth()
-    override fun getPrefHeight() = if (UiNavigation.isIos) stageToShowOn.height else super.getPrefHeight()
+    override fun getPrefWidth() = if (UiNavigation.isMobile) stageToShowOn.width else super.getPrefWidth()
+    override fun getPrefHeight() = if (UiNavigation.isMobile) stageToShowOn.height else super.getPrefHeight()
 
     override fun onVisibleAreaChanged(visibleArea: Rectangle) {
-        if (!UiNavigation.isIos) { super.onVisibleAreaChanged(visibleArea); return }
+        if (!UiNavigation.isMobile) { super.onVisibleAreaChanged(visibleArea); return }
         invalidateHierarchy()
         validate()
         scrollPane.scrollPercentY = 1f
@@ -261,7 +259,7 @@ class ChatPopup(
             passwordReminder.add(
                 "To use chat, set or check your password in Options → Multiplayer.".toLabel(TextRole.Body).apply {
                     wrap = true
-                    if (UiNavigation.isIos) setFontSize(UiTypography.size(TextRole.Supporting, iosScale))
+                    if (UiNavigation.isMobile) setFontSize(UiTypography.size(TextRole.Supporting, iosScale))
                 }
             ).growX().padBottom(5f)
         }
@@ -293,7 +291,7 @@ class ChatPopup(
         scroll: Boolean = true
     ) {
         val line = createChatMessageLine(worldScreen.gameInfo, senderCivName, message, suffix)
-        if (UiNavigation.isIos) line.children.filterIsInstance<Label>().forEach { it.setFontSize(UiTypography.size(TextRole.Body, iosScale)) }
+        if (UiNavigation.isMobile) line.children.filterIsInstance<Label>().forEach { it.setFontSize(UiTypography.size(TextRole.Body, iosScale)) }
         chatTable.add(line).minWidth(0f).growX().left().row()
         if (scroll) scrollToBottom()
     }

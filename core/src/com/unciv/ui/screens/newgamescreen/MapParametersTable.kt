@@ -92,7 +92,7 @@ class MapParametersTable(
     // overrides nor is a Widget a data class. Seems to work anyway.
     private val advancedSliders = HashMap<UncivSlider, ()->Float>()
     private val directLayoutWidth: Float?
-        get() = councilLayoutWidth ?: (previousScreen as? NewGameScreen)?.takeIf { UiNavigation.isIos }?.directSetupWidth
+        get() = councilLayoutWidth ?: (previousScreen as? NewGameScreen)?.takeIf { UiNavigation.isMobile }?.directSetupWidth
     private val directLayoutFont get() = councilLayoutFont ?: (previousScreen as NewGameScreen).formFont
 
     private lateinit var hexWarningLabel: Label
@@ -271,7 +271,7 @@ class MapParametersTable(
         preview.clear()
         val map = lastExampleMap
         if (map == null) preview.add("Loading...".toLabel(TextRole.Body))
-        else if (UiNavigation.isIos && directLayoutWidth != null) {
+        else if (UiNavigation.isMobile && directLayoutWidth != null) {
             val tileSet = com.unciv.ui.components.tilegroups.TileSetStrings()
             val view = com.unciv.view.TileMapView(map, null)
             val groups = map.values.map { tile ->

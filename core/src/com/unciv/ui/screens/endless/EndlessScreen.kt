@@ -33,11 +33,23 @@ import com.unciv.utils.Concurrency
 /** The adopted defense hall, populated exclusively from the local slot and versioned records. */
 class EndlessScreen : BaseScreen(), RecreateOnResize {
     private val store = EndlessStore(game.files)
+    private val layoutUnit = if (UiNavigation.isAndroid) UiTypography.unitsPerPoint(stage) else 1f
+    private val layoutWidth get() = stage.width / layoutUnit
+    private val layoutHeight get() = stage.height / layoutUnit
+    private val touch get() = if (UiNavigation.isAndroid) 48f else UiNavigation.minimumTouchSize()
+    private fun screenFont(role: TextRole, legacySize: Int = role.legacySize) =
+        UiTypography.size(role, if (UiNavigation.isAndroid) 1f else UiTypography.unitsPerPoint(stage), legacySize)
     private val root = Table()
     private var recordsPace = "casual"
 
     init {
-        root.setFillParent(true)
+        if (UiNavigation.isAndroid) globalShortcuts.add(com.unciv.ui.components.input.KeyCharAndCode.BACK) { game.popScreen() }
+        root.setFillParent(!UiNavigation.isAndroid)
+        if (UiNavigation.isAndroid) {
+            root.setTransform(true)
+            root.setSize(layoutWidth, layoutHeight)
+            root.setScale(layoutUnit)
+        }
         root.background = ImageGetter.getWhiteDotDrawable().tint(Theme.background)
         stage.addActor(root)
         build()
@@ -46,9 +58,9 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
     private fun build() {
         root.clearChildren()
         val header = Table().apply {
-            add(UiNavigation.backButton().apply { onActivation { game.popScreen() } }).minHeight(UiNavigation.minimumTouchSize())
-            add("Defense hall".toLabel(Theme.gold, UiTypography.size(TextRole.PageTitle, legacySize = 28))).expandX().left().padLeft(14f)
-            add("Standard".toLabel(Theme.muted, UiTypography.size(TextRole.Body, legacySize = 17))).right().padRight(10f)
+            add(UiNavigation.backButton(unit = if (UiNavigation.isAndroid) 1f else touch / 44f).apply { onActivation { game.popScreen() } }).minHeight(touch)
+            add().expandX()
+            add("Standard".toLabel(Theme.muted, screenFont(TextRole.Body, legacySize = 17))).right().padRight(10f)
         }
         root.add(header).growX().pad(12f, 18f, 10f, 18f).row()
         try {
@@ -57,7 +69,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
             val state = saved?.endless
             val compatible = saved == null || runCatching { EndlessCatalog.requireCompatible(saved) }.isSuccess
             val scene = if (saved != null && compatible && state?.status != "Faulted") saved.also { it.setTransients() } else EndlessCatalog.newAttempt(1101)
-            val width = stage.width - 44f
+            val width = layoutWidth - 44f
             val wide = width >= 760f
             val mapWidth = if (wide) (width - 18f) * .60f else width
             val statusWidth = if (wide) width - mapWidth - 18f else width
@@ -65,7 +77,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
             val mapPanel = panel(mapWidth).apply {
                 text("Border Bastion", mapWidth - 36f, Theme.gold, TextRole.PageTitle)
                 text("Five waves per stage. Clear the stage before its deadline; queued enemies do not extend it.", mapWidth - 36f, Theme.muted)
-                val phone = UiNavigation.isIos && minOf(this@EndlessScreen.stage.width, this@EndlessScreen.stage.height) < UiNavigation.minimumTouchSize() * 600f / 44f
+                val phone = UiNavigation.isMobile && minOf(layoutWidth, layoutHeight) < touch * 600f / 44f
                 val height = if (phone) (mapWidth * .45f).coerceIn(140f, 240f) else (mapWidth * .60f).coerceIn(200f, 380f)
                 add(mapPreview(scene, mapWidth - 36f, height)).size(mapWidth - 36f, height).padTop(10f).row()
                 text("Explored terrain · enemy units remain under fog of war", mapWidth - 36f, Theme.muted, TextRole.Supporting)
@@ -103,7 +115,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
             val hero = Table().apply {
                 add(mapPanel).width(mapWidth).top()
                 if (wide) add(status).width(statusWidth).top().padLeft(18f)
-                else { row(); add(status).width(statusWidth).padTop(if (UiNavigation.isIos) 8f else 14f) }
+                else { row(); add(status).width(statusWidth).padTop(if (UiNavigation.isMobile) 8f else 14f) }
             }
             content.add(hero).width(width).row()
             content.add(panel(width).apply {
@@ -151,8 +163,8 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
                 .grow().minHeight(0f).pad(0f, 22f, 14f, 22f)
         } catch (ex: Exception) {
             com.unciv.utils.Log.error("Cannot read endless hall", ex)
-            root.add("Could not read the endless save. Existing files have been kept.".toLabel(fontColor = Theme.danger, role = TextRole.Body).apply { wrap = true })
-                .width(stage.width - 60f).pad(20f)
+            root.add("Could not read the endless save. Existing files have been kept.".toLabel(fontColor = Theme.danger, fontSize = screenFont(TextRole.Body)).apply { wrap = true })
+                .width(layoutWidth - 60f).pad(20f)
         }
     }
 
@@ -175,17 +187,17 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
 
     private fun panel(width: Float) = Table().apply {
         background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.panel)
-        pad(18f); top(); left(); defaults().left().spaceBottom(if (UiNavigation.isIos) 6f else 10f)
+        pad(18f); top(); left(); defaults().left().spaceBottom(if (UiNavigation.isMobile) 6f else 10f)
         this.width = width
     }
 
     private fun Table.text(value: String, width: Float, color: Color = Theme.text, size: TextRole = TextRole.Body) {
-        add(value.toLabel(size, color).apply { wrap = true }).width(width).left().row()
+        add(value.toLabel(color, screenFont(size)).apply { wrap = true }).width(width).left().row()
     }
 
     private fun Table.action(value: String, id: String, width: Float, primary: Boolean = false, action: () -> Unit): TextButton {
         val button = value.toTextButton().apply {
-            name = id; label.setFontSize(UiTypography.size(TextRole.Control, legacySize = 20))
+            name = id; label.setFontSize(screenFont(TextRole.Control, legacySize = 20))
             if (primary) style = TextButton.TextButtonStyle(style).apply {
                 up = ImageGetter.getWhiteDotDrawable().tint(Theme.gold)
                 down = ImageGetter.getWhiteDotDrawable().tint(Theme.muted)
@@ -193,7 +205,7 @@ class EndlessScreen : BaseScreen(), RecreateOnResize {
             }
             onActivation { action() }
         }
-        add(button).width(width).minHeight(maxOf(48f, UiNavigation.minimumTouchSize())).padTop(3f).row()
+        add(button).width(width).minHeight(maxOf(48f, touch)).padTop(3f).row()
         return button
     }
 

@@ -21,7 +21,7 @@ import com.unciv.ui.screens.worldscreen.WorldScreen
 
 /** Read-only results of completed actions. They never intercept the map or require confirmation. */
 object OrdinaryGameFeedback {
-    fun enabled(world: WorldScreen) = UiNavigation.isIos && world.gameInfo.campaign == null && world.gameInfo.endless == null
+    fun enabled(world: WorldScreen) = UiNavigation.isMobile && world.gameInfo.campaign == null && world.gameInfo.endless == null
 
     fun puppet(world: WorldScreen, city: City) {
         if (!enabled(world)) return

@@ -112,6 +112,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     private var seatSources = arrayListOf<Int>()
     private val status = "Connecting to room...".toLabel(TextRole.Body)
     private val roomRole = "".toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18))
+    private val androidUnit get() = if (UiNavigation.isAndroid) UiTypography.unitsPerPoint(stage) else 1f
+    private val touch get() = if (UiNavigation.isMobile) UiNavigation.minimumTouchSize() else 44f
     private val setupFont = lazy {
         Fonts.getUiFont(UiTypography.size(TextRole.Control, UiTypography.unitsPerPoint(stage)))
     }
@@ -138,7 +140,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }
     }
     private fun setCouncilEnabled(button: TextButton, enabled: Boolean) {
-        if (!UiNavigation.isIos) button.isEnabled = enabled
+        if (!UiNavigation.isMobile) button.isEnabled = enabled
         else {
             button.isDisabled = !enabled
             button.touchable = if (enabled) Touchable.enabled else Touchable.disabled
@@ -146,7 +148,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     }
 
     companion object {
-        fun openRoom() {
+        fun openRoom(onScreenCreated: (MultiplayerLobbyScreen) -> Unit = {}) {
             val game = UncivGame.Current
             val session = LobbySession.current() ?: LobbySession().apply {
                 roomApiUrl = LobbySession.roomApiUrl()
@@ -170,25 +172,29 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 save()
             }
             session.save()
-            game.pushScreen { MultiplayerLobbyScreen(session) }
+            game.pushScreen(onScreenCreated) { MultiplayerLobbyScreen(session) }
         }
-        fun openInvite(invite: MultiplayerGameInvite) {
+        fun openInvite(invite: MultiplayerGameInvite, canOpen: () -> Boolean = { true }, onFinished: () -> Unit = {}) {
+            var finished = false
+            fun finish() { if (!finished) { finished = true; onFinished() } }
             val game = UncivGame.Current
             val current = LobbySession.current()
             val gameServer = invite.serverUrl ?: game.settings.multiplayer.getServer()
             val roomApi = LobbySession.roomApiUrl()
             (game.getScreen() as? MultiplayerLobbyScreen)?.let { shown ->
-                if (shown.session.gameId == invite.gameId && shown.session.gameServerUrl == gameServer && shown.session.roomApiUrl == roomApi && shown.session.occupancy.isNotEmpty()) return
+                if (shown.session.gameId == invite.gameId && shown.session.gameServerUrl == gameServer && shown.session.roomApiUrl == roomApi && shown.session.occupancy.isNotEmpty()) { finish(); return }
             }
             fun open() {
+                if (!canOpen()) { finish(); return }
                 val session = if (current?.gameId == invite.gameId && current.gameServerUrl == gameServer && current.roomApiUrl == roomApi) current else LobbySession().apply {
                     gameServerUrl = gameServer; roomApiUrl = roomApi; gameId = invite.gameId
                 }
                 session.save()
                 game.pushScreen { MultiplayerLobbyScreen(session, joinOnOpen = true) }
+                finish()
             }
             if (current != null && (current.gameId != invite.gameId || current.gameServerUrl != gameServer || current.roomApiUrl != roomApi)) {
-                ConfirmPopup(game.getScreen()!!, "Leave the current waiting room and join this invitation?", "Leave and join") {
+                ConfirmPopup(game.getScreen()!!, "Leave the current waiting room and join this invitation?", "Leave and join", restoreDefault = { finish() }) {
                     Concurrency.run {
                         try {
                             val oldClient = LobbyClient(current.roomApiUrl)
@@ -203,12 +209,15 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                                 current.clearIfCurrent()
                             } finally { oldClient.close() }
                             launchOnGLThread { open() }
-                        } catch (e: Exception) { launchOnGLThread { errorPopup(game.getScreen()!!,e) } }
+                        } catch (e: Exception) { launchOnGLThread { if (canOpen()) game.getScreen()?.let { errorPopup(it,e) }; finish() } }
                     }
                 }.open()
             } else if (game.getScreen() is WorldScreen) {
-                ConfirmPopup(game.getScreen()!!,"Save the current game and open this room invitation?","Save and open") {
-                    Concurrency.run { game.gameInfo?.let { game.files.autosaves.autoSave(it) }; launchOnGLThread { open() } }
+                ConfirmPopup(game.getScreen()!!,"Save the current game and open this room invitation?","Save and open", restoreDefault = { finish() }) {
+                    Concurrency.run {
+                        try { game.gameInfo?.let { game.files.autosaves.autoSave(it) }; launchOnGLThread { open() } }
+                        catch (e: Exception) { launchOnGLThread { if (canOpen()) game.getScreen()?.let { errorPopup(it,e) }; finish() } }
+                    }
                 }.open()
             } else open()
         }
@@ -217,17 +226,27 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }
     }
     init {
-        layoutHeader()
         inviteButton.setText("Share invitation".tr())
         inviteButton.label.setWrap(true)
         copyInvitationButton.label.setWrap(true)
         inviteButton.onClick { shareInvitation() }
         copyInvitationButton.onClick { copyInvitation() }
+        startButton.label.wrap = true
         startButton.onClick { requestStart() }
         status.setWrap(true)
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             SinglePlayerSetup.style(inviteButton, formFont)
             SinglePlayerSetup.style(copyInvitationButton, formFont)
+            for (button in listOf(inviteButton, copyInvitationButton)) {
+                button.style = TextButton.TextButtonStyle(button.style).apply {
+                    checked = up
+                    checkedOver = over
+                    checkedDown = down
+                    checkedFontColor = fontColor
+                    checkedOverFontColor = overFontColor
+                    checkedDownFontColor = downFontColor
+                }
+            }
             stylePrimary(startButton)
             status.setFontSize(UiTypography.size(TextRole.Body, legacySize = 18))
             footer.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel)
@@ -239,7 +258,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             it.setOverscroll(false, false)
         }
         layout.background = skinStrings.getUiBackground("MultiplayerLobbyScreen/Background", tintColor = Color.valueOf("08172d"))
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             layout.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.controlBorder)
             layout.setBounds(12f, 8f, stage.width - 24f, stage.height - 16f)
             layout.pad(10f, 12f, 10f, 12f)
@@ -247,7 +266,8 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             layout.setFillParent(true)
             layout.pad(16f)
         }
-        layout.add(header).growX().padBottom(if (UiNavigation.isIos) 10f else 16f).row()
+        layoutHeader()
+        layout.add(header).growX().padBottom(if (UiNavigation.isMobile) 10f else 16f).row()
         layout.add(body).grow().minWidth(0f).minHeight(0f).top().row()
         layout.add(footer).growX().padTop(12f)
         stage.addActor(layout)
@@ -273,9 +293,14 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             if (!disposed && !paused && generation == connectionGeneration) {
                 connected = available
                 if (!available) cancelConfigurationSync()
-                drawMembers()
-                if (!available) { status.setText(message.tr()); renderedState = "" }
-                else processPendingRequests()
+                if (!available) {
+                    status.setText(message.tr())
+                    drawMembers(updateStatus = false)
+                    renderedState = ""
+                } else {
+                    drawMembers()
+                    processPendingRequests()
+                }
             }
         } }
         client.watch(session,join)
@@ -397,8 +422,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val joined = humans.count { it.playerId.isNotEmpty() }
         val ready = humans.count { it.playerId.isNotEmpty() && it.ready }
         val host = r?.hostId == userId
-        if (UiNavigation.isIos) {
-            roomRole.setText(if (r == null) "" else (if (host) "Host" else "Member").tr())
+        if (UiNavigation.isMobile) {
+            val role = if (r == null) "" else (if (host) "Host" else "Member").tr()
+            if (roomRole.text.toString() != role) {
+                roomRole.setText(role)
+                layoutHeader()
+            }
             roomRole.color = if (host) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.muted
         }
         if (updateStatus) status.setText(when {
@@ -411,7 +440,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             busy -> Constants.working.tr()
             configurationPending -> "Syncing room settings...".tr()
             setup?.gameParameters?.victoryTypes?.isEmpty() == true -> "No victory conditions were selected!".tr()
-            joined < humans.size -> "Invite friends to fill the empty seats.".tr()
+            joined < humans.size -> ""
             ready < humans.size && host -> "Waiting for other players to get ready.".tr()
             ready < humans.size -> "Choose your civilization, then get ready.".tr()
             host -> "Everyone is ready. You can start the game.".tr()
@@ -419,9 +448,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         })
         setCouncilEnabled(inviteButton,connected && r?.state == "WAITING" && own != null && !busy && !configurationPending)
         setCouncilEnabled(copyInvitationButton,inviteButton.isEnabled)
-        val width = stage.width - if (UiNavigation.isIos) 48f else 32f
+        val width = stage.width - if (UiNavigation.isMobile) 48f else 32f
         val landscape = r != null && !isNarrowerThan4to3()
-        if (landscape || UiNavigation.isIos) {
+        if (landscape || UiNavigation.isMobile) {
             scroll.actor = null
             body.add(content).grow().minWidth(0f).minHeight(0f)
         } else {
@@ -431,9 +460,9 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         if (r != null) {
             val gameSetup = setup ?: json().fromJson(GameSetupInfo::class.java,r.setup).also { setup = it }
             val editable = host && own != null && configurationSupported && r.state == "WAITING"
-            val overviewWidth = if (UiNavigation.isIos) width else GameSetupOverview.contentWidth(width, !landscape)
-            val settingsWidth = if (UiNavigation.isIos) overviewWidth else if (landscape) (width - 32f) * 2f / 3f + 16f else width
-            val cardsWidth = if (UiNavigation.isIos) {
+            val overviewWidth = if (UiNavigation.isMobile) width else GameSetupOverview.contentWidth(width, !landscape)
+            val settingsWidth = if (UiNavigation.isMobile) overviewWidth else if (landscape) (width - 32f) * 2f / 3f + 16f else width
+            val cardsWidth = if (UiNavigation.isMobile) {
                 if (landscape) (width - 24f) * .38f else width
             } else if (landscape) width - settingsWidth - 16f else width
             fun summary(values: List<String>) = Table().apply {
@@ -448,41 +477,41 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             val mapValues = listOf(gameSetup.mapParameters.type, gameSetup.mapParameters.mapSize.name)
             val playersHeading = Table().apply {
                 left()
-                if (UiNavigation.isIos) {
+                if (UiNavigation.isMobile) {
                     add(ImageGetter.getImage("OtherIcons/Nations", ExpeditionBlueTheme.gold)).size(24f).padRight(8f)
                     add(councilHeading("Room players",TextRole.SectionTitle)).left().growX()
                 } else add("Players".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24))).left().row()
                 val counts = if (humans.any { it.manual }) "[$joined]/[${humans.size}] seats filled · [$ready]/[${humans.size}] ready"
                     else "[$joined]/[${humans.size}] joined · [$ready]/[${humans.size}] ready"
-                add(counts.toLabel(if (UiNavigation.isIos) ExpeditionBlueTheme.muted else Color.LIGHT_GRAY,
-                    if (UiNavigation.isIos) 14 else 18)).left().padTop(4f).padBottom(if (UiNavigation.isIos) 4f else 12f).row()
+                add(counts.toLabel(if (UiNavigation.isMobile) ExpeditionBlueTheme.muted else Color.LIGHT_GRAY,
+                    if (UiNavigation.isMobile) 14 else 18)).left().padTop(4f).padBottom(if (UiNavigation.isMobile) 4f else 12f).row()
             }
-            val players = Table().apply { if (UiNavigation.isIos) top() }
-            if (!landscape && !UiNavigation.isIos) players.add(playersHeading).growX().row()
+            val players = Table().apply { if (UiNavigation.isMobile) top() }
+            if (!landscape && !UiNavigation.isMobile) players.add(playersHeading).growX().row()
             if (own == null && r.state == "WAITING") players.add("Rejoin room".toTextButton().apply {
                 onClick {
                     session.occupancy = ""; session.pendingAction = ""; session.pendingRequestId = ""; session.pendingCommand = ""
                     session.save(); client.stop(); connectRoom(join = true)
                 }
                 isEnabled = !busy
-            }).height(44f).growX().padBottom(12f).row()
+            }).minHeight(touch).growX().padBottom(12f).row()
             val grid = Table()
-            val columns = if (!UiNavigation.isIos && cardsWidth >= 640f) 2 else 1
+            val columns = if (!UiNavigation.isMobile && cardsWidth >= 640f) 2 else 1
             val cardWidth = (cardsWidth - (columns - 1) * 12f) / columns
             for ((index,s) in r.seats.withIndex()) {
-                grid.add(if (UiNavigation.isIos) councilPlayerRow(r,s,own,cardWidth) else playerCard(r,s,own,cardWidth)).width(cardWidth).growY().padBottom(if (UiNavigation.isIos) 8f else 12f)
+                grid.add(if (UiNavigation.isMobile) councilPlayerRow(r,s,own,cardWidth) else playerCard(r,s,own,cardWidth)).width(cardWidth).growY().padBottom(if (UiNavigation.isMobile) 8f else 12f)
                     .padRight(if (index % columns == 0 && columns == 2) 12f else 0f)
                 if (index % columns == columns-1) grid.row()
             }
             players.add(grid).growX().row()
-            if (editable) players.add((if (UiNavigation.isIos) "Add seat" else "Add player").toTextButton().apply {
-                if (UiNavigation.isIos) SinglePlayerSetup.style(this,formFont)
+            if (editable) players.add((if (UiNavigation.isMobile) "Add seat" else "Add player").toTextButton().apply {
+                if (UiNavigation.isMobile) SinglePlayerSetup.style(this,formFont)
                 setCouncilEnabled(this,connected && !busy && !configurationPending && r.seats.size < minOf(64,ruleset.nations.values.count { it.isMajorCiv }))
                 onClick {
                     gameSetupInfo.gameParameters.players.add(Player(playerType = PlayerType.Human))
                     seatSources.add(-1); markConfigurationChanged(immediate = true)
                 }
-            }).height(44f).growX().padBottom(12f).row()
+            }).minHeight(touch).growX().padBottom(12f).row()
             val information: (Table) -> Unit = { table ->
                 table.add("Game ID".toLabel(Color.LIGHT_GRAY, UiTypography.size(TextRole.Control, legacySize = 16))).left().row()
                 table.add(r.gameId.toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 16)).apply { setText(r.gameId); setWrap(true) }).growX().row()
@@ -491,11 +520,11 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     table.add(seat.playerId.toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 16)).apply { setText(seat.playerId); setWrap(true) }).growX().row()
                 }
             }
-            val details = if (UiNavigation.isIos) SinglePlayerSetup.group("Room information",cardsWidth,
+            val details = if (UiNavigation.isMobile) SinglePlayerSetup.group("Room information",cardsWidth,
                 "Room.Information",detailsOpen,information) else ExpanderTab("Room and player information",fontSize = UiTypography.size(TextRole.Body, legacySize = 18),
                 startsOutOpened = detailsOpen,expanderWidth = cardsWidth,onChange = { detailsOpen = !detailsOpen },initContent = information)
             players.add(details).growX()
-            val settings = if (editable || UiNavigation.isIos) configurationTable ?: buildConfiguration(settingsWidth).also { configurationTable = it }
+            val settings = if (editable || UiNavigation.isMobile) configurationTable ?: buildConfiguration(settingsWidth).also { configurationTable = it }
                 else if (landscape) Table().apply {
                     add(scrollColumn("Game Options".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24)), summary(gameValues), gameOptionsScroll)).width(cardsWidth).growY().padRight(16f)
                     add(scrollColumn("Map Options".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 24)), summary(mapValues), mapOptionsScroll)).width(cardsWidth).growY()
@@ -504,7 +533,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     add(summary(mapValues + gameValues)).growX()
                 }
             settings.touchable = if (!connected || busy || r.state != "WAITING") Touchable.disabled else Touchable.childrenOnly
-            if (UiNavigation.isIos) {
+            if (UiNavigation.isMobile) {
                 drawCouncilPage(width, !landscape, cardsWidth, playersHeading, players, editable)
             } else if (landscape) {
                 content.add(settings).width(settingsWidth).growY().padRight(16f)
@@ -518,32 +547,36 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             }
         }
         val leave = (if(r == null) "Cancel" else if(host) "Close room" else "Leave room").toTextButton().apply {
-            if (UiNavigation.isIos) UiNavigation.styleTextButton(this)
+            if (UiNavigation.isMobile) UiNavigation.styleTextButton(this)
             onClick {
                 if (r == null || r.state == "CLOSED" || own == null) game.popScreen() else leaveRoom()
             }; setCouncilEnabled(this,!busy)
         }
-        footer.add(status).growX().minWidth(0f).left().padRight(12f).colspan(if (UiNavigation.isIos && stage.width < 850f) 2 else 1)
-        if (stage.width < 850f) footer.row()
-        footer.add(leave).height(44f).apply { if (UiNavigation.isIos) width(126f) }.padRight(if (host) 10f else 0f)
+        if (status.text.isNotBlank()) {
+            footer.add(status).growX().minWidth(0f).left().padRight(12f).colspan(if (UiNavigation.isMobile && stage.width / androidUnit < 850f) 2 else 1)
+            if (stage.width / androidUnit < 850f) footer.row()
+        }
+        leave.label.wrap = true
+        leave.getCell(leave.label).growX().minWidth(0f)
+        footer.add(leave).minHeight(touch).apply { if (UiNavigation.isMobile) minWidth(0f).growX() }.padRight(if (host) 10f else 0f)
         if (host) {
             startButton.setText(lobbyStartButtonText(r.state,busy).tr())
             setCouncilEnabled(startButton,connected && !busy && !configurationPending && own != null && (r.state == "STARTING" || (r.state == "WAITING" && joined == humans.size && ready == humans.size && gameSetupInfo.gameParameters.victoryTypes.isNotEmpty())))
-            footer.add(startButton).height(44f).apply { if (UiNavigation.isIos) width(180f) }
+            footer.add(startButton).minHeight(touch).apply { if (UiNavigation.isMobile) minWidth(0f).growX() }
         }
-        if (UiNavigation.isIos && !host && own != null && r.state == "WAITING") {
+        if (UiNavigation.isMobile && !host && own != null && r.state == "WAITING") {
             footer.add((if (own.ready) "Cancel ready" else "Ready").toTextButton().apply {
                 stylePrimary(this)
                 setCouncilEnabled(this,connected && !busy && !configurationPending)
                 onClick { runRequest { client.command(session.gameId,"ready",command().apply { this.ready = !own.ready }) } }
-            }).height(44f).width(164f).padLeft(10f)
+            }).minHeight(touch).minWidth(0f).growX().padLeft(10f)
         }
         if (r == null && !busy) footer.add("Retry".toTextButton().apply { onClick {
             if (session.pendingAction == "join") { session.pendingAction = ""; session.pendingRequestId = ""; session.pendingCommand = "" }
             session.save(); client.stop(); connectRoom(join = session.gameId.isNotEmpty())
-        } }).height(44f)
+        } }).minHeight(touch)
         if (r?.state == "STARTED" && !busy && !enteringGame && own != null)
-            footer.add("Retry".toTextButton().apply { onClick { enterGame() } }).height(44f)
+            footer.add("Retry".toTextButton().apply { onClick { enterGame() } }).minHeight(touch)
         layout.invalidateHierarchy()
         layout.validate()
         scrollPanes.forEachIndexed { index, pane ->
@@ -559,31 +592,38 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             onClick { if (configurationPending && connected && !busy) saveConfiguration(backAfter = true) else game.popScreen() }
             keyShortcuts.add(KeyCharAndCode.BACK)
         }
+        fun buttonWidth(button: TextButton): Float {
+            val wrapped = button.label.wrap
+            button.label.setWrap(false)
+            val width = maxOf(touch, button.prefWidth)
+            button.label.setWrap(wrapped)
+            return width
+        }
+        val inviteWidth = buttonWidth(inviteButton)
+        val copyWidth = buttonWidth(copyInvitationButton)
+        val roleWidth = roomRole.prefWidth
+        // Measure in the owning Stage, after styling, instead of treating dp as iOS layout units.
+        val availableWidth = if (UiNavigation.isMobile) stage.width - 48f else stage.width - 32f
+        val inlineWidth = back.prefWidth + 16f + roleWidth + 10f + inviteWidth + 8f + copyWidth
         header.clear()
         header.apply {
             add(back).minHeight(UiNavigation.minimumTouchSize()).padRight(16f)
-            if (UiNavigation.isIos && this@MultiplayerLobbyScreen.stage.width < 850f) {
-                add(councilHeading("Multiplayer room", TextRole.PageTitle).apply { wrap = true }).growX().minWidth(0f).left()
-                add(roomRole).padLeft(8f)
+            if (UiNavigation.isMobile && inlineWidth > availableWidth) {
+                add(roomRole).expandX().right().padLeft(8f)
                 row()
                 add(Table().apply {
-                    add(inviteButton).growX().minWidth(0f).height(44f).padRight(8f)
-                    add(copyInvitationButton).growX().minWidth(0f).height(44f)
-                }).colspan(3).growX().padTop(8f)
-            } else if (UiNavigation.isIos) {
-                add(Table().apply {
-                    add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX().padRight(18f)
-                    add(councilHeading("Multiplayer room", TextRole.PageTitle))
-                    add(ImageGetter.getWhiteDot().apply { color = ExpeditionBlueTheme.gold }).height(1f).growX().padLeft(18f)
-                }).growX().padRight(18f)
-                add(roomRole).width(54f).padRight(10f)
-                add(inviteButton).width(126f).height(44f).padRight(8f)
-                add(copyInvitationButton).width(126f).height(44f)
+                    add(inviteButton).growX().minWidth(0f).minHeight(touch).padRight(8f)
+                    add(copyInvitationButton).growX().minWidth(0f).minHeight(touch)
+                }).colspan(2).growX().padTop(8f)
+            } else if (UiNavigation.isMobile) {
+                add(roomRole).minWidth(roleWidth).expandX().right().padRight(10f)
+                add(inviteButton).minWidth(inviteWidth).minHeight(touch).padRight(8f)
+                add(copyInvitationButton).minWidth(copyWidth).minHeight(touch)
             } else {
-                add("Multiplayer room".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 28))).left().growX()
-                if (this@MultiplayerLobbyScreen.stage.width < 850f) row()
-                add(inviteButton).height(44f).padRight(8f)
-                add(copyInvitationButton).height(44f)
+                add().growX()
+                if (this@MultiplayerLobbyScreen.stage.width / androidUnit < 850f) row()
+                add(inviteButton).minHeight(touch).padRight(8f)
+                add(copyInvitationButton).minHeight(touch)
             }
         }
     }
@@ -777,7 +817,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                             open()
                         }
                     }
-                }).size(44f).padLeft(6f)
+                }).size(touch).padLeft(6f)
             }
         }
     }
@@ -798,12 +838,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             mapSettings?.generateExampleMap()
         }, updatePlayerPickerRandomLabel = {}, allowOnlineToggle = false, forInviteRoom = true,
             onConfigurationChanged = { markConfigurationChanged(immediate = true) },
-            directLayoutWidth = if (UiNavigation.isIos) councilColumnWidth else null,
-            directLayoutFont = if (UiNavigation.isIos) formFont else null)
+            directLayoutWidth = if (UiNavigation.isMobile) councilColumnWidth else null,
+            directLayoutFont = if (UiNavigation.isMobile) formFont else null)
         gameSettings = gameOptions
         mapSettings = MapParametersTable(this,gameSetupInfo.mapParameters,MapGeneratedMainType.generated,
-            councilLayoutWidth = if (UiNavigation.isIos) councilColumnWidth else null,
-            councilLayoutFont = if (UiNavigation.isIos) formFont else null)
+            councilLayoutWidth = if (UiNavigation.isMobile) councilColumnWidth else null,
+            councilLayoutFont = if (UiNavigation.isMobile) formFont else null)
         val changeListener = object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
                 if (actor !is Slider && actor !is TextField && actor !is SelectBox<*> && actor !is CheckBox) return
@@ -811,7 +851,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     markConfigurationChanged(immediate = actor !is Slider && actor !is TextField)
             }
         }
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             gameOptions.addListener(changeListener)
             mapSettings!!.addListener(changeListener)
         }
@@ -824,12 +864,12 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         }
         return Table().apply {
             top()
-            if (!UiNavigation.isIos) {
+            if (!UiNavigation.isMobile) {
                 add(column("Game Options",gameOptions,gameOptionsScroll)).width(columnWidth).growY().padRight(if(twoColumns) 16f else 0f)
                 if(!twoColumns) row()
                 add(column("Map Options",mapSettings!!,mapOptionsScroll)).width(columnWidth).growY().padTop(if(twoColumns) 0f else 16f)
             }
-            if (!UiNavigation.isIos) addListener(changeListener)
+            if (!UiNavigation.isMobile) addListener(changeListener)
         }
     }
     private fun markConfigurationChanged(immediate: Boolean = false) {
@@ -919,7 +959,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                         }
                         markConfigurationChanged(immediate = true)
                     }
-                }).height(44f).padLeft(8f)
+                }).minHeight(touch).padLeft(8f)
             }
             if (s.human && !empty) add((if (s.ready) "Ready" else "Not ready").toLabel(if (s.ready) Color.GREEN else Color.LIGHT_GRAY, UiTypography.size(TextRole.Control, legacySize = 16))).padLeft(8f)
         }
@@ -929,7 +969,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
             if (manualControl) add("Player ID".toTextButton().apply {
                 isEnabled = connected && !busy && !configurationPending
                 onClick { beforeModal(); editManualPlayer(s) }
-            }).height(if (UiNavigation.isIos) UiNavigation.minimumTouchSize() else 36f)
+            }).height(if (UiNavigation.isMobile) UiNavigation.minimumTouchSize() else 36f)
         }).growX().padTop(4f).row()
         val controls = Table()
         if (manualControl) controls.add((if (s.ready) "Cancel ready" else "Mark ready").toTextButton().apply {
@@ -938,19 +978,19 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                 val update = seatCommand(s).apply { ready = !s.ready }
                 runRequest { client.command(session.gameId,"ready",update) }
             }
-        }).height(44f).padRight(8f)
+        }).minHeight(touch).padRight(8f)
         when {
             mine && r.state == "WAITING" -> {
                 if (r.hostId != userId) controls.add((if (s.ready) "Cancel ready" else "Ready").toTextButton().apply { onClick {
                     runRequest { client.command(session.gameId,"ready",command().apply { ready = !s.ready }) }
-                }; isEnabled = connected && !busy && !configurationPending }).height(44f)
+                }; isEnabled = connected && !busy && !configurationPending }).minHeight(touch)
             }
             r.hostId == userId && s.human && !empty && r.state == "WAITING" -> controls.add("Kick".toTextButton().apply { onClick {
                 beforeModal()
                 ConfirmPopup(this@MultiplayerLobbyScreen,"Remove this player from the room?","Kick") {
                     runRequest { client.command(session.gameId,"kick",command().apply { seatId = s.seatId; targetOccupancy = s.occupancy }) }
                 }.open()
-            }; isEnabled = connected && !busy && !configurationPending }).height(44f).right()
+            }; isEnabled = connected && !busy && !configurationPending }).minHeight(touch).right()
         }
         if (r.hostId == userId && own != null && configurationSupported && r.state == "WAITING" && s.playerId.isEmpty() && r.seats.size > 2)
             controls.add("−".toTextButton().apply {
@@ -959,14 +999,14 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
                     beforeModal()
                     if (removeSeat(r,s)) markConfigurationChanged(immediate = true)
                 }
-            }).height(44f).padLeft(8f)
+            }).minHeight(touch).padLeft(8f)
         if (empty) {
             if (controls.hasChildren()) heading.add(controls).padLeft(8f)
             if (r.hostId == userId && own != null && configurationSupported && r.state == "WAITING")
                 card.add("Add player manually".toTextButton().apply {
                     isEnabled = connected && !busy && !configurationPending
                     onClick { beforeModal(); editManualPlayer(s) }
-                }).height(44f).padTop(12f).left()
+                }).minHeight(touch).padTop(12f).left()
         } else {
             val civilization = Table().apply {
                 val ruleset = RulesetCache.getComplexRuleset(setup!!.gameParameters)
@@ -994,10 +1034,10 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
         val update = seatCommand(s)
         popup.addGoodSizedLabel(if (s.manual) "Edit manual player" else "Add player manually").row()
         popup.addGoodSizedLabel("Paste the Player ID sent by the Android player. After starting, send them the Game ID.").row()
-        popup.add(field).width(stage.width * 0.6f).height(44f).row()
+        popup.add(field).width(stage.width * 0.6f).minHeight(touch).row()
         popup.add("Paste player ID from clipboard".toTextButton().apply {
             onClick { field.text = Gdx.app.clipboard.contents }
-        }).height(44f).row()
+        }).minHeight(touch).row()
         popup.addCloseButton("Cancel")
         popup.addButton("Save",KeyCharAndCode.RETURN) {
             val id = IdChecker.checkAndReturnPlayerUuid(field.text)?.playerID
@@ -1019,7 +1059,7 @@ class MultiplayerLobbyScreen(private val session: LobbySession, initial: LobbyRo
     }
     override fun resize(width: Int, height: Int) {
         super.resize(width,height)
-        if (UiNavigation.isIos) layout.setBounds(12f, 8f, stage.width - 24f, stage.height - 16f)
+        if (UiNavigation.isMobile) layout.setBounds(12f, 8f, stage.width - 24f, stage.height - 16f)
         layoutHeader()
         mapSettings?.cancelBackgroundJobs()
         configurationTable = null

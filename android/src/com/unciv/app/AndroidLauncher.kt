@@ -3,8 +3,13 @@ package com.unciv.app
 import android.content.Intent
 import android.media.MediaScannerConnection
 import android.os.Bundle
+import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
 import android.view.View
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.work.WorkManager
@@ -29,6 +34,12 @@ import kotlinx.coroutines.launch
 open class AndroidLauncher : AndroidApplication() {
 
     private var game: AndroidGame? = null
+    private lateinit var displayImpl: AndroidDisplay
+    protected open fun createRuntimeFeatures(): AndroidRuntimeFeatures = DefaultAndroidRuntimeFeatures
+    protected open fun createGame() = AndroidGame(this, createRuntimeFeatures())
+    protected open fun prepareExternalFiles() {
+        CoroutineScope(Dispatchers.IO).launch { createSaveFolder(); copyMods() }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +48,7 @@ open class AndroidLauncher : AndroidApplication() {
         Log.backend = AndroidLogBackend(this)
 
         // Setup Android display
-        val displayImpl = AndroidDisplay(this)
+        displayImpl = AndroidDisplay(this)
         Display.platform = displayImpl
 
         // Setup Android fonts
@@ -56,13 +67,11 @@ open class AndroidLauncher : AndroidApplication() {
         // Create notification channels for Multiplayer notificator
         MultiplayerTurnCheckWorker.createNotificationChannels(applicationContext)
 
-        CoroutineScope(Dispatchers.IO).launch {
-            createSaveFolder()
-            copyMods()
-        }
+        prepareExternalFiles()
 
-        game = AndroidGame(this)
+        game = createGame()
         initialize(game, config)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // Setup display cutout AFTER libGDX initialize() — libGDX window setup resets layoutInDisplayCutoutMode
         displayImpl.setCutoutFromUiThread(settings.androidCutout)
@@ -70,30 +79,52 @@ open class AndroidLauncher : AndroidApplication() {
         ViewCompat.setOnApplyWindowInsetsListener(window.decorView, ::insetsListener)
         // Force immediate insets dispatch — libGDX init triggers insets before listener is registered
         window.decorView.requestApplyInsets()
+        if (Build.VERSION.SDK_INT < 30) {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+            displayImpl.setSystemUiVisibilityFromUiThread(settings.androidHideSystemUi)
+            window.decorView.viewTreeObserver.addOnGlobalLayoutListener {
+                val frame = android.graphics.Rect()
+                window.decorView.getWindowVisibleDisplayFrame(frame)
+                val position = IntArray(2)
+                window.decorView.getLocationOnScreen(position)
+                val obscured = (window.decorView.height - (frame.bottom - position[1])).coerceAtLeast(0)
+                val surface = (com.badlogic.gdx.Gdx.graphics as? com.badlogic.gdx.backends.android.AndroidGraphics)?.view
+                displayImpl.updateLegacyKeyboard(if (surface != null && surface.height <= window.decorView.height - obscured + 2) 0 else obscured)
+            }
+        }
 
         // can be triggered via `adb shell am start -a android.intent.action.VIEW -d https://unciv.app/g/G-ef0f5e5a-f1db-4a54-9d94-92ca986afe8a-9 com.unciv.app`
         // or whatever your game id is
         game!!.setDeepLinkedGame(intent)
-        game!!.addScreenObscuredListener()
+        if (Build.VERSION.SDK_INT >= 33) registerSystemBack()
         processPossibleFriendDeepLink(intent)
     }
 
     private fun insetsListener(view: View, insets: WindowInsetsCompat): WindowInsetsCompat {
-        val settings = try {
-            game!!.settings // settings is a lateinit, and this listener *will* be called before it's done
-        } catch (_: Throwable) {
-            UncivFiles.getSettingsForPlatformLaunchers(filesDir.path)
-        }
-
-        // If settings.androidCutout is false, padding is applied
-        if (!settings.androidCutout) {
-            val cutoutInsets = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
-            view.setPadding(cutoutInsets.left, cutoutInsets.top, cutoutInsets.right, cutoutInsets.bottom)
-        } else {
-            view.setPadding(0, 0, 0, 0)
-        }
-
+        displayImpl.updateInsets(insets)
         return insets
+    }
+
+    @androidx.annotation.RequiresApi(33)
+    private fun registerSystemBack() {
+        onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT) {
+            com.badlogic.gdx.Gdx.app.postRunnable {
+                com.badlogic.gdx.Gdx.input.inputProcessor?.let {
+                    it.keyDown(com.badlogic.gdx.Input.Keys.BACK)
+                    it.keyUp(com.badlogic.gdx.Input.Keys.BACK)
+                }
+            }
+        }
+    }
+
+    internal fun requestTurnNotifications() {
+        if (Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        val preferences = getSharedPreferences("android-runtime", MODE_PRIVATE)
+        if (preferences.getBoolean("notifications-requested", false)) return
+        preferences.edit().putBoolean("notifications-requested", true).apply()
+        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1402)
     }
 
     /**
@@ -180,7 +211,7 @@ open class AndroidLauncher : AndroidApplication() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         val saverLoader = UncivFiles.saverLoader as AndroidSaverLoader
-        saverLoader.onActivityResult(requestCode, data)
+        saverLoader.onActivityResult(requestCode, if (resultCode == RESULT_OK) data else null)
         super.onActivityResult(requestCode, resultCode, data)
     }
 }

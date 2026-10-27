@@ -38,8 +38,8 @@ class ViewFriendsListScreen : PickerScreen() {
             helpPopup.addCloseButton()
             helpPopup.open()
         }
-        if (UiNavigation.isIos) pickerPane.setNavigationContent(Table().apply {
-            add("Friends".toLabel(TextRole.PageTitle)).growX().minWidth(0f).left()
+        if (UiNavigation.isMobile) pickerPane.setNavigationContent(Table().apply {
+            add().growX()
             add(helpButton).minHeight(44f * unit).padLeft(8f * unit)
         }) else stage.addActor(Table().apply {
             add(helpButton)
@@ -54,7 +54,7 @@ class ViewFriendsListScreen : PickerScreen() {
         addFriendButton.onClick {
             game.pushScreen{ AddFriendScreen() }
         }
-        if (UiNavigation.isIos) addFriendButton.labelCell.minHeight(44f * unit)
+        if (UiNavigation.isMobile) addFriendButton.labelCell.minHeight(44f * unit)
         addFriendButton.setSize(maxOf(addFriendButton.prefWidth, 160f * unit), maxOf(addFriendButton.prefHeight, 44f * unit))
         rightSideGroup.addActor(addFriendButton)
 
@@ -62,7 +62,7 @@ class ViewFriendsListScreen : PickerScreen() {
             game.pushScreen{ EditFriendScreen(selectedFriend) }
             editFriendButton.disable()
         }
-        if (UiNavigation.isIos) editFriendButton.labelCell.minHeight(44f * unit)
+        if (UiNavigation.isMobile) editFriendButton.labelCell.minHeight(44f * unit)
         editFriendButton.setSize(maxOf(editFriendButton.prefWidth, 160f * unit), maxOf(editFriendButton.prefHeight, 44f * unit))
         rightSideGroup.addActor(editFriendButton)
         editFriendButton.disable()

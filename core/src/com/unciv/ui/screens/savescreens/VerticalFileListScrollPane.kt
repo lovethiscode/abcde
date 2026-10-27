@@ -107,7 +107,7 @@ open class VerticalFileListScrollPane(
                     }
                     beforeRowCallback?.invoke(saveGameFile)
                     existingSavesTable.add(button).growX().minWidth(0f).apply {
-                        if (UiNavigation.isIos) minHeight(UiNavigation.minimumTouchSize())
+                        if (UiNavigation.isMobile) minHeight(UiNavigation.minimumTouchSize())
                     }.pad(5f).row()
                 }
             }

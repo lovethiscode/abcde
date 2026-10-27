@@ -1,6 +1,5 @@
 package com.unciv.ui.screens.civilopediascreen
 
-import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.scenes.scene2d.Actor
@@ -88,7 +87,7 @@ class CivilopediaSearchPopup(
             innerTable.background = background
             innerTable.top()
             getCell(innerTable).grow()
-            addTitleWithCloseButton("Civilopedia".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = 25)))
+            addTitleWithCloseButton()
             val width = if (ordinaryPresentation) popupContentWidth
                 else (pediaScreen.stage.width - 80f).coerceAtLeast(240f)
             val touch = UiNavigation.minimumTouchSize()
@@ -116,11 +115,11 @@ class CivilopediaSearchPopup(
             resultCell = add().colspan(2).growX()
             row()
 
-            if (UiNavigation.isIos) addCloseButton(com.unciv.Constants.cancel).growX()
+            if (UiNavigation.isMobile) addCloseButton(com.unciv.Constants.cancel).growX()
             searchButton = addButton("Search!", KeyCharAndCode.RETURN) {
                 startSearch(searchText.text)
             }.actor
-            if (!UiNavigation.isIos) addCloseButton()
+            if (!UiNavigation.isMobile) addCloseButton()
         }
         showListeners.add {
             val restored = restoredInputState

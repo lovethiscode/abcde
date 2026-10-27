@@ -52,7 +52,7 @@ internal class NationPickerPopup(
     private val availableCivs: List<Nation>? = null,
     private val submit: ((String) -> Unit)? = null,
     private val initialCiv: String = player.chosenCiv,
-) : Popup(screen, if (UiNavigation.isIos) Scrollability.WithoutButtons else Scrollability.None) {
+) : Popup(screen, if (UiNavigation.isMobile) Scrollability.WithoutButtons else Scrollability.None) {
     companion object {
         // Note - innerTable has pad(20f) and defaults().pad(5f), so content bottomLeft is at x=25/y=25
         // These are used for the Close/OK buttons in the lower left/right corners:
@@ -70,8 +70,8 @@ internal class NationPickerPopup(
         const val iconViewPadHorz = iconViewSpacing / 2  // a little empiric
     }
 
-    private val councilScreen = (playerPicker?.previousScreen as? NewGameScreen)?.takeIf { UiNavigation.isIos }
-    private val councilLobby = (screen as? com.unciv.ui.screens.multiplayerscreens.MultiplayerLobbyScreen)?.takeIf { UiNavigation.isIos }
+    private val councilScreen = (playerPicker?.previousScreen as? NewGameScreen)?.takeIf { UiNavigation.isMobile }
+    private val councilLobby = (screen as? com.unciv.ui.screens.multiplayerscreens.MultiplayerLobbyScreen)?.takeIf { UiNavigation.isMobile }
     private val councilStyle = councilScreen != null || councilLobby != null
     private val councilFont get() = councilScreen?.formFont ?: councilLobby!!.formFont
     private fun councilHeading(text: String, role: TextRole) =
@@ -110,10 +110,7 @@ internal class NationPickerPopup(
         nationListScroll.setOverscroll(false, false)
         if (councilStyle) {
             innerTable.background = SinglePlayerSetup.surface(ExpeditionBlueTheme.panel, ExpeditionBlueTheme.controlBorder)
-            addTitleWithCloseButton(Table().apply {
-                add(ImageGetter.getImage("OtherIcons/Cities", ExpeditionBlueTheme.gold)).size(24f).padRight(10f)
-                add(councilHeading("Choose civilization", TextRole.PageTitle))
-            })
+            addTitleWithCloseButton()
         }
         add(nationListScroll).size(civBlocksWidth + 10f, partHeight).padRight(if (councilStyle && !stackedLayout) 12f else 0f)
         // +10, because the nation table has a 5f pad, for a total of +10f
@@ -164,7 +161,7 @@ internal class NationPickerPopup(
             return
         }
         // Despite being a Popup we use our own buttons - floating circular ones
-        if (!UiNavigation.isIos) {
+        if (!UiNavigation.isMobile) {
             val closeButton = getCloseButton(buttonsCircleSize, buttonsIconSize, buttonsBackColor, Color.FIREBRICK) { close() }
             closeButton.setPosition(buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomLeft)
             innerTable.addActor(closeButton)
@@ -177,7 +174,7 @@ internal class NationPickerPopup(
         val switchViewButton = "OtherIcons/NationSwap".toImageButton(Color.ROYAL)
         switchViewButton.onActivation { toggleListMode() }
         // No keyboard support yet - file manager conventions: Ctrl-1 Icons, Ctrl-2 List
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             addCloseButton()
             val touchSize = maxOf(buttonsCircleSize, UiNavigation.minimumTouchSize())
             bottomTable.add(switchViewButton).size(touchSize)

@@ -14,6 +14,7 @@ import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
 import kotlin.math.atan2
 import kotlin.math.sqrt
@@ -81,11 +82,17 @@ internal class MultiplayerScreenStyle(val unit: Float) {
                  outlined: Boolean = false, ghost: Boolean = false, fontSize: TextRole = TextRole.Control): TextButton {
         button.style = buttonStyle(primary, outlined, ghost)
         button.label.setFontSize(font(fontSize))
-        button.label.setEllipsis(true)
+        button.label.setEllipsis(!UiNavigation.isAndroid)
+        val wrapped = button.label.wrap
+        button.label.wrap = false
+        val captionWidth = button.label.prefWidth
+        button.label.wrap = UiNavigation.isAndroid || wrapped
         button.clearChildren()
         button.pad(0f, px(14f), 0f, px(14f))
         if (icon != null) button.add(image(icon, if (primary) ink else text)).size(px(20f))
-        if (icon == null || button.text.isNotEmpty()) button.add(button.label).minWidth(0f).padLeft(if (icon == null) 0f else px(8f))
+        if (icon == null || button.text.isNotEmpty()) button.add(button.label).minWidth(0f).padLeft(if (icon == null) 0f else px(8f)).apply {
+            if (UiNavigation.isAndroid) prefWidth(captionWidth).growX()
+        }
         return button
     }
 

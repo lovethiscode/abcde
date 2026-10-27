@@ -375,7 +375,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         backButton.onClick {
             diplomacyScreen.updateRightSide(otherCiv)
         }
-        if (!UiNavigation.isIos) diplomacyTable.add(backButton)
+        if (!UiNavigation.isMobile) diplomacyTable.add(backButton)
         return diplomacyTable
     }
 
@@ -420,7 +420,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         backButton.onClick {
             diplomacyScreen.updateRightSide(otherCiv)
         }
-        if (!UiNavigation.isIos) improvementGiftTable.add(backButton)
+        if (!UiNavigation.isMobile) improvementGiftTable.add(backButton)
         return improvementGiftTable
 
     }
@@ -464,7 +464,7 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         backButton.onClick {
             diplomacyScreen.updateRightSide(otherCiv)
         }
-        if (!UiNavigation.isIos) diplomacyTable.add(backButton)
+        if (!UiNavigation.isMobile) diplomacyTable.add(backButton)
         return diplomacyTable
     }
 

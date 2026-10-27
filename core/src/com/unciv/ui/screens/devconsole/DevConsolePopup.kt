@@ -12,7 +12,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.Scaling
-import com.unciv.Constants
 import com.unciv.GUI
 import com.unciv.logic.civilization.Civilization
 import com.unciv.logic.map.mapunit.MapUnit
@@ -69,10 +68,8 @@ class DevConsolePopup(val screen: WorldScreen) : Popup(screen, Scrollability.Dev
     internal val gameInfo = screen.gameInfo
 
     init {
-        // Use untranslated text here! The entire console, including messages, should stay English.
-        // But "Developer Console" *has* a translation from KeyboardBinding.DeveloperConsole.
-        // The extensions still help, even with a "don't translate" kludge
-        add("Developer Console {}".toLabel(fontSize = UiTypography.size(TextRole.PageTitle, legacySize = Constants.headingFontSize))).growX()
+        // The entire console, including messages, should stay English.
+        add().growX()
         add("Keep open {}".toCheckBox(keepOpen) { keepOpen = it }).right().row()
 
         textField.maxLength = 1000

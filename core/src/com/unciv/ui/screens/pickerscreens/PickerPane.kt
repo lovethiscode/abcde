@@ -28,7 +28,7 @@ class PickerPane(
 ) : Table() {
     /** The navigation button in the fixed header on iOS, otherwise lower left of [bottomTable], see [PickerScreen.setDefaultCloseAction].
      *  Note if you don't use that helper, you'll need to do both click and keyboard support yourself. */
-    val closeButton = if (UiNavigation.isIos) UiNavigation.backButton() else Constants.close.toTextButton()
+    val closeButton = if (UiNavigation.isMobile) UiNavigation.backButton() else Constants.close.toTextButton()
     private val navigationHeader = Table()
     private var navigationHasContent = false
     /** A scrollable wrapped Label you can use to show descriptions in the [bottomTable], starts empty */
@@ -60,7 +60,7 @@ class PickerPane(
     private var horizontalDescription = false
 
     init {
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             navigationHeader.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
             navigationHeader.add().expandX()
             add(navigationHeader).growX().row()
@@ -105,7 +105,7 @@ class PickerPane(
         }
         if (showSideDescription)
             splitPane.splitAmount = 1f - (width * .26f).coerceIn(240f, 320f) / width
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             val hasNavigation = navigationHasContent || closeButton.parent === navigationHeader && closeButton.isVisible
             navigationHeader.isVisible = hasNavigation
             getCell(navigationHeader).height(if (hasNavigation) maxOf(closeButton.height + 16f, navigationHeader.prefHeight) else 0f)
@@ -129,7 +129,7 @@ class PickerPane(
     }
 
     fun setNavigationContent(content: Actor, includeBackButton: Boolean = true) {
-        if (!UiNavigation.isIos) return
+        if (!UiNavigation.isMobile) return
         navigationHeader.clear()
         if (includeBackButton)
             navigationHeader.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
@@ -139,7 +139,7 @@ class PickerPane(
     }
 
     fun useCloseButtonAsAction() {
-        if (!UiNavigation.isIos) return
+        if (!UiNavigation.isMobile) return
         UiNavigation.styleTextButton(closeButton)
         navigationHeader.clear()
         navigationHasContent = false

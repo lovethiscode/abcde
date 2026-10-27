@@ -171,7 +171,7 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
     override fun resize(width: Int, height: Int) {
         if (width <= 0 || height <= 0) return
         val changed = hasSafeAreaChanged(width, height)
-        val preservePopup = Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS && activePopup != null
+        val preservePopup = com.unciv.ui.components.widgets.UiNavigation.isMobile && activePopup != null
         if (this !is RecreateOnResize || preservePopup) {
             if (changed && this is RecreateOnResize) recreateAfterPopup = true
             displayWidth = width

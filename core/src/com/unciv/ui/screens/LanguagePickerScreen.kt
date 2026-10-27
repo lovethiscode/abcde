@@ -44,13 +44,13 @@ class LanguagePickerScreen(private val initialLanguage: String? = null) : Picker
         )
         bottomTable.background = OverviewUi.surface(OverviewUi.panel)
 
-        val contentWidth = if (UiNavigation.isIos)
+        val contentWidth = if (UiNavigation.isMobile)
             minOf(OverviewUi.pt(620f), stage.width - OverviewUi.pt(32f)) else OverviewUi.pt(620f)
         val languageList = Table().apply {
             background = OverviewUi.rounded(OverviewUi.panel, 12f)
             pad(OverviewUi.pt(8f))
         }
-        languageTables = languageList.addLanguageTables(contentWidth - OverviewUi.pt(16f) - if (UiNavigation.isIos) 10f else 0f)
+        languageTables = languageList.addLanguageTables(contentWidth - OverviewUi.pt(16f) - if (UiNavigation.isMobile) 10f else 0f)
         languageTables.forEach {
             it.useTaskStyle = true
             it.update(chosenLanguage)

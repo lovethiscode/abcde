@@ -44,9 +44,10 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
         for (file in files) {
             val row = SaveRow(file)
             rows.add(row)
-            row.button.onClick { select(row) }
-            row.button.onDoubleClick { select(row); onDoubleSelected(file) }
-            table.add(row.button).growX().minWidth(0f).minHeight(ui.px(if (UiNavigation.isIos) 58f else 70f)).padBottom(ui.px(3f)).row()
+            // Pointer selection keeps the list where the player was browsing.
+            row.button.onClick { select(row, reveal = false) }
+            row.button.onDoubleClick { select(row, reveal = false); onDoubleSelected(file) }
+            table.add(row.button).growX().minWidth(0f).minHeight(ui.px(if (UiNavigation.isMobile) 52f else 70f)).padBottom(ui.px(2f)).row()
         }
         val initial = rows.firstOrNull { it.file.path() == previous?.path() } ?: rows.firstOrNull()
         initial?.let { select(it, reveal = false) }
@@ -82,14 +83,14 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
         select(rows[((index + delta) % rows.size + rows.size) % rows.size])
     }
     private fun movePage(direction: Int) {
-        val rowHeight = selected?.button?.height ?: ui.px(if (UiNavigation.isIos) 58f else 70f)
+        val rowHeight = selected?.button?.height ?: ui.px(if (UiNavigation.isMobile) 52f else 70f)
         move(direction * (height / rowHeight).toInt().coerceAtLeast(1))
     }
 
     private inner class SaveRow(val file: FileHandle) {
         val button = TextButton("", ui.buttonStyle(ghost = true)).apply {
             name = "load-save-${file.name()}"
-            val verticalPadding = ui.px(if (UiNavigation.isIos) 6f else 10f)
+            val verticalPadding = ui.px(if (UiNavigation.isMobile) 6f else 10f)
             pad(verticalPadding, ui.px(12f), verticalPadding, ui.px(12f))
         }
         private val title = ui.label("", TextRole.Control).apply { setText(file.name()); setEllipsis(true); setAlignment(Align.left) }
@@ -102,7 +103,7 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
         private val check = SaveIcon.Check.image(ui.gold).apply { isVisible = false }
         init {
             button.clearChildren()
-            button.add(iconBox).size(ui.px(36f)).padRight(ui.px(12f))
+            button.add(iconBox).size(ui.px(32f)).padRight(ui.px(12f))
             val text = Table().apply {
                 add(title).growX().minWidth(0f).left().row()
                 val meta = Table().apply {
@@ -112,7 +113,7 @@ internal class LoadGameSaveList(private val ui: LoadGameScreenStyle) : AutoScrol
                         .padLeft(ui.px(8f))
                     add().growX()
                 }
-                add(meta).growX().minWidth(0f).left().padTop(ui.px(4f))
+                add(meta).growX().minWidth(0f).left().padTop(ui.px(2f))
             }
             button.add(text).growX().minWidth(0f)
             // Time punctuation and leading zeroes are data, not localizable numbers.

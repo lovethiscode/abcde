@@ -864,7 +864,7 @@ private class RandomNationPickerPopup(
                 .sortedWith(compareBy(UncivGame.Current.settings.getCollatorFromLocale()) { it.name.tr(hideIcons = true) })
         allNationTables = ArrayList(
             sortedNations.map { nation -> NationTable(nation, civBlocksWidth, 0f).apply {
-                if (UiNavigation.isIos) {
+                if (UiNavigation.isMobile) {
                     clearChildren()
                     background = SinglePlayerSetup.surface()
                     pad(4f * unit)
@@ -896,23 +896,23 @@ private class RandomNationPickerPopup(
         update()
         pack()
 
-        if (!UiNavigation.isIos) {
+        if (!UiNavigation.isMobile) {
             val closeButton = getCloseButton(buttonsCircleSize, buttonsIconSize, buttonsBackColor, Color.FIREBRICK) { close() }
             closeButton.setPosition(buttonsOffsetFromEdge, buttonsOffsetFromEdge, Align.bottomLeft)
             innerTable.addActor(closeButton)
         }
         clickBehindToClose = true
 
-        val okButton = if (UiNavigation.isIos)
+        val okButton = if (UiNavigation.isMobile)
             "OtherIcons/Checkmark".toImageButton(20f * unit, 44f * unit, buttonsBackColor, Color.LIME)
         else "OtherIcons/Checkmark".toImageButton(Color.LIME)
         okButton.onClick { returnSelected() }
 
-        val switchButton = if (UiNavigation.isIos)
+        val switchButton = if (UiNavigation.isMobile)
             "OtherIcons/NationSwap".toImageButton(20f * unit, 44f * unit, buttonsBackColor, Color.YELLOW)
         else "OtherIcons/NationSwap".toImageButton(Color.YELLOW)
         switchButton.onClick { switchAllNations() }
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             addCloseButton()
             val touchSize = UiNavigation.minimumTouchSize()
             bottomTable.add(switchButton).size(touchSize)
@@ -943,7 +943,7 @@ private class RandomNationPickerPopup(
         for (nationTable in allNationTables) {
             if (nationTable.nation.name !in nations) continue
             nationTable.onClick(actionFactory(nationTable.nation))
-            table.add(nationTable).apply { if (UiNavigation.isIos) minHeight(UiNavigation.minimumTouchSize()).fillY() }.row()
+            table.add(nationTable).apply { if (UiNavigation.isMobile) minHeight(UiNavigation.minimumTouchSize()).fillY() }.row()
         }
     }
 

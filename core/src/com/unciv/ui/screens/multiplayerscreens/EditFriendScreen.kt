@@ -35,7 +35,6 @@ class EditFriendScreen(selectedFriend: FriendList.Friend) : PickerScreen() {
         val deleteFriendButton = "Delete".toTextButton()
         val friendlist = FriendList()
 
-        pickerPane.setNavigationContent("Edit friend".toLabel(TextRole.PageTitle))
         topTable.defaults().minWidth(0f)
         topTable.add("Friend name".toLabel(TextRole.Control)).width(formWidth).left().padTop(16f * unit).row()
         topTable.add(friendNameTextField).width(formWidth).minHeight(48f * unit).padTop(8f * unit).padBottom(20f * unit).row()

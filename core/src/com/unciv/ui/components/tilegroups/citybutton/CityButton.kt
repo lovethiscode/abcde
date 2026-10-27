@@ -245,7 +245,7 @@ class CityButton(val foreignCityView: ForeignCityView, private val tileGroup: Ti
         val popup = Popup(GUI.getWorldScreen()).apply {
             name = "ForeignCityInfoPopup"
             val title = CityTable(foreignCityView, true)
-            if (UiNavigation.isIos) addTitleWithCloseButton(title) {
+            if (UiNavigation.isMobile) addTitleWithCloseButton(title) {
                 GUI.getWorldScreen().nextTurnButton.update()
             }
             else add(title).fillX().padBottom(5f).colspan(3).row()
@@ -256,7 +256,7 @@ class CityButton(val foreignCityView: ForeignCityView, private val tileGroup: Ti
                 CityScreen(espionageCityView)
             } }
             add().expandX()
-            if (!UiNavigation.isIos) addCloseButton {
+            if (!UiNavigation.isMobile) addCloseButton {
                 GUI.getWorldScreen().run { nextTurnButton.update() }
             }
         }

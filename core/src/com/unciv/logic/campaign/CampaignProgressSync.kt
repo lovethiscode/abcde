@@ -10,6 +10,9 @@ data class CampaignSyncStatus(
 )
 
 interface CampaignProgressSync {
+    val displayName: String get() = "iCloud"
+    val canConfigure: Boolean get() = false
+    fun configure() {}
     val status: CampaignSyncStatus
     fun onProgressSaved()
     /** Nonblocking. Only an explicit, confirmed import may change the bound account. */

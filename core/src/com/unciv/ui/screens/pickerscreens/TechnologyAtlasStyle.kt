@@ -13,6 +13,7 @@ import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.ui.screens.basescreen.BaseScreen
 import kotlin.math.ceil
 import kotlin.math.sqrt
@@ -140,7 +141,7 @@ internal class TechnologyAtlasLayout(val width: Float, val height: Float) {
     val stacked = portrait && width <= 700f
     val padding = if (compact) 10f else if (stacked) 16f else 24f
     val gap = if (compact) 8f else 12f
-    val detailsWidth = when { compact -> (width * .31f).coerceIn(232f, 258f); width <= 1000f -> 290f; else -> 316f }
+    val detailsWidth = when { UiNavigation.isMobile && compact -> minOf(300f, width * .43f); compact -> (width * .31f).coerceIn(232f, 258f); width <= 1000f -> 290f; else -> 316f }
     val contentWidth = (width - padding * 2).coerceAtLeast(1f)
     val headerHeight = if (compact) 48f else 56f
 }

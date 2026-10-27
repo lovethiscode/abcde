@@ -103,7 +103,7 @@ class GreatPersonPickerScreen(val worldScreen: WorldScreen, val civInfo: Civiliz
             }
         }
         val header = Table().apply {
-            add(OverviewUi.plainLabel("Choose a Great Person", TextRole.SectionTitle).apply { wrap = true }).growX().minWidth(0f).left()
+            add().growX()
             add(OverviewUi.plainLabel("[${civInfo.greatPeople.freeGreatPeople}] free Great People remaining", TextRole.Supporting, OverviewUi.accent)
                 .apply { wrap = true }).width(pt(180f).coerceAtMost(screenWidth * .3f)).right().padLeft(pt(16f))
         }

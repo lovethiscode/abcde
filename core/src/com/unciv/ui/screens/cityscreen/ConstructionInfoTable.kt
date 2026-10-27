@@ -31,6 +31,8 @@ import com.unciv.ui.screens.basescreen.BaseScreen
 /** This is the bottom-right table in the city screen that shows the currently selected construction */
 class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
     private val selectedConstructionTable = Table()
+    private val fixedButtons = Table()
+    internal fun fixedWorkbenchActions() = fixedButtons
     private val buyButtonFactory = BuyButtonFactory(cityScreen)
     private val cityView get() = cityScreen.cityView
 
@@ -51,6 +53,7 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
     fun update(selectedConstruction: IConstruction?) {
         if (cityScreen.usesWorkbench) { background = null; selectedConstructionTable.background = null }
         selectedConstructionTable.clear()  // clears content and listeners
+        fixedButtons.clear()
 
         if (selectedConstruction == null) {
             isVisible = false
@@ -68,25 +71,25 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
 
         //val selectedConstructionTable = Table()
         selectedConstructionTable.run {
-            pad(10f)
+            pad(if (cityScreen.usesWorkbench) 0f else 10f)
 
-            add(ImageGetter.getConstructionPortrait(construction.name, 50f).apply {
+            add(ImageGetter.getConstructionPortrait(construction.name, if (cityScreen.usesWorkbench) 28f else 50f).apply {
                 val link = (construction as? IRulesetObject)?.makeLink() ?: return@apply
                 if (link.isEmpty()) return@apply
                 touchable = Touchable.enabled
                 this.onClick {
                     cityScreen.openCivilopedia(link)
                 }
-            }).pad(5f)
+            }).minSize(if (cityScreen.usesWorkbench) 44f else 0f).pad(if (cityScreen.usesWorkbench) 0f else 5f)
 
-            var buildingText = construction.name.tr(hideIcons = true)
+            var buildingText = if (cityScreen.workbenchPhone) "" else construction.name.tr(hideIcons = true)
             val specialConstruction = PerpetualConstruction.perpetualConstructionsMap[construction.name]
 
             buildingText += specialConstruction?.let { cityView.getProductionTooltip(it) }
                     ?: cityConstructions.getTurnsToConstructionString(construction)
 
             add(Label(buildingText, BaseScreen.skin).apply { wrap = cityScreen.usesWorkbench; if (cityScreen.usesWorkbench) setFontSize(UiTypography.size(TextRole.Control, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 15)) }).apply {
-                if (cityScreen.usesWorkbench) width(cityScreen.workbenchWidth - 90f)
+                if (cityScreen.usesWorkbench) width(cityScreen.workbenchWidth - 52f)
             }.expandX().row()  // already translated
 
             val description = when (construction) {
@@ -99,12 +102,12 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
 
             val descriptionLabel = Label(description, BaseScreen.skin)  // already translated
             descriptionLabel.wrap = true
-            if (cityScreen.usesWorkbench) descriptionLabel.setFontSize(UiTypography.size(TextRole.Supporting, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 14))
-            add(descriptionLabel).colspan(2).width(if (cityScreen.usesWorkbench) cityScreen.workbenchWidth - 24f else cityScreen.stage.width / if(cityScreen.isCrampedPortrait()) 3 else 4)
+            if (cityScreen.usesWorkbench) descriptionLabel.setFontSize(UiTypography.size(TextRole.Body, unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage), legacySize = 14))
+            add(descriptionLabel).colspan(2).width(if (cityScreen.usesWorkbench) cityScreen.workbenchWidth else cityScreen.stage.width / if(cityScreen.isCrampedPortrait()) 3 else 4)
 
             if (cityConstructions.isBuilt(construction.name)) {
-                showSellButton(construction)
-            } else if (buyButtonFactory.hasBuyButtons(construction)) {
+                showSellButton(construction, if (cityScreen.workbenchPhone) fixedButtons else selectedConstructionTable)
+            } else if (!cityScreen.workbenchPhone && buyButtonFactory.hasBuyButtons(construction)) {
                 row()
                 for (button in buyButtonFactory.getBuyButtons(construction)) {
                     selectedConstructionTable.add(button).padTop(5f).colspan(2).center().row()
@@ -126,10 +129,11 @@ class ConstructionInfoTable(val cityScreen: CityScreen) : Table() {
 
     // Show sell button if construction is a currently sellable building
     private fun showSellButton(
-        construction: IConstruction
+        construction: IConstruction,
+        target: Table = selectedConstructionTable
     ) {
         if (construction is Building && construction.isSellable()) {
-            selectedConstructionTable.run {
+            target.run {
                 val sellAmount = cityView.getGoldForSellingBuilding(construction.name)
                 val sellText = "{Sell} $sellAmount " + Fonts.gold
                 val sellBuildingButton = sellText.toTextButton(unit = if (cityScreen.usesWorkbench) 1f else UiTypography.unitsPerPoint(cityScreen.stage))

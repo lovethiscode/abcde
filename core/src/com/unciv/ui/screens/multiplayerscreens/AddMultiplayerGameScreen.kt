@@ -1,13 +1,16 @@
 package com.unciv.ui.screens.multiplayerscreens
 
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
+import com.badlogic.gdx.scenes.scene2d.ui.TextField
 import com.unciv.Constants
 import com.unciv.logic.IdChecker
 import com.unciv.logic.multiplayer.MultiplayerGameInvite
 import com.unciv.logic.multiplayer.rethrowCancellationAfterCleanup
+import com.unciv.models.translations.tr
 import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.extensions.toLabel
@@ -27,9 +30,10 @@ import kotlinx.coroutines.CancellationException
 
 class AddMultiplayerGamePopup(
     private val multiplayerScreen: MultiplayerScreen,
-) : Popup(multiplayerScreen, Scrollability.WithoutButtons, if (UiNavigation.isIos) 1f else .9f, ordinaryShell = true) {
+) : Popup(multiplayerScreen, Scrollability.WithoutButtons, if (UiNavigation.isMobile) 1f else .9f, ordinaryShell = true) {
     private val gameIdTextField = UncivTextField("Paste the Game ID or invitation link")
     private val gameNameTextField = UncivTextField("For example: Weekend game")
+    private var systemEditorOpen = false
 
     init {
         val fieldWidth = if (ordinaryPresentation) popupContentWidth else stageToShowOn.width * 0.55f
@@ -62,7 +66,48 @@ class AddMultiplayerGamePopup(
         addCloseButton("Cancel")
         val positiveButtonStyle = skin.get("positive", TextButton.TextButtonStyle::class.java)
         addButton("Join or add game", KeyCharAndCode.RETURN, positiveButtonStyle) { addGame() }
-        showListeners += { stageToShowOn.keyboardFocus = gameIdTextField }
+        getScrollPane()?.let { innerTable.getCell(it).minHeight(0f) }
+        if (UiNavigation.isAndroid) {
+            useSystemEditor(gameIdTextField, "Game ID or invitation link")
+            useSystemEditor(gameNameTextField, "Local display name (optional)")
+        }
+        showListeners += {
+            // Short landscape windows show the form first; tapping a field opens the keyboard.
+            if (!UiNavigation.isAndroid || stageToShowOn.height / popupUnit >= 430f)
+                stageToShowOn.keyboardFocus = gameIdTextField
+        }
+    }
+
+    private fun useSystemEditor(field: UncivTextField, caption: String) {
+        val inlineKeyboard = field.onscreenKeyboard
+        field.onscreenKeyboard = object : TextField.OnscreenKeyboard {
+            override fun show(textField: TextField) {
+                if (stageToShowOn.height / popupUnit >= 430f) {
+                    inlineKeyboard.show(textField)
+                    return
+                }
+                if (systemEditorOpen) return
+                systemEditorOpen = true
+                Gdx.input.getTextInput(object : Input.TextInputListener {
+                    override fun input(text: String) {
+                        Concurrency.runOnGLThread {
+                            systemEditorOpen = false
+                            field.text = text
+                            stageToShowOn.keyboardFocus = null
+                        }
+                    }
+                    override fun canceled() {
+                        Concurrency.runOnGLThread {
+                            systemEditorOpen = false
+                            stageToShowOn.keyboardFocus = null
+                        }
+                    }
+                }, caption.tr(), field.text, field.messageText)
+            }
+            override fun close() {
+                if (!systemEditorOpen) inlineKeyboard.close()
+            }
+        }
     }
 
     private fun addGame() {

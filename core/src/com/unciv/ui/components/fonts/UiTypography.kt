@@ -1,7 +1,6 @@
 package com.unciv.ui.components.fonts
 
 import com.unciv.ui.components.fonts.TextRole
-import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.scenes.scene2d.Stage
@@ -28,20 +27,22 @@ object UiTypography {
     fun useStage(stage: Stage) { currentStage = stage }
     fun releaseStage(stage: Stage) { if (currentStage === stage) currentStage = null }
 
-    private val isIos get() = Gdx.app?.type == Application.ApplicationType.iOS
+    private val isMobile get() = com.unciv.ui.components.widgets.UiNavigation.isMobile
+    private val density get() = if (com.unciv.ui.components.widgets.UiNavigation.isAndroid)
+        Gdx.graphics.density.coerceAtLeast(0.5f) else 1f
 
     /** Pass the owning stage when available; construction-time widgets use the safe viewport. */
     fun unitsPerPoint(stage: Stage? = currentStage): Float {
-        if (!isIos) return 1f
+        if (!isMobile) return 1f
         if (stage != null && stage.viewport.screenHeight > 0)
-            return stage.camera.viewportHeight / stage.viewport.screenHeight
+            return stage.camera.viewportHeight / stage.viewport.screenHeight * density
         val safe = Display.getSafeArea(Gdx.graphics.width, Gdx.graphics.height)
-        return UncivGame.Current.settings.screenSize.getHeight() / minOf(safe.width, safe.height).coerceAtLeast(1)
+        return UncivGame.Current.settings.screenSize.getHeight() / minOf(safe.width, safe.height).coerceAtLeast(1) * density
     }
 
     /** [unit] is 1 inside a parent that already scales point coordinates (e.g. CityWorkbench). */
     fun size(role: TextRole, unit: Float = unitsPerPoint(), legacySize: Int = role.legacySize): Int =
-        if (isIos) (role.points * unit).roundToInt().coerceAtLeast(1) else legacySize
+        if (isMobile) (role.points * unit).roundToInt().coerceAtLeast(1) else legacySize
 
     /** The only responsive size variants are for narrative/display titles. */
     fun displaySize(compact: Boolean, wide: Boolean = false, unit: Float = unitsPerPoint()): Int =

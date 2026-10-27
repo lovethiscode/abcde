@@ -65,7 +65,7 @@ class PlayerPickerTable(
     val playerListTable = Table()
     val civBlocksWidth = if (blockWidth <= 10f) previousScreen.stage.width / 3 - 5f else blockWidth
     private var randomNumberLabel: WrappableLabel? = null
-    private val directSetup = previousScreen is NewGameScreen && UiNavigation.isIos
+    private val directSetup = previousScreen is NewGameScreen && UiNavigation.isMobile
 
     /** Locks player table for editing, currently unused, was previously used for scenarios and could be useful in the future. */
     var locked = false
@@ -536,10 +536,10 @@ class FriendSelectionPopup(
     init {
         val unit = UiTypography.unitsPerPoint(screen.stage)
         val contentWidth = minOf(700f * unit, screen.stage.width * 0.9f)
-        addTitleWithCloseButton("Select friend".toLabel(TextRole.PageTitle, unit = unit))
+        addTitleWithCloseButton()
         val friendList = FriendPickerList(playerPicker, ::friendSelected)
         val maxListHeight = minOf(screen.stage.height * 0.35f, 360f * unit)
-        val minListHeight = minOf((if (UiNavigation.isIos) 44f else 96f) * unit, maxListHeight)
+        val minListHeight = minOf((if (UiNavigation.isMobile) 44f else 96f) * unit, maxListHeight)
         val listHeight = (friendList.prefHeight + 12f * unit)
             .coerceIn(minListHeight, maxListHeight)
         add(ScrollPane(friendList).apply {

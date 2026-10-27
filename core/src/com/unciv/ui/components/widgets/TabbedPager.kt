@@ -640,7 +640,7 @@ open class TabbedPager(
             init {
                 passEntry.isPasswordMode = true
                 add(passEntry).row()
-                if (UiNavigation.isIos) addCloseButton(com.unciv.Constants.cancel, action = lockAction)
+                if (UiNavigation.isMobile) addCloseButton(com.unciv.Constants.cancel, action = lockAction)
                 addOKButton {
                     if (passEntry.text.hashCode() == secretHashCode) unlockAction() else lockAction()
                 }

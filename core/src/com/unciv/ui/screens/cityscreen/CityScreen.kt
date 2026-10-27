@@ -63,8 +63,10 @@ class CityScreen(
         const val wltkIconSize = 40f
     }
 
-    internal val usesWorkbench get() = UiNavigation.isIos
+    internal val usesWorkbench get() = UiNavigation.isMobile
     private var workbench: CityWorkbench? = null
+    internal val workbenchPhone get() = workbench?.isPhone == true
+    internal val workbenchExpanded get() = workbench?.isExpanded == true
     internal val workbenchWidth get() = workbench?.bodyWidth ?: 300f
     internal val workbenchManagementWidth get() = workbench?.managementWidth ?: 300f
 
@@ -104,7 +106,7 @@ class CityScreen(
     private var cityPickerTable = CityScreenCityPickerTable(this)
 
     /** Button for exiting the city - sits on BOTTOM CENTER */
-    private val exitCityButton = (if (UiNavigation.isIos) UiNavigation.backButton() else "Exit city".toTextButton()).apply {
+    private val exitCityButton = (if (UiNavigation.isMobile) UiNavigation.backButton() else "Exit city".toTextButton()).apply {
         name = "ui-city-exit"
         labelCell.pad(10f)
         keyShortcuts.add(KeyCharAndCode.BACK)
@@ -176,6 +178,7 @@ class CityScreen(
                 razeCityButtonHolder
             }
             stage.addActor(workbench)
+            if (UiNavigation.isAndroid) globalShortcuts.add(KeyCharAndCode.BACK) { workbench?.systemBack() }
         } else {
         constructionsTable.addActorsToStage()
         stage.addActor(cityStatsTable)
@@ -248,10 +251,10 @@ class CityScreen(
 
         // Bottom center: Name, paging, exit city button
         val centeredX = (stage.width - leftMargin - rightMargin) / 2 + leftMargin
-        if (UiNavigation.isIos) exitCityButton.setPosition(posFromEdge, stage.height - posFromEdge, Align.topLeft)
+        if (UiNavigation.isMobile) exitCityButton.setPosition(posFromEdge, stage.height - posFromEdge, Align.topLeft)
         else exitCityButton.setPosition(centeredX, 10f, Align.bottom)
         cityPickerTable.update()
-        cityPickerTable.setPosition(centeredX, if (UiNavigation.isIos) 10f else exitCityButton.top + 10f, Align.bottom)
+        cityPickerTable.setPosition(centeredX, if (UiNavigation.isMobile) 10f else exitCityButton.top + 10f, Align.bottom)
 
         // Top right of screen: Stats / Specialists
         updateCityStats()
@@ -574,6 +577,8 @@ class CityScreen(
     fun startPickTileForCreatesOneImprovement(construction: Building, stat: Stat, isBuying: Boolean) {
         val improvement = cityView.getImprovementToCreate(construction) ?: return
         pickTileData = PickTileForImprovementData(construction, improvement, isBuying, stat)
+        closeAllPopups()
+        workbench?.revealMapForPlacement()
         updateTileGroups()
         ToastPopup("Please select a tile for this building's [${improvement.name}]", this)
     }
@@ -618,6 +623,7 @@ class CityScreen(
     // but the rapid firing of several resize events will get that un-synced, they would no longer stop on leaving.
     override fun recreate(): BaseScreen = CityScreen(cityView, selectedConstruction, selectedTile).also { replacement ->
         replacement.selectedQueueEntry = selectedQueueEntry
+        replacement.pickTileData = pickTileData
         workbench?.let { replacement.workbench?.restore(it) }
     }
 

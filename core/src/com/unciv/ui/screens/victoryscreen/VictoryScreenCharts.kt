@@ -24,7 +24,8 @@ import com.unciv.ui.screens.worldscreen.WorldScreen
 class VictoryScreenCharts internal constructor(
     worldScreen: WorldScreen,
     private val state: VictoryPageState? = null,
-    private val compact: Boolean = false
+    private val compact: Boolean = false,
+    gameInformation: Table? = null
 ) : Table(BaseScreen.skin), TabbedPager.IPageExtensions {
     private val gameInfo = worldScreen.gameInfo
 
@@ -37,7 +38,7 @@ class VictoryScreenCharts internal constructor(
         rankingType.label
     )
     private val civButtonsTable = Table()
-    private val civButtonsScroll = AutoScrollPane(civButtonsTable)
+    private val civButtonsScroll = if (state == null) AutoScrollPane(civButtonsTable) else U.scroll(civButtonsTable)
     private val controlsColumn = Table()
     private val markerIcon = ImageGetter.getImage("OtherIcons/Star").apply {
         color = Color.GOLD
@@ -62,23 +63,23 @@ class VictoryScreenCharts internal constructor(
             add(lineChart).growX().expandY().top().padLeft(0f)
         } else {
             styleVictorySelect(rankingTypeSelect)
+            val reset = U.button(flat = true) { zoomAtX = null; update() }.apply {
+                add(U.plainLabel("Reset zoom", TextRole.Supporting, U.accent)); name = "victory-chart-reset"
+                pad(0f, pt(8f), 0f, pt(8f))
+            }
             val toolbar = Table().apply {
-                add(U.plainLabel("Charts", TextRole.Supporting, U.muted)).padRight(pt(12f))
+                if (gameInformation == null)
+                    add(U.plainLabel("Charts", TextRole.Supporting, U.muted)).padRight(pt(12f))
                 add(rankingTypeSelect).height(U.touch).minWidth(pt(160f))
                 add().growX()
+                add(reset).minHeight(U.touch).minWidth(U.touch).padLeft(pt(8f))
             }
-            add(toolbar).growX().minWidth(0f).padBottom(pt(12f)).row()
+            add(victoryStatisticsToolbar(toolbar, gameInformation)).growX().minWidth(0f).padBottom(pt(4f)).row()
             val chart = Table().apply {
                 background = U.rounded(U.panel)
-                pad(pt(12f))
+                pad(pt(8f))
                 add(lineChart).grow().minWidth(0f).minHeight(0f).row()
-                val reset = U.button(flat = true) { zoomAtX = null; update() }.apply {
-                    add(U.plainLabel("Reset zoom", TextRole.Supporting, U.accent)); name = "victory-chart-reset"
-                }
-                add(Table().apply {
-                    add(chartContext).growX().minWidth(0f).left().padRight(pt(8f))
-                    add(reset).height(U.touch).right()
-                }).growX().minWidth(0f)
+                add(chartContext).growX().minWidth(0f).left().padTop(pt(4f))
             }
             val layout = Table().apply {
                 civButtonsScroll.setScrollingDisabled(!compact, compact)
@@ -115,6 +116,7 @@ class VictoryScreenCharts internal constructor(
     private fun updateControls() {
         val oldScrollY = civButtonsScroll.scrollY
         civButtonsTable.clear()
+        if (state != null) civButtonsTable.top()
         val sortedCivs = gameInfo.civilizations.asSequence()
             .filter { it.isMajorCiv() }
             .filter { targetCiv -> VictoryScreen.canViewCivStats(gameInfo, viewingCiv, targetCiv) }
@@ -133,9 +135,9 @@ class VictoryScreenCharts internal constructor(
                     val value = if (civEntry.civ.isDefeated() || !victoryCivKnown(civEntry.civ, viewingCiv)) "—"
                         else civEntry.value.toString()
                     add(U.plainLabel(value, TextRole.Supporting, U.muted)).right().padLeft(pt(8f))
-                    pad(pt(8f))
+                    pad(pt(4f), pt(8f), pt(4f), pt(8f))
                 }
-                civButtonsTable.add(button).width(pt(if (compact) 150f else 166f)).minHeight(U.touch).padBottom(pt(5f))
+                civButtonsTable.add(button).width(pt(if (compact) 150f else 166f)).minHeight(U.touch).padBottom(pt(2f))
                 if (!compact) civButtonsTable.row()
             } else {
                 if (civEntry.civ != selectedCiv) civButtonsTable.add()
@@ -146,7 +148,7 @@ class VictoryScreenCharts internal constructor(
                 button.onClick { selectedCiv = civEntry.civ; update() }
             }
         }
-        civButtonsTable.add().padBottom(20f).row()
+        if (state == null) civButtonsTable.add().padBottom(20f).row()
         civButtonsTable.pack()
         
         validate()

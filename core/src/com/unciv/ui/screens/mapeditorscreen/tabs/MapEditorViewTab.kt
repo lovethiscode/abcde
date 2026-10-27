@@ -160,7 +160,7 @@ class MapEditorViewTab(
         row()
 
         addSeparator()
-        if (!UiNavigation.isIos) add("Exit map editor".toTextButton().apply { onClick(editorScreen::closeEditor) }).row()
+        if (!UiNavigation.isMobile) add("Exit map editor".toTextButton().apply { onClick(editorScreen::closeEditor) }).row()
 
         invalidateHierarchy()  //todo - unsure this helps
         validate()

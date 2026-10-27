@@ -24,7 +24,7 @@ class DiplomaticVoteResultScreen(
     private val viewingCiv: Civilization
 ) : OrdinaryGamePopupScreen(), RecreateOnResize {
     val gameInfo = viewingCiv.gameInfo
-    private val ordinary = UiNavigation.isIos && gameInfo.campaign == null && gameInfo.endless == null
+    private val ordinary = UiNavigation.isMobile && gameInfo.campaign == null && gameInfo.endless == null
     private val unit get() = UiTypography.unitsPerPoint(stage)
     private val resultWidth get() = minOf(stage.width - 40f * unit, 560f * unit)
     private val constructionNameUN: String?

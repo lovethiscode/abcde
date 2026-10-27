@@ -41,17 +41,9 @@ internal class CivilopediaPageView(private val screen: CivilopediaScreen) : Tabl
         right.add(button("", "OtherIcons/Search", "civilopedia-search") { screen.openSearch() }).minSize(touchSize).padRight(8f)
         right.add(UiNavigation.dismissButton().apply { onActivation { screen.game.popScreen() } })
             .minSize(touchSize)
-        val title = "Civilopedia".toLabel(ExpeditionBlueTheme.text, UiTypography.size(TextRole.PageTitle, legacySize = 25))
         val header = Table().apply { pad(10f, 20f, 10f, 20f) }
-        if (screen.stage.width < screen.stage.height) {
-            header.add(title).colspan(2).padBottom(8f).row()
-            header.add(left).left().expandX()
-            header.add(right).right()
-        } else {
-            header.add(left).left().expandX()
-            header.add(title).pad(0f, 12f, 0f, 12f)
-            header.add(right).right().expandX()
-        }
+        header.add(left).left().expandX()
+        header.add(right).right()
         add(header).growX().row()
         addSeparator(ExpeditionBlueTheme.border)
         add(scroll).grow()

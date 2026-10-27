@@ -51,7 +51,7 @@ class AskNumberPopup(
             addDialogTitle(if (label == "Enter the amount of gold") "Set trade amount" else label,
                 if (label == "Enter the amount of gold") "Gold · Trade offer" else "")
             addGoodSizedLabel(if (label == "Enter the amount of gold") "Amount" else label,
-                UiTypography.size(TextRole.Control, popupUnit)).row()
+                UiTypography.size(TextRole.Control, popupUnit)).apply { actor.name = "ui-form-field-label" }.row()
         }
         else add(wrapper).colspan(2).row()
 
@@ -107,7 +107,7 @@ class AskNumberPopup(
         if (ordinaryPresentation) errorLabel.wrap = true
         errorLabel.color = ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger)
 
-        addCloseButton(if (UiNavigation.isIos) com.unciv.Constants.cancel else com.unciv.Constants.close)
+        addCloseButton(if (UiNavigation.isMobile) com.unciv.Constants.cancel else com.unciv.Constants.close)
         val okButton = addOKButton(
             text = if (ordinaryPresentation && label == "Enter the amount of gold") "Add to offer" else com.unciv.Constants.OK,
             validate = {

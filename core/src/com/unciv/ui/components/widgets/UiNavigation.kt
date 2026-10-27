@@ -29,9 +29,12 @@ import kotlin.math.sqrt
 /** Navigation changes presentation only; callers retain their actions and keyboard bindings. */
 object UiNavigation {
     val isIos get() = Gdx.app?.type == Application.ApplicationType.iOS
+    val isAndroid get() = Gdx.app?.type == Application.ApplicationType.Android
+    val isMobile get() = isIos || isAndroid
     val backCaption get() = "Back".tr()
 
     fun minimumTouchSize(): Float {
+        if (isAndroid) return 48f * UiTypography.unitsPerPoint()
         if (!isIos) return 44f
         val safe = Display.getSafeArea(Gdx.graphics.width, Gdx.graphics.height)
         return touchSize(UncivGame.Current.settings.screenSize.getHeight(), minOf(safe.width, safe.height).toFloat())
@@ -88,7 +91,7 @@ object UiNavigation {
     fun backButton(caption: String = "Back", unit: Float = minimumTouchSize() / 44f): TextButton =
         button(unit).apply {
             name = "ui-navigation-back"
-            if (isIos) styleBackButton(this, caption, unit)
+            if (isMobile) styleBackButton(this, caption, unit)
             else {
                 setText(caption.tr())
                 labelCell.pad(8f)
@@ -99,7 +102,7 @@ object UiNavigation {
     fun styleBackButton(button: TextButton, caption: String = "Back", unit: Float = minimumTouchSize() / 44f): TextButton {
         styleTextButton(button, unit)
         button.setText(caption.tr())
-        if (isIos) {
+        if (isMobile) {
             button.clearChildren()
             button.add(icon(button, close = false)).size(20f * unit).padRight(7f * unit)
             button.add(button.label).minWidth(0f)
@@ -119,7 +122,7 @@ object UiNavigation {
 
     fun dismissButton(unit: Float = minimumTouchSize() / 44f): TextButton = button(unit).apply {
         name = "ui-popup-close"
-        if (!isIos) {
+        if (!isMobile) {
             setText("×")
             label.setFontSize(18)
             setSize(50f, 50f)

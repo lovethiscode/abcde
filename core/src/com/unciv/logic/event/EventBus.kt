@@ -15,6 +15,9 @@ import kotlin.reflect.KClass
 @Suppress("UNCHECKED_CAST") // Through using the "map by KClass" pattern, we ensure all methods get called with correct argument type
 object EventBus {
 
+    // Loading can register or dispose receivers while the render thread sends events.
+    // Guard the registry and listener snapshots with this object's monitor; handlers
+    // run after the snapshot lock is released, on the thread calling send().
     private val listeners = mutableMapOf<KClass<*>, MutableList<EventListenerWeakReference<*>>>()
 
     /**
@@ -67,6 +70,7 @@ object EventBus {
     }
 
     /** Removes all listeners whose WeakReference got collected and returns the ones that are still active */
+    @Synchronized
     private fun updateActiveListeners(eventClass: KClass<*>): List<EventListener<*>> {
         return buildList {
             val listenersWeak = listeners[eventClass] ?: return listOf()
@@ -85,6 +89,7 @@ object EventBus {
     }
 
 
+    @Synchronized
     private fun <T: Event> receive(eventClass: KClass<T>, filter: ((T) -> Boolean)? = null, eventHandler: (T) -> Unit) {
         if (listeners[eventClass] == null) {
             listeners[eventClass] = mutableListOf()
@@ -92,6 +97,7 @@ object EventBus {
         listeners[eventClass]!!.add(EventListenerWeakReference(eventHandler, filter))
     }
 
+    @Synchronized
     private fun cleanUp(eventHandlers: Map<KClass<*>, MutableList<Any>>) {
         for ((kClass, toRemove) in eventHandlers) {
             val registeredListeners = listeners.get(kClass)

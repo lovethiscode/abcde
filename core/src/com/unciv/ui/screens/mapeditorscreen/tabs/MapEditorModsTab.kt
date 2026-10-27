@@ -139,13 +139,13 @@ class MapEditorModsTab(
         onOK: () -> Unit
     ): Popup(editorScreen) {
         init {
-            if (UiNavigation.isIos) addDialogTitle("Change map to fit selected ruleset?", "Map editor")
+            if (UiNavigation.isMobile) addDialogTitle("Change map to fit selected ruleset?", "Map editor")
             val incompatibilityTable = Table().apply {
                 for (inc in incompatibilities)
                     add(inc.toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
                         .growX().minWidth(0f).padBottom(8f * popupUnit).row()
             }
-            if (UiNavigation.isIos) {
+            if (UiNavigation.isMobile) {
                 add("The following map objects are not available in the selected ruleset."
                     .toLabel(TextRole.Body, unit = popupUnit).apply {
                         wrap = true
@@ -168,7 +168,7 @@ class MapEditorModsTab(
                 addGoodSizedLabel("Change map to fit selected ruleset?", UiTypography.size(TextRole.PageTitle, legacySize = 24))
                     .colspan(2).row()
             }
-            if (UiNavigation.isIos) {
+            if (UiNavigation.isMobile) {
                 addCloseButton(Constants.cancel, com.unciv.ui.components.input.KeyCharAndCode('n'))
                 addOKButton("Change map", com.unciv.ui.components.input.KeyCharAndCode('y'), action = onOK)
             } else {

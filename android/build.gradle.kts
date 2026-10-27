@@ -11,6 +11,12 @@ plugins {
 android {
     compileSdk = 37
     sourceSets {
+        getByName("test").apply {
+            providers.gradleProperty("androidExtensionTestSourceDir").orNull?.let { kotlin.directories += it }
+        }
+        getByName("androidTest").apply {
+            providers.gradleProperty("androidDeviceTestSourceDir").orNull?.let { kotlin.directories += it }
+        }
         getByName("main").apply {
             manifest.srcFile("AndroidManifest.xml")
             java.directories += "src"
@@ -18,7 +24,17 @@ android {
             aidl.directories += "src"
             res.directories += "res"
             assets.directories += "assets"
+            providers.gradleProperty("androidPrivateAssetsDir").orNull?.let { assets.directories += it }
             jniLibs.directories += "libs"
+            providers.gradleProperty("androidExtensionSourceDir").orNull?.let { kotlin.directories += it }
+            providers.gradleProperty("androidSharedSourceRoot").orNull?.let { shared ->
+                for (directory in listOf("achievements", "cloud", "campaign"))
+                    kotlin.directories += "$shared/$directory"
+                kotlin.directories += "$shared/analytics/UsageOutbox.kt"
+                kotlin.directories += "$shared/analytics/ChallengeRuntime.kt"
+                kotlin.directories += "$shared/analytics/ChallengeUsage.kt"
+                kotlin.directories += "$shared/analytics/MultiplayerUsage.kt"
+            }
         }
     }
     packaging {
@@ -28,11 +44,14 @@ android {
     }
     defaultConfig {
         namespace = BuildConfig.identifier
-        applicationId = BuildConfig.identifier
+        applicationId = "com.aishuati.unciv"
         minSdk = 21
         targetSdk = 36
         versionCode = BuildConfig.appCodeNumber
         versionName = BuildConfig.appVersion
+        testInstrumentationRunner = "com.aishuati.unciv.androidreview.AndroidPageReviewInstrumentation"
+        manifestPlaceholders["androidLauncherClass"] = providers.gradleProperty("androidLauncherClass")
+            .getOrElse("com.unciv.app.AndroidLauncher")
 
         base.archivesName.set("Unciv")
     }
@@ -70,7 +89,7 @@ android {
     }
     androidResources {
         // Don't add local save files and fonts to release, obviously
-        ignoreAssetsPattern = "!SaveFiles:!fonts:!maps:!music:!mods"
+        ignoreAssetsPattern = "!SaveFiles:!fonts:!maps:!music:!mods:!lasterror.txt"
     }
     buildFeatures {
         aidl = true
@@ -141,10 +160,13 @@ tasks.register<Exec>("run") {
     val path = getSdkPath()
     val adb = "$path/platform-tools/adb"
 
-    commandLine(adb, "shell", "am", "start", "-n", "com.unciv.app/AndroidLauncher")
+    commandLine(adb, "shell", "am", "start", "-n", "com.aishuati.unciv/" +
+        providers.gradleProperty("androidLauncherClass").getOrElse("com.unciv.app.AndroidLauncher"))
 }
 
 dependencies {
+    testImplementation(libs.junit)
+    testImplementation("io.ktor:ktor-client-mock:${rootProject.libs.versions.ktor.get()}")
     implementation(libs.android.ktx.core)
     implementation(libs.android.ktx.runtime)
     // Needed to convert e.g. Android 26 API calls to Android 21

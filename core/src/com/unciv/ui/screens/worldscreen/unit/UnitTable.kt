@@ -232,8 +232,8 @@ class UnitTable(val worldScreen: WorldScreen) : Table() {
         
         pack()
         closeButton.setPosition(
-            width - closeButton.width * (if (UiNavigation.isIos) 1f else .75f) - (if (UiNavigation.isIos) 8f else 0f),
-            height - closeButton.height * (if (UiNavigation.isIos) 1f else .75f) - (if (UiNavigation.isIos) 8f else 0f)
+            width - closeButton.width * (if (UiNavigation.isMobile) 1f else .75f) - (if (UiNavigation.isMobile) 8f else 0f),
+            height - closeButton.height * (if (UiNavigation.isMobile) 1f else .75f) - (if (UiNavigation.isMobile) 8f else 0f)
         )
         closeButton.toFront()
         bg.setSize(width - 3f, height - 3f)

@@ -40,6 +40,34 @@ internal fun styleVictorySelect(select: TranslatedSelectBox) {
     }
 }
 
+/** Context and statistic controls share one fixed row whenever their measured widths fit. */
+internal fun victoryStatisticsToolbar(controls: Table, information: Table?): Table {
+    if (information == null) return controls
+    return object : Table() {
+        private var stacked = false
+
+        init { rebuild() }
+
+        private fun rebuild() {
+            clearChildren()
+            add(information).growX().minWidth(0f).left()
+                .padRight(if (stacked) 0f else pt(12f))
+            if (stacked) row()
+            add(controls).minHeight(U.touch).left()
+            if (stacked) getCell(controls).growX()
+        }
+
+        override fun layout() {
+            val needsStack = width < information.minWidth + controls.prefWidth + pt(12f)
+            if (stacked != needsStack) {
+                stacked = needsStack
+                rebuild()
+            }
+            super.layout()
+        }
+    }
+}
+
 internal open class VictoryOverviewPage : Table(), TabbedPager.IPageExtensions {
     override fun activated(index: Int, caption: String, pager: TabbedPager) { pager.setScrollDisabled(true) }
     override fun deactivated(index: Int, caption: String, pager: TabbedPager) { pager.setScrollDisabled(false) }
@@ -76,7 +104,7 @@ internal class VictoryProgressPage(
         if (state.victory == null && world.gameInfo.campaign == null && world.gameInfo.endless == null)
             state.victory = world.gameInfo.victoryData?.victoryType
         if (compact) {
-            add(sidebar).growX().minWidth(0f).padBottom(pt(12f)).row()
+            add(sidebar).growX().minWidth(0f).padBottom(pt(8f)).row()
             add(detail).grow().minWidth(0f).minHeight(0f)
         } else {
             add(U.scroll(sidebar)).width(pt(if (tablet) 246f else 204f)).growY().padRight(pt(if (tablet) 28f else 20f))
@@ -101,8 +129,8 @@ internal class VictoryProgressPage(
                 update()
             }.apply {
                 style = com.badlogic.gdx.scenes.scene2d.ui.Button.ButtonStyle(style).apply { checked = U.rounded(U.raised) }
-                pad(pt(8f), pt(12f), pt(8f), pt(12f))
-                add(ImageGetter.getImage("VictoryTypeIcons/${victory.name}")).size(pt(26f)).padRight(pt(12f))
+                pad(pt(4f), pt(10f), pt(4f), pt(10f))
+                add(ImageGetter.getImage("VictoryTypeIcons/${victory.name}")).size(pt(24f)).padRight(pt(8f))
                 val text = Table().apply {
                     add(U.plainLabel("[${victory.name}] Victory", TextRole.Control, if (victory == selected) U.accent else com.unciv.models.skins.ExpeditionBlueTheme.text)
                         .apply { wrap = true }).growX().minWidth(0f).left().row()
@@ -113,13 +141,19 @@ internal class VictoryProgressPage(
                 add(text).growX().minWidth(0f)
                 name = "victory-type-${victory.name}"
             }
-            sidebar.add(button).growX().minWidth(0f).minHeight(pt(if (compact) 64f else 58f)).padBottom(pt(5f))
+            sidebar.add(button).growX().minWidth(0f).minHeight(U.touch).padBottom(pt(2f))
             if (!compact || index % 2 == 1) sidebar.row()
         }
         detail.clear()
         detail.background = U.rounded(U.panel, 10f)
-        detail.pad(pt(if (tablet) 24f else 16f), pt(if (tablet) 28f else 20f), pt(10f), pt(if (tablet) 28f else 20f))
-        val body = Table().apply { top(); defaults().growX().minWidth(0f) }
+        detail.pad(pt(if (tablet) 16f else 8f), pt(if (tablet) 24f else 16f), pt(8f), pt(if (tablet) 24f else 16f))
+        val body = Table().apply {
+            top()
+            // CJK glyphs can extend above the Label's measured box. Keep that ink inside
+            // the scroll viewport, rather than adding padding outside its clipping edge.
+            padTop(pt(4f))
+            defaults().growX().minWidth(0f)
+        }
         val progress = selected.milestoneObjects.firstOrNull {
             it.getVictoryScreenButtonHeaderText(it.hasBeenCompletedBy(viewer), viewer).endsWith(")") &&
                 it.getVictoryScreenButtonHeaderText(it.hasBeenCompletedBy(viewer), viewer).substringAfterLast(" (").contains('/')
@@ -145,7 +179,7 @@ internal class VictoryProgressPage(
                 .left().padTop(pt(8f)).padBottom(pt(12f)).row()
         }
         body.add(U.plainLabel(selected.victoryScreenHeader, TextRole.Supporting, U.muted).apply { wrap = true })
-            .left().padTop(pt(3f)).padBottom(pt(14f)).row()
+            .left().padTop(pt(3f)).padBottom(pt(6f)).row()
         if (global) addGlobal(body, selected) else addOur(body, selected, progress)
         val scroll = U.scroll(body)
         detail.add(scroll).grow().minWidth(0f).minHeight(0f)
@@ -160,7 +194,7 @@ internal class VictoryProgressPage(
         }).size(pt(18f)).padRight(pt(12f))
         add(U.plainLabel(text, TextRole.Supporting).apply { wrap = true }).growX().minWidth(0f).left()
         add(U.plainLabel(if (complete) "Completed" else "Not completed", TextRole.Supporting, if (complete) U.accent else U.muted)).padLeft(pt(12f))
-        padTop(pt(8f)); padBottom(pt(8f))
+        padTop(pt(6f)); padBottom(pt(6f))
     }
 
     private fun addOur(body: Table, victory: Victory, summarized: com.unciv.models.ruleset.Milestone?) {
@@ -182,7 +216,7 @@ internal class VictoryProgressPage(
                 if (index == 0 && buttons.size > 1 && milestone == summarized) continue
                 val done = button.isChecked || button.color == Color.GREEN
                 val entry = Table().apply {
-                    add(condition(button.text.toString(), done)).growX().minWidth(0f).minHeight(pt(38f)).row()
+                    add(condition(button.text.toString(), done)).growX().minWidth(0f).row()
                     add(ImageGetter.getWhiteDot().apply { color = U.border }).growX().height(pt(.5f))
                 }
                 if (index == 0 && buttons.size > 1) {
@@ -192,7 +226,7 @@ internal class VictoryProgressPage(
                     if (!columns || index % 2 == 0) rows.row()
                 }
             }
-            body.add(rows).growX().minWidth(0f).padBottom(pt(8f)).row()
+            body.add(rows).growX().minWidth(0f).padBottom(pt(4f)).row()
         }
     }
 
@@ -201,12 +235,14 @@ internal class VictoryProgressPage(
             .sortedWith(compareBy<Civilization> { it.isDefeated() }.thenBy { it.victoryManager.amountMilestonesCompleted(victory) })
         for (civ in civs) {
             val row = Table().apply {
-                add(victoryCivIdentity(civ, viewer)).growX().minWidth(0f).row()
+                add(victoryCivIdentity(civ, viewer)).growX().minWidth(0f)
                 if (victoryCivKnown(civ, viewer)) {
                     val next = civ.victoryManager.getNextMilestone(victory)?.getVictoryScreenButtonHeaderText(false, civ) ?: "Done!"
-                    add(U.plainLabel(next, TextRole.Supporting, U.muted).apply { wrap = true }).growX().minWidth(0f).padLeft(pt(33f)).padTop(pt(3f))
+                    if (compact) row()
+                    add(U.plainLabel(next, TextRole.Supporting, U.muted).apply { wrap = true })
+                        .growX().minWidth(0f).left().padLeft(pt(if (compact) 33f else 12f)).padTop(if (compact) pt(3f) else 0f)
                 }
-                padTop(pt(10f)); padBottom(pt(10f))
+                padTop(pt(6f)); padBottom(pt(6f))
             }
             body.add(row).growX().minWidth(0f).row()
             body.add(ImageGetter.getWhiteDot().apply { color = U.border }).growX().height(pt(.5f)).row()
@@ -218,7 +254,8 @@ internal class VictoryStatisticsPage(
     private val world: WorldScreen,
     private val state: VictoryPageState,
     private val demographics: Boolean,
-    private val compact: Boolean
+    private val compact: Boolean,
+    gameInformation: Table? = null
 ) : VictoryOverviewPage() {
     private val viewer = world.selectedGameView.civView.getCiv()
     private val rows = Table()
@@ -235,11 +272,12 @@ internal class VictoryStatisticsPage(
                 update()
             }
             val toolbar = Table().apply {
-                add(U.plainLabel(if (demographics) "Demographic" else "Rankings", TextRole.Supporting, U.muted)).padRight(pt(12f))
+                if (gameInformation == null)
+                    add(U.plainLabel(if (demographics) "Demographic" else "Rankings", TextRole.Supporting, U.muted)).padRight(pt(12f))
                 add(select).height(U.touch).minWidth(pt(160f))
                 add().growX()
             }
-            add(toolbar).growX().minWidth(0f).padBottom(pt(12f)).row()
+            add(victoryStatisticsToolbar(toolbar, gameInformation)).growX().minWidth(0f).padBottom(pt(4f)).row()
         }
         val scroll = U.scroll(rows)
         add(scroll).grow().minWidth(0f).minHeight(0f)
@@ -259,7 +297,7 @@ internal class VictoryStatisticsPage(
 
     private fun rankings() {
         val header = Table().apply {
-            background = U.surface(U.raised); pad(pt(10f), pt(14f), pt(10f), pt(14f))
+            background = U.surface(U.raised); pad(pt(6f), pt(14f), pt(6f), pt(14f))
             add(cell("Rank", muted = true)).width(pt(48f))
             add(cell("Civilizations", muted = true)).growX().minWidth(0f)
             add(cell(state.ranking.label, true, true)).width(pt(110f))
@@ -271,7 +309,7 @@ internal class VictoryStatisticsPage(
         for ((index, entry) in civs.withIndex()) {
             val row = Table().apply {
                 background = U.surface(if (entry.civ == viewer) U.selected else U.panel)
-                pad(pt(12f), pt(14f), pt(12f), pt(14f))
+                pad(pt(6f), pt(14f), pt(6f), pt(14f))
                 add(cell((index + 1).toString())).width(pt(48f))
                 add(victoryCivIdentity(entry.civ, viewer)).growX().minWidth(0f)
                 add(cell(if (entry.civ.isDefeated() || !victoryCivKnown(entry.civ, viewer)) "—" else entry.value.toString(), true)).width(pt(110f))
@@ -293,7 +331,7 @@ internal class VictoryStatisticsPage(
         fun addRow(title: String, identity: Actor, value: String, header: Boolean = false, mine: Boolean = false) {
             val row = Table().apply {
                 background = U.surface(if (header) U.raised else if (mine) U.selected else U.panel)
-                pad(pt(12f), pt(14f), pt(12f), pt(14f))
+                pad(pt(6f), pt(14f), pt(6f), pt(14f))
                 add(cell(title, muted = header)).width(pt(if (compact) 80f else 150f)).left()
                 add(identity).growX().minWidth(0f).left().padLeft(pt(8f)).padRight(pt(8f))
                 add(cell(value, numeric = true, muted = header)).width(pt(if (compact) 85f else 110f)).right()

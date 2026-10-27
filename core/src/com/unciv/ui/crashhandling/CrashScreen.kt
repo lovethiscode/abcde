@@ -131,7 +131,7 @@ class CrashScreen(val exception: Throwable) : BaseScreen() {
 
     init {
         System.gc() // If we previously died to an OOM error, this decreases the chances that the *crash screen* will OOM as well
-        if (UiNavigation.isIos && UncivGame.getGameInfoOrNull()?.let { it.campaign == null && it.endless == null } != false)
+        if (UiNavigation.isMobile && UncivGame.getGameInfoOrNull()?.let { it.campaign == null && it.endless == null } != false)
             showOrdinaryError()
         else stage.addActor(makeLayoutTable())
     }

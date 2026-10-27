@@ -84,6 +84,11 @@ class UncivFiles(
             gameName, saveFolder, preferExternalStorage, files.externalStoragePath)
         val location = "${saveFolder}/$gameName"
         val localFile = getLocalFile(location)
+        if (customDataDirectory != null) {
+            if (saveFolder == SAVE_FILES_FOLDER) SaveFileWriter.recover(localFile)
+            localFile.parent().mkdirs()
+            return localFile
+        }
         val externalFile = files.external(location)
         if (saveFolder == SAVE_FILES_FOLDER) {
             SaveFileWriter.recover(localFile)
@@ -114,7 +119,7 @@ class UncivFiles(
     }
 
     fun pathToFileHandle(path: String): FileHandle {
-        return if (preferExternalStorage && files.isExternalStorageAvailable) files.external(path)
+        return if (customDataDirectory == null && preferExternalStorage && files.isExternalStorageAvailable) files.external(path)
         else getLocalFile(path)
     }
 
@@ -141,6 +146,7 @@ class UncivFiles(
         }
 
         val externalFiles = when {
+            customDataDirectory != null -> emptySequence()
             !files.isExternalStorageAvailable -> emptySequence()
             getDataFolder().file().absolutePath == files.external("").file().absolutePath -> emptySequence()
             else -> Sequence {

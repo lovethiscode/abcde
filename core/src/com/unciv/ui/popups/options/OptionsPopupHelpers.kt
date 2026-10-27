@@ -1,6 +1,7 @@
 package com.unciv.ui.popups.options
 
 import com.unciv.ui.components.fonts.UiTypography
+import com.badlogic.gdx.Gdx
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Cell
@@ -62,6 +63,7 @@ internal interface OptionsPopupHelpers {
     /** Suggested minimum width for a right-hand cell in a typical 2-column label/widget row.
      *  Calculated by [OptionsPopup] constructor from stage size.
      */
+    val stackOptionRows get() = UiNavigation.isAndroid && com.unciv.utils.Display.getSafeArea(Gdx.graphics.width, Gdx.graphics.height).width / Gdx.graphics.density < 480f
     val rightWidgetMinWidth: Float
 
     /** Access the active page of the TabbedPager in [OptionsPopup] */
@@ -135,14 +137,14 @@ internal interface OptionsPopupHelpers {
      *  @see addEnumAsStringSelectBox
      */
     fun <T> Table.addSelectBox(text: String, property: KMutableProperty0<T>, items: Iterable<T>, action: ((T, T) -> Unit)? = null): SelectBox<T> {
-        add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).left().growX()
+        add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).left().growX().apply { if (stackOptionRows) colspan(2).row() }
 
         val select = SelectBox<T>(BaseScreen.skin)
         select.setItems(items.toGdxArray())
         select.selected = property.get()
         add(select).pad(if (ExpeditionBlueTheme.enabled) OptionsPopupStyle.points(6f) else 10f)
             .minHeight(if (ExpeditionBlueTheme.enabled) UiNavigation.minimumTouchSize() else 0f).minWidth(rightWidgetMinWidth)
-            .maxWidth(if (ExpeditionBlueTheme.enabled) rightWidgetMinWidth else Float.MAX_VALUE).right().row()
+            .maxWidth(if (ExpeditionBlueTheme.enabled && !stackOptionRows) rightWidgetMinWidth else Float.MAX_VALUE).right().apply { if (stackOptionRows) colspan(2).minWidth(0f).growX() }.row()
 
         select.onChange {
             val oldValue = property.get()
@@ -163,11 +165,11 @@ internal interface OptionsPopupHelpers {
      *  @see addEnumAsStringSelectBox
      */
     fun Table.addTranslatedSelectBox(text: String, property: KMutableProperty0<String>, items: Iterable<String>, action: ((String) -> Unit)? = null) {
-        add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).left().growX()
+        add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).left().growX().apply { if (stackOptionRows) colspan(2).row() }
         val select = TranslatedSelectBox(items as? Collection ?: items.toList(), property.get())
         add(select).pad(if (ExpeditionBlueTheme.enabled) OptionsPopupStyle.points(6f) else 10f)
             .minHeight(if (ExpeditionBlueTheme.enabled) UiNavigation.minimumTouchSize() else 0f).minWidth(rightWidgetMinWidth)
-            .maxWidth(if (ExpeditionBlueTheme.enabled) rightWidgetMinWidth else Float.MAX_VALUE).right().row()
+            .maxWidth(if (ExpeditionBlueTheme.enabled && !stackOptionRows) rightWidgetMinWidth else Float.MAX_VALUE).right().apply { if (stackOptionRows) colspan(2).minWidth(0f).growX() }.row()
 
         select.onChange {
             val newValue = select.selected.value
@@ -211,12 +213,12 @@ internal interface OptionsPopupHelpers {
     ) {
         val label = text.toLabel(fontColor = Color.GRAY, role = TextRole.Control)
         label.wrap = true
-        add(label).minWidth(0f).left().growX()
+        add(label).minWidth(0f).left().growX().apply { if (stackOptionRows) colspan(2).row() }
         val select = SelectBox<T>(BaseScreen.skin)
         select.isDisabled = true
         add(select).pad(if (ExpeditionBlueTheme.enabled) OptionsPopupStyle.points(6f) else 10f)
             .minHeight(if (ExpeditionBlueTheme.enabled) UiNavigation.minimumTouchSize() else 0f).minWidth(rightWidgetMinWidth)
-            .maxWidth(if (ExpeditionBlueTheme.enabled) rightWidgetMinWidth else Float.MAX_VALUE).right().row()
+            .maxWidth(if (ExpeditionBlueTheme.enabled && !stackOptionRows) rightWidgetMinWidth else Float.MAX_VALUE).right().apply { if (stackOptionRows) colspan(2).minWidth(0f).growX() }.row()
 
         Concurrency.run("Async SelectBox", CoroutineScope(dispatcher)) {
             val items = Array<T>(false, 20)
@@ -264,7 +266,7 @@ internal interface OptionsPopupHelpers {
                 add(valueLabel).right().padLeft(OptionsPopupStyle.points(12f))
             }
             add(labelRow).colspan(2).growX().pad(OptionsPopupStyle.points(8f), OptionsPopupStyle.points(12f), 0f, OptionsPopupStyle.points(12f)).row()
-        } else add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).left().growX().padTop(8f)
+        } else add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).left().growX().apply { if (stackOptionRows) colspan(2).row() }.padTop(8f)
 
         // lateinit, otherwise the callback can't capture it, and by the time the callback fires this will be initialized
         lateinit var slider: UncivSlider

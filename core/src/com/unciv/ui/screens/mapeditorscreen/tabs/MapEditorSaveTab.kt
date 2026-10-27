@@ -70,7 +70,7 @@ class MapEditorSaveTab(
         buttonTable.add(deleteButton)
 
         quitButton.onClick(editorScreen::closeEditor)
-        if (!UiNavigation.isIos) buttonTable.add(quitButton)
+        if (!UiNavigation.isMobile) buttonTable.add(quitButton)
         buttonTable.pack()
 
         val fileTableHeight = editorScreen.getToolsHeight() - headerHeight - mapNameTextField.prefHeight - buttonTable.height - 22f

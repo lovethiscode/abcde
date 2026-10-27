@@ -128,7 +128,7 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
     init {
         SoundPlayer.initializeForMainMenu()
 
-        val background = if (Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS)
+        val background = if (com.unciv.ui.components.widgets.UiNavigation.isMobile)
             ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.color(Color.valueOf("e5edf0"), ExpeditionBlueTheme.background))
         else skinStrings.getUiBackground("MainMenuScreen/Background", tintColor = clearColor)
         backgroundStack.add(BackgroundActor(background, Align.center))
@@ -161,7 +161,7 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
     }
 
     private fun createMenu() {
-        if (Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
+        if (com.unciv.ui.components.widgets.UiNavigation.isMobile) {
             val menu = CampaignHomeMenu(this, ::resumeGame, ::quickstartNewGame, ::stopBackgroundMapGeneration)
             homeMenu = menu
             stage.addActor(menu)
@@ -311,7 +311,7 @@ class MainMenuScreen: BaseScreen(), RecreateOnResize {
 
     private fun startBackgroundMapGeneration() {
         // The iOS campaign home uses a solid background across the full drawing bounds.
-        if (Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) return
+        if (com.unciv.ui.components.widgets.UiNavigation.isMobile) return
         stopBackgroundMapGeneration()  // shouldn't be necessary as resize re-instantiates this class
         backgroundMapGenerationJob = Concurrency.run("ShowMapBackground") {
             // MapSize.Small has easily enough tiles to fill the entire background - unless the user sized their window to some extreme aspect ratio

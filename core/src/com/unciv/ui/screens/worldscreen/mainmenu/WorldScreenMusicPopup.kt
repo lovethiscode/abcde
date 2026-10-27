@@ -77,13 +77,13 @@ class WorldScreenMusicPopup(
         } else {
         addMusicMods(settings)
         historyExpander = addHistory()
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             val controls = if (ordinaryPresentation) Table(skin).also { add(it).growX().minWidth(0f).row() } else bottomTable
             controls.addMusicVolumeSlider(settings, musicController)
             controls.addMusicPauseSlider(settings, musicController)
             controls.addMusicCurrentlyPlaying(musicController)
             controls.addSimplePlayerControls(musicController).colspan(2)
-            addTitleWithCloseButton("Music".toLabel(TextRole.Body))
+            addTitleWithCloseButton()
         } else {
             bottomTable.addMusicControls(settings, musicController)
             addCloseButton().colspan(2)
@@ -96,7 +96,7 @@ class WorldScreenMusicPopup(
     }
 
     private fun buildOrdinaryControls(settings: GameSettings) {
-        addDialogTitle("Music")
+        addTitleWithCloseButton()
         val current = "".toLabel(TextRole.Supporting, unit = popupUnit).apply { wrap = true }
         fun updateStatus() {
             val track = if (musicController.isPlaying()) musicController.getHistory().lastOrNull()?.toString().orEmpty() else "—Paused—".tr()

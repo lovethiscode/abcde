@@ -41,7 +41,7 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
         touchable = Touchable.childrenOnly
         header.background = MapEditorStyle.background(MapEditorStyle.panel)
         header.defaults().height(44*u).pad(4*u)
-        header.add(if (UiNavigation.isIos) UiNavigation.backButton().apply { onActivation { editor.closeEditor() } }
+        header.add(if (UiNavigation.isMobile) UiNavigation.backButton().apply { onActivation { editor.closeEditor() } }
             else MapEditorStyle.button("Back") { editor.closeEditor() })
         val heading = Table().apply {
             title.setEllipsis(true)
@@ -76,9 +76,9 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
         panel.touchable = Touchable.enabled
         val panelHeader = Table().apply {
             add(panelTitle).growX().left().padLeft(16*u)
-            add(if (UiNavigation.isIos) UiNavigation.dismissButton().apply { onActivation { setMode(mode) } }
+            add(if (UiNavigation.isMobile) UiNavigation.dismissButton().apply { onActivation { setMode(mode) } }
                 else MapEditorStyle.button("Close") { setMode(mode) }).height(44*u).pad(4*u)
-                .apply { if (UiNavigation.isIos) width(44*u) }
+                .apply { if (UiNavigation.isMobile) width(44*u) }
         }
         panel.add(panelHeader).growX().row()
         panel.add(editor.tabs).grow().minSize(0f)
@@ -158,12 +158,9 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
 
     private fun morePopup() {
         Popup(editor).apply {
-            if (UiNavigation.isIos) addTitleWithCloseButton(Table().apply {
-                add("Map editor".toLabel(TextRole.PageTitle, unit = u))
-                    .minWidth(minOf(220f * u, editor.stage.width - 140f * u)).left()
-            }) else addGoodSizedLabel("Map editor").row()
+            if (UiNavigation.isMobile) addTitleWithCloseButton()
             val pages = listOf(1 to "Generate", 0 to "View", 3 to "Load", 4 to "Save", 5 to "Mods", 6 to "Options")
-            if (UiNavigation.isIos) add(Table().apply {
+            if (UiNavigation.isMobile) add(Table().apply {
                 pages.forEachIndexed { index, (page, caption) ->
                     add(MapEditorStyle.button(caption) { close(); editor.tabs.selectPage(page) })
                         .growX().minWidth(104f * u).height(44f * u).pad(4f * u)
@@ -174,13 +171,13 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
                 add(MapEditorStyle.button(caption) { close(); editor.tabs.selectPage(page) })
                     .growX().height(44f * u).pad(4f * u).row()
             }
-            if (!UiNavigation.isIos) addCloseButton()
+            if (!UiNavigation.isMobile) addCloseButton()
             open()
         }
     }
     private fun rangePopup() {
         Popup(editor).apply {
-            if (UiNavigation.isIos) addTitleWithCloseButton(Table().apply {
+            if (UiNavigation.isMobile) addTitleWithCloseButton(Table().apply {
                 add("Brush size".toLabel(TextRole.PageTitle, unit = u))
                     .minWidth(minOf(260f * u, editor.stage.width - 140f * u)).left()
             }) else add("Brush size".toLabel(fontSize = UiTypography.size(TextRole.Body, unit = u))).row()
@@ -196,7 +193,7 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
             }).growX().height(44*u).pad(4*u).row()
             add("Floodfill follows the matching rule in Options.".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = u)).apply { wrap = true })
                 .width(minOf(340*u, editor.stage.width-80*u)).row()
-            if (!UiNavigation.isIos) addCloseButton()
+            if (!UiNavigation.isMobile) addCloseButton()
             open()
         }
     }

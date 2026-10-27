@@ -63,7 +63,7 @@ class MapOptionsTable(private val newGameScreen: NewGameScreen) : Table() {
                     newGameScreen.lockTables()
                 }
             }
-            if (UiNavigation.isIos) {
+            if (UiNavigation.isMobile) {
                 councilPreview.clear()
                 createOverviewPreview(newGameScreen.directSetupWidth,
                     (newGameScreen.stage.height * .28f).coerceIn(100f, 165f))?.let {
@@ -81,7 +81,7 @@ class MapOptionsTable(private val newGameScreen: NewGameScreen) : Table() {
 
         mapTypeSelectBox.onChange { updateOnMapTypeChange() }
 
-        if (UiNavigation.isIos) {
+        if (UiNavigation.isMobile) {
             background = null
             add(councilPreview).width(newGameScreen.directSetupWidth)
                 .height(if (councilPreview.children.size == 0) 0f else (newGameScreen.stage.height * .28f).coerceIn(100f, 165f))

@@ -1,6 +1,7 @@
 package com.unciv.ui.screens.campaign
 
 import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.logic.campaign.trCampaign
 import com.unciv.ui.components.fonts.TextRole
 import com.unciv.logic.challenges.ChallengeTelemetry
 import com.badlogic.gdx.graphics.Color
@@ -125,6 +126,7 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
     }
 
     init {
+        if (UiNavigation.isAndroid) globalShortcuts.add(com.unciv.ui.components.input.KeyCharAndCode.BACK) { back() }
         root.setFillParent(true)
         root.background = ImageGetter.getWhiteDotDrawable().tint(Theme.background)
         this@CampaignScreen.stage.addActor(root)
@@ -142,19 +144,24 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         historicalScrollPane = null
         root.clearChildren()
         root.pad(px(if (compact) 8f else 12f), margin, px(if (compact) 14f else 20f), margin).top()
+        val shareJourney = if (game.campaignSharingAvailable && progressReadable) control("", "ui-campaign-share-journey", quiet = true) {
+            showCampaignShare(this@CampaignScreen, { rebuild(recoverResults = false) }) { CampaignShareData.journey(store.progress()) }
+        }.apply { add(artwork.icon("share", Theme.muted)).size(px(20f)) } else null
         val header = Table().apply {
-            val backButton = if (UiNavigation.isIos) UiNavigation.backButton().apply {
+            val backButton = if (UiNavigation.isMobile) UiNavigation.backButton().apply {
                 name = "ui-campaign-back"
                 onActivation { back() }
             } else control(if (chapter >= 0 && !stacked) "战役总览" else "", "ui-campaign-back", quiet = true, action = ::back).apply {
                 addActor(artwork.icon("back", Theme.muted).apply { setBounds(0f, px(13f), px(18f), px(18f)) })
                 padLeft(px(24f))
             }
-            val title = if (historical) "历史战役" else if (chapter >= 0) CampaignCatalog.chapters[chapter] else "文明的诞生"
-            val titleLabel = label(title, TextRole.PageTitle)
-            titleLabel.wrap = false
-            val titleWidth = titleLabel.prefWidth
-            titleLabel.wrap = true
+            val titleLabel = if (chapter >= 0) label(CampaignCatalog.chapters[chapter], TextRole.PageTitle) else null
+            val titleWidth = titleLabel?.let {
+                it.wrap = false
+                val width = it.prefWidth
+                it.wrap = true
+                width
+            } ?: 0f
             val syncButton = control(if (stacked) "" else syncCaption(), "ui-campaign-sync", quiet = true) {
                 Popup(this@CampaignScreen).apply {
                     addGoodSizedLabel("战役成绩").row()
@@ -167,29 +174,40 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                 add(artwork.icon("cloud", Theme.muted)).size(px(18f))
                 if (!stacked) add(label(syncCaption(), TextRole.Supporting, Theme.muted).apply { wrap = false }).padLeft(px(6f))
             }
-            if (backButton.prefWidth + titleWidth + syncButton.prefWidth + px(20f) > contentWidth) {
-                add(titleLabel).colspan(2).growX().minWidth(0f).left().padBottom(px(8f)).row()
+            if (UiNavigation.isAndroid) {
+                val tools = Table().apply {
+                    if (sync !== com.unciv.logic.campaign.CampaignProgressSync.None)
+                        add(syncButton).minHeight(UiNavigation.minimumTouchSize())
+                    shareJourney?.let { add(it).size(UiNavigation.minimumTouchSize()) }
+                }
+                if (narrowPortrait || backButton.prefWidth + titleWidth + tools.prefWidth + px(20f) > contentWidth) {
+                    add(backButton).minSize(UiNavigation.minimumTouchSize()).left()
+                    add(tools).expandX().right().row()
+                    if (titleLabel != null) add(titleLabel).colspan(2).growX().minWidth(0f).left().padTop(px(8f))
+                } else {
+                    add(backButton).minSize(UiNavigation.minimumTouchSize()).padRight(px(12f))
+                    if (titleLabel != null) add(titleLabel).growX().minWidth(0f).left() else add().growX()
+                    add(tools).padLeft(px(8f))
+                }
+            } else if (backButton.prefWidth + titleWidth + syncButton.prefWidth + px(20f) > contentWidth) {
+                if (titleLabel != null) add(titleLabel).colspan(2).growX().minWidth(0f).left().padBottom(px(8f)).row()
                 add(backButton).minSize(px(44f), px(44f)).left()
                 add(syncButton).minHeight(px(44f)).expandX().right().padLeft(px(8f))
             } else {
                 add(backButton).minSize(px(44f), px(44f)).padRight(px(12f))
-                add(titleLabel).growX().minWidth(0f).left()
+                if (titleLabel != null) add(titleLabel).growX().minWidth(0f).left() else add().growX()
                 add(syncButton).minHeight(px(44f)).padLeft(px(8f))
             }
         }
-        if (game.campaignSharingAvailable && progressReadable) header.add(control("", "ui-campaign-share-journey", quiet = true) {
-            showCampaignShare(this@CampaignScreen, { rebuild(recoverResults = false) }) { CampaignShareData.journey(store.progress()) }
-        }.apply { add(artwork.icon("share", Theme.muted)).size(px(20f)) }).size(px(44f))
-        root.add(header).growX().padBottom(px(if (compact) 6f else 12f)).row()
+        if (!UiNavigation.isAndroid) shareJourney?.let { header.add(it).size(px(44f)) }
+        root.add(header).growX().apply { if (UiNavigation.isAndroid) minWidth(0f).maxWidth(contentWidth) }
+            .padBottom(px(if (compact) 6f else 12f)).row()
         root.add(ImageGetter.getWhiteDot().apply { color = Theme.border }).growX().height(px(1f)).row()
         if (chapter < 0 && !(historical && selected.isNotEmpty())) {
             val themes = Table().apply {
-                add(control("新手", "ui-campaign-theme:0", quiet = true) { historical = false; selected = ""; rebuild() }.apply { isChecked = !historical })
-                    .minHeight(px(44f)).padRight(px(8f))
-                add(control("历史战役", "ui-campaign-theme:1", quiet = true) { historical = true; selected = ""; rebuild() }.apply { isChecked = historical })
-                    .minHeight(px(44f))
-                add().growX()
-                add(control("更多战役", "ui-campaign-more", quiet = true) {
+                val beginner = control("新手", "ui-campaign-theme:0", quiet = true) { historical = false; selected = ""; rebuild() }.apply { isChecked = !historical }
+                val history = control("历史战役", "ui-campaign-theme:1", quiet = true) { historical = true; selected = ""; rebuild() }.apply { isChecked = historical }
+                val more = control("更多战役", "ui-campaign-more", quiet = true) {
                     Popup(this@CampaignScreen).apply {
                         addGoodSizedLabel("更多战役").row()
                         for ((index, title) in CampaignCatalog.futureThemes.withIndex()) {
@@ -199,9 +217,20 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
                         }
                         addCloseButton(); open()
                     }
-                }).minHeight(px(44f))
+                }
+                val reflow = UiNavigation.isAndroid && beginner.prefWidth + history.prefWidth + more.prefWidth + px(8f) > contentWidth
+                add(beginner).minHeight(px(44f)).padRight(px(8f)).apply { if (reflow) growX().minWidth(0f) }
+                add(history).minHeight(px(44f)).apply { if (reflow) growX().minWidth(0f) }
+                if (reflow) {
+                    row()
+                    add(more).colspan(2).growX().minWidth(0f).minHeight(px(44f)).padTop(px(4f))
+                } else {
+                    add().growX()
+                    add(more).minHeight(px(44f))
+                }
             }
-            root.add(themes).growX().padTop(px(8f)).padBottom(px(if (compact) 6f else 12f)).row()
+            root.add(themes).growX().apply { if (UiNavigation.isAndroid) minWidth(0f).maxWidth(contentWidth) }
+                .padTop(px(8f)).padBottom(px(if (compact) 6f else 12f)).row()
         }
         try {
             if (recoverResults) (definitions + historicalDefinitions).forEach { definition ->
@@ -321,19 +350,20 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
             CampaignSyncState.WaitingForNetwork -> "成绩已保存在本机 · 等待重试 iCloud 同步"
             CampaignSyncState.Failed -> "iCloud 同步失败，本机成绩仍保留；可点击重试"
         }
-        syncPanel.add(label(message, TextRole.Supporting, Theme.muted).apply { setWrap(true) })
+        syncPanel.add(label(message.trCampaign().replace("iCloud", sync.displayName), TextRole.Supporting, Theme.muted).apply { setWrap(true) })
             .growX().minWidth(0f).left()
         if (status.state == CampaignSyncState.LocalOnly) return
         syncPanel.row()
         val changed = status.state == CampaignSyncState.AccountChanged
-        syncPanel.add((if (changed) "合并到当前 iCloud" else "同步成绩").toTextButton().apply {
+        syncPanel.add((if (sync.canConfigure && status.state == CampaignSyncState.NoAccount) "Configure save sync" else if (changed) "合并到当前 iCloud" else "同步成绩").trCampaign().replace("iCloud", sync.displayName).toTextButton().apply {
             label.setFontSize(UiTypography.size(TextRole.Control, unit))
             isDisabled = status.state == CampaignSyncState.Syncing
             onActivation {
                 val account = status.accountToConfirm
-                if (changed && account != null) {
+                if (sync.canConfigure && status.state == CampaignSyncState.NoAccount) sync.configure()
+                else if (changed && account != null) {
                     ConfirmPopup(this@CampaignScreen,
-                        "将本机所有战役成绩合并到当前 iCloud 账户？\n这会包含之前账户的通关、星级和勋章。\n两端已有成绩都会保留，关内对局不会上传。",
+                        "将本机所有战役成绩合并到当前 iCloud 账户？\n这会包含之前账户的通关、星级和勋章。\n两端已有成绩都会保留，关内对局不会上传。".trCampaign().replace("iCloud", sync.displayName),
                         "确认合并", true) { sync.requestSync(account) }.open(true)
                 } else sync.requestSync()
             }
@@ -524,22 +554,29 @@ class CampaignScreen(private var chapter: Int = -1, private var selected: String
         }
         root.add(AutoScrollPane(content).apply { setScrollingDisabled(true, false) }).grow().minHeight(0f).row()
         val actions = Table()
-        if (journeyComplete && game.campaignSharingAvailable && progressReadable) {
-            actions.add(control("分享旅程", "ui-campaign-share-complete") {
+        val secondaryAction = if (journeyComplete && game.campaignSharingAvailable && progressReadable) {
+            control("分享旅程", "ui-campaign-share-complete") {
                 showCampaignShare(this@CampaignScreen, { rebuild(recoverResults = false) }) { CampaignShareData.journey(store.progress()) }
-            }).minHeight(px(44f)).growX().padRight(px(8f))
-        } else actions.add(control("历史战役", "ui-campaign-history-shortcut") {
+            }
+        } else control("历史战役", "ui-campaign-history-shortcut") {
             historical = true; selected = ""; rebuild()
-        }).minHeight(px(44f)).growX().padRight(px(8f))
+        }
         val primaryCopy = when {
             journeyComplete -> "回顾章节"
             unfinished != null -> "继续关卡"
             else -> "进入第 [${currentChapter + 1}] 章"
         }
-        actions.add(control(primaryCopy, "ui-campaign-overview-primary", true) {
+        val primaryAction = control(primaryCopy, "ui-campaign-overview-primary", true) {
             if (unfinished != null) enter(unfinished.definition.id, false) else openChapter(currentChapter)
-        }).minHeight(px(44f)).growX()
-        root.add(actions).growX().padTop(px(10f))
+        }
+        val stackActions = UiNavigation.isAndroid && secondaryAction.prefWidth + primaryAction.prefWidth + px(8f) > contentWidth
+        actions.add(secondaryAction).minHeight(px(44f)).growX().apply {
+            if (UiNavigation.isAndroid) minWidth(0f)
+            if (stackActions) padBottom(px(8f)) else padRight(px(8f))
+        }
+        if (stackActions) actions.row()
+        actions.add(primaryAction).minHeight(px(44f)).growX().apply { if (UiNavigation.isAndroid) minWidth(0f) }
+        root.add(actions).growX().apply { if (UiNavigation.isAndroid) minWidth(0f).maxWidth(contentWidth) }.padTop(px(10f))
     }
 
     private fun chapter() {

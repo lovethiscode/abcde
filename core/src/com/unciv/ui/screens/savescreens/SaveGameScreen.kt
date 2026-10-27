@@ -35,7 +35,6 @@ import com.unciv.utils.Log
 import com.unciv.utils.launchOnGLThread
 
 
-private val saveGameTitleFontSize get() = UiTypography.size(TextRole.PageTitle, legacySize = 28)
 private val saveGameSecondaryFontSize get() = UiTypography.size(TextRole.Supporting, legacySize = 18)
 private val saveGameContentFontSize get() = UiTypography.size(TextRole.Body, legacySize = 22)
 private val saveGameCompactActionFontSize get() = UiTypography.size(TextRole.Control, legacySize = 20)
@@ -85,7 +84,7 @@ class SaveGameScreen(private val gameInfo: GameInfo) :
         rightSideButton.enable()
 
         initResponsiveLayout()
-        if (Gdx.app.type == com.badlogic.gdx.Application.ApplicationType.iOS) {
+        if (com.unciv.ui.components.widgets.UiNavigation.isMobile) {
             displayEvents.receive(com.unciv.ui.screens.basescreen.UncivStage.VisibleAreaChanged::class) {
                 screenTable.setBounds(0f, it.visibleArea.y, stage.width, it.visibleArea.height)
                 layoutPanels(it.visibleArea.height)
@@ -148,7 +147,7 @@ class SaveGameScreen(private val gameInfo: GameInfo) :
         rightSideButton.remove()
         pickerPane.remove()
 
-        if (UiNavigation.isIos) UiNavigation.styleBackButton(closeButton)
+        if (UiNavigation.isMobile) UiNavigation.styleBackButton(closeButton)
         else closeButton.label.setFontSize(UiTypography.size(TextRole.Control))
         showAutosavesCheckbox.label.setFontSize(UiTypography.size(TextRole.Control))
         descriptionLabel.setFontSize(saveGameContentFontSize)
@@ -167,7 +166,7 @@ class SaveGameScreen(private val gameInfo: GameInfo) :
         showAutosavesCheckbox.labelCell.minWidth(0f)
 
         screenTable.apply {
-            setFillParent(Gdx.app.type != com.badlogic.gdx.Application.ApplicationType.iOS)
+            setFillParent(!com.unciv.ui.components.widgets.UiNavigation.isMobile)
             setSize(this@SaveGameScreen.stage.width, this@SaveGameScreen.stage.height)
             background = skinStrings.getUiBackground(
                 "SaveGameScreen/Background",
@@ -175,10 +174,6 @@ class SaveGameScreen(private val gameInfo: GameInfo) :
             )
         }
 
-        val titleLabel = saveButtonText.toLabel(fontSize = saveGameTitleFontSize).apply {
-            setEllipsis(true)
-            setAlignment(Align.center)
-        }
         val closeButtonWidth = maxOf(110f, closeButton.prefWidth + 16f)
             .coerceAtMost(stage.width * 0.25f)
         val header = Table().apply {
@@ -188,10 +183,9 @@ class SaveGameScreen(private val gameInfo: GameInfo) :
                 skinStrings.skinConfig.baseColor.darken(0.35f),
             )
             add(closeButton).width(closeButtonWidth).minHeight(maxOf(48f, UiNavigation.minimumTouchSize())).padLeft(8f)
-            add(titleLabel).growX().minWidth(0f).center().pad(0f, 10f, 0f, 10f)
-            add().width(closeButtonWidth).padRight(8f)
+            add().growX()
         }
-        screenTable.add(header).growX().minHeight(64f).pad(8f, 10f, 4f, 10f).row()
+        screenTable.add(header).growX().minHeight(maxOf(48f, UiNavigation.minimumTouchSize())).pad(8f, 10f, 4f, 10f).row()
 
         savesScrollPane.setScrollingDisabled(true, false)
         (savesScrollPane.actor as Table).apply {

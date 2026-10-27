@@ -124,7 +124,7 @@ internal object SinglePlayerSetup {
             add(caption.toLabel(ExpeditionBlueTheme.text, UiTypography.size(TextRole.Control, legacySize = 18)).apply { wrap = true }).minWidth(0f).growX().left()
         }).width(labelWidth).left().padRight(8f)
         add(control).minWidth(0f).width(width - labelWidth - 20f)
-            .height(if (UiNavigation.isIos) UiNavigation.minimumTouchSize() else 36f).fillX()
+            .height(if (UiNavigation.isMobile) UiNavigation.minimumTouchSize() else 36f).fillX()
     }
 
     fun form(width: Float, fields: List<Pair<String, Actor>>) = Table().apply {
@@ -148,7 +148,7 @@ internal object SinglePlayerSetup {
             else -> "OtherIcons/Settings"
         }, ExpeditionBlueTheme.text).apply { setSize(20f, 20f) },
         startsOutOpened = opened, defaultPad = 12f, expanderWidth = width,
-        expanderHeight = if (UiNavigation.isIos) UiNavigation.minimumTouchSize() else 36f,
+        expanderHeight = if (UiNavigation.isMobile) UiNavigation.minimumTouchSize() else 36f,
         headerPad = 0f, persistenceID = "SinglePlayer.$id",
         onChange = {
             expander.headerIcon.rotation = if (expander.isOpen) 90f else 180f

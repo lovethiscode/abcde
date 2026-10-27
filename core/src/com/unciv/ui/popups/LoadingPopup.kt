@@ -13,13 +13,12 @@ import com.unciv.ui.screens.basescreen.BaseScreen
  *  That screen will use this once the screenshot is on-screen, though.
  */
 class LoadingPopup(screen: BaseScreen) : Popup(screen,
-    if (com.unciv.ui.components.widgets.UiNavigation.isIos &&
+    if (com.unciv.ui.components.widgets.UiNavigation.isMobile &&
         com.unciv.UncivGame.getGameInfoOrNull()?.let { it.campaign == null && it.endless == null } != false)
         Scrollability.WithoutButtons else Scrollability.None, ordinaryShell = true) {
     init {
         if (ordinaryPresentation) {
             ordinaryPreferredWidth = 420f
-            addDialogTitle("Loading game", dismissible = false)
             addGoodSizedLabel("Preparing the map and civilization data…".tr().replace("…", "...")).row()
             // Indeterminate progress only: no invented completion percentage.
             add(com.unciv.ui.components.widgets.LoadingImage(32f * popupUnit).apply { show() })

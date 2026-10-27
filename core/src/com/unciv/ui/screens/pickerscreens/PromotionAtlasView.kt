@@ -119,7 +119,7 @@ internal class PromotionAtlasView(
         val header = Table()
         UiNavigation.styleBackButton(screen.closeButton, unit = style.unit)
         header.add(screen.closeButton).minSize(u(44f)).padRight(u(12f))
-        header.add(label("Unit promotions", TextRole.PageTitle, wrap = true)).growX().minWidth(0f).left().padRight(u(8f))
+        header.add().growX()
         displayOptions = button("", "ui-promotion-display-options") { showDisplayOptions() }.apply {
             clearChildren()
             add(ImageGetter.getImage("OtherIcons/Options")).size(u(22f))
@@ -414,17 +414,14 @@ internal class PromotionAtlasView(
                         .growX().minWidth(0f).left()
                     content.add(entry).width(contentWidth).padBottom(u(6f)).row()
                 }
-                val title = label("Display options", TextRole.SectionTitle, wrap = true)
-                title.setWidth(contentWidth)
                 return Table().apply {
                     name = "ui-promotion-display-menu"
                     background = style.outline(style.panel, style.line)
                     pad(u(12f))
-                    add(title).width(contentWidth).left().padBottom(u(12f)).row()
                     add(AutoScrollPane(content).apply { setScrollingDisabled(true, false) })
                         .width(contentWidth)
                         .height(minOf(content.prefHeight,
-                            (bounds.height-u(60f)-title.prefHeight).coerceAtLeast(u(44f))))
+                            (bounds.height-u(48f)).coerceAtLeast(u(44f))))
                 }
             }
         }
@@ -501,7 +498,7 @@ internal class PromotionAtlasView(
         val detailMetaRole = if (compact) TextRole.Metadata else TextRole.Supporting
         if (portrait) {
             val top = Table()
-            top.add(label("Promotion details", TextRole.SectionTitle, wrap = true)).growX().minWidth(0f).left()
+            top.add().growX()
             top.add(UiNavigation.dismissButton(style.unit).apply {
                 name = "ui-promotion-detail-close"
                 onActivation { expanded = false; statusText = null; refresh() }

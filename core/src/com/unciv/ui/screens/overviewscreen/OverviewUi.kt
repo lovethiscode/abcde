@@ -145,8 +145,8 @@ internal object OverviewUi {
             vScroll = null
             hScroll = null
             // iPhone content remains touch-scrollable without adding a visible bar.
-            vScrollKnob = if (UiNavigation.isIos) null else rounded(muted).apply { minWidth = pt(4f) }
-            hScrollKnob = if (UiNavigation.isIos) null else rounded(muted).apply { minHeight = pt(4f) }
+            vScrollKnob = if (UiNavigation.isMobile) null else rounded(muted).apply { minWidth = pt(4f) }
+            hScrollKnob = if (UiNavigation.isMobile) null else rounded(muted).apply { minHeight = pt(4f) }
         }
         setScrollingDisabled(true, false)
         setOverscroll(false, false)
