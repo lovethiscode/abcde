@@ -32,6 +32,7 @@ open class PickerScreen(disableScroll: Boolean = false) : BaseScreen() {
     /** Form pages keep their existing actors and footer inside the keyboard's visible area. */
     protected var keyboardAwareForm = false
     private val formArea = com.badlogic.gdx.math.Rectangle()
+    private var revealFormInputFrames = 0
 
     override fun render(delta: Float) {
         if (keyboardAwareForm && com.unciv.ui.components.widgets.UiNavigation.isMobile) {
@@ -43,6 +44,15 @@ open class PickerScreen(disableScroll: Boolean = false) : BaseScreen() {
                 pickerPane.setCompactFormActions(area.height / com.unciv.ui.components.fonts.UiTypography.unitsPerPoint(stage) < 240f)
                 pickerPane.invalidateHierarchy()
                 pickerPane.validate()
+                revealFormInputFrames = 2
+            }
+            if (revealFormInputFrames > 0) {
+                revealFormInputFrames--
+                pickerPane.validate()
+                scrollPane.validate()
+                topTable.validate()
+                scrollPane.invalidate()
+                scrollPane.validate()
                 val focus = stage.keyboardFocus
                 if (focus != null && focus.isDescendantOf(topTable)) {
                     val point = focus.localToAscendantCoordinates(topTable, com.badlogic.gdx.math.Vector2())

@@ -124,7 +124,8 @@ class PickerPane(
         if (UiNavigation.isMobile) {
             val hasNavigation = navigationHasContent || closeButton.parent === navigationHeader && closeButton.isVisible
             navigationHeader.isVisible = hasNavigation
-            getCell(navigationHeader).height(if (hasNavigation) maxOf(closeButton.height + 16f, navigationHeader.prefHeight) else 0f)
+            getCell(navigationHeader).height(if (hasNavigation)
+                maxOf(closeButton.height + if (formActionsInHeader) 8f else 16f, navigationHeader.prefHeight) else 0f)
         }
         super.layout()
         if (formActionsInHeader) splitPane.splitAmount = 1f
