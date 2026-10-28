@@ -297,7 +297,17 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
             popup.open()
         }
         add(more).minHeight(44f).padRight(8f)
-        if (queueIndex != null) {
+        val purchaseOnly = construction is INonPerpetualConstruction && construction.hasUnique(UniqueType.Unbuildable)
+        val primaryPurchases = if (purchaseOnly) buyButtonFactory.getBuyButtons(construction, 1f, showRestrictions = true) else emptyList()
+        if (primaryPurchases.isNotEmpty()) {
+            val purchases = Table()
+            for (buy in primaryPurchases) {
+                buy.label.wrap = true
+                buy.labelCell.minWidth(0f)
+                purchases.add(buy).growX().minWidth(0f).minHeight(44f).row()
+            }
+            add(purchases).growX().minWidth(0f)
+        } else if (queueIndex != null) {
             add(cityWorkbenchControl("Remove from queue", "ui-city-detail-remove", cityScreen.canCityBeChanged()) {
                 removeWorkbenchQueueEntry(queueIndex)
             }).growX().minWidth(0f).minHeight(44f)
