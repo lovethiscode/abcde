@@ -349,8 +349,10 @@ class VictoryScreen private constructor(
                     val completed = milestone.hasBeenCompletedBy(playerCiv)
                     val text = milestone.getVictoryScreenButtonHeaderText(completed, playerCiv)
                     val progress = Regex(""" \(([^()]*/[^()]*)\)$""").find(text)
-                    addFactRow(if (progress == null) text else text.substring(0, progress.range.first),
-                        progress?.groupValues?.get(1) ?: if (completed) "Completed" else "Not completed")
+                    if (progress == null) {
+                        addGoodSizedLabel(text).row()
+                        addFactRow("Victory status", if (completed) "Completed" else "Not completed")
+                    } else addFactRow(text.substring(0, progress.range.first), progress.groupValues[1])
                 }
                 val information = com.unciv.ui.components.widgets.ExpanderTab("Game information", font(TextRole.Control),
                     startsOutOpened = false, defaultPad = 0f, topPad = 8f * popupUnit) { table ->
@@ -369,7 +371,7 @@ class VictoryScreen private constructor(
                 }
                 information.getCell(information.header).minWidth(0f).minHeight(44f * popupUnit)
                 add(information).width(popupContentWidth).growX().row()
-                addButton("Singleplayer") {
+                addButton("Start new game") {
                     val setup = GameSetupInfo(gameInfo)
                     setup.mapParameters.reseed()
                     game.pushScreen { NewGameScreen(setup) }
@@ -405,7 +407,7 @@ class VictoryScreen private constructor(
     private fun displayWonOrLost(vararg descriptions: String) {
         descriptionLabel.setText(descriptions.joinToString("\n") { it.tr() })
 
-        rightSideButton.setText("Singleplayer".tr())
+        rightSideButton.setText((if (UiNavigation.isMobile) "Start new game" else "Singleplayer").tr())
         rightSideButton.enable()
         rightSideButton.onClick {
             val newGameSetupInfo = GameSetupInfo(gameInfo)
