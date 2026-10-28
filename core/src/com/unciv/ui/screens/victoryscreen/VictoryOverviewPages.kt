@@ -323,9 +323,7 @@ internal class VictoryStatisticsPage(
         val category = state.demographicRanking
         val sorted = world.gameInfo.civilizations.filter { it.isMajorCiv() && (it.isAlive() || it == viewer) }
             .map { civ ->
-                val history = civ.statsHistory
-                val snapshot = history[world.gameInfo.turns] ?: history.maxByOrNull { it.key }?.value
-                VictoryScreen.CivWithStat(civ, snapshot?.get(category) ?: civ.getStatForRanking(category))
+                VictoryScreen.CivWithStat(civ, civ.getStatForDemographics(category))
             }.sortedByDescending { it.value }
         if (sorted.isEmpty()) return
         fun addRow(title: String, identity: Actor, value: String, header: Boolean = false, mine: Boolean = false) {

@@ -55,17 +55,6 @@ class VictoryScreenDemographics(
         }
     }
 
-    /**
-     * Ranking value frozen at the end of the last completed turn, as recorded in [Civilization.statsHistory].
-     * Falls back to a live value only when no history exists yet (e.g. very early game).
-     */
-    @Readonly
-    private fun Civilization.getStatForDemographics(category: RankingType): Int {
-        val history = statsHistory
-        val snapshot = history[gameInfo.turns] ?: history.maxByOrNull { it.key }?.value
-        return snapshot?.get(category) ?: getStatForRanking(category)
-    }
-
     private fun buildDemographicsHeaders() {
         val demoLabel = Table().apply { defaults().pad(5f) }
 
@@ -87,4 +76,13 @@ class VictoryScreenDemographics(
             add(headers)
         }
     }
+}
+
+/** Keep ongoing turns frozen against probing, but show the final values once the result is public. */
+@Readonly
+internal fun Civilization.getStatForDemographics(category: RankingType): Int {
+    if (gameInfo.victoryData != null) return getStatForRanking(category)
+    val history = statsHistory
+    val snapshot = history[gameInfo.turns] ?: history.maxByOrNull { it.key }?.value
+    return snapshot?.get(category) ?: getStatForRanking(category)
 }
