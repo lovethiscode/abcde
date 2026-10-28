@@ -38,6 +38,7 @@ import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.basescreen.RecreateOnResize
+import com.unciv.ui.screens.worldscreen.WorldScreen
 import com.unciv.view.CivView
 import com.unciv.view.ForeignCivView
 import kotlin.math.floor
@@ -57,7 +58,8 @@ class DiplomacyScreen(
     private val selectTrade: Trade? = null,
     private val showTrade: Boolean = selectTrade != null,
     private val restoredPage: String? = null,
-    private val restoredFilter: String = "All"
+    private val restoredFilter: String = "All",
+    private val returnsToMap: Boolean = UncivGame.Current.screen is WorldScreen
 ): BaseScreen(), RecreateOnResize {
     companion object {
         private const val nationIconSize = 100f
@@ -92,13 +94,19 @@ class DiplomacyScreen(
     private var activeTradeTable: TradeTable? = null
 
     internal var subPageCiv: Civilization? = null
+        set(value) {
+            field = value
+            if (UiNavigation.isMobile) UiNavigation.styleBackButton(closeButton as TextButton, backCaption)
+        }
+
+    internal val backCaption get() = if (subPageCiv == null && returnsToMap) "Map" else "Back"
 
     private fun navigateBack() {
         val civ = subPageCiv
         if (UiNavigation.isMobile && civ != null) updateRightSide(civ) else game.popScreen()
     }
 
-    private val closeButton = (if (UiNavigation.isMobile) UiNavigation.backButton().apply {
+    private val closeButton = (if (UiNavigation.isMobile) UiNavigation.backButton(backCaption).apply {
         onActivation { navigateBack() }; keyShortcuts.add(KeyCharAndCode.BACK)
     } else getCloseButton(closeButtonSize) { game.popScreen() }).apply { name = "ui-diplomacy-close" }
 
@@ -499,6 +507,6 @@ class DiplomacyScreen(
             ourOffers.addAll(view.ourStagedOffers().map { it.copy() })
             theirOffers.addAll(view.theirStagedOffers().map { it.copy() })
         }} else selectTrade
-        return DiplomacyScreen(viewingCivView, selected, staged, page == "trade" || (adaptive == null && showTrade), page, adaptive?.filter ?: restoredFilter)
+        return DiplomacyScreen(viewingCivView, selected, staged, page == "trade" || (adaptive == null && showTrade), page, adaptive?.filter ?: restoredFilter, returnsToMap)
     }
 }

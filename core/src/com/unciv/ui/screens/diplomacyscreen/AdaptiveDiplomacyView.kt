@@ -45,7 +45,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
     private fun shell() {
         root.clearChildren(); root.pad(ui.px(layout.padding))
         val header = Table()
-        UiNavigation.styleBackButton(back)
+        UiNavigation.styleBackButton(back, screen.backCaption)
         header.add(back).height(ui.px(44f)).padRight(ui.px(12f))
         header.add().growX()
         root.add(header).growX().height(ui.px(44f)).padBottom(ui.px(12f)).row()

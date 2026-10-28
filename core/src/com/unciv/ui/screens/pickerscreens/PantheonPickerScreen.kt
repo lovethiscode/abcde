@@ -17,6 +17,7 @@ class PantheonPickerScreen(
     private val selection = Selection()
 
     init {
+        if (UiNavigation.isMobile) UiNavigation.styleBackButton(closeButton, "Map")
         topTable.defaults().fillX().minWidth(0f)
         topTable.pad(OverviewUi.pt(if (UiNavigation.isMobile) 8f else 16f)).top()
 
