@@ -6,12 +6,9 @@ import com.unciv.utils.Concurrency
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Rectangle
-import com.badlogic.gdx.scenes.scene2d.ui.Cell
 import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.models.skins.ExpeditionBlueTheme
-import com.unciv.models.translations.tr
-import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.images.IconTextButton
@@ -46,17 +43,14 @@ class OptionsPopup(
     private val compactNavigation = useSidebar && stageToShowOn.width < OptionsPopupStyle.points(640f)
     private val navigationHeight get() = if (compactNavigation) OptionsPopupStyle.points(108f) else 0f
     private val contentPadding get() = OptionsPopupStyle.points(if (compactNavigation) 12f else 20f)
+    private val contentTopPadding get() = OptionsPopupStyle.points(12f)
     private val navigation = Table()
     private val navigationButtons = ArrayList<IconTextButton>()
-    private val pageDescription = "".toLabel(OptionsPopupStyle.muted, OptionsPopupStyle.fontSize(TextRole.Supporting)).apply { wrap = true }
     private val contentFontDelegate = lazy {
         Fonts.getUiFont(OptionsPopupStyle.fontSize(TextRole.Control))
     }
     internal val contentFont get() = contentFontDelegate.value
     private var visibleHeight = 0f
-    private lateinit var headingCell: Cell<Table>
-    private lateinit var header: Table
-    private lateinit var heading: Table
     private var sidebarWidth = 0f
     // Pager indices follow the visible tabs, not the full enum order.
     private val visiblePages = OptionsPopupPages.entries.filter { it.visible(withDebug) }
@@ -156,16 +150,8 @@ class OptionsPopup(
             add(sidebarHeader).growX().row()
             add(sidebarScroll).minHeight(0f).grow().row()
         }
-        heading = Table().apply {
-            add(pageDescription).minWidth(0f).left().growX().row()
-        }
-        header = Table().apply {
-            pad(OptionsPopupStyle.points(6f), 0f, OptionsPopupStyle.points(6f), 0f)
-            headingCell = add(heading).minWidth(0f).growX().left()
-        }
         val content = Table().apply {
-            pad(0f, contentPadding, 0f, contentPadding)
-            add(header).growX().row()
+            pad(contentTopPadding, contentPadding, 0f, contentPadding)
             add(tabs).grow().minWidth(0f).minHeight(0f)
         }
         if (compactNavigation) {
@@ -177,17 +163,13 @@ class OptionsPopup(
                 OptionsPopupStyle.divider.cpy().apply { a = 0.6f }))).width(OptionsPopupStyle.points(0.5f)).growY()
         }
         add(content).grow().minWidth(0f).minHeight(0f).row()
-        pageDescription.width = tabs.prefWidth
-        tabs.resizePageArea(tabs.prefWidth, (stageToShowOn.height - header.prefHeight).coerceAtLeast(80f))
+        tabs.resizePageArea(tabs.prefWidth, (stageToShowOn.height - contentTopPadding).coerceAtLeast(80f))
         tabs.onSelection { index, _, _ ->
-            pageDescription.setText(visiblePages[index].description.tr())
             navigationButtons.forEachIndexed { i, button ->
                 button.isChecked = i == index
                 button.label.color = if (i == index) OptionsPopupStyle.accent else OptionsPopupStyle.muted
                 button.icon?.color = button.label.color
             }
-            heading.invalidateHierarchy()
-            header.invalidateHierarchy()
             if (compactNavigation) Concurrency.runOnGLThread {
                 navigationButtons.getOrNull(index)?.let { button ->
                     sidebarScroll.validate()
@@ -196,7 +178,7 @@ class OptionsPopup(
                 }
             }
             tabs.resizePageArea(tabs.prefWidth,
-                ((visibleHeight.takeIf { it > 0f } ?: stageToShowOn.height) - navigationHeight - header.prefHeight)
+                ((visibleHeight.takeIf { it > 0f } ?: stageToShowOn.height) - navigationHeight - contentTopPadding)
                     .coerceAtLeast(OptionsPopupStyle.points(44f)))
         }
     }
@@ -211,13 +193,9 @@ class OptionsPopup(
 
     internal fun layoutScreen(visibleArea: Rectangle) {
         visibleHeight = visibleArea.height
-        val editing = visibleArea.height < stageToShowOn.height * 0.65f
-        headingCell.setActor(if (editing) null else heading)
         val contentWidth = stageToShowOn.width - sidebarWidth - OptionsPopupStyle.points(0.5f) - contentPadding * 2
-        pageDescription.width = contentWidth.coerceAtLeast(1f)
-        heading.invalidateHierarchy()
         tabs.resizePageArea(contentWidth,
-            (visibleArea.height - navigationHeight - header.prefHeight).coerceAtLeast(OptionsPopupStyle.points(44f)))
+            (visibleArea.height - navigationHeight - contentTopPadding).coerceAtLeast(OptionsPopupStyle.points(44f)))
         innerTable.setBounds(0f, visibleArea.y, stageToShowOn.width, visibleArea.height)
         innerTable.validate()
         tabs.validate()
@@ -227,10 +205,8 @@ class OptionsPopup(
     override fun onVisibleAreaChanged(visibleArea: com.badlogic.gdx.math.Rectangle) {
         if (useSidebar) {
             visibleHeight = visibleArea.height * 0.9f
-            val editing = visibleArea.height < stageToShowOn.height * 0.65f
-            headingCell.setActor(if (editing) null else heading)
             tabs.resizePageArea(stageToShowOn.width * 0.9f - sidebarWidth - contentPadding * 2,
-                (visibleArea.height * 0.9f - navigationHeight - header.prefHeight).coerceAtLeast(OptionsPopupStyle.points(44f)))
+                (visibleArea.height * 0.9f - navigationHeight - contentTopPadding).coerceAtLeast(OptionsPopupStyle.points(44f)))
         } else if (com.unciv.ui.components.widgets.UiNavigation.isMobile) {
             tabs.resizePageArea(
                 if (stageToShowOn.height > stageToShowOn.width) stageToShowOn.width - 10f else stageToShowOn.width * 0.8f,

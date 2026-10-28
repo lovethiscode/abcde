@@ -11,26 +11,25 @@ import com.unciv.ui.images.ImageGetter
 enum class OptionsPopupPages(
     val label: String,
     internal val iconPath: String,
-    internal val getContent: OptionsPopup.() -> OptionsPopupTab,
-    internal val description: String = ""
+    internal val getContent: OptionsPopup.() -> OptionsPopupTab
 ) {
-    Display("Display", "UnitPromotionIcons/Scouting", { DisplayTab(this) }, "Screen, graphics and map information"),
-    Gameplay("Gameplay", "OtherIcons/Options", { GameplayTab(this) }, "Unit controls and turn pacing"),
-    Automation("Automation", "OtherIcons/NationSwap", { AutomationTab(this) }, "Automatic behavior for cities, workers and units"),
-    Language("Language", "FlagIcons/", { LanguageTab(this) }, "Choose your preferred language") {
+    Display("Display", "UnitPromotionIcons/Scouting", { DisplayTab(this) }),
+    Gameplay("Gameplay", "OtherIcons/Options", { GameplayTab(this) }),
+    Automation("Automation", "OtherIcons/NationSwap", { AutomationTab(this) }),
+    Language("Language", "FlagIcons/", { LanguageTab(this) }) {
         override fun getIcon(language: String) =
             if (ImageGetter.imageExists(iconPath + language)) ImageGetter.getImage(iconPath + language)
             else ImageGetter.getImage("OtherIcons/ExclamationMark")
     },
-    Sound("Sound", "OtherIcons/Speaker", { SoundTab(this) }, "Sound effects, ambience and music"),
-    Multiplayer("Multiplayer", "OtherIcons/Multiplayer", { MultiplayerTab(this) }, "Turn reminders, synchronization and servers") {
+    Sound("Sound", "OtherIcons/Speaker", { SoundTab(this) }),
+    Multiplayer("Multiplayer", "OtherIcons/Multiplayer", { MultiplayerTab(this) }) {
         override fun visible(withDebug: Boolean) =
             !UncivGame.isCurrentInitialized() || UncivGame.Current.platformCapabilities.onlineMultiplayer
     },
     Keys("Keys", "OtherIcons/Keyboard", { KeyBindingsTab(this, tabMinWidth - 40f) }) {   // 40 = padding
         override fun visible(withDebug: Boolean) = GUI.keyboardAvailable
     },
-    Advanced("Advanced", "OtherIcons/Settings", { AdvancedTab(this) }, "Saves, fonts and interaction details"),
+    Advanced("Advanced", "OtherIcons/Settings", { AdvancedTab(this) }),
     ModCheck("Locate mod errors", "OtherIcons/Mods", { ModCheckTab(this) }) {
         override fun visible(withDebug: Boolean) = RulesetCache.size > BaseRuleset.entries.size
     },
