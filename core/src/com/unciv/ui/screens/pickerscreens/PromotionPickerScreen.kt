@@ -24,6 +24,8 @@ import com.unciv.ui.components.input.*
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.basescreen.RecreateOnResize
+import com.unciv.ui.screens.worldscreen.WorldScreen
+import com.unciv.UncivGame
 import com.unciv.view.MapUnitView
 import kotlin.math.abs
 
@@ -31,7 +33,8 @@ class PromotionPickerScreen private constructor(
     val unit: MapUnitView,
     private val closeOnPick: Boolean,
     private val originalName: String?,
-    private val onChange: (() -> Unit)?
+    private val onChange: (() -> Unit)?,
+    internal val returnsToMap: Boolean
 ) : PickerScreen(), RecreateOnResize {
     /** Show promotions organized by depencencies, allow picking new ones, allow unit rename
      *  @param unit The unit to work with
@@ -39,7 +42,7 @@ class PromotionPickerScreen private constructor(
      *  @param onChange Optional callback called when a promotion is picked or during close if the name was changed
      */
     constructor(unit: MapUnitView, closeOnPick: Boolean = true, onChange: (() -> Unit)? = null)
-        : this(unit, closeOnPick, unit.instanceName, onChange)
+        : this(unit, closeOnPick, unit.instanceName, onChange, UncivGame.Current.screen is WorldScreen)
 
     // Style stuff
     private val colors = skin[PromotionScreenColors::class.java]
@@ -408,7 +411,7 @@ class PromotionPickerScreen private constructor(
 
     override fun recreate() = recreate(closeOnPick)
     fun recreate(closeOnPick: Boolean): BaseScreen {
-        val newScreen = PromotionPickerScreen(unit, closeOnPick, originalName, onChange)
+        val newScreen = PromotionPickerScreen(unit, closeOnPick, originalName, onChange, returnsToMap)
         if (atlas != null) {
             newScreen.saveUnitPromotion = saveUnitPromotion
             newScreen.atlas?.restore(atlas!!.snapshot(), saveUnitPromotion)

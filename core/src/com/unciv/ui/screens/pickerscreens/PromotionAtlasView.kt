@@ -118,7 +118,7 @@ internal class PromotionAtlasView(
         root.pad(u(4f), u(padding), u(8f), u(padding))
         screen.stage.addActor(root)
         val header = Table()
-        UiNavigation.styleBackButton(screen.closeButton, unit = style.unit)
+        UiNavigation.styleBackButton(screen.closeButton, if (screen.returnsToMap) "Map" else "Back", style.unit)
         header.add(screen.closeButton).minSize(u(44f)).padRight(u(12f))
         header.add().growX()
         displayOptions = button("", "ui-promotion-display-options") { showDisplayOptions() }.apply {
