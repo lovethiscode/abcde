@@ -68,7 +68,23 @@ internal object SinglePlayerSetup {
             }
             is SelectBox<*> -> actor.style = SelectBox.SelectBoxStyle(actor.style).apply {
                 this.font = controlFont
-                listStyle = ListStyle(listStyle).apply { this.font = controlFont }
+                listStyle = ListStyle(listStyle).apply {
+                    this.font = controlFont
+                    if (UiNavigation.isMobile) {
+                        val original = selection
+                        selection = object : BaseDrawable(original) {
+                            init {
+                                val padding = ((UiNavigation.minimumTouchSize() -
+                                    (controlFont.capHeight - 2f * controlFont.descent)) / 2f).coerceAtLeast(0f)
+                                topHeight = maxOf(topHeight, padding)
+                                bottomHeight = maxOf(bottomHeight, padding)
+                            }
+                            override fun draw(batch: com.badlogic.gdx.graphics.g2d.Batch, x: Float, y: Float, width: Float, height: Float) {
+                                original.draw(batch, x, y, width, height)
+                            }
+                        }
+                    }
+                }
                 val body = surface(ExpeditionBlueTheme.background, ExpeditionBlueTheme.border)
                 val iconName = when (actor.name) {
                     "setup-field-Difficulty" -> "OtherIcons/Capital"

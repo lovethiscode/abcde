@@ -219,6 +219,7 @@ class PlayerPickerTable(
     private fun buildDirectLayout() {
         val screen = previousScreen as NewGameScreen
         val width = screen.directSetupWidth
+        val touchSize = UiNavigation.minimumTouchSize()
         playerListTable.top()
         val selectors = ArrayList<IconTextButton>()
         for ((index, player) in gameParameters.players.withIndex()) {
@@ -229,8 +230,8 @@ class PlayerPickerTable(
                     if (index == 0) ExpeditionBlueTheme.gold else ExpeditionBlueTheme.border)
                 pad(4f, 8f, 4f, 8f)
                 add((if (index == 0) "You".tr() else "${"AI".tr()} $index").toLabel(fontSize = UiTypography.size(TextRole.Control, legacySize = 16)))
-                    .width(48f).left().padRight(4f)
-                add(selector).minWidth(0f).growX().minHeight(44f)
+                    .minWidth(48f).left().padRight(4f)
+                add(selector).minWidth(0f).growX().minHeight(touchSize)
                 if (gameParameters.isOnlineMultiplayer) {
                     add(Table().apply {
                         background = SinglePlayerSetup.surface(ExpeditionBlueTheme.background)
@@ -241,10 +242,10 @@ class PlayerPickerTable(
                     name = "setup-remove-$index"
                     isDisabled = locked
                     onClick { gameParameters.players.remove(player); update() }
-                }).size(36f).padLeft(4f)
-                else add().width(40f)
+                }).size(touchSize).padLeft(4f)
+                else add().width(touchSize + 4f)
             }
-            playerListTable.add(row).width(width).minHeight(54f).padBottom(6f).row()
+            playerListTable.add(row).width(width).minHeight(touchSize + 8f).padBottom(6f).row()
         }
         val maximum = previousScreen.ruleset.nations.values.count {
             it.isMajorCiv && !it.hasUnique(UniqueType.WillNotBeChosenForNewGames)

@@ -200,10 +200,13 @@ class PolicyPickerScreen(
 
     private fun buildHeader() {
         header.clearChildren()
-        appearance.decorate(closeButton)
-        closeButton.clearChildren()
-        closeButton.add(ImageGetter.getImage("OtherIcons/BackArrow")).size(u(16f))
-        if (!metrics.portrait && !metrics.compact) closeButton.add(label("Back", 13)).padLeft(u(6f))
+        if (UiNavigation.isMobile) UiNavigation.styleBackButton(closeButton, "Map", appearance.unit)
+        else {
+            appearance.decorate(closeButton)
+            closeButton.clearChildren()
+            closeButton.add(ImageGetter.getImage("OtherIcons/BackArrow")).size(u(16f))
+            if (!metrics.portrait && !metrics.compact) closeButton.add(label("Back", 13)).padLeft(u(6f))
+        }
         header.add(closeButton).minSize(u(44f)).padRight(u(if (metrics.compact) 6f else 10f))
         header.add().growX()
         val progress = Table().apply {
