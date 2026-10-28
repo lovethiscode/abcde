@@ -102,16 +102,23 @@ class AuthPopup(
     }
     
     private fun addComponents(headerLabelText: String) {
-        addGoodSizedLabel(headerLabelText).colspan(2).row()
+        addGoodSizedLabel("Please enter your server password").colspan(2).row()
         targetServerUrl?.let { addGoodSizedLabel(it).colspan(2).row() }
+        addGoodSizedLabel("Password").apply { actor.setAlignment(com.badlogic.gdx.utils.Align.left) }.colspan(2).row()
         add(passwordField).colspan(2).growX().apply {
             if (ordinaryPresentation) width(popupContentWidth).minHeight(48f * popupUnit)
         }.pad(16f * if (ordinaryPresentation) popupUnit else 1f, 0f, 16f * if (ordinaryPresentation) popupUnit else 1f, 0f).row()
+        if (headerLabelText != "Please enter your server password") {
+            addGoodSizedLabel(headerLabelText, color = com.unciv.models.skins.ExpeditionBlueTheme.danger).colspan(2).row()
+        }
+        keyboardFocus = passwordField
+        if (headerLabelText != "Please enter your server password")
+            com.badlogic.gdx.Gdx.input.setOnscreenKeyboardVisible(false)
         addCloseButton(if (UiNavigation.isMobile) com.unciv.Constants.cancel else com.unciv.Constants.close, style = if (UiNavigation.isMobile) null else negativeButtonStyle).growX().padRight(8f)
         if (ordinaryPresentation) {
             button.label.setFontSize(UiTypography.size(TextRole.Control, popupUnit))
             styleOrdinaryButton(button, primary = true)
-            bottomTable.add(button).minHeight(44f * popupUnit).growX().padLeft(8f * popupUnit)
+            bottomTable.add(button).minHeight(UiNavigation.minimumTouchSize()).growX().padLeft(8f * popupUnit)
         } else add(button).growX().padLeft(8f)
     }
 }

@@ -4,6 +4,7 @@ import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.unciv.Constants
@@ -659,8 +660,12 @@ class AlertPopup(
         val civInfo = viewingCiv
         if (ordinaryPresentation) addDialogTitle("[${civInfo.nation.leaderName}] leads [${civInfo.civName}]", "A new civilization journey", dismissible = false)
         else addLeaderName(civInfo)
-        addGoodSizedLabel(civInfo.nation.startIntroPart1).row()
-        addGoodSizedLabel(civInfo.nation.startIntroPart2).row()
+        addGoodSizedLabel(civInfo.nation.startIntroPart1).apply {
+            if (ordinaryPresentation) { actor.setAlignment(Align.left); padBottom(12f * popupUnit) }
+        }.row()
+        addGoodSizedLabel(civInfo.nation.startIntroPart2).apply {
+            if (ordinaryPresentation) actor.setAlignment(Align.left)
+        }.row()
         addCloseButton("Let's begin!")
 
         // Since there's introduction text, play the startIntroPart1 voice hook with the nation's theme.

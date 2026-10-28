@@ -43,7 +43,7 @@ class AskNumberPopup(
     errorText: String = "Invalid input! Please enter a valid number.",
     validate: (input: Int) -> Boolean = { true },
     actionOnOk: (input: Int) -> Unit = { },
-): Popup(stageToShowOn) {
+): Popup(stageToShowOn, ordinaryShell = true) {
     init {
         val wrapper = Table()
         wrapper.add(icon).padRight(10f)
@@ -51,12 +51,13 @@ class AskNumberPopup(
         if (ordinaryPresentation) {
             addDialogTitle(if (label == "Enter the amount of gold") "Set trade amount" else label,
                 if (label == "Enter the amount of gold") "Gold · Trade offer" else "")
-            addGoodSizedLabel(if (label == "Enter the amount of gold") "Amount" else label,
+            if (label == "Enter the amount of gold") addGoodSizedLabel("Amount",
                 UiTypography.size(TextRole.Control, popupUnit)).apply { actor.name = "ui-form-field-label" }.row()
         }
         else add(wrapper).colspan(2).row()
 
         val valueField = UncivTextField.Integer(label, defaultValue)
+        if (bounds.first >= 0) valueField.setKeyboardType(com.badlogic.gdx.Input.OnscreenKeyboardType.NumberPad)
         if (ordinaryPresentation) {
             // Step buttons use the text setter too. Revalidate those edits just
             // like keyboard input, including recovery from an out-of-range value.
@@ -84,7 +85,7 @@ class AskNumberPopup(
                         else (value + delta).coerceIn(bounds)
                     }
                 }
-            ).pad(5f).apply { if (ordinaryPresentation) minSize(44f * popupUnit).growX() }
+            ).pad(5f).apply { if (ordinaryPresentation) minSize((if (UiNavigation.isAndroid) 48f else 44f) * popupUnit).growX() }
         }
 
         if (ordinaryPresentation) {

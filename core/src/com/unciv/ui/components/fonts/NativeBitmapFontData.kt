@@ -76,6 +76,9 @@ class NativeBitmapFontData(
 
     override fun getGlyph(ch: Char): BitmapFont.Glyph = super.getGlyph(ch) ?: createAndCacheGlyph(ch)
 
+    override fun getWrapIndex(glyphs: Array<BitmapFont.Glyph>, start: Int): Int =
+        maxOf(super.getWrapIndex(glyphs, start), cjkWrapIndex(start) { glyphs[it].id.toChar() })
+
     private fun createAndCacheGlyph(ch: Char): BitmapFont.Glyph {
         val charPixmap = getPixmapFromChar(ch)
 

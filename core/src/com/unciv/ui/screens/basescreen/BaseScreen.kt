@@ -96,6 +96,22 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
         UiTypography.useStage(stage)
         if (this !is GameStartScreen && this !is CrashScreen) {
             val inputFont = UiTypography.controlFont(UiTypography.unitsPerPoint(stage))
+            fun touchListStyle(source: com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle) =
+                com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(source).apply {
+                    font = inputFont
+                    if (com.unciv.ui.components.widgets.UiNavigation.isMobile) {
+                        val drawable = selection
+                        selection = object : com.badlogic.gdx.scenes.scene2d.utils.BaseDrawable(drawable) {
+                            override fun draw(batch: Batch, x: Float, y: Float, width: Float, height: Float) =
+                                drawable.draw(batch, x, y, width, height)
+                        }.apply {
+                            val padding = ((com.unciv.ui.components.widgets.UiNavigation.minimumTouchSize() -
+                                inputFont.capHeight + 2f * inputFont.descent) / 2f).coerceAtLeast(0f)
+                            topHeight = maxOf(topHeight, padding)
+                            bottomHeight = maxOf(bottomHeight, padding)
+                        }
+                    }
+                }
             skin.add("default", com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(skin.get(com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle::class.java)).apply {
                 font = inputFont
             }, com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle::class.java)
@@ -104,7 +120,7 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
             }, TextField.TextFieldStyle::class.java)
             skin.add("default", SelectBox.SelectBoxStyle(skin.get(SelectBox.SelectBoxStyle::class.java)).apply {
                 font = inputFont
-                listStyle = com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(listStyle).apply { font = inputFont }
+                listStyle = touchListStyle(listStyle)
             }, SelectBox.SelectBoxStyle::class.java)
         }
 
@@ -173,8 +189,10 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
         if (width <= 0 || height <= 0) return
         val changed = hasSafeAreaChanged(width, height)
         val preservePopup = com.unciv.ui.components.widgets.UiNavigation.isMobile && activePopup != null
-        if (this !is RecreateOnResize || preservePopup) {
-            if (changed && this is RecreateOnResize) recreateAfterPopup = true
+        val preserveEditing = com.unciv.ui.components.widgets.UiNavigation.isMobile && stage.keyboardFocus is TextField &&
+            width == displayWidth && height == displayHeight
+        if (this !is RecreateOnResize || preservePopup || preserveEditing) {
+            if (changed && this is RecreateOnResize && preservePopup && !preserveEditing) recreateAfterPopup = true
             displayWidth = width
             displayHeight = height
             safeInsets = Display.getSafeInsets()

@@ -538,16 +538,7 @@ class FriendSelectionPopup(
         val contentWidth = minOf(700f * unit, screen.stage.width * 0.9f)
         addTitleWithCloseButton()
         val friendList = FriendPickerList(playerPicker, ::friendSelected)
-        val maxListHeight = minOf(screen.stage.height * 0.35f, 360f * unit)
-        val minListHeight = minOf((if (UiNavigation.isMobile) 44f else 96f) * unit, maxListHeight)
-        val listHeight = (friendList.prefHeight + 12f * unit)
-            .coerceIn(minListHeight, maxListHeight)
-        add(ScrollPane(friendList).apply {
-            setScrollingDisabled(true, false)
-            setOverscroll(false, false)
-        }).width(contentWidth)
-            .height(listHeight)
-            .row()
+        add(friendList).width(bodyWidth).row()
 
         selectButton = addButton("Select friend") {
             close()
@@ -557,7 +548,7 @@ class FriendSelectionPopup(
                 playerPicker.update()
             }
         }.width((contentWidth - 20f * unit).coerceAtLeast(44f * unit))
-            .minHeight(44f * unit).actor
+            .minHeight(UiNavigation.minimumTouchSize()).actor
         selectButton.isDisabled = true
         selectButton.label.wrap = true
 

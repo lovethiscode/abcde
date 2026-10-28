@@ -29,6 +29,32 @@ open class PickerScreen(disableScroll: Boolean = false) : BaseScreen() {
     /** @see PickerPane.splitPane */
     val splitPane by pickerPane::splitPane
 
+    /** Form pages keep their existing actors and footer inside the keyboard's visible area. */
+    protected var keyboardAwareForm = false
+    private val formArea = com.badlogic.gdx.math.Rectangle()
+
+    override fun render(delta: Float) {
+        if (keyboardAwareForm && com.unciv.ui.components.widgets.UiNavigation.isMobile) {
+            val area = (stage as com.unciv.ui.screens.basescreen.UncivStage).lastKnownVisibleArea
+            if (formArea != area) {
+                formArea.set(area)
+                pickerPane.setFillParent(false)
+                pickerPane.setBounds(area.x, area.y, area.width, area.height)
+                pickerPane.setCompactFormActions(area.height / com.unciv.ui.components.fonts.UiTypography.unitsPerPoint(stage) < 240f)
+                pickerPane.invalidateHierarchy()
+                pickerPane.validate()
+                val focus = stage.keyboardFocus
+                if (focus != null && focus.isDescendantOf(topTable)) {
+                    val point = focus.localToAscendantCoordinates(topTable, com.badlogic.gdx.math.Vector2())
+                    scrollPane.scrollY = (topTable.height - point.y - focus.height / 2f - scrollPane.scrollHeight / 2f)
+                        .coerceIn(0f, scrollPane.maxY)
+                    scrollPane.updateVisualScroll()
+                }
+            }
+        }
+        super.render(delta)
+    }
+
     init {
         pickerPane.setFillParent(true)
         stage.addActor(pickerPane)

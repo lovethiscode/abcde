@@ -209,16 +209,16 @@ class SaveGameScreen(private val gameInfo: GameInfo) :
         descriptionLabel.setAlignment(Align.topLeft)
 
         val nameAndSave = Table().apply {
-            add(gameNameTextField).growX().minWidth(0f).minHeight(50f)
-            add(rightSideButton).minWidth(150f).minHeight(50f).padLeft(8f)
+            add(gameNameTextField).growX().minWidth(0f).minHeight(maxOf(50f, UiNavigation.minimumTouchSize()))
+            add(rightSideButton).minWidth(150f).minHeight(maxOf(50f, UiNavigation.minimumTouchSize())).padLeft(8f)
         }
         val secondaryActions = Table().apply {
-            add(saveToCustomLocationButton).growX().minWidth(0f).minHeight(60f)
-            add(copyJsonButton).growX().minWidth(0f).minHeight(60f).padLeft(8f)
+            add(saveToCustomLocationButton).growX().minWidth(0f).minHeight(maxOf(60f, UiNavigation.minimumTouchSize()))
+            add(copyJsonButton).growX().minWidth(0f).minHeight(maxOf(60f, UiNavigation.minimumTouchSize())).padLeft(8f)
         }
         val dangerActions = Table().apply {
             add().growX()
-            add(deleteSaveButton).minWidth(150f).minHeight(48f)
+            add(deleteSaveButton).minWidth(150f).minHeight(maxOf(48f, UiNavigation.minimumTouchSize()))
         }
         val editorPanel = Table().apply {
             top()

@@ -43,6 +43,22 @@ class PickerPane(
 
     private val screenSplit = 0.85f
     internal var useContentSizedFooter = false
+    private var formActionsInHeader = false
+
+    internal fun setCompactFormActions(compact: Boolean) {
+        if (compact == formActionsInHeader) return
+        formActionsInHeader = compact
+        navigationHeader.clearChildren()
+        navigationHeader.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(4f)
+        navigationHeader.add().growX()
+        bottomTable.clearChildren()
+        if (compact) navigationHeader.add(rightSideGroup).pad(4f)
+        else {
+            bottomTable.add(descriptionScroll).grow()
+            bottomTable.add(rightSideGroup).pad(10f).right()
+        }
+        invalidateHierarchy()
+    }
     private val maxBottomTableHeight = 150f     // about 7 lines of normal text
 
     /**
@@ -111,7 +127,8 @@ class PickerPane(
             getCell(navigationHeader).height(if (hasNavigation) maxOf(closeButton.height + 16f, navigationHeader.prefHeight) else 0f)
         }
         super.layout()
-        if (!showSideDescription && useContentSizedFooter) {
+        if (formActionsInHeader) splitPane.splitAmount = 1f
+        else if (!showSideDescription && useContentSizedFooter) {
             splitPane.validate()
             val footerHeight = bottomTable.prefHeight.coerceAtMost(splitPane.height * .35f)
             if (splitPane.height > 0f) splitPane.splitAmount = 1f - footerHeight / splitPane.height

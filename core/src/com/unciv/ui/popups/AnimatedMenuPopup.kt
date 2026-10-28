@@ -198,7 +198,7 @@ open class AnimatedMenuPopup private constructor (stage: Stage) : Popup(stage, S
     }
 
     private fun createAndShow(position: Vector2) {
-        val newInnerTable = createContentTable()
+        var newInnerTable = createContentTable()
             ?: return  // Special case - we don't want the context menu after all. If cleanup should become necessary in that case, add here.
         newInnerTable.pack()
         container.actor = newInnerTable
@@ -211,6 +211,18 @@ open class AnimatedMenuPopup private constructor (stage: Stage) : Popup(stage, S
 
         val bounds = (stage.viewport as? SafeAreaViewport)?.safeAreaBoundsInWorld
             ?: Rectangle(0f, 0f, stage.width, stage.height)
+        if (UiNavigation.isMobile && this !is ScrollableAnimatedMenuPopup && newInnerTable.height > bounds.height - 8f) {
+            val scroll = com.unciv.ui.components.widgets.AutoScrollPane(newInnerTable).apply {
+                setScrollingDisabled(true, false)
+                setOverscroll(false, false)
+            }
+            newInnerTable = Table().apply {
+                add(scroll).width(minOf(newInnerTable.width, bounds.width - 8f))
+                    .height((bounds.height - 8f).coerceAtLeast(1f))
+                pack()
+            }
+            container.actor = newInnerTable
+        }
         // Note that coerceIn throws if min>max, so we defend against content bigger than the safe area,
         // and padding helps the rounded edges to look more natural:
         val paddedHalfWidth = newInnerTable.width / 2 + 2f

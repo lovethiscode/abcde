@@ -74,8 +74,8 @@ internal class ModManagementOptions(
     }
 
     fun openPopup() {
-        val popup = Popup(modManagementScreen)
-        val width = (modManagementScreen.stage.width - 80f).coerceAtMost(540f)
+        val popup = Popup(modManagementScreen, ordinaryShell = true)
+        val width = popup.bodyWidth
         if (UiNavigation.isMobile) popup.addTitleWithCloseButton()
         val categorySelect = TranslatedSelectBox(ModCategories.asSequence().map { it.label }.toList(), category.label)
         categorySelect.onChange {

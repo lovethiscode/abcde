@@ -448,12 +448,20 @@ class MapEditorScreen(map: TileMap? = null, val history: MapEditorHistory = MapE
     override fun recreate(): BaseScreen {
         cancelJobs()
         val paletteState = tabs.edit.saveState()
+        val panelPage = chrome.openPanelPage
+        val editingDescription = stage.keyboardFocus === descriptionTextField
+        val descriptionCursor = descriptionTextField.cursorPosition
         tileMap.description = descriptionTextField.text
         return MapEditorScreen(tileMap, history, resumed = true).also { recreated ->
             recreated.tabs.edit.restoreState(paletteState)
             recreated.isDirty = isDirty
             recreated.chrome.setMode(chrome.mode)
+            recreated.chrome.restorePanel(panelPage)
             recreated.chrome.layoutChrome()
+            if (editingDescription) {
+                recreated.stage.keyboardFocus = recreated.descriptionTextField
+                recreated.descriptionTextField.cursorPosition = descriptionCursor
+            }
         }
     }
 

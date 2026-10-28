@@ -15,6 +15,7 @@ import com.unciv.ui.audio.MusicController
 import com.unciv.ui.audio.MusicTrackChooserFlags
 import com.unciv.ui.components.extensions.MusicControls
 import com.unciv.ui.components.extensions.setSize
+import com.unciv.ui.components.extensions.setFontSize
 import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onChange
@@ -175,6 +176,11 @@ class WorldScreenMusicPopup(
             label.setFontScale(UiTypography.size(TextRole.Supporting) / Fonts.ORIGINAL_FONT_SIZE)
             label.setAlignment(if (rightSide) Align.right else Align.left)
             labelCell.pad(5f)
+            if (UiNavigation.isMobile && !rightSide) {
+                label.setFontSize(UiTypography.size(TextRole.Control, popupUnit))
+                label.wrap = true
+                labelCell.minWidth(0f)
+            }
             isDisabled = rightSide
         }
 
@@ -214,7 +220,9 @@ class WorldScreenMusicPopup(
         for (entry in tracks) {
             val trackLabel = entry.track.toSmallUntranslatedButton()
             trackLabel.onClick { musicController.startTrack(entry) }
-            add(trackLabel).fillX()
+            add(trackLabel).growX().minWidth(0f).apply {
+                if (UiNavigation.isMobile) minHeight(UiNavigation.minimumTouchSize())
+            }
             add(entry.type.toSmallUntranslatedButton(true)).right().row()
             // Note - displaying the file extension is meant as modder help, and could possibly
             // be extended to a modder tool - maybe display eligibility for known triggers?

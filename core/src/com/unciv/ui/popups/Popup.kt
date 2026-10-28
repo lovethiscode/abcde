@@ -81,9 +81,9 @@ open class Popup(
 
     /** Ordinary game presentation is isolated from campaign/endless and specialised tools. */
     protected val ordinaryPresentation = scrollable == Scrollability.WithoutButtons &&
-        UiNavigation.isMobile && (UncivGame.getGameInfoOrNull()?.let {
+        UiNavigation.isMobile && (ordinaryShell || UncivGame.getGameInfoOrNull()?.let {
             it.campaign == null && it.endless == null
-        } ?: ordinaryShell) && !javaClass.name.let {
+        } == true) && !javaClass.name.let {
             it.contains(".options.") || it.contains(".chat.") || it.contains(".devconsole.")
                 || it.contains(".newgamescreen.")
         }
@@ -98,16 +98,18 @@ open class Popup(
     private fun contentWidthValue() = object : Value() {
         override fun get(context: Actor?) = popupContentWidth
     }
+    /** Width available inside the popup's body padding, updated with the visible viewport. */
+    val bodyWidth: Value get() = contentWidthValue()
     private var closed = false
     private var cancelButton: TextButton? = null
     private var hasEquivalentCancelButton = false
     private var lastLayoutWidth = -1f
     private var lastLayoutHeight = -1f
-    private var revealFocusedInput = false
+    private var revealFocusedInputFrames = 0
     private var typographyUnit = popupUnit
     private val ordinaryButtons = HashMap<TextButton, Pair<Boolean, Boolean>>()
 
-    protected fun styleOrdinaryButton(button: TextButton, primary: Boolean = false, destructive: Boolean = false) {
+    fun styleOrdinaryButton(button: TextButton, primary: Boolean = false, destructive: Boolean = false) {
         if (!ordinaryPresentation || !ExpeditionBlueTheme.enabled) return
         ordinaryButtons[button] = primary to destructive
         button.style = OrdinaryPopupStyle(popupUnit).button(primary, destructive)
@@ -200,11 +202,15 @@ open class Popup(
             typographyUnit = unit
             headerCloseButton?.let { button ->
                 button.style = UiNavigation.buttonStyle(unit)
-                (button.parent as? Table)?.getCell(button)?.size(44f * unit)
+                (button.parent as? Table)?.getCell(button)?.size((if (UiNavigation.isAndroid) 48f else 44f) * unit)
                 button.cells.firstOrNull()?.size(20f * unit)
             }
         }
         val tightKeyboard = compactKeyboard && UiNavigation.isAndroid
+        val hideTitleForInput = tightKeyboard && hasEquivalentCancelButton &&
+            keyboardFocus?.isDescendantOf(topTable) == true
+        titleTable.isVisible = !hideTitleForInput
+        innerTable.getCell(titleTable)?.height(if (hideTitleForInput) Value.Fixed.valueOf(0f) else Value.prefHeight)
         val titlePadding = (if (tightKeyboard) 0f else if (compactKeyboard) 4f else if (shortViewport) 10f else 12f) * unit
         if (titleTable.hasChildren()) titleTable.pad(titlePadding, 20f * unit, titlePadding, 20f * unit)
         else titleTable.pad(0f)
@@ -282,7 +288,7 @@ open class Popup(
         innerTable.invalidateHierarchy()
         lastLayoutWidth = stageToShowOn.width
         lastLayoutHeight = stageToShowOn.height
-        revealFocusedInput = true
+        revealFocusedInputFrames = 2
     }
 
     /** Re-measure fixed actions after a decision changes their text. */
@@ -296,8 +302,8 @@ open class Popup(
             cancelButton?.let { headerCloseButton?.isDisabled = it.isDisabled }
             if (lastLayoutWidth != stageToShowOn.width || lastLayoutHeight != stageToShowOn.height || typographyUnit != popupUnit)
                 layoutOrdinaryPopup()
-            if (revealFocusedInput && isVisible) {
-                revealFocusedInput = false
+            if (revealFocusedInputFrames > 0 && isVisible) {
+                revealFocusedInputFrames--
                 val input = keyboardFocus as? TextField
                 val pane = getScrollPane()
                 if (input != null && input.isDescendantOf(topTable) && pane != null) {
@@ -307,10 +313,13 @@ open class Popup(
                     innerTable.validate()
                     pane.validate()
                     topTable.validate()
+                    pane.invalidate()
+                    pane.validate()
                     val position = input.localToAscendantCoordinates(topTable, com.badlogic.gdx.math.Vector2())
                     // Centre the field after rotation instead of retaining an old
                     // edge-aligned offset that can clip its outline under the header.
-                    pane.scrollTo(0f, position.y, 0f, input.height, false, true)
+                    pane.scrollY = (topTable.height - position.y - input.height / 2f - pane.scrollHeight / 2f)
+                        .coerceIn(0f, pane.maxY)
                     pane.scrollX = 0f
                     pane.updateVisualScroll()
                 }
@@ -449,7 +458,8 @@ open class Popup(
     }
 
     private fun recalculateInnerTableMaxHeight() {
-        val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight + titleTable.prefHeight
+        val buttonsHeight = if (topTable === bottomTable) 0f else bottomTable.prefHeight +
+            (if (titleTable.isVisible) titleTable.prefHeight else 0f)
         topTableCell.maxHeight((maxPopupHeight - buttonsHeight).coerceAtLeast(0f))
         innerTable.invalidate()
     }
@@ -842,7 +852,7 @@ open class Popup(
             Table(skin).apply {
                 if (title != null) add(title).minWidth(0f).growX().left()
                 else add().expandX()
-                if (closeButton != null) add(closeButton).size(44f * popupUnit).top()
+                if (closeButton != null) add(closeButton).size((if (UiNavigation.isAndroid) 48f else 44f) * popupUnit).top()
                     .padLeft(if (title != null) 12f * popupUnit else 0f)
             }
         } else if (title != null && closeButton != null) UiNavigation.popupHeader(title, closeButton)

@@ -382,13 +382,13 @@ class ModManagementScreen private constructor(
     }
 
     private fun openAddMods() {
-        val popup = Popup(this)
+        val popup = Popup(this, ordinaryShell = true)
         popup.addTitleWithCloseButton()
         val link = getDownloadFromUrlButton { popup.close() }.also {
             it.isEnabled = game.platformCapabilities.onlineModManagement
             ModManagementStyle.styleButton(it)
         }
-        popup.add(link).width(minOf(stage.width - 80f, 520f)).minHeight(ModManagementStyle.touchHeight).padBottom(12f).row()
+        popup.add(link).width(popup.bodyWidth).minHeight(ModManagementStyle.touchHeight).padBottom(12f).row()
         if (game.platformCapabilities.localModTransfer) {
             val receive = ModManagementStyle.button("Receive Mod")
             receive.onClick { popup.close(); openLocalModReceiver() }
@@ -551,16 +551,16 @@ class ModManagementScreen private constructor(
         val downloadButton = "Download mod from URL".toTextButton()
         downloadButton.onClick {
             beforeOpen()
-            val popup = Popup(this)
+            val popup = Popup(this, ordinaryShell = true)
             val columns = if (UiNavigation.isMobile) 2 else 1
-            popup.addGoodSizedLabel("Please enter the mod repository -or- archive zip -or- branch -or- release -or- commit url:").colspan(columns).row()
+            popup.addGoodSizedLabel("Please enter the mod repository -or- archive zip -or- branch -or- release -or- commit url:").apply { actor.setAlignment(com.badlogic.gdx.utils.Align.left) }.colspan(columns).row()
             val textField = UncivTextField("").apply { maxLength = 666 }
-            popup.add(textField).width(stage.width / 2).colspan(columns).row()
+            popup.add(textField).width(popup.bodyWidth).minHeight(UiNavigation.minimumTouchSize()).colspan(columns).row()
             val pasteLinkButton = "Paste from clipboard".toTextButton()
             pasteLinkButton.onClick {
                 textField.text = Gdx.app.clipboard.contents
             }
-            popup.add(pasteLinkButton).colspan(columns).row()
+            popup.add(pasteLinkButton).width(popup.bodyWidth).minHeight(UiNavigation.minimumTouchSize()).colspan(columns).row()
             lateinit var actualDownloadButton: TextButton
             val downloadAction: () -> Unit = {
                 actualDownloadButton.setStartingDownload()
@@ -585,6 +585,7 @@ class ModManagementScreen private constructor(
             if (UiNavigation.isMobile) {
                 popup.addCloseButton(com.unciv.Constants.cancel).growX()
                 actualDownloadButton = popup.addButton("Download", action = downloadAction).growX().actor
+                popup.styleOrdinaryButton(actualDownloadButton, primary = true)
             } else {
                 actualDownloadButton = "Download".toTextButton().apply { onClick(downloadAction) }
                 popup.add(actualDownloadButton).row()

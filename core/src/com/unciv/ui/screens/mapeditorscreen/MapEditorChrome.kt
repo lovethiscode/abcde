@@ -26,6 +26,7 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
     private val controlButtons = ArrayList<TextButton>()
     private val brushBar = Table()
     private val panel = Table()
+    private val panelHeader = Table()
     private val panelTitle = "".toLabel(fontSize = UiTypography.size(TextRole.SectionTitle, unit = u))
     private val title = "".toLabel(fontSize = UiTypography.size(TextRole.Body, unit = u), fontColor = MapEditorStyle.text)
     private val status = "".toLabel(fontSize = UiTypography.size(TextRole.Supporting, unit = u), fontColor = MapEditorStyle.muted)
@@ -35,7 +36,17 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
     private val redo = MapEditorStyle.button("Redo") { editor.redo() }
     private val modes = ArrayList<TextButton>()
     private var advancedOpen = false
+    internal val openPanelPage get() = if (advancedOpen) editor.tabs.activePage else -1
+
+    internal fun restorePanel(page: Int) {
+        if (page < 0) return
+        editor.tabs.selectPage(page)
+        advancedOpen = true
+        layoutChrome()
+    }
     private var lastStatus = ""
+    private var revealFocusFrames = 0
+    private val visibleArea = com.badlogic.gdx.math.Rectangle()
 
     init {
         touchable = Touchable.childrenOnly
@@ -74,9 +85,13 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
 
         panel.background = MapEditorStyle.background(MapEditorStyle.panel)
         panel.touchable = Touchable.enabled
-        val panelHeader = Table().apply {
+        panelHeader.apply {
             add(panelTitle).growX().left().padLeft(16*u)
-            add(if (UiNavigation.isMobile) UiNavigation.dismissButton().apply { onActivation { setMode(mode) } }
+            add(if (UiNavigation.isMobile) UiNavigation.dismissButton().apply { onActivation {
+                editor.stage.keyboardFocus = null
+                com.badlogic.gdx.Gdx.input.setOnscreenKeyboardVisible(false)
+                setMode(mode)
+            } }
                 else MapEditorStyle.button("Close") { setMode(mode) }).height(44*u).pad(4*u)
                 .apply { if (UiNavigation.isMobile) width(44*u) }
         }
@@ -132,13 +147,45 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
         editor.mapHolder.setBounds(0f, bottom, w, (h-60*u-bottom).coerceAtLeast(44*u))
         editor.mapHolder.invalidate()
         panel.isVisible = advancedOpen
-        panel.setBounds(w-editor.getToolsWidth(), 0f, editor.getToolsWidth(), h-60*u)
+        val area = (editor.stage as com.unciv.ui.screens.basescreen.UncivStage).lastKnownVisibleArea
+        val compactInput = advancedOpen && editor.stage.keyboardFocus?.isDescendantOf(panel) == true && area.height / u < 240f
+        header.isVisible = !compactInput
+        val panelTop = minOf(if (compactInput) h else h - 60*u, area.y + area.height)
+        panelHeader.children.filterIsInstance<TextButton>().forEach { panelHeader.getCell(it).size(UiNavigation.minimumTouchSize()) }
+        (editor.descriptionTextField.parent as? Table)?.getCell(editor.descriptionTextField)?.minHeight(UiNavigation.minimumTouchSize())
+        panel.setBounds(w-editor.getToolsWidth(), area.y, editor.getToolsWidth(), (panelTop-area.y).coerceAtLeast(0f))
+        panel.validate()
         modes.forEachIndexed { i, button -> MapEditorStyle.select(button, i == mode.ordinal) }
         toolbar.isVisible = !advancedOpen
         mapControls.isVisible = !advancedOpen
     }
 
     override fun act(delta: Float) {
+        val area = (editor.stage as com.unciv.ui.screens.basescreen.UncivStage).lastKnownVisibleArea
+        if (visibleArea != area) {
+            visibleArea.set(area)
+            layoutChrome()
+            revealFocusFrames = 2
+        }
+        if (revealFocusFrames > 0) {
+            revealFocusFrames--
+            val focus = editor.stage.keyboardFocus
+            if (focus != null && focus.isDescendantOf(panel)) {
+                var ancestor = focus.parent
+                while (ancestor != null && ancestor !is com.badlogic.gdx.scenes.scene2d.ui.ScrollPane) ancestor = ancestor.parent
+                if (ancestor is com.badlogic.gdx.scenes.scene2d.ui.ScrollPane) {
+                    editor.tabs.validate()
+                    ancestor.validate()
+                    (ancestor.actor as? com.badlogic.gdx.scenes.scene2d.utils.Layout)?.validate()
+                    ancestor.invalidate()
+                    ancestor.validate()
+                    val point = focus.localToAscendantCoordinates(ancestor.actor, com.badlogic.gdx.math.Vector2())
+                    ancestor.scrollY = (ancestor.actor.height - point.y - focus.height / 2f - ancestor.scrollHeight / 2f)
+                        .coerceIn(0f, ancestor.maxY)
+                    ancestor.updateVisualScroll()
+                }
+            }
+        }
         super.act(delta)
         val mapName = editor.tileMap.mapParameters.name.ifEmpty { "New map".tr() }
         val state = if (editor.isDirty) "Unsaved changes" else if (editor.tileMap.mapParameters.name.isEmpty()) "New map" else "Saved"

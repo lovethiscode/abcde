@@ -30,15 +30,23 @@ open class TextFieldWithFixes private constructor(text: String, style: TextField
         selectionStart = textField.selectionStart
         alignment = textField.alignment
         isPasswordMode = textField.isPasswordMode
+        setKeyboardType(textField.inputKeyboardType)
+    }
+
+    private var inputKeyboardType = OnscreenKeyboardType.Default
+
+    override fun setKeyboardType(type: OnscreenKeyboardType) {
+        super.setKeyboardType(type)
+        inputKeyboardType = type
     }
 
     init {
         onscreenKeyboard = object : OnscreenKeyboard {
             override fun show(textField: TextField) {
-                Gdx.input.setOnscreenKeyboardVisible(true, if (isPasswordMode) OnscreenKeyboardType.Password else OnscreenKeyboardType.Default)
+                Gdx.input.setOnscreenKeyboardVisible(true, if (isPasswordMode) OnscreenKeyboardType.Password else inputKeyboardType)
             }
             override fun close() {
-                Gdx.input.setOnscreenKeyboardVisible(false, if (isPasswordMode) OnscreenKeyboardType.Password else OnscreenKeyboardType.Default)
+                Gdx.input.setOnscreenKeyboardVisible(false, if (isPasswordMode) OnscreenKeyboardType.Password else inputKeyboardType)
             }
         }
         addListener(object : FocusListener() {

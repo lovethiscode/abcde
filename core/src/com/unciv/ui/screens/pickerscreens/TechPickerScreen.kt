@@ -70,6 +70,9 @@ class TechPickerScreen(
     private var appearance = makeStyle()
     private var metrics = TechnologyAtlasLayout(stage.width / appearance.unit, stage.height / appearance.unit)
     private val root = Table()
+    private val visibleSearchArea = Rectangle()
+    private var layoutDisplayWidth = Gdx.graphics.width
+    private var layoutDisplayHeight = Gdx.graphics.height
     private val body = object : Table() {
         override fun draw(batch: Batch, parentAlpha: Float) {
             super.draw(batch, parentAlpha)
@@ -150,11 +153,49 @@ class TechPickerScreen(
 
     override fun getCivilopediaRuleset() = ruleset
 
+    override fun render(delta: Float) {
+        if (UiNavigation.isMobile) {
+            val area = (stage as com.unciv.ui.screens.basescreen.UncivStage).lastKnownVisibleArea
+            if (overlay == "search") {
+                root.setFillParent(false)
+                root.setBounds(area.x, area.y, area.width, area.height)
+                if (visibleSearchArea != area) {
+                    visibleSearchArea.set(area)
+                    root.invalidateHierarchy()
+                }
+            } else {
+                root.setFillParent(true)
+                root.setBounds(0f, 0f, stage.width, stage.height)
+            }
+        }
+        super.render(delta)
+    }
+
     override fun resize(width: Int, height: Int) {
         val changed = hasSafeAreaChanged(width, height)
+        val displayChanged = width != layoutDisplayWidth || height != layoutDisplayHeight
+        layoutDisplayWidth = width
+        layoutDisplayHeight = height
         val anchor = if (initialized) treeAnchor() else null
         super.resize(width, height)
         if (!initialized || !changed) return
+        // IME navigation-bar insets must not detach the focused field and hide the keyboard.
+        if (overlay == "search" && !displayChanged) {
+            appearance = makeStyle()
+            searchField?.let { field ->
+                field.style = com.badlogic.gdx.scenes.scene2d.ui.TextField.TextFieldStyle(field.style).apply {
+                    font = UiTypography.controlFont(appearance.unit)
+                }
+                (field.parent as? Table)?.let { searchHeader ->
+                    searchHeader.getCell(field).minHeight(minimumActionSize())
+                    searchHeader.children.filterIsInstance<TextButton>().forEach {
+                        searchHeader.getCell(it).size(minimumActionSize())
+                    }
+                }
+            }
+            root.invalidateHierarchy()
+            return
+        }
         queueScroll?.let { queueOffset = it.scrollY / appearance.unit }; queueScroll = null
         readingScroll?.let { readingOffset = it.scrollY / appearance.unit }; readingScroll = null
         appearance = makeStyle()
@@ -550,10 +591,14 @@ class TechPickerScreen(
 
     private fun showBody() {
         body.clearChildren()
+        root.pad(if (overlay == "search") 0f else u(if (metrics.compact) 6f else 10f), u(metrics.padding),
+            if (overlay == "search") 0f else u(if (metrics.compact) 6f else 12f), u(metrics.padding))
         if (UiNavigation.isMobile) {
             buildHeader()
+            header.isVisible = overlay != "search"
             root.getCell(header)?.apply {
-                if (detailsOwnHeader) height(Value.prefHeight).minHeight(minimumActionSize())
+                if (overlay == "search") height(0f).minHeight(0f)
+                else if (detailsOwnHeader) height(Value.prefHeight).minHeight(minimumActionSize())
                 else if (overlay == "queue") height(Value.prefHeight).minHeight(u(if (metrics.stacked) 56f else 48f))
                 else height(u(metrics.headerHeight))
             }
@@ -860,8 +905,7 @@ class TechPickerScreen(
 
     private fun buildSearch(): Table = Table().apply {
         background = appearance.surface(appearance.panel,12f)
-        pad(u(16f))
-        add(overlayHeader("Search technologies")).growX().row()
+        pad(0f, u(8f), 0f, u(8f))
         val results = Table().apply { top(); defaults().growX().minWidth(0f) }
         fun update() {
             results.clearChildren()
@@ -873,10 +917,10 @@ class TechPickerScreen(
                     selectTechnology(tech,true)
                     overlay = if(metrics.stacked) "details" else null
                     Gdx.input.setOnscreenKeyboardVisible(false)
-                    stage.keyboardFocus = null
+                    this@TechPickerScreen.stage.keyboardFocus = null
                     showBody()
                 }
-                results.add(b).height(u(64f)).padBottom(u(6f)).row()
+                results.add(b).minHeight(minimumActionSize()).padBottom(u(6f)).row()
             }
         }
         val field = UncivTextField("Technology, unit, building or resource",searchQuery).apply {
@@ -884,11 +928,20 @@ class TechPickerScreen(
             onChange { searchQuery = text; update() }
         }
         searchField = field
-        add(field).growX().height(u(44f)).padTop(u(12f)).padBottom(u(12f)).row()
+        val searchHeader = Table().apply {
+            add(field).growX().minWidth(0f).minHeight(minimumActionSize())
+            add(UiNavigation.dismissButton(appearance.unit).apply {
+                onActivation { closeOverlay() }
+            }).size(minimumActionSize()).padLeft(u(8f))
+        }
+        add(searchHeader).growX().padBottom(u(4f)).row()
         val scroll = ScrollPane(results,BaseScreen.skin).apply { setScrollingDisabled(true,false); setOverscroll(false,false) }
         add(scroll).grow().minHeight(0f).minWidth(0f)
         update()
-        Concurrency.runOnGLThread { if(overlay=="search") stage.keyboardFocus = field }
+        field.addAction(com.badlogic.gdx.scenes.scene2d.actions.Actions.run {
+            if (overlay == "search" && searchField === field && field.stage === this@TechPickerScreen.stage)
+                this@TechPickerScreen.stage.keyboardFocus = field
+        })
     }
 
     private fun buildQueue(): Table {
