@@ -135,7 +135,7 @@ internal class PromotionAtlasView(
         root.add(body).grow().minSize(0f)
         refresh()
         root.validate()
-        alignGraphToOrigin()
+        locateSelection()
         // BACK closes the portrait reading layer first; the existing page back action is retained.
         screen.closeButton.keyShortcuts.clear()
         screen.globalShortcuts.add(KeyCharAndCode.BACK) {
@@ -445,14 +445,6 @@ internal class PromotionAtlasView(
         graphScroll.updateCulling()
     }
 
-    /** Open at the graph's top-left instead of the padding that enables edge-centered panning. */
-    private fun alignGraphToOrigin() {
-        graphScroll.validate()
-        graphScroll.scrollX = graphScroll.width / 2f
-        graphScroll.scrollY = graphScroll.height / 2f
-        graphScroll.updateVisualScroll()
-        graphScroll.updateCulling()
-    }
     private fun availableOpportunities() = (1..tree.possiblePromotions.size).takeWhile { unit.canAffordPromotions(it) }.size
 
     private fun unitContext(target: Table, withRename: Boolean) {
