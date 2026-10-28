@@ -77,7 +77,25 @@ class NativeBitmapFontData(
     override fun getGlyph(ch: Char): BitmapFont.Glyph = super.getGlyph(ch) ?: createAndCacheGlyph(ch)
 
     override fun getWrapIndex(glyphs: Array<BitmapFont.Glyph>, start: Int): Int =
-        maxOf(super.getWrapIndex(glyphs, start), cjkWrapIndex(start) { glyphs[it].id.toChar() })
+        maxOf(super.getWrapIndex(glyphs, start), cjkWrapIndex(glyphs, start))
+
+    private fun cjkWrapIndex(glyphs: Array<BitmapFont.Glyph>, start: Int): Int {
+        // Add CJK boundaries without introducing breaks inside Latin words. The
+        // overflowing glyph is at start - 1, matching BitmapFontData's contract.
+        for (index in minOf(start - 1, glyphs.size - 1) downTo 1) {
+            val before = glyphs[index - 1].id.toChar()
+            val after = glyphs[index].id.toChar()
+            if (!isCjk(before) && !isCjk(after)) continue
+            if (before in "（［｛〈《「『【〔〖〘〚‘“" ||
+                after in "、。，．・：；？！ー）］｝〉》」』】〕〗〙〛’”" ) continue
+            return index
+        }
+        return 0
+    }
+
+    private fun isCjk(ch: Char): Boolean =
+        ch in '\u2e80'..'\u9fff' || ch in '\uac00'..'\ud7af' ||
+            ch in '\uf900'..'\ufaff' || ch in '\uff00'..'\uffef'
 
     private fun createAndCacheGlyph(ch: Char): BitmapFont.Glyph {
         val charPixmap = getPixmapFromChar(ch)
