@@ -131,6 +131,7 @@ class ReligiousBeliefsPickerScreen private constructor(
         ?: Religion("None", gameInfo, choosingCiv, gameInfo.turns)
 
     init {
+        if (UiNavigation.isMobile) UiNavigation.styleBackButton(closeButton, "Map")
         if (!UiNavigation.isMobile) pickerPane.setNavigationContent(
             (if (pickIconAndName) "Choose a Religion" else "Enhance [${currentReligion.getReligionDisplayName()}]")
                 .toLabel(TextRole.PageTitle)
@@ -407,6 +408,8 @@ class ReligiousBeliefsPickerScreen private constructor(
 
         newBeliefButton.onClickSelect(leftSelection, belief) {
             leftSelectedIndex = index
+            slotToReveal = newBeliefButton
+            leftScrollPane.invalidate()
             loadRightTable(beliefType, index)
         }
     }
