@@ -24,7 +24,7 @@ class GreatPersonPointsBreakdownPopup(cityScreen: CityScreen, gppBreakdown: Grea
                 addFactRow("Per turn", gppBreakdown.sum()[greatPerson].toStringSigned())
             }
             addGoodSizedLabel("Point sources", com.unciv.ui.components.fonts.UiTypography.size(com.unciv.ui.components.fonts.TextRole.SectionTitle, popupUnit))
-                .padTop(16f * popupUnit).row()
+                .padTop(8f * popupUnit).row()
         }
         else if (UiNavigation.isMobile) addTitleWithCloseButton(MarkupRenderer.render(listOf(title)))
         else lines += title

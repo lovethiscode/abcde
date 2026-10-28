@@ -40,6 +40,8 @@ class RenderEvent(
     val floatingTutorial: Boolean = false,
     /** Use the short landscape teaching-card composition: title and instructions beside the image. */
     val compactFloatingTutorial: Boolean = false,
+    /** Ordinary mobile modal: the Popup owns the fixed title and viewport. */
+    val ordinaryDialog: Boolean = false,
     val onChoice: (EventChoice) -> Unit
 ) : Table() {
     private val gameInfo get() = worldScreen.gameInfo
@@ -50,13 +52,13 @@ class RenderEvent(
 
     init {
         // labelWidth is the available viewport, not a minimum content width plus cell insets.
-        defaults().fillX().center().pad(if (floatingTutorial) 0f else 5f)
+        defaults().fillX().center().pad(if (floatingTutorial || ordinaryDialog) 0f else 5f)
 
         val gameContext = GameContext(gameInfo.currentPlayerCiv, unit = unit)
         val choices = event.getMatchingChoices(gameContext)
         isValid = choices != null
         if (isValid) {
-            if (event.text.isNotEmpty() && !floatingTutorial) {
+            if (event.text.isNotEmpty() && !floatingTutorial && !ordinaryDialog) {
                 add(WrappableLabel(event.text, labelWidth).apply {
                     wrap = true
                     setAlignment(Align.center)
@@ -73,7 +75,7 @@ class RenderEvent(
                     // Built-in task instructions lead; the original illustration remains below them.
                     val lines = if (floatingTutorial && event.name.startsWith("Tutorial Task: ["))
                         bodyLines.sortedBy { it.extraImage.isNotBlank() } else bodyLines
-                    add(if (floatingTutorial) MarkupRenderer.render(lines, labelWidth,
+                    add(if (floatingTutorial || ordinaryDialog) MarkupRenderer.render(lines, labelWidth,
                         padding = 0f, fitToWidth = true, useUiTypography = true,
                         unit = UiTypography.unitsPerPoint(worldScreen.stage), linkAction = ::openCivilopedia)
                         else event.renderCivilopediaText(labelWidth, ::openCivilopedia)).row()
@@ -119,7 +121,7 @@ class RenderEvent(
     }
 
     private fun addChoice(choice: EventChoice) {
-        addSeparator()
+        if (!ordinaryDialog) addSeparator()
 
         val button = choice.text.toTextButton()
         button.onActivation {
@@ -132,11 +134,14 @@ class RenderEvent(
             button.addTooltip(key)
         }
         add(button).apply {
-            if (floatingTutorial) {
+            if (floatingTutorial || ordinaryDialog) {
                 val unit = UiTypography.unitsPerPoint(worldScreen.stage)
                 button.label.setFontSize(UiTypography.size(TextRole.Control, unit))
                 button.label.wrap = true
-                width(labelWidth).minHeight(44f * unit)
+                if (ordinaryDialog && com.unciv.models.skins.ExpeditionBlueTheme.enabled)
+                    button.style = com.unciv.ui.popups.OrdinaryPopupStyle(unit).button()
+                width(labelWidth).minHeight((if (com.unciv.ui.components.widgets.UiNavigation.isAndroid) 48f else 44f) * unit)
+                if (ordinaryDialog) padTop(8f * unit).padBottom(4f * unit)
             }
         }.row()
 
@@ -146,8 +151,8 @@ class RenderEvent(
                     .filterNot { it.isHiddenToUsers() }
                     .map { FormattedLine(it) }
             ).asIterable()
-        add(MarkupRenderer.render(lines, labelWidth, padding = if (floatingTutorial) 0f else 2.5f, fitToWidth = floatingTutorial,
-            useUiTypography = floatingTutorial, unit = UiTypography.unitsPerPoint(worldScreen.stage),
+        add(MarkupRenderer.render(lines, labelWidth, padding = if (floatingTutorial || ordinaryDialog) 0f else 2.5f, fitToWidth = floatingTutorial || ordinaryDialog,
+            useUiTypography = floatingTutorial || ordinaryDialog, unit = UiTypography.unitsPerPoint(worldScreen.stage),
             linkAction = ::openCivilopedia)).row()
     }
 

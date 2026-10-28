@@ -21,6 +21,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextField
 import com.badlogic.gdx.scenes.scene2d.ui.WidgetGroup
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.utils.Align
+import com.unciv.models.translations.tr
 import com.unciv.UncivGame
 import com.unciv.ui.components.extensions.setFontSize
 import com.badlogic.gdx.scenes.scene2d.ui.Value
@@ -120,12 +121,13 @@ open class Popup(
         button.label.setAlignment(com.badlogic.gdx.utils.Align.left)
         button.clearChildren()
         val textWidth = object : com.badlogic.gdx.scenes.scene2d.ui.Value() {
-            override fun get(context: com.badlogic.gdx.scenes.scene2d.Actor?) = (popupContentWidth - 60f * popupUnit).coerceAtLeast(1f)
+            override fun get(context: com.badlogic.gdx.scenes.scene2d.Actor?) = (popupContentWidth - 56f * popupUnit).coerceAtLeast(1f)
         }
         val details = Table().apply {
             add(button.label).width(textWidth).left().row()
-            for (text in consequences.filter { it.isNotBlank() }) add(text.toLabel(fontSize = UiTypography.size(TextRole.Supporting, popupUnit), fontColor = Color.LIGHT_GRAY)
-                .apply { wrap = true }).width(textWidth).left().padTop(6f * popupUnit).row()
+            val consequenceText = consequences.filter { it.isNotBlank() }.joinToString("\n") { it.tr() }
+            if (consequenceText.isNotEmpty()) add(consequenceText.toLabel(fontSize = UiTypography.size(TextRole.Body, popupUnit))
+                .apply { wrap = true }).width(textWidth).left().padTop(4f * popupUnit).row()
         }
         val indicator = object : com.badlogic.gdx.scenes.scene2d.ui.Image() {
             private val circle = ImageGetter.getCircleDrawable()
@@ -143,13 +145,13 @@ open class Popup(
                 batch.color = Color.WHITE
             }
         }
-        button.pad(14f * popupUnit)
+        button.pad(10f * popupUnit, 12f * popupUnit, 10f * popupUnit, 12f * popupUnit)
         button.add(indicator).size(20f * popupUnit).top().padRight(12f * popupUnit)
         button.add(details).minWidth(0f).growX().left()
         // Supply a real width before measuring wrapped consequences.
-        details.setWidth((popupContentWidth - 60f * popupUnit).coerceAtLeast(1f))
+        details.setWidth((popupContentWidth - 56f * popupUnit).coerceAtLeast(1f))
         button.setWidth(popupContentWidth)
-        val cell = add(button).width(popupContentWidth).minHeight(44f * popupUnit).padBottom(8f * popupUnit)
+        val cell = add(button).width(popupContentWidth).minHeight((if (UiNavigation.isAndroid) 48f else 44f) * popupUnit).padBottom(8f * popupUnit)
         row()
         return cell
     }
@@ -192,6 +194,7 @@ open class Popup(
         if (!ordinaryPresentation) return
         val unit = popupUnit
         val compactKeyboard = lastKnownVisibleArea().height / unit < 260f
+        val shortViewport = lastKnownVisibleArea().height / unit <= 520f
         if (unit != typographyUnit) {
             updatePopupScale(innerTable, unit / typographyUnit)
             typographyUnit = unit
@@ -202,7 +205,7 @@ open class Popup(
             }
         }
         val tightKeyboard = compactKeyboard && UiNavigation.isAndroid
-        val titlePadding = (if (tightKeyboard) 0f else if (compactKeyboard) 4f else 16f) * unit
+        val titlePadding = (if (tightKeyboard) 0f else if (compactKeyboard) 4f else if (shortViewport) 10f else 12f) * unit
         if (titleTable.hasChildren()) titleTable.pad(titlePadding, 20f * unit, titlePadding, 20f * unit)
         else titleTable.pad(0f)
         if (ExpeditionBlueTheme.enabled) {
@@ -212,7 +215,7 @@ open class Popup(
             bottomTable.background = if (bottomTable.hasChildren()) ui.divider(atTop = true, fill = ui.deep) else null
             ordinaryButtons.forEach { (button, kind) -> button.style = ui.button(kind.first, kind.second) }
         }
-        val bodyPadding = (if (tightKeyboard) 0f else if (compactKeyboard) 4f else 20f) * unit
+        val bodyPadding = (if (tightKeyboard) 0f else if (compactKeyboard) 4f else 12f) * unit
         topTable.pad(bodyPadding, 20f * unit, bodyPadding, 20f * unit)
         topTable.defaults().pad((if (tightKeyboard) 0f else 4f) * unit, 0f, (if (tightKeyboard) 0f else 4f) * unit, 0f)
         for (cell in topTable.cells) if (cell.actor?.name == "ui-form-field-label") {
@@ -221,8 +224,10 @@ open class Popup(
             if (tightKeyboard) cell.padTop(0f).padBottom(0f)
         }
         getScrollPane()?.setScrollingDisabled(true, false)
-        if (bottomTable.hasChildren()) bottomTable.pad((if (tightKeyboard) 0f else if (compactKeyboard) 4f else 14f) * unit,
-            20f * unit, (if (tightKeyboard) 0f else if (compactKeyboard) 4f else 18f) * unit, 20f * unit)
+        // Keep the action itself at the platform touch minimum; avoid a second
+        // large vertical frame around an already padded button.
+        if (bottomTable.hasChildren()) bottomTable.pad((if (tightKeyboard) 0f else 4f) * unit,
+            20f * unit, (if (tightKeyboard) 0f else 4f) * unit, 20f * unit)
         else bottomTable.pad(0f)
         bottomTable.right()
         val buttons = bottomTable.cells.mapNotNull { it.actor as? TextButton }
@@ -243,7 +248,7 @@ open class Popup(
                 button.label.wrap = true
                 button.label.setAlignment(Align.center)
                 button.labelCell.minWidth(0f).growX()
-                button.pad((if (tightKeyboard) 0f else 10f) * unit, 12f * unit, (if (tightKeyboard) 0f else 10f) * unit, 12f * unit)
+                button.pad((if (tightKeyboard) 0f else 6f) * unit, 12f * unit, (if (tightKeyboard) 0f else 6f) * unit, 12f * unit)
                 val width = when {
                     stacked -> popupContentWidth - 8f * unit
                     buttons.size > 1 -> (popupContentWidth - 8f * unit * buttons.size) / buttons.size
@@ -253,7 +258,7 @@ open class Popup(
                 button.label.invalidate()
                 bottomTable.add(button).width(width)
                     .expand(0, 0).fill(false, true)
-                    .minHeight(maxOf(UiNavigation.minimumTouchSize(), button.label.prefHeight + (if (tightKeyboard) 0f else 20f) * unit)).pad((if (tightKeyboard) 0f else 4f) * unit, 4f * unit, (if (tightKeyboard) 0f else 4f) * unit, 4f * unit)
+                    .minHeight(maxOf(UiNavigation.minimumTouchSize(), button.label.prefHeight + (if (tightKeyboard) 0f else 12f) * unit)).pad((if (tightKeyboard) 0f else if (stacked) 4f else 2f) * unit, 4f * unit, (if (tightKeyboard) 0f else if (stacked) 4f else 2f) * unit, 4f * unit)
                 if (stacked) bottomTable.row()
             }
         }
@@ -768,8 +773,8 @@ open class Popup(
             line.touchable = Touchable.enabled
             line.onActivation { action() }
         }
-        add(line).width(popupContentWidth).padTop(12f * popupUnit)
-            .apply { if (action != null) minHeight(44f * popupUnit) }.row()
+        add(line).width(popupContentWidth).padTop((if (action == null) 6f else 8f) * popupUnit)
+            .apply { if (action != null) minHeight(UiNavigation.minimumTouchSize()) }.row()
     }
 
     /** Shared identity stack, with optional original-game artwork. */
@@ -787,7 +792,24 @@ open class Popup(
                         setAlignment(Align.left)
                     }).growX().minWidth(0f).left().padTop(4f * popupUnit)
             }
-            if (icon != null) add(icon).size((if (maxPopupWidth / popupUnit <= 430f) 36f else 52f) * popupUnit).top().padRight(14f * popupUnit)
+            if (icon != null) {
+                // Portrait groups paint at their construction size even when Table
+                // changes their bounds. Scale the artwork within its measured cell.
+                val originalWidth = icon.width.coerceAtLeast(1f)
+                val originalHeight = icon.height.coerceAtLeast(1f)
+                val artwork = Group().apply { isTransform = true; addActor(icon) }
+                val frame = object : WidgetGroup() {
+                    init { addActor(artwork) }
+                    override fun layout() {
+                        artwork.setScale(width / originalWidth, height / originalHeight)
+                    }
+                }
+                val artworkSize = object : Value() {
+                    override fun get(context: Actor?) =
+                        (if (maxPopupWidth / popupUnit <= 430f) 36f else 52f) * popupUnit
+                }
+                add(frame).size(artworkSize).top().padRight(14f * popupUnit)
+            }
             add(text).growX().minWidth(0f).left()
         }
         if (dismissible) addTitleWithCloseButton(identity, action = onDismiss)

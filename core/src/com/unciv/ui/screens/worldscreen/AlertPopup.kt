@@ -88,7 +88,6 @@ class AlertPopup(
         }
         val quoteLabel = quote.toLabel(fontSize = UiTypography.size(TextRole.Supporting, popupUnit),
             fontColor = Color.LIGHT_GRAY).apply { wrap = true }
-        val main = Table().apply { top().left() }
         val spread = object : Table() {
             private var previousWidth = -1f
             private var previousUnit = -1f
@@ -96,8 +95,8 @@ class AlertPopup(
                 val unit = popupUnit
                 if (previousWidth != availableWidth || previousUnit != unit) {
                     previousWidth = availableWidth; previousUnit = unit
-                    clearChildren(); main.clearChildren()
-                    val columns = quote.isNotBlank() && availableWidth / unit > 620f
+                    clearChildren()
+                    val columns = content != null && quote.isNotBlank() && availableWidth / unit > 620f
                     val mainWidth = if (columns) availableWidth - 258f * unit else availableWidth
 
                     // Wrapped descendants must measure at the reading column width,
@@ -114,8 +113,10 @@ class AlertPopup(
                         invalidateChildren(it)
                     }
 
-                    main.add(content ?: body).minWidth(0f).width(mainWidth).top().left()
-                    add(main).width(mainWidth).top()
+                    body.width = mainWidth
+                    quoteLabel.width = if (columns) 229f * unit else availableWidth
+                    content?.validate()
+                    add(content ?: body).minWidth(0f).width(mainWidth).top().left()
                     if (quote.isNotBlank()) {
                         if (columns) {
                             add(ImageGetter.getWhiteDot().apply { color = Color.valueOf("385965") })
@@ -130,86 +131,39 @@ class AlertPopup(
                 }
             }
             override fun layout() { reflow(width); super.layout() }
-            override fun getPrefHeight(): Float { reflow(if (width > 0f) width else popupContentWidth); return super.getPrefHeight() }
+            override fun getPrefHeight(): Float {
+                val available = if (width > 0f) width else popupContentWidth
+                reflow(available)
+                // Measure the reading flow itself, rather than a cached outer Table
+                // height that can leave a short landscape viewport unable to scroll.
+                content?.validate()
+                val readingHeight = content?.prefHeight ?: body.prefHeight
+                if (quote.isBlank()) return readingHeight
+                return if (content != null && available / popupUnit > 620f)
+                    maxOf(readingHeight, quoteLabel.prefHeight)
+                else readingHeight + 37f * popupUnit + quoteLabel.prefHeight
+            }
             override fun getPrefWidth() = popupContentWidth
         }
         add(spread).width(popupContentWidth).growX().row()
     }
 
 
-    private fun technologySummary(tech: com.unciv.models.ruleset.tech.Technology): Table {
-        val descriptions = com.unciv.ui.objectdescriptions.TechnologyDescriptions
-        val index = descriptions.buildTechIconsIndex(gameInfo.ruleset, viewingCiv)
-        val result = Table()
-        val textWidth = object : com.badlogic.gdx.scenes.scene2d.ui.Value() {
-            override fun get(context: com.badlogic.gdx.scenes.scene2d.Actor?) =
-                (result.width - 44f * popupUnit).coerceAtLeast(1f)
-        }
-        fun heading(text: String) {
-            result.add(text.toLabel(TextRole.SectionTitle, unit = popupUnit).apply { wrap = true })
-                .colspan(2).growX().minWidth(0f).left().padTop(12f * popupUnit).padBottom(8f * popupUnit).row()
-        }
-        fun item(name: String, details: String, icon: com.badlogic.gdx.scenes.scene2d.Actor) {
-            result.add(icon).size(28f * popupUnit).top().padRight(12f * popupUnit)
-            result.add(Table().apply {
-                add(name.toLabel(TextRole.Control, unit = popupUnit, hideIcons = true).apply { wrap = true }).width(textWidth).left().row()
-                if (details.isNotBlank()) add(details.toLabel(TextRole.Supporting, unit = popupUnit, fontColor = Color.LIGHT_GRAY)
-                    .apply { wrap = true }).width(textWidth).left().padTop(4f * popupUnit)
-            }).growX().minWidth(0f).padBottom(12f * popupUnit).row()
-        }
-        val units = index.enabledUnitsByTech[tech.name].orEmpty()
-        if (units.isNotEmpty()) {
-            heading("Units enabled")
-            for (unit in units) item(unit.name, unit.getShortDescription(uniqueExclusionFilter = tech::uniqueIsRequirementForThisTech),
-                ImageGetter.getConstructionPortrait(unit.name, 28f * popupUnit))
-        }
-        val buildings = index.enabledBuildingsByTech[tech.name].orEmpty()
-        for ((isWonder, group) in buildings.groupBy { it.isAnyWonder() }) {
-            heading(if (isWonder) "Wonders enabled" else "Buildings enabled")
-            for (building in group) item(building.name, building.getShortDescription(uniqueInclusionFilter = tech::uniqueIsNotRequirementForThisTech),
-                ImageGetter.getConstructionPortrait(building.name, 28f * popupUnit))
-        }
-        val improvements = index.improvementsByTechRequired[tech.name].orEmpty()
-        if (improvements.isNotEmpty()) {
-            heading("Tile improvements enabled")
-            for (improvement in improvements) item(improvement.name, "", ImageGetter.getImprovementPortrait(improvement.name, 28f * popupUnit))
-        }
-        // Keep every mod-specific rule in the same scroll flow, with an explicit disclosure.
-        val full = tech.getDescription(viewingCiv)
-        if (units.isEmpty() && buildings.isEmpty() && improvements.isEmpty()) {
-            result.add(full.toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
-                .colspan(2).growX().minWidth(0f).left().row()
-        } else result.add(com.unciv.ui.components.widgets.ExpanderTab("View full rules",
-            UiTypography.size(TextRole.Control, popupUnit), startsOutOpened = false,
-            expanderWidth = 1f) { table ->
-            val rulesWidth = object : com.badlogic.gdx.scenes.scene2d.ui.Value() {
-                override fun get(context: com.badlogic.gdx.scenes.scene2d.Actor?): Float {
-                    val available = popupContentWidth
-                    val column = if (tech.quote.isNotBlank() && available / popupUnit > 620f)
-                        available - 258f * popupUnit else available
-                    return (column - 24f * popupUnit).coerceAtLeast(1f)
-                }
-            }
-            table.add(full.toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true }).width(rulesWidth)
-        }).colspan(2).growX().minWidth(0f).row()
-        return result
-    }
-
     private fun wonderSummary(wonder: com.unciv.models.ruleset.Building): Table {
         val result = Table()
         fun heading(text: String) {
-            result.add(text.toLabel(TextRole.SectionTitle, unit = popupUnit).apply { wrap = true })
-                .colspan(2).growX().minWidth(0f).left().padTop(12f * popupUnit).padBottom(8f * popupUnit).row()
+            result.add(text.toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
+                .colspan(2).growX().minWidth(0f).left().padTop(8f * popupUnit).padBottom(4f * popupUnit).row()
         }
         fun fact(caption: String, value: String) {
             fun width(fraction: Float) = object : com.badlogic.gdx.scenes.scene2d.ui.Value() {
                 override fun get(context: com.badlogic.gdx.scenes.scene2d.Actor?) =
                     (result.width * fraction - 8f * popupUnit).coerceAtLeast(1f)
             }
-            result.add(caption.toLabel(TextRole.Body, unit = popupUnit, hideIcons = true).apply { wrap = true })
-                .width(width(.6f)).left().padBottom(8f * popupUnit)
-            result.add(value.toLabel(TextRole.Body, unit = popupUnit, alignment = com.badlogic.gdx.utils.Align.right).apply { wrap = true })
-                .width(width(.4f)).right().padLeft(16f * popupUnit).padBottom(8f * popupUnit).row()
+            result.add(caption.toLabel(TextRole.CompactData, unit = popupUnit, hideIcons = true).apply { wrap = true })
+                .width(width(.6f)).left().padBottom(6f * popupUnit)
+            result.add(value.toLabel(TextRole.CompactData, unit = popupUnit, alignment = com.badlogic.gdx.utils.Align.right).apply { wrap = true })
+                .width(width(.4f)).right().padLeft(16f * popupUnit).padBottom(6f * popupUnit).row()
         }
         fun number(value: Float): String =
             (if (value > 0f) "+" else "") + (if (value % 1f == 0f) value.toInt().tr() else value.toString())
@@ -222,12 +176,12 @@ class AlertPopup(
             else wonder.uniqueObjects.filterNot { it.isHiddenToUsers() }.map { it.getDisplayText() }
         if (effects.isNotEmpty()) {
             heading("Rewards and effects")
-            for (effect in effects) result.add(effect.toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
-                .colspan(2).growX().minWidth(0f).left().padBottom(12f * popupUnit).row()
+            for (effect in effects) result.add(effect.toLabel(TextRole.Control, unit = popupUnit).apply { wrap = true })
+                .colspan(2).growX().minWidth(0f).left().padBottom(6f * popupUnit).row()
         }
         if (wonder.requiredNearbyImprovedResources != null) result.add(
             ("Requires improved [" + wonder.requiredNearbyImprovedResources!!.joinToString("/") { it.tr() } + "] near city")
-                .toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
+                .toLabel(TextRole.Control, unit = popupUnit).apply { wrap = true })
             .colspan(2).growX().minWidth(0f).left().row()
         return result
     }
@@ -368,7 +322,7 @@ class AlertPopup(
         if (UiNavigation.isMobile) {
             addTitleWithCloseButton(LeaderIntroTable(civInfo, popupStage = if (ordinaryPresentation) stageToShowOn else null), KeyboardBindings[KeyboardBinding.NextTurnAlternate])
                 .name = "ui-alert-close"
-            addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
+            if (!ordinaryPresentation) addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
         } else addLeaderName(civInfo)
         addGoodSizedLabel("Those lands were not yours to take. This has not gone unnoticed.")
         if (!UiNavigation.isMobile) addCloseButton()
@@ -402,7 +356,7 @@ class AlertPopup(
             val warReason = if (popupAlert.type == AlertType.AttackedAllyMinor) WarType.AlliedCityStateWar else WarType.ProtectedCityStateWar
             player.getDiplomacyManager(bullyOrAttacker)!!.declareWar(DeclareWarReason(warReason, cityState))
             cityState.getDiplomacyManager(player)!!.influence += 20f // You went to war for us!!
-        }.apply { actor.name = "ui-alert-choice:declare_war" }.row()}
+        }.apply { actor.name = "ui-alert-choice:declare_war"; styleOrdinaryButton(actor, destructive = true) }.row()}
 
         addCloseButton("You'll pay for this!", KeyboardBinding.Confirm) {
             player.getDiplomacyManager(bullyOrAttacker)!!.sideWithCityState()
@@ -467,7 +421,7 @@ class AlertPopup(
 
         if (!conqueringCiv.isAtWarWith(city.foundingCivObject!!)) {
             addLiberateOption(city, conqueringCiv)
-            addSeparator()
+            if (!ordinaryPresentation) addSeparator()
         }
         addCloseButton("Keep it").apply { actor.name = "ui-disposition:keep" }.row()
     }
@@ -477,7 +431,7 @@ class AlertPopup(
         if (otherciv.isDefeated() || otherciv.getDiplomacyManager(viewingCiv)!!.diplomaticStatus == DiplomaticStatus.War) return false
         val playerDiploManager = viewingCiv.getDiplomacyManager(otherciv)!!
         addLeaderName(otherciv)
-        addTopicHeader("DECLARATION OF FRIENDSHIP", LIGHTER_GREEN_COLOR)
+        if (!ordinaryPresentation) addTopicHeader("DECLARATION OF FRIENDSHIP", LIGHTER_GREEN_COLOR)
         addGoodSizedLabel(
                 if (otherciv.nation.declaringFriendship.isNotEmpty()) otherciv.nation.declaringFriendship else "My friend, shall we declare our friendship to the world?"
         ).row()
@@ -497,7 +451,7 @@ class AlertPopup(
         if (denouncer.isDefeated())
             return false
         addLeaderName(denouncer)
-        addTopicHeader("DENOUNCEMENT", LIGHTER_ORANGE_COLOR)
+        if (!ordinaryPresentation) addTopicHeader("DENOUNCEMENT", LIGHTER_ORANGE_COLOR)
         // normal message unless we are enemies
         val leaderMessage = if (denouncer.getDiplomacyManager(viewingCiv)!!.isRelationshipLevelGE(RelationshipLevel.Competitor)) {
             music.playVoice("${denouncer.nation.name}.neutralDenouncing")
@@ -511,7 +465,7 @@ class AlertPopup(
         if (diplomacy.canDeclareWar()) {
             addCloseButton("THIS MEANS WAR! (Declare war)") {
                 diplomacy.declareWar()
-            }.apply { actor.name = "ui-alert-choice:declare_war" }.row()
+            }.apply { actor.name = "ui-alert-choice:declare_war"; styleOrdinaryButton(actor, destructive = true) }.row()
         }
         addCloseButton("Very well.", KeyboardBinding.Cancel).apply { actor.name = "ui-alert-choice:acknowledge" }.row()
         return true
@@ -540,7 +494,7 @@ class AlertPopup(
             playerDiploManager.refuseDemand(demand)
             if (demand == Demand.DoNotAttackUs)
                 viewingCiv.getDiplomacyManager(otherciv)!!.declareWar()
-        }.apply { actor.name = "ui-alert-choice:reject" }
+        }.apply { actor.name = "ui-alert-choice:reject"; if (demand == Demand.DoNotAttackUs) styleOrdinaryButton(actor, destructive = true) }
         return true
     }
 
@@ -586,7 +540,8 @@ class AlertPopup(
 
     private fun addDiplomaticMarriage() {
         val city = getCity(popupAlert.value)
-        addGoodSizedLabel(city.name.tr() + ": " + "What would you like to do with the city?".tr(),UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize)) // Add name because there might be several cities
+        if (ordinaryPresentation) addDecisionTitle(city.name.tr() + ": " + "What would you like to do with the city?".tr())
+        else addGoodSizedLabel(city.name.tr() + ": " + "What would you like to do with the city?".tr(),UiTypography.size(TextRole.SectionTitle, legacySize = Constants.headingFontSize)) // Add name because there might be several cities
             .padBottom(20f).row()
         val marryingCiv = gameInfo.getCurrentPlayerCivilization()
 
@@ -718,7 +673,7 @@ class AlertPopup(
         val tech = gameInfo.ruleset.technologies[popupAlert.value]!!
         if (ordinaryPresentation) {
             addDialogTitle(tech.name, "Technology researched", ImageGetter.getTechIconPortrait(tech.name, 52f * popupUnit), dismissible = false)
-            addReadingSpread(tech.getDescription(viewingCiv), tech.quote, technologySummary(tech))
+            addReadingSpread(tech.getDescription(viewingCiv), tech.quote)
             styleOrdinaryButton(addButton("Continue playing") { close() }.actor, primary = true)
             music.chooseTrack(tech.name, MusicMood.Researched, MusicTrackChooserFlags.setSpecific)
             return
@@ -754,7 +709,7 @@ class AlertPopup(
         if (civInfo.isDefeated()) return false
         addLeaderName(civInfo)
         if (!ordinaryPresentation) addTopicHeader("DECLARATION OF WAR", LIGHTER_RED_COLOR)
-        else addGoodSizedLabel("War has already begun. Your reply will not reverse the declaration.", UiTypography.size(TextRole.Supporting, popupUnit)).row()
+        else addGoodSizedLabel("War has already begun. Your reply will not reverse the declaration.").row()
         val leaderMessage = civInfo.nation.declaringWar
         if (leaderMessage.isNotEmpty())
             addGoodSizedLabel(leaderMessage).row()
@@ -820,7 +775,6 @@ class AlertPopup(
     //region Helpers
 
     private fun addLeaderName(civInfo: Civilization) {
-        val identity = LeaderIntroTable(civInfo, popupStage = if (ordinaryPresentation) stageToShowOn else null)
         if (ordinaryPresentation) {
             val title = when (popupAlert.type) {
                 AlertType.FirstContact -> "First contact · [${civInfo.civName}]"
@@ -828,14 +782,16 @@ class AlertPopup(
                 AlertType.WarDeclaration -> "[${civInfo.civName}] has declared war on us!"
                 AlertType.AcceptingDemand -> "[${civInfo.civName}] accepted our demand"
                 AlertType.RejectingDemand -> "[${civInfo.civName}] rejected our demand"
-                else -> ""
+                AlertType.DeclarationOfFriendship -> "DECLARATION OF FRIENDSHIP"
+                AlertType.Denounced -> "DENOUNCEMENT"
+                else -> civInfo.civName
             }
-            if (title.isNotBlank()) {
-                addDialogTitle(title, civInfo.nation.leaderName, dismissible = false)
-                return
-            }
+            val identity = if (popupAlert.type in setOf(AlertType.DeclarationOfFriendship, AlertType.Denounced))
+                "{${civInfo.nation.leaderName}} · {${civInfo.civName}}" else civInfo.nation.leaderName
+            addDialogTitle(title, identity, dismissible = false)
+            return
         }
-        add(identity).apply { if (ordinaryPresentation) growX().minWidth(0f) }
+        add(LeaderIntroTable(civInfo))
         addSeparator().padBottom(SEPARATOR_LINE_TO_TEXT_PADDING)
     }
 
@@ -979,10 +935,36 @@ class AlertPopup(
         
         
         val event = gameInfo.ruleset.events[eventName] ?: return false
-        val render = RenderEvent(event, worldScreen, unit) { close() }
-        if (!render.isValid) return false
-        add(render).pad(0f).row()
-        getScrollPane()?.fadeScrollBars = false
+        if (ordinaryPresentation) {
+            val context = com.unciv.models.ruleset.unique.GameContext(viewingCiv, unit = unit)
+            if (event.getMatchingChoices(context) == null) return false
+            addDecisionTitle(event.text.ifBlank { event.name })
+            // RenderEvent bakes wrapping widths into its children. Rebuild only when the
+            // actual popup viewport changes, keeping rules inside one vertical scroll flow.
+            val eventUnit = unit
+            val content = object : Table() {
+                private var renderedWidth = -1f
+                private var renderedUnit = -1f
+                private fun reflow() {
+                    val available = (if (width > 0f) width else popupContentWidth).coerceAtLeast(1f)
+                    if (renderedWidth == available && renderedUnit == popupUnit) return
+                    renderedWidth = available
+                    renderedUnit = popupUnit
+                    clearChildren()
+                    add(RenderEvent(event, worldScreen, eventUnit, labelWidth = available,
+                        ordinaryDialog = true) { close() }).width(available).growX()
+                }
+                override fun layout() { reflow(); super.layout() }
+                override fun getPrefHeight(): Float { reflow(); return super.getPrefHeight() }
+                override fun getPrefWidth() = popupContentWidth
+            }
+            add(content).width(popupContentWidth).growX().pad(0f).row()
+        } else {
+            val render = RenderEvent(event, worldScreen, unit) { close() }
+            if (!render.isValid) return false
+            add(render).pad(0f).row()
+            getScrollPane()?.fadeScrollBars = false
+        }
         return true
     }
 

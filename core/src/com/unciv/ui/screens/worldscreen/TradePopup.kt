@@ -90,7 +90,7 @@ class TradePopup(worldScreen: WorldScreen) : Popup(worldScreen) {
                     defaults().left().minWidth(0f)
                     add(heading.toLabel(TextRole.SectionTitle, unit = popupUnit).apply { wrap = true }).growX().row()
                     for (offer in list) add(getOfferText(offer).toLabel(TextRole.Body, unit = popupUnit).apply { wrap = true })
-                        .growX().padTop(12f * popupUnit).row()
+                        .growX().padTop(6f * popupUnit).row()
                 }
             }
             val columns = object : Table() {
@@ -105,7 +105,7 @@ class TradePopup(worldScreen: WorldScreen) : Popup(worldScreen) {
                             for (cell in section.cells) cell.width(columnWidth)
                             if (!sideBySide && index > 0) row()
                             add(section).width(columnWidth).top().padLeft(if (sideBySide && index > 0) 24f * popupUnit else 0f)
-                                .padTop(if (!sideBySide && index > 0) 20f * popupUnit else 0f)
+                                .padTop(if (!sideBySide && index > 0) 12f * popupUnit else 0f)
                         }
                     }
                     super.layout()
