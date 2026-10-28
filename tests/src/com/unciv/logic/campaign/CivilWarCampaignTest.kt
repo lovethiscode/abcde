@@ -429,7 +429,8 @@ class CivilWarCampaignTest {
         worker.removeFromTile(); worker.putInTile(tile); p.cache.updateViewableTiles()
         assertNull(tile.improvement)
         assertTrue(tile.roadIsPillaged)
-        com.unciv.logic.automation.unit.WorkerAutomation(p, g.turns).automateWorkerAction(worker, hashSetOf())
+        val workerView = com.unciv.view.GameView(g, p).getMapUnitView(worker)
+        com.unciv.logic.automation.unit.WorkerAutomation(p, g.turns).automateWorkerAction(workerView, hashSetOf())
         assertEquals("Repair", tile.improvementInProgress)
         repeat(2) { UnitTurnManager(worker).endTurn() }
         assertFalse(tile.roadIsPillaged)

@@ -1,5 +1,7 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.ui.components.widgets.UiNavigation
+
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.input.onActivation
@@ -192,6 +194,22 @@ class WorldScreen(
     private var uiEnabled = true
     private var battlefieldHud: BattlefieldHud? = null
     internal fun layoutBattlefieldHud() { battlefieldHud?.layout() }
+    internal fun layoutModeStatus(left: Float, width: Float, top: Float): Float {
+        val button = when {
+            campaignButton.isVisible -> campaignButton
+            endlessButton.isVisible -> endlessButton
+            else -> return 0f
+        }
+        val gap = BattlefieldHud.points(8f)
+        button.labelCell.width((width - button.padLeft - button.padRight).coerceAtLeast(1f))
+        button.width = width
+        button.invalidateHierarchy()
+        button.validate()
+        button.height = maxOf(UiNavigation.minimumTouchSize(), button.prefHeight)
+        button.validate()
+        button.setPosition(left, top - button.height)
+        return button.height + gap
+    }
     internal fun dismissBattlefieldTileDetails() { battlefieldHud?.dismissTileDetails() }
     internal fun noteBattlefieldMapTap() { battlefieldHud?.onMapTap() }
 

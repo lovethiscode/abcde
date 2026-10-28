@@ -24,6 +24,7 @@ class PolicyCodexTranslationsTest {
         UncivGame.Current.translations.readAllLanguagesTranslation()
         keys = Gdx.files.internal("jsons/translations/template.properties").readString("UTF-8")
             .substringAfter("# Policy codex (C+A adaptive layout)\n")
+            .substringBefore("\n# ")
             .lineSequence().filter { !it.startsWith('#') && " = " in it }
             .map { it.substringBefore(" = ") }.toList()
     }

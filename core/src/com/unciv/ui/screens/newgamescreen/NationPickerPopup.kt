@@ -146,17 +146,20 @@ internal class NationPickerPopup(
 
     private fun addActionIcons() {
         if (councilStyle) {
-            bottomTable.add().growX()
-            val cancel = addCloseButton("Cancel").width(140f).minHeight(44f).actor
+            val cancel = addCloseButton("Cancel").minWidth(0f).growX().minHeight(UiNavigation.minimumTouchSize()).actor
             cancel.name = "setup-civ-cancel"
             UiNavigation.styleTextButton(cancel)
             val confirm = addButton("Confirm selection", KeyCharAndCode.RETURN) { returnSelected() }
-                .width(160f).minHeight(44f).actor
+                .minWidth(0f).growX().minHeight(UiNavigation.minimumTouchSize()).actor
             confirm.name = "setup-civ-confirm"
             SinglePlayerSetup.style(confirm, councilFont)
             confirm.style = TextButton.TextButtonStyle(confirm.style).apply {
                 up = SinglePlayerSetup.surface(ExpeditionBlueTheme.gold, ExpeditionBlueTheme.gold)
                 fontColor = ExpeditionBlueTheme.primaryInk
+            }
+            for (button in listOf(cancel, confirm)) {
+                button.label.wrap = true
+                button.labelCell.minWidth(0f).growX()
             }
             return
         }
@@ -247,7 +250,7 @@ internal class NationPickerPopup(
                     background = SinglePlayerSetup.surface()
                     pad(8f, 10f, 8f, 10f)
                     add(ImageGetter.getNationPortrait(element.nation, 34f)).size(38f).padRight(10f)
-                    add(element.translatedName.toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18)).apply { wrap = true }).minWidth(0f).growX().left()
+                    add(element.translatedName.toLabel(fontSize = UiTypography.size(TextRole.Body, legacySize = 18), hideIcons = true).apply { wrap = true }).minWidth(0f).growX().left()
                     add(ImageGetter.getImage("OtherIcons/Checkmark", ExpeditionBlueTheme.gold).apply {
                         name = "nation-selected"
                         isVisible = false

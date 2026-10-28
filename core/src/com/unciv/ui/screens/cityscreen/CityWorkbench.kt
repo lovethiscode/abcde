@@ -144,6 +144,14 @@ internal class CityWorkbench(
             addTooltip(text)
         }
 
+    private fun cityPageButton(forward: Boolean) = UiNavigation.directionButton(
+        forward, if (forward) "Next city" else "Previous city", unit = 1f,
+    ).apply {
+        name = if (forward) "ui-city-next" else "ui-city-previous"
+        isDisabled = screen.viewableCities.size < 2
+        onActivation { if (!isDisabled) screen.page(if (forward) 1 else -1) }
+    }
+
     fun update() {
         geometry = CityWorkbenchLayout(screen.stage.width / unit, screen.stage.height / unit, expanded)
         if (!geometry.tablet) {
@@ -154,15 +162,11 @@ internal class CityWorkbench(
         }
         detailedStats = null
         header.clear()
-        header.add(button("‹", "ui-city-previous") { screen.page(-1) }.apply {
-            isDisabled = screen.viewableCities.size < 2
-        }).size(44f)
+        header.add(cityPageButton(forward = false)).size(44f)
         header.add(button(city.name.tr(hideIcons = true) + "  " + city.getPopulationCount(), "ui-city-name") {
             if (screen.canChangeState) CityRenamePopup(screen, city) { update() }
         }).minWidth(0f).growX().height(44f)
-        header.add(button("›", "ui-city-next") { screen.page(1) }.apply {
-            isDisabled = screen.viewableCities.size < 2
-        }).size(44f)
+        header.add(cityPageButton(forward = true)).size(44f)
         header.add(navigationIcon("OtherIcons/Options", "City management", "ui-city-manage") {
             manageOpen = !manageOpen; screen.clearSelection(); update()
         }).size(44f)
@@ -201,13 +205,24 @@ internal class CityWorkbench(
 
     private fun tabs(): Table = Table().apply {
         val pages = if (geometry.tablet) listOf("Citizens", "City", "Stats") else listOf("Production", "Citizens", "City", "Stats")
-        for (entry in pages) add(button(entry, "ui-city-tab:$entry") {
+        val controls = pages.map { entry -> button(entry, "ui-city-tab:$entry") {
             page = entry; manageOpen = false; screen.clearSelection(); updatePanels()
         }.apply {
             isChecked = entry == page
             if (entry == page) label.color = gold
-            if (!geometry.tablet) { label.setEllipsis(false); label.wrap = true }
-        }).growX().minWidth(0f).apply { if (geometry.tablet) height(46f) else minHeight(44f) }
+            label.setEllipsis(false)
+            spaceCityWorkbenchIcons(this)
+        } }
+        // Allocate the actual label width before sharing spare space. Equal-width tabs split
+        // "Production" even when the complete set fits comfortably in the panel.
+        val columns = (controls.size downTo 1).first { count ->
+            controls.chunked(count).all { row -> row.sumOf { maxOf(44f, it.prefWidth).toDouble() } <= geometry.management.width }
+                || count == 1
+        }
+        controls.forEachIndexed { index, control ->
+            add(control).growX().minWidth(maxOf(44f, control.prefWidth)).minHeight(if (geometry.tablet) 46f else 44f)
+            if ((index + 1) % columns == 0) row()
+        }
     }
 
     private fun updatePanels() {
@@ -328,9 +343,7 @@ internal class CityWorkbench(
         val width = geometry.width - geometry.margin * 2
         header.setSize(width, 44f)
         header.add(exitButton).minWidth(exitButton.prefWidth).minHeight(44f).padRight(4f)
-        if (!geometry.portrait) header.add(phoneIcon("OtherIcons/BackArrow", "Previous city", "ui-city-previous") {
-            screen.page(-1)
-        }.apply { isDisabled = screen.viewableCities.size < 2 }).size(44f)
+        if (!geometry.portrait) header.add(cityPageButton(forward = false)).size(44f)
         val identity = button("", "ui-city-name", ::showCityPicker).apply {
             clearChildren()
             pad(0f, 4f, 0f, 4f)
@@ -341,9 +354,7 @@ internal class CityWorkbench(
             addTooltip(city.name)
         }
         header.add(identity).growX().minWidth(0f).minHeight(44f)
-        if (!geometry.portrait) header.add(phoneIcon("OtherIcons/ForwardArrow", "Next city", "ui-city-next") {
-            screen.page(1)
-        }.apply { isDisabled = screen.viewableCities.size < 2 }).size(44f)
+        if (!geometry.portrait) header.add(cityPageButton(forward = true)).size(44f)
         header.add(button(if (expanded) "Collapse details" else "Expand details", "ui-city-expand") {
             expanded = !expanded; mapOnly = false; update(); screen.updateAsync()
         }.apply {
@@ -454,6 +465,7 @@ internal class CityWorkbench(
                 panel.add(DetailedStatsPopup(screen).workbenchContent(statsFilter, statsDetailed) { stat, detailed ->
                     statsFilter = stat; statsDetailed = detailed
                 }).grow().minSize(0f).row()
+                spaceCityWorkbenchIcons(panel)
                 return
             }
             page == "Citizens" -> content.add(stats.workbenchPage("Citizens")).row()
@@ -507,18 +519,27 @@ internal class CityWorkbench(
         yields.clear()
         yields.background = ImageGetter.getWhiteDotDrawable().tint(Color.valueOf("102b35").apply { a = .96f })
         val stats = Stat.entries.filter { it != Stat.Faith || city.viewingCiv().isReligionEnabled() }
-        for (stat in stats) {
+        val items = stats.map { stat ->
             val amount = if (stat == Stat.Happiness) city.getHappinessList().values.sum() else city.getCurrentCityStats()[stat]
-            val item = Table().apply {
+            Table().apply {
                 name = "ui-city-yield:${stat.name}"
-                add(ImageGetter.getStatIcon(stat.name)).size(16f).row()
-                add(amount.roundToInt().toString().toLabel(TextRole.CompactData, unit = 1f)).padTop(2f)
+                pad(0f, 4f, 0f, 4f)
+                add(ImageGetter.getStatIcon(stat.name)).size(16f).padRight(6f)
+                add(amount.roundToInt().toString().toLabel(TextRole.CompactData, unit = 1f))
                 addTooltip(stat.name)
                 onActivation { statsFilter = stat; showPage("Stats") }
             }
-            yields.add(item).minWidth(44f).growX().minHeight(44f)
         }
-        yields.setBounds(bounds.x, bounds.y + bounds.height - 48f, bounds.width, 44f)
+        val columns = (items.size downTo 1).first { count ->
+            items.chunked(count).all { row -> row.sumOf { maxOf(44f, it.prefWidth).toDouble() } <= bounds.width }
+                || count == 1
+        }
+        items.forEachIndexed { index, item ->
+            yields.add(item).minWidth(maxOf(44f, item.prefWidth)).growX().minHeight(44f)
+            if ((index + 1) % columns == 0) yields.row()
+        }
+        val yieldsHeight = ((items.size + columns - 1) / columns) * 44f
+        yields.setBounds(bounds.x, bounds.y + bounds.height - yieldsHeight - 4f, bounds.width, yieldsHeight)
         mapControls.clear()
         mapControls.add(button("Citizen Management", "ui-city-assign") { showPage("Citizens") }).growX().minWidth(0f).minHeight(44f)
         mapControls.add(button("Buy tile", "ui-city-buy-mode") {

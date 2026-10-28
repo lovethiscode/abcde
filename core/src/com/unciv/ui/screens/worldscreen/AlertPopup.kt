@@ -724,7 +724,7 @@ class AlertPopup(
             return
         }
         addInformationTitle(tech.name)
-        if (UiNavigation.isAndroid && stageWidth < stageHeight) {
+        if (UiNavigation.isMobile && stageWidth < stageHeight) {
             add(ImageGetter.getTechIconPortrait(tech.name, 56f * popupUnit))
                 .padTop(8f * popupUnit).padBottom(12f * popupUnit).row()
             addReadingSpread(tech.getDescription(viewingCiv), tech.quote)
@@ -736,7 +736,7 @@ class AlertPopup(
         centerTable.add(tech.quote.toLabel(TextRole.Body).apply { wrap = true }).width(stageWidth / 3)
         centerTable.add(ImageGetter.getTechIconPortrait(tech.name, 100f)).pad(20f)
         val descriptionLabel = tech.getDescription(viewingCiv).toLabel(TextRole.Body).apply { wrap = true }
-        val descriptionContent = if (UiNavigation.isAndroid) Table().apply {
+        val descriptionContent = if (UiNavigation.isMobile) Table().apply {
             add(descriptionLabel).growX().minWidth(0f)
             val inset = 4f * UiTypography.unitsPerPoint(worldScreen.stage)
             pad(inset, 0f, inset, 0f)

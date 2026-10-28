@@ -341,7 +341,11 @@ class GameOptionsTable(
         val checkbox = text.toCheckBox(initialState) { onChange(it) }
         checkbox.isDisabled = lockable && locked
         checkbox.align(Align.left)
-        add(checkbox).colspan(2).row()
+        if (directLayoutWidth != null) {
+            checkbox.label.wrap = true
+            checkbox.labelCell.minWidth(0f).growX()
+        }
+        add(checkbox).colspan(2).apply { if (directLayoutWidth != null) minWidth(0f).growX() }.row()
         return checkbox
     }
 
@@ -721,6 +725,7 @@ class GameOptionsTable(
 
         // Create a checkbox for each VictoryType existing
         val victoryConditionsTable = Table().apply { defaults().pad(if (directLayoutWidth == null) 5f else 2f) }
+        val directColumns = if (directLayoutWidth != null && directLayoutWidth < 280f) 1 else 2
         val victories = if (directLayoutWidth == null) ruleset.selectableVictories()
             else ruleset.selectableVictories().filter { !it.enablesMaxTurns() }.sortedBy {
                 listOf("Scientific", "Diplomatic", "Cultural", "Domination").indexOf(it.name).let { index -> if (index < 0) 4 else index }
@@ -740,10 +745,14 @@ class GameOptionsTable(
             }
             victoryCheckbox.name = victoryType.name
             victoryCheckbox.isDisabled = locked
-            victoryConditionsTable.add(victoryCheckbox).left().apply {
-                if (directLayoutWidth != null) width(directLayoutWidth / 2f - 10f).minHeight(28f)
+            if (directLayoutWidth != null) {
+                victoryCheckbox.label.wrap = true
+                victoryCheckbox.labelCell.minWidth(0f).growX()
             }
-            if ((i + 1) % 2 == 0) victoryConditionsTable.row()
+            victoryConditionsTable.add(victoryCheckbox).left().apply {
+                if (directLayoutWidth != null) width(directLayoutWidth / directColumns - 4f).minHeight(UiNavigation.minimumTouchSize())
+            }
+            if ((i + 1) % directColumns == 0) victoryConditionsTable.row()
         }
         add(victoryConditionsTable).colspan(if (directLayoutWidth == null) 2 else 1).left().row()
     }

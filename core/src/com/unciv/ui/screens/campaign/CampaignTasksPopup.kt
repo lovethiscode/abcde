@@ -29,7 +29,36 @@ import com.unciv.utils.Concurrency
 
 /** Fixed heading and settlement controls surround a scrollable, two-column task board. */
 class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
+    private var layoutWidth = stageToShowOn.width
+    private var layoutHeight = stageToShowOn.height
+    private var layoutUnit = popupUnit
+
     init {
+        buildContent()
+        open()
+    }
+
+    override fun onVisibleAreaChanged(visibleArea: com.badlogic.gdx.math.Rectangle) {
+        if (UiNavigation.isMobile && (layoutWidth != stageToShowOn.width ||
+                layoutHeight != stageToShowOn.height || layoutUnit != popupUnit)) {
+            val scroll = getScrollPane()?.scrollPercentY ?: 0f
+            clear()
+            buildContent()
+            super.onVisibleAreaChanged(visibleArea)
+            validate()
+            // Re-measure fixed controls after their new wrapping widths take effect.
+            super.onVisibleAreaChanged(visibleArea)
+            validate()
+            getScrollPane()?.let { it.scrollPercentY = scroll; it.updateVisualScroll() }
+            return
+        }
+        super.onVisibleAreaChanged(visibleArea)
+    }
+
+    private fun buildContent() {
+        layoutWidth = stageToShowOn.width
+        layoutHeight = stageToShowOn.height
+        layoutUnit = popupUnit
         val state = requireNotNull(screen.gameInfo.campaign)
         if (!state.briefingSeen) {
             state.briefingSeen = true
@@ -198,7 +227,6 @@ class CampaignTasksPopup(private val screen: WorldScreen) : Popup(screen) {
                 actor.isDisabled = !result.main || !screen.isPlayersTurn || screen.isNextTurnUpdateRunning()
             }
         }
-        open()
     }
 
     private fun bodyText(text: String, width: Float, color: Color = Theme.text, size: TextRole = TextRole.Body) =

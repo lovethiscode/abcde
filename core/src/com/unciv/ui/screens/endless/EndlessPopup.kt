@@ -24,15 +24,44 @@ import com.unciv.utils.Concurrency
 class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
     private val mode = screen.gameInfo.endless!!
     private val store = EndlessStore(screen.game.files)
+    private var layoutWidth = stageToShowOn.width
+    private var layoutHeight = stageToShowOn.height
+    private var layoutUnit = popupUnit
+
     init {
+        buildContent()
+        open(force = true)
+    }
+
+    override fun onVisibleAreaChanged(visibleArea: com.badlogic.gdx.math.Rectangle) {
+        if (UiNavigation.isMobile && (layoutWidth != stageToShowOn.width ||
+                layoutHeight != stageToShowOn.height || layoutUnit != popupUnit)) {
+            val scroll = getScrollPane()?.scrollPercentY ?: 0f
+            clear()
+            buildContent()
+            super.onVisibleAreaChanged(visibleArea)
+            validate()
+            // Re-measure fixed controls after their new wrapping widths take effect.
+            super.onVisibleAreaChanged(visibleArea)
+            validate()
+            getScrollPane()?.let { it.scrollPercentY = scroll; it.updateVisualScroll() }
+            return
+        }
+        super.onVisibleAreaChanged(visibleArea)
+    }
+
+    private fun buildContent() {
+        layoutWidth = stageToShowOn.width
+        layoutHeight = stageToShowOn.height
+        layoutUnit = popupUnit
         val width = (maxPopupWidth - 50f).coerceAtMost(980f)
         innerTable.background = BaseScreen.skin.newDrawable("RoundedEdgeRectangle", Theme.panel)
-        addTitleWithCloseButton((when {
+        addDialogTitle(when {
             mode.saveBlocked -> "Save failed · retry required"
             mode.ended -> "Defense result"
             mode.offer != null -> "Choose your resupply"
             else -> "Defense status"
-        }).toLabel(Theme.gold, UiTypography.size(TextRole.PageTitle, legacySize = 26)))
+        }, dismissible = false)
         fun text(value: String, muted: Boolean = false) {
             add(value.toLabel(if (muted) Theme.muted else Theme.text, UiTypography.size(TextRole.Body, legacySize = 18)).apply { wrap = true }).width(width).left().padBottom(10f).row()
         }
@@ -132,7 +161,6 @@ class EndlessPopup(private val screen: WorldScreen) : Popup(screen) {
             rowWidth += buttonWidth + 10f
         }
         getScrollPane()?.setScrollingDisabled(true, false)
-        open(force = true)
     }
 
     private fun retrySave() {

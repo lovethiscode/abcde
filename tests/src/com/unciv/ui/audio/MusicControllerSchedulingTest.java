@@ -353,10 +353,15 @@ public class MusicControllerSchedulingTest {
     }
 
     @Test public void nonIosOwnTimerStillFadesAndTerminates() throws Exception {
+        // Other audio-loop tests can leave the process-wide desktop callback mode enabled.
+        Field ownTimer = MusicController.class.getDeclaredField("needOwnTimer");
+        ownTimer.setAccessible(true); ownTimer.set(null, true);
         MusicController legacy = new MusicController(null, System::nanoTime);
         try {
             assertTrue(legacy.startTrack(new MusicController.MusicTrackInfo("", "first-Ambient", "mp3")));
             FakeMusic music = created.get(0);
+            // startTrack queues the slot; wait until the timer has actually started fading it.
+            assertTrue(music.fadeSignal.await(5, TimeUnit.SECONDS));
             legacy.pause(1000f, false);
             assertTrue(music.pauseSignal.await(5, TimeUnit.SECONDS));
             assertFalse(music.playing);
@@ -373,6 +378,7 @@ public class MusicControllerSchedulingTest {
         float volume, position;
         OnCompletionListener listener;
         final CountDownLatch pauseSignal = new CountDownLatch(1), disposeSignal = new CountDownLatch(1);
+        final CountDownLatch fadeSignal = new CountDownLatch(1);
         FakeMusic(String name) { this.name = name; }
         Runnable finishEvent() { playing = false; OnCompletionListener captured = listener; return () -> captured.onCompletion(this); }
         @Override public void play() { if (failPlay) throw new GdxRuntimeException("injected play failure"); plays++; playing = true; }
@@ -381,7 +387,7 @@ public class MusicControllerSchedulingTest {
         @Override public boolean isPlaying() { checks++; return playing; }
         @Override public void setLooping(boolean value) { looping = value; }
         @Override public boolean isLooping() { return looping; }
-        @Override public void setVolume(float value) { volume = value; }
+        @Override public void setVolume(float value) { volume = value; if (playing && value > 0) fadeSignal.countDown(); }
         @Override public float getVolume() { return volume; }
         @Override public void setPan(float pan, float value) { volume = value; }
         @Override public void setPosition(float value) { position = value; }

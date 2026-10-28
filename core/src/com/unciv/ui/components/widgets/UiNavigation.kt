@@ -135,9 +135,22 @@ object UiNavigation {
         addTooltip("Close")
     }
 
+    /** Quiet paging controls use the same surface and stroke weight as back navigation. */
+    fun directionButton(forward: Boolean, caption: String, unit: Float = minimumTouchSize() / 44f): TextButton =
+        button(unit).apply {
+            name = if (forward) "ui-navigation-next" else "ui-navigation-previous"
+            clearChildren()
+            pad(0f)
+            add(icon(this, close = false, forward = forward)).size(20f * unit)
+            setSize(44f * unit, 44f * unit)
+            addTooltip(caption)
+        }
+
     /** The same two-stroke control geometry is used for every back arrow and dismiss mark. */
-    private fun icon(button: TextButton, close: Boolean): Image {
+    private fun icon(button: TextButton, close: Boolean, forward: Boolean? = null): Image {
         val lines = if (close) arrayOf(floatArrayOf(6f, 6f, 18f, 18f), floatArrayOf(18f, 6f, 6f, 18f))
+            else if (forward == true) arrayOf(floatArrayOf(8.5f, 5f, 15.5f, 12f), floatArrayOf(15.5f, 12f, 8.5f, 19f))
+            else if (forward == false) arrayOf(floatArrayOf(15.5f, 5f, 8.5f, 12f), floatArrayOf(8.5f, 12f, 15.5f, 19f))
             else arrayOf(floatArrayOf(14f, 5f, 7f, 12f), floatArrayOf(7f, 12f, 14f, 19f))
         val drawable = object : BaseDrawable() {
             override fun draw(batch: Batch, x: Float, y: Float, width: Float, height: Float) {

@@ -119,12 +119,21 @@ internal object SinglePlayerSetup {
             "World Size" -> "OtherIcons/Hexagon"
             else -> null
         }
-        add(Table().apply {
+        val captionTable = Table().apply {
             if (captionIcon != null) add(ImageGetter.getImage(captionIcon, ExpeditionBlueTheme.text)).size(18f).padRight(7f)
             add(caption.toLabel(ExpeditionBlueTheme.text, UiTypography.size(TextRole.Control, legacySize = 18)).apply { wrap = true }).minWidth(0f).growX().left()
-        }).width(labelWidth).left().padRight(8f)
-        add(control).minWidth(0f).width(width - labelWidth - 20f)
-            .height(if (UiNavigation.isMobile) UiNavigation.minimumTouchSize() else 36f).fillX()
+        }
+        val controlWidth = width - labelWidth - 20f
+        val stacked = UiNavigation.isMobile &&
+            (control as? com.badlogic.gdx.scenes.scene2d.utils.Layout)?.prefWidth?.let { it > controlWidth } == true
+        if (stacked) {
+            add(captionTable).minWidth(0f).growX().left().padBottom(4f).row()
+            add(control).minWidth(0f).width(width - 12f).minHeight(UiNavigation.minimumTouchSize()).fillX()
+        } else {
+            add(captionTable).width(labelWidth).left().padRight(8f)
+            add(control).minWidth(0f).width(controlWidth)
+                .minHeight(if (UiNavigation.isMobile) UiNavigation.minimumTouchSize() else 36f).fillX()
+        }
     }
 
     fun form(width: Float, fields: List<Pair<String, Actor>>) = Table().apply {

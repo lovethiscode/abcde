@@ -221,28 +221,18 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
         val secondary = actions.filter { it !in primary }.sortedByDescending { it.useFrequency }
         val touch = UiNavigation.minimumTouchSize()
         val gap = BattlefieldHud.points(4f)
-        val columns = battlefieldColumns.coerceAtLeast(1)
-        val commandWidth = (battlefieldWidth - gap * (columns - 1)) / columns
-        var count = 0
-        fun place(button: Button) {
-            val lastColumn = (count + 1) % columns == 0
-            add(button).width(commandWidth).minHeight(touch)
-                .pad(0f, 0f, 0f, if (lastColumn) 0f else gap)
-            count++
-            if (lastColumn) row()
-        }
-        primary.forEachIndexed { index, action ->
+        val buttons = primary.mapIndexed { index, action ->
             // Some rules remove an unavailable command entirely. Keep its visual slot without
             // retaining a callback from an earlier unit state.
             if (action != null) battlefieldSlotAppearance[index] = UiUnitAction(action.uiType, title = action.title)
             val displayed = action ?: battlefieldSlotAppearance[index]
-            if (displayed != null) place(getUnitActionButton(unit, displayed))
-            else place(Button(BaseScreen.skin).apply {
+            if (displayed != null) getUnitActionButton(unit, displayed)
+            else Button(BaseScreen.skin).apply {
                 BattlefieldGeometry.fitControl(this, flat = true)
                 isDisabled = true
                 touchable = Touchable.enabled
-            })
-        }
+            }
+        }.toMutableList()
         if (secondary.isNotEmpty()) {
             val more = IconTextButton("Show more",
                 BattlefieldGeometry.icon(ImageGetter.getUnitActionPortrait("ShowMore")), BattlefieldHud.font(TextRole.Supporting), labelFontSize = UiTypography.size(TextRole.Control)).apply {
@@ -257,7 +247,25 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
                     openBattlefieldMenu(this, unit, secondary)
                 }
             }
-            place(more)
+            buttons.add(more)
+        }
+        // Wrap phrases between words, rather than forcing a word such as "Automate"
+        // or "improvement" into narrow fragments beside its icon.
+        val requiredWidth = buttons.filterIsInstance<IconTextButton>().maxOfOrNull { button ->
+            val wordWidth = button.label.text.split(Regex("\\s+")).maxOfOrNull { word ->
+                com.badlogic.gdx.graphics.g2d.GlyphLayout(button.label.style.font, word).width * button.label.fontScaleX
+            } ?: 0f
+            wordWidth + BattlefieldHud.points(27f)
+        } ?: touch
+        val maximumColumns = minOf(battlefieldColumns.coerceAtLeast(1), buttons.size,
+            ((battlefieldWidth + gap) / (requiredWidth + gap)).toInt().coerceAtLeast(1))
+        val columns = (maximumColumns downTo 1).first { buttons.size % it == 0 }
+        val commandWidth = (battlefieldWidth - gap * (columns - 1)) / columns
+        buttons.forEachIndexed { index, button ->
+            val lastColumn = (index + 1) % columns == 0
+            add(button).width(commandWidth).minHeight(touch)
+                .pad(0f, 0f, 0f, if (lastColumn) 0f else gap)
+            if (lastColumn) row()
         }
         for (action in secondary) if (action.action != null)
             keyShortcuts.add(action.uiType.binding) { activateAction(action, unit) }

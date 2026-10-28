@@ -111,7 +111,9 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
     var turns = 0
     var oneMoreTurnMode = false
     var currentPlayer = ""
-    var currentTurnStartTime = System.currentTimeMillis()
+    // JSON omits prototype defaults. A clock-based default can disappear depending on the
+    // serialization millisecond, changing checksums and pending-upload fingerprints.
+    var currentTurnStartTime = 0L
     var gameId = randomGameId()
     var checksum = ""
     private var lastUnitId = 0
@@ -274,7 +276,21 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
         ?: civilizations.firstOrNull { it.civID == civID }
 
     fun getCurrentPlayerCivilization() = currentPlayerCiv
-    fun getCivilizationsAsPreviews() = civilizations.map { it.asPreview() }.toMutableList()
+    fun getCivilizationsAsPreviews(): MutableList<CivilizationInfoPreview> {
+        val previews = civilizations.map { it.asPreview() }.toMutableList()
+        if (previews.none { it.isAlive == null }) return previews
+        // Pending uploads and load previews can be restored before transient unit managers exist.
+        val ownersWithUnits = tileMap.values.asSequence().flatMap { it.getUnits() }.map { it.owner }.toSet()
+        for ((civ, preview) in civilizations.zip(previews)) if (preview.isAlive == null) {
+            preview.isAlive = when {
+                civ.civName == Constants.barbarians || civ.civName == Constants.spectator ||
+                    civ.civID == endless?.invaderId -> true
+                civ.hasEverOwnedOriginalCapital -> civ.cities.isNotEmpty()
+                else -> civ.civID in ownersWithUnits
+            }
+        }
+        return previews
+    }
     /** Get barbarian civ
      *  @throws NoSuchElementException in no-barbarians games! */
     @Readonly fun getBarbarianCivilization() = getCivilization(Constants.barbarians)
@@ -932,7 +948,7 @@ class GameInfoPreview() {
     var turns = 0
     var gameId = ""
     var currentPlayer = ""
-    var currentTurnStartTime = System.currentTimeMillis()
+    var currentTurnStartTime = 0L
 
     /**
      * Converts a GameInfo object (can be uninitialized) into a GameInfoPreview object.

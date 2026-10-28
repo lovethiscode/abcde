@@ -50,7 +50,8 @@ class AskTextPopup(
         wrapper.add(label.toLabel(TextRole.Body))
         if (ordinaryPresentation) {
             addDialogTitle(dialogTitle, subtitle.takeUnless { it == defaultText }.orEmpty())
-            addGoodSizedLabel(fieldLabel, UiTypography.size(TextRole.Control, popupUnit)).apply { actor.name = "ui-form-field-label" }.row()
+            if (fieldLabel.isNotBlank())
+                addGoodSizedLabel(fieldLabel, UiTypography.size(TextRole.Control, popupUnit)).apply { actor.name = "ui-form-field-label" }.row()
         }
         else add(wrapper).colspan(2).row()
 

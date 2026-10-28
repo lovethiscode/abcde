@@ -94,14 +94,14 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
         middlePanes.minSplitAmount = 0.25f
         middlePanes.maxSplitAmount = 0.75f
         isPortrait = if (isPortrait()) {
-            if (UiNavigation.isAndroid) {
+            if (UiNavigation.isMobile) {
                 // Each visible section must contain a complete card and its Move action.
                 val spyHeight = (spySelectionTable.children.firstOrNull() as? Table)?.prefHeight ?: OverviewUi.touch
                 val cityHeight = (locationSelectionTable.children.firstOrNull() as? Table)?.prefHeight ?: OverviewUi.touch
                 spyPanel.getCell(spyScrollPane).minHeight(spyHeight + OverviewUi.pt(24f))
                 locationPanel.getCell(locationScrollPane).minHeight(cityHeight + OverviewUi.pt(24f))
             }
-            middlePanes.splitAmount = if (UiNavigation.isAndroid) 0.42f else 0.33f
+            middlePanes.splitAmount = if (UiNavigation.isMobile) 0.42f else 0.33f
             middlePanes.isVertical = true
             true
         } else {
@@ -129,7 +129,7 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
             pad(OverviewUi.pt(16f))
             add(header).growX().minHeight(OverviewUi.touch).padBottom(OverviewUi.pt(12f)).row()
             add(middlePanes).grow().minWidth(0f).minHeight(0f).apply {
-                if (UiNavigation.isMobile && !(UiNavigation.isAndroid && isPortrait))
+                if (UiNavigation.isMobile && !(UiNavigation.isMobile && isPortrait))
                     maxHeight(com.badlogic.gdx.scenes.scene2d.ui.Value.prefHeight).top()
             }
         }
@@ -218,11 +218,11 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
             background = OverviewUi.rounded(OverviewUi.background, 9f)
             pad(OverviewUi.pt(8f))
             add(identity).growX().minWidth(0f)
-            if (UiNavigation.isAndroid && isPortrait()) row()
+            if (UiNavigation.isMobile && isPortrait()) row()
             add(status).growX().minWidth(0f).padLeft(OverviewUi.pt(12f))
-            if (UiNavigation.isAndroid && isPortrait()) row()
+            if (UiNavigation.isMobile && isPortrait()) row()
             add(moveSpyButton).minWidth(maxOf(moveButtonWidth, OverviewUi.pt(84f)))
-                .minHeight(OverviewUi.touch).padLeft(OverviewUi.pt(10f)).apply { if (UiNavigation.isAndroid && isPortrait()) growX() }
+                .minHeight(OverviewUi.touch).padLeft(OverviewUi.pt(10f)).apply { if (UiNavigation.isMobile && isPortrait()) growX() }
         }
         spySelectionTable.add(card).growX().minWidth(0f).padBottom(OverviewUi.pt(8f)).row()
     }

@@ -48,6 +48,7 @@ class BattlefieldModCompatibilityTest {
         val oldGame = if (UncivGame.isCurrentInitialized()) UncivGame.Current else null
         GdxNativesLoader.load()
         try {
+            com.unciv.utils.Display.platform = object : com.unciv.utils.PlatformDisplay {}
             Gdx.app = mock(Application::class.java)
             `when`(Gdx.app.type).thenReturn(Application.ApplicationType.iOS)
             Gdx.graphics = mock(Graphics::class.java)

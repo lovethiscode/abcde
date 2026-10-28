@@ -16,6 +16,36 @@ import java.nio.file.Files
 @RunWith(BaseTestRunner::class)
 class PendingTurnUploadPersistenceTest {
     @Test
+    fun freshTurnTimestampSurvivesSignedSaveAndPreviewRoundTrips() {
+        val game = onlineGame(SERVER_A)
+        repeat(100) {
+            game.currentTurnStartTime = System.currentTimeMillis()
+            val restored = UncivFiles.gameInfoFromString(
+                UncivFiles.gameInfoToString(game, forceZip = true, updateChecksum = true),
+                validateChecksumBeforeMigrations = true,
+            )
+            assertEquals(game.currentTurnStartTime, restored.currentTurnStartTime)
+            val preview = UncivFiles.gameInfoPreviewFromString(UncivFiles.gameInfoToString(game.asPreview()))
+            assertEquals(game.currentTurnStartTime, preview.currentTurnStartTime)
+        }
+    }
+
+    @Test
+    fun restoredUploadConfirmsThePreviewCreatedBeforeRestart() {
+        withTemporaryFiles { files ->
+            val original = onlineGame(SERVER_A)
+            val pending = original.clone().apply { setTransients(); turns++ }
+            PendingTurnUploadState.forGame(original, files).getOrCreate(original) { pending }
+            val uploadedPreview = pending.asPreview()
+            assertTrue(uploadedPreview.civilizations.all { it.isAlive != null })
+
+            val restored = PendingTurnUploadState.forGame(original, files).get()!!
+            assertEquals(PendingTurnUploadResolution.Confirmed,
+                restored.resolve(pending, uploadedPreview))
+        }
+    }
+
+    @Test
     fun pendingTurnSurvivesStateRecreationAndCanBeCleared() {
         withTemporaryFiles { files ->
             val original = onlineGame(SERVER_A)

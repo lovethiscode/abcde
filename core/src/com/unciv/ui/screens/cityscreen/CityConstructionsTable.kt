@@ -205,7 +205,7 @@ class CityConstructionsTable(private val cityScreen: CityScreen) {
             val compact = cityScreen.workbenchPhone
             val queueButton = cityWorkbenchControl("{Queue} " + maxOf(0, queue.size - 1), "ui-city-queue", action = toggleQueue)
             val keys = listOf("All", "Units", "Buildings", "Wonders", "National Wonders", "Other", "Disabled")
-            val category = cityWorkbenchSelectBox().apply {
+            val category = cityWorkbenchCategorySelectBox().apply {
                 setItems(*keys.map { it.tr() }.toTypedArray())
                 selectedIndex = keys.indexOf(nativeCategory).coerceAtLeast(0)
                 if (compact) setSelectedPrefWidth(true)

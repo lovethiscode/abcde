@@ -10,6 +10,8 @@ import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.utils.Align
+import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.civilization.Civilization
@@ -70,12 +72,33 @@ abstract class ReligionPickerScreenCommon(
         closeButton.isVisible = true
         setDefaultCloseAction()
         bottomTable.background = OverviewUi.surface(OverviewUi.panel)
-        rightSideButton.labelCell.minWidth(OverviewUi.pt(168f))
+        if (UiNavigation.isMobile) {
+            // Rules already live in the choices. Keep only the reference and commit actions here.
+            pickerPane.useContentSizedFooter = true
+            bottomTable.clear()
+            bottomTable.pad(OverviewUi.pt(6f), OverviewUi.pt(12f), OverviewUi.pt(6f), OverviewUi.pt(12f))
+            val referenceButton = "Civilopedia".toTextButton().apply {
+                name = "ui-belief-civilopedia"
+                label.wrap = true
+                labelCell.minWidth(0f)
+                onClick { openCivilopedia(civilopediaLink) }
+            }
+            rightSideButton.label.wrap = true
+            rightSideButton.labelCell.minWidth(0f)
+            bottomTable.add(referenceButton).minWidth(0f).growX().minHeight(OverviewUi.touch)
+                .padRight(OverviewUi.pt(8f))
+            bottomTable.add(rightSideGroup).minWidth(0f).growX()
+            rightSideGroup.expand().fill()
+        } else rightSideButton.labelCell.minWidth(OverviewUi.pt(168f))
 
         globalShortcuts.add(KeyboardBinding.Civilopedia) { openCivilopedia(civilopediaLink) }
     }
 
     override fun getCivilopediaRuleset() = ruleset
+
+    protected fun setBeliefReference(belief: Belief?) {
+        civilopediaLink = belief?.makeLink() ?: defaultLink
+    }
 
     protected fun setOKAction(buttonText: String, action: ReligionManager.() -> Unit) {
         rightSideButton.setText(buttonText.tr())
@@ -88,8 +111,34 @@ abstract class ReligionPickerScreenCommon(
     protected fun getBeliefButton(
         belief: Belief? = null,
         beliefType: BeliefType? = null,
-        withTypeLabel: Boolean = true
+        withTypeLabel: Boolean = true,
+        compact: Boolean = false
     ): Button {
+        if (UiNavigation.isMobile) return Button(skin).apply {
+            style = Button.ButtonStyle(style).apply {
+                up = OverviewUi.rounded(OverviewUi.panel, 9f)
+                over = OverviewUi.rounded(OverviewUi.raised, 9f)
+                down = OverviewUi.rounded(OverviewUi.selected, 9f)
+                checked = down
+            }
+            defaults().left().growX().minWidth(0f)
+            pad(OverviewUi.pt(6f), OverviewUi.pt(10f), OverviewUi.pt(6f), OverviewUi.pt(10f))
+            if (withTypeLabel && belief != null)
+                add(belief.type.name.toLabel(TextRole.Control).apply {
+                    color = OverviewUi.accent
+                    wrap = true
+                    setAlignment(Align.left)
+                }).row()
+            val name = belief?.name ?: if (beliefType == BeliefType.Any) "Choose any belief!"
+                else "Choose a [$beliefType] belief!"
+            add(name.toLabel(TextRole.Control).apply { wrap = true; setAlignment(Align.left) }).row()
+            if (belief != null && !compact) {
+                val effects = belief.uniqueObjects.filter { !it.isHiddenToUsers() }
+                    .joinToString("\n") { it.getDisplayText().tr() }
+                add(effects.toLabel(TextRole.Body).apply { wrap = true; setAlignment(Align.left) })
+                    .padTop(OverviewUi.pt(2f)).row()
+            }
+        }
         val labelWidth = if (stage.height > stage.width)
             stage.width - OverviewUi.pt(64f)
         else stage.width * 0.5f - OverviewUi.pt(52f)
@@ -128,8 +177,8 @@ abstract class ReligionPickerScreenCommon(
             selection.switch(this)
             function()
             descriptionTable.clear()
-            civilopediaLink = belief?.makeLink() ?: defaultLink
-            if (belief == null) return@onClick
+            if (belief != null || !UiNavigation.isMobile) setBeliefReference(belief)
+            if (belief == null || UiNavigation.isMobile) return@onClick
             descriptionScroll.scrollY = 0f
             descriptionScroll.updateVisualScroll()
             val labelWidth = if (descriptionScroll.width < 700f) descriptionScroll.width - 40f else 0f

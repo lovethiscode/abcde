@@ -43,6 +43,7 @@ class GdxTestRunner(
     private var myApp: MyHeadlessApplication
 
     init {
+        com.unciv.utils.Display.platform = object : com.unciv.utils.PlatformDisplay {}
         Gdx.gl = Mockito.mock(GL20::class.java)
         Gdx.gl20 = Gdx.gl
         myApp = MyHeadlessApplication(this)
@@ -63,6 +64,8 @@ class GdxTestRunner(
             println("GdxTestRunner.HeadlessApplication.mainLoopThread failed to terminate")
             mainLoopThread.interrupt()
         }
+        // A later test application needs a fresh GL dispatcher after this one is disposed.
+        com.unciv.utils.Dispatcher.stopThreadPools()
     }
 
     // ApplicationListener interface

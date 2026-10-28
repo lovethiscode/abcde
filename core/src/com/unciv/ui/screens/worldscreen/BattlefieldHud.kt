@@ -239,7 +239,8 @@ internal class BattlefieldHud(private val world: WorldScreen) {
             setPosition(leftForPanel(world, left, panelY, height), panelY)
         }
         val leftTop = if (inlineTech == null) world.techPolicyAndDiplomacy.y - gap else world.topBar.y - gap
-        val top = if (portrait) leftTop else world.topBar.y - gap
+        val modeTop = if (portrait) leftTop else world.topBar.y - gap
+        val top = modeTop - world.layoutModeStatus(left, width, modeTop)
 
         val status = world.statusButtons
         status.update(false)

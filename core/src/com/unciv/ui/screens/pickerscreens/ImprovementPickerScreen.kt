@@ -35,11 +35,15 @@ import com.unciv.view.MapUnitView
 import com.unciv.view.TileView
 import kotlin.math.roundToInt
 
-class ImprovementPickerScreen(
+class ImprovementPickerScreen private constructor(
     private val tile: TileView,
     private val unit: MapUnitView,
     private val onAccept: ()->Unit,
-) : PickerScreen() {
+    private val initialImprovementName: String?,
+) : PickerScreen(), com.unciv.ui.screens.basescreen.RecreateOnResize {
+
+    constructor(tile: TileView, unit: MapUnitView, onAccept: () -> Unit)
+        : this(tile, unit, onAccept, null)
 
     companion object {
         /** Return true if we can report improvements associated with the [problems] (or there are no problems for it at all). */
@@ -47,6 +51,7 @@ class ImprovementPickerScreen(
     }
 
     private var selectedImprovement: TileImprovement? = null
+    private val detailTitle = (if (UiNavigation.isMobile) "Pick improvement" else "Details").toLabel(TextRole.SectionTitle)
     private val ruleset = tile.getRuleset()
     private val currentPlayerCiv = unit.civ()
     // Support for UniqueType.CreatesOneImprovement
@@ -76,7 +81,7 @@ class ImprovementPickerScreen(
 
     init {
         setDefaultCloseAction()
-        pickerPane.useSideDescription("Details".toLabel(TextRole.SectionTitle))
+        pickerPane.useSideDescription(detailTitle)
         bottomTable.background = OverviewUi.surface(OverviewUi.panel)
 
         rightSideButton.setText("Pick improvement".tr())
@@ -95,7 +100,7 @@ class ImprovementPickerScreen(
         val regularImprovements = Table().apply {
             top()
             background = OverviewUi.rounded(OverviewUi.panel, 12f)
-            pad(OverviewUi.pt(8f))
+            pad(OverviewUi.pt(if (UiNavigation.isMobile) 4f else 8f))
         }
 
         for (improvement in ruleset.tileImprovements.values) {
@@ -109,8 +114,8 @@ class ImprovementPickerScreen(
         }
 
         val ownerTable = Table().apply {
-            background = OverviewUi.rounded(OverviewUi.raised, 10f)
-            pad(OverviewUi.pt(6f))
+            if (!UiNavigation.isMobile) background = OverviewUi.rounded(OverviewUi.raised, 10f)
+            pad(OverviewUi.pt(if (UiNavigation.isMobile) 0f else 6f))
         }
         if (tile.getOwner() == null) {
             ownerTable.add("Unowned tile".toLabel(TextRole.Body)).pad(10f)
@@ -122,24 +127,35 @@ class ImprovementPickerScreen(
             }
             val label = "Tile owned by [${tile.getOwner()!!.civName}] (You)".toLabel(TextRole.Body)
             label.onClick { openCivilopedia(tile.getOwner()!!.getNation().makeLink()) }
-            ownerTable.add(label)
-            ownerTable.add(button).padLeft(20f)
+            label.wrap = UiNavigation.isMobile
+            ownerTable.add(label).growX().minWidth(0f)
+            ownerTable.add(button).minHeight(OverviewUi.touch).padLeft(OverviewUi.pt(if (UiNavigation.isMobile) 4f else 10f))
             ownerTable.padTop(2.5f) // The button causes the label to have ample padding, just unglue the button from the window border a little
         } else {
             val label = "Tile owned by [${tile.getOwner()!!.civName}] - [${tile.getCity()!!.name}]".toLabel(TextRole.Body)
             label.onClick { openCivilopedia(tile.getOwner()!!.getNation().makeLink()) }
-            ownerTable.add(label).pad(10f)
+            label.wrap = UiNavigation.isMobile
+            ownerTable.add(label).growX().minWidth(0f).pad(if (UiNavigation.isMobile) 0f else 10f)
         }
 
         topTable.defaults().minWidth(0f)
-        topTable.add(ownerTable).growX().pad(
-            OverviewUi.pt(16f), OverviewUi.pt(16f), OverviewUi.pt(8f), OverviewUi.pt(16f)
-        )
-        topTable.row()
-        topTable.add(regularImprovements).growX().pad(
-            OverviewUi.pt(8f), OverviewUi.pt(16f), OverviewUi.pt(16f), OverviewUi.pt(16f)
-        )
+        if (UiNavigation.isMobile) pickerPane.setNavigationContent(ownerTable)
+        else {
+            topTable.add(ownerTable).growX().pad(
+                OverviewUi.pt(16f), OverviewUi.pt(16f), OverviewUi.pt(8f), OverviewUi.pt(16f)
+            ).row()
+        }
+        topTable.top()
+        topTable.add(regularImprovements).growX().minWidth(0f).pad(OverviewUi.pt(if (UiNavigation.isMobile) 4f else 16f))
+        initialImprovementName?.let { ruleset.tileImprovements[it] }?.let { improvement ->
+            setDescription(improvement, Color.WHITE)
+            rightSideButton.setText(improvement.name.tr())
+            if (!tileMarkedForCreatesOneImprovement && getProblemReport(improvement)?.isEmpty() == true)
+                pick(improvement.name.tr())
+        }
     }
+
+    override fun recreate() = ImprovementPickerScreen(tile, unit, onAccept, selectedImprovement?.name)
 
     private fun Table.addImprovementRow(improvement: TileImprovement, problemReport: ProblemReport) {
         val image = ImageGetter.getImprovementPortrait(improvement.name, 30f)
@@ -166,6 +182,8 @@ class ImprovementPickerScreen(
         else unit.getTurnsToBuild(improvement)
 
         if (turnsToBuild > 0) labelText += " - $turnsToBuild${Fonts.turn}"
+        if (UiNavigation.isMobile && improvement.name == tile.improvementInProgress)
+            labelText += " · " + "Current construction".tr()
         val tileResource = tile.getViewableResource(currentPlayerCiv)
         val provideResource = tileResource != null && tileResource.isImprovedBy(improvement.name)
         if (provideResource) labelText += "\n" + "Provides [${tileResource.name}]".tr()
@@ -228,6 +246,7 @@ class ImprovementPickerScreen(
             improvementButton.addListener(object : ClickListener() {
                 override fun clicked(event: InputEvent?, x: Float, y: Float) {
                     setDescription(improvement, Color.LIGHT_GRAY)
+                    rightSideButton.setText(improvement.name.tr())
                     rightSideButton.disable()
                 }
             })
@@ -257,6 +276,7 @@ class ImprovementPickerScreen(
     /** Sets the PickerPane's description and where in Civilopedia a click on it should go - but not the right side button */
     private fun setDescription(improvement: TileImprovement, color: Color) {
         selectedImprovement = improvement
+        if (UiNavigation.isMobile) detailTitle.setText(improvement.name.tr())
         descriptionLabel.setText(improvement.getDescription(ruleset))
         descriptionLabel.color = color
     }
@@ -291,7 +311,8 @@ class ImprovementPickerScreen(
             statsTable.add(ImageGetter.getStatIcon(key.name)).size(20f).padRight(3f)
 
             val valueLabel = statValue.tr().toLabel(TextRole.Body)
-            valueLabel.color = if (statValue < 0) Color.RED else Color.WHITE
+            valueLabel.color = if (statValue < 0)
+                ExpeditionBlueTheme.color(Color.RED, ExpeditionBlueTheme.danger) else Color.WHITE
 
             statsTable.add(valueLabel).padRight(13f)
         }
@@ -367,17 +388,18 @@ class ImprovementPickerScreen(
         }
 
         if (report.isEmpty()) return when {
-            tile.improvementInProgress == improvement.name -> "Current construction".toLabel(TextRole.Body)
+            tile.improvementInProgress == improvement.name ->
+                if (UiNavigation.isMobile) null else "Current construction".toLabel(TextRole.Body)
             tileMarkedForCreatesOneImprovement -> null
-            else -> getPickNowButton { accept(improvement) }
+            else -> if (UiNavigation.isMobile) null else getPickNowButton { accept(improvement) }
         }
 
         return Table().apply {
             defaults().center()
             for ((text, link) in report.proposedSolutions) {
-                val label = text.toLabel(TextRole.Body)
+                val label = text.toLabel(TextRole.Body).apply { wrap = UiNavigation.isMobile }
                 if (!link.isNullOrEmpty()) label.onClick { openCivilopedia(link) }
-                add(label).padBottom(5f).row()
+                add(label).growX().minWidth(0f).padBottom(if (UiNavigation.isMobile) 0f else 5f).row()
             }
             if (report.isQueueable())
                 add(getPickNowButton { accept(report.removalImprovement, improvement) }).padTop(5f)

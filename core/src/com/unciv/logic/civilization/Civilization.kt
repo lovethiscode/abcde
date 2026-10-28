@@ -1295,7 +1295,8 @@ class Civilization : IsPartOfGameInfoSerialization {
         return true
     }
 
-    fun asPreview() = CivilizationInfoPreview(this)
+    fun asPreview() = CivilizationInfoPreview(this,
+        if (this::nation.isInitialized) isAlive() else null)
 
     @Readonly
     fun getLastSeenImprovement(position: HexCoord): String? {
@@ -1330,7 +1331,7 @@ class CivilizationInfoPreview() {
     /**
      * Converts a CivilizationInfo object (can be uninitialized) into a CivilizationInfoPreview object.
      */
-    constructor(civilization: Civilization) : this() {
+    constructor(civilization: Civilization, alive: Boolean?) : this() {
         civName = civilization.civName
         civID = civilization.civID
         playerType = civilization.playerType
@@ -1338,7 +1339,7 @@ class CivilizationInfoPreview() {
         playerMinutesBeforeForceResign = civilization.playerMinutesBeforeForceResign
         totalTurnTimeSeconds = civilization.totalTurnTimeSeconds
         turnsPlayedAsHuman = civilization.turnsPlayedAsHuman
-        isAlive = civilization.isAlive()
+        isAlive = alive
     }
 }
 

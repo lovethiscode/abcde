@@ -47,7 +47,10 @@ class GameStarter private constructor(
             GameStarter(gameSetupInfo, reservedGameId).gameInfo
     }
 
-    private val gameInfo = GameInfo().apply { reservedGameId?.let { gameId = it } }
+    private val gameInfo = GameInfo().apply {
+        currentTurnStartTime = System.currentTimeMillis()
+        reservedGameId?.let { gameId = it }
+    }
     private val rng = GameContext(gameInfo = gameInfo).stateBasedRandom("GameStarter")
     private val ruleset: Ruleset
     private lateinit var tileMap: TileMap

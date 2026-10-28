@@ -28,46 +28,79 @@ import com.unciv.ui.components.extensions.surroundWithCircle
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.popups.AskTextPopup
 import com.unciv.ui.screens.overviewscreen.OverviewUi
+import com.unciv.ui.screens.basescreen.RecreateOnResize
 
-class ReligiousBeliefsPickerScreen (
+class ReligiousBeliefsPickerScreen private constructor(
     choosingCiv: Civilization,
-    numberOfBeliefsCanChoose: Counter<BeliefType>,
-    pickIconAndName: Boolean
-): ReligionPickerScreenCommon(choosingCiv, disableScroll = true) {
-    // Roughly follows the layout of the original (although I am not very good at UI designing, so please improve this)
+    private val numberOfBeliefsCanChoose: Counter<BeliefType>,
+    private val pickIconAndName: Boolean,
+    private val draft: Draft?
+): ReligionPickerScreenCommon(choosingCiv, disableScroll = true), RecreateOnResize {
+    constructor(choosingCiv: Civilization, numberOfBeliefsCanChoose: Counter<BeliefType>, pickIconAndName: Boolean)
+        : this(choosingCiv, numberOfBeliefsCanChoose, pickIconAndName, null)
+
+    private data class Draft(val beliefs: List<String?>, val icon: String?, val name: String?, val slot: Int)
+    private val horizontalSlots = UiNavigation.isMobile && stage.height > stage.width
 
     private val topReligionIcons = Table() // Top of the layout, contains icons for religions
     private val leftChosenBeliefs = Table() // Left middle part, contains buttons to select the types of beliefs to choose
-    private val leftScrollPane = AutoScrollPane(leftChosenBeliefs)
+    private var slotToReveal: Button? = null
+    private val leftScrollPane = object : AutoScrollPane(leftChosenBeliefs) {
+        override fun layout() {
+            super.layout()
+            slotToReveal?.let { button ->
+                scrollTo(button.x, button.y, button.width, button.height, true, true)
+                updateVisualScroll()
+                slotToReveal = null
+            }
+        }
+    }.apply {
+        setScrollingDisabled(!horizontalSlots, false)
+    }
     private val rightBeliefsToChoose = Table() // Right middle part, contains the beliefs to choose
-    private val rightScrollPane = AutoScrollPane(rightBeliefsToChoose)
+    private var beliefToReveal: Button? = null
+    private val rightScrollPane = object : AutoScrollPane(rightBeliefsToChoose) {
+        override fun layout() {
+            super.layout()
+            beliefToReveal?.let { button ->
+                scrollTo(button.x, button.y, button.width, button.height, false, true)
+                updateVisualScroll()
+                beliefToReveal = null
+            }
+        }
+    }.apply { if (UiNavigation.isMobile) setScrollingDisabled(true, false) }
     private val rightPaneTitle: Label = "Beliefs".toLabel(TextRole.SectionTitle)
     private val leftPane = Table().apply {
         background = OverviewUi.rounded(OverviewUi.panel, 12f)
-        pad(OverviewUi.pt(10f))
-        add("Beliefs".toLabel(TextRole.SectionTitle)).growX().left().padBottom(OverviewUi.pt(8f)).row()
+        pad(OverviewUi.pt(if (UiNavigation.isMobile) 4f else 10f))
+        if (!UiNavigation.isMobile)
+            add("Beliefs".toLabel(TextRole.SectionTitle)).growX().left().padBottom(OverviewUi.pt(8f)).row()
         add(leftScrollPane).grow().minWidth(0f).minHeight(0f)
     }
     private val rightPane = Table().apply {
         background = OverviewUi.rounded(OverviewUi.panel, 12f)
-        pad(OverviewUi.pt(10f))
-        add(rightPaneTitle).growX().left().padBottom(OverviewUi.pt(8f)).row()
+        pad(OverviewUi.pt(if (UiNavigation.isMobile) 4f else 10f))
+        rightPaneTitle.wrap = true
+        add(rightPaneTitle).minWidth(0f).growX().left().padBottom(OverviewUi.pt(if (UiNavigation.isMobile) 4f else 8f)).row()
         add(rightScrollPane).grow().minWidth(0f).minHeight(0f)
     }
     private val middlePanes = object : Table() {
         private var stacked: Boolean? = null
 
         override fun layout() {
-            val shouldStack = height > width
+            val shouldStack = horizontalSlots || !UiNavigation.isMobile && height > width
             if (stacked != shouldStack) {
                 clear()
                 if (shouldStack) {
-                    add(leftPane).growX().height(Value.percentHeight(if (UiNavigation.isMobile) .28f else .36f, this))
-                        .minHeight(OverviewUi.touch * if (UiNavigation.isMobile) 2f else 3f).row()
-                    add(rightPane).grow().minWidth(0f).minHeight(0f).padTop(OverviewUi.pt(10f))
+                    val slotHeight = if (UiNavigation.isMobile) Value.Fixed.valueOf(OverviewUi.pt(64f))
+                        else Value.percentHeight(.36f, this)
+                    add(leftPane).growX().minWidth(0f).height(slotHeight).apply {
+                        if (!UiNavigation.isMobile) minHeight(OverviewUi.touch * 3f)
+                    }.row()
+                    add(rightPane).grow().minWidth(0f).minHeight(0f).padTop(OverviewUi.pt(if (UiNavigation.isMobile) 4f else 10f))
                 } else {
-                    add(leftPane).width(Value.percentWidth(.34f, this)).growY().minWidth(0f)
-                    add(rightPane).grow().minWidth(0f).minHeight(0f).padLeft(OverviewUi.pt(10f))
+                    add(leftPane).width(Value.percentWidth(if (UiNavigation.isMobile) .29f else .34f, this)).growY().minWidth(0f)
+                    add(rightPane).grow().minWidth(0f).minHeight(0f).padLeft(OverviewUi.pt(if (UiNavigation.isMobile) 6f else 10f))
                 }
                 stacked = shouldStack
             }
@@ -98,12 +131,22 @@ class ReligiousBeliefsPickerScreen (
         ?: Religion("None", gameInfo, choosingCiv, gameInfo.turns)
 
     init {
-        pickerPane.setNavigationContent(
+        if (!UiNavigation.isMobile) pickerPane.setNavigationContent(
             (if (pickIconAndName) "Choose a Religion" else "Enhance [${currentReligion.getReligionDisplayName()}]")
                 .toLabel(TextRole.PageTitle)
         )
-        leftChosenBeliefs.defaults().right().pad(OverviewUi.pt(4f)).fillX()
-        rightBeliefsToChoose.defaults().left().pad(OverviewUi.pt(4f)).fillX()
+        draft?.let { saved ->
+            religionName = saved.icon
+            displayName = saved.name
+            beliefsToChoose.forEachIndexed { index, entry -> entry.belief = ruleset.beliefs[saved.beliefs.getOrNull(index)] }
+            leftSelectedIndex = saved.slot
+        }
+        if (UiNavigation.isMobile && leftSelectedIndex !in beliefsToChoose.indices)
+            leftSelectedIndex = beliefsToChoose.indexOfFirst { it.belief == null }
+        leftChosenBeliefs.top().left()
+        rightBeliefsToChoose.top().left()
+        leftChosenBeliefs.defaults().left().pad(OverviewUi.pt(if (UiNavigation.isMobile) 2f else 4f)).fillX().minWidth(0f)
+        rightBeliefsToChoose.defaults().left().pad(OverviewUi.pt(if (UiNavigation.isMobile) 2f else 4f)).fillX().minWidth(0f)
 
         if (pickIconAndName) setupChoosableReligionIcons()
         else setupVisibleReligionIcons()
@@ -111,9 +154,10 @@ class ReligiousBeliefsPickerScreen (
         updateLeftTable()
 
         topReligionIcons.background = OverviewUi.rounded(OverviewUi.raised, 10f)
-        topTable.pad(OverviewUi.pt(12f))
-        topTable.add(topReligionIcons).growX().minHeight(topReligionIcons.prefHeight).row()
-        topTable.add(middlePanes).grow().minWidth(0f).minHeight(0f).padTop(OverviewUi.pt(10f))
+        topTable.pad(OverviewUi.pt(if (UiNavigation.isMobile) 6f else 12f))
+        if (pickIconAndName || !UiNavigation.isMobile)
+            topTable.add(topReligionIcons).growX().minWidth(0f).minHeight(topReligionIcons.prefHeight).row()
+        topTable.add(middlePanes).grow().minWidth(0f).minHeight(0f).padTop(OverviewUi.pt(if (UiNavigation.isMobile) 4f else 10f))
 
         setOKAction(
             if (pickIconAndName) "Choose a Religion"
@@ -123,7 +167,14 @@ class ReligiousBeliefsPickerScreen (
                 civInfo.religionManager.foundReligion(displayName!!, religionName!!)
             chooseBeliefs(beliefsToChoose.map { it.belief!! }, usingFreeBeliefs())
         }
+        if (UiNavigation.isMobile && leftSelectedIndex in beliefsToChoose.indices)
+            loadRightTable(beliefsToChoose[leftSelectedIndex].type, leftSelectedIndex)
+        if (pickIconAndName && displayName != null) rightSideButton.setText("Found [$displayName]".tr())
+        checkAndEnableRightSideButton()
     }
+
+    override fun recreate() = ReligiousBeliefsPickerScreen(choosingCiv, numberOfBeliefsCanChoose, pickIconAndName,
+        Draft(beliefsToChoose.map { it.belief?.name }, religionName, displayName, leftSelectedIndex))
 
     private fun checkAndEnableRightSideButton() {
         if (religionName == null || displayName == null) return
@@ -138,13 +189,16 @@ class ReligiousBeliefsPickerScreen (
 
         fun changeDisplayedReligionName(newReligionName: String) {
             displayName = newReligionName
-            rightSideButton.label = "Found [$newReligionName]".toLabel(TextRole.Body)
+            rightSideButton.setText("Found [$newReligionName]".tr())
             descriptionLabel.setText(newReligionName.tr())
         }
 
-        val changeReligionNameButton = Button(
-            ImageGetter.getImage("OtherIcons/Pencil").apply { this.color = ImageGetter.CHARCOAL }.surroundWithCircle(30f),
-            skin
+        val changeReligionNameButton = if (UiNavigation.isMobile)
+            OverviewUi.iconButton("OtherIcons/Pencil", "Choose a name for your religion") {}.apply {
+                name = "ui-religion-rename"
+            }
+        else Button(
+            ImageGetter.getImage("OtherIcons/Pencil").apply { this.color = ImageGetter.CHARCOAL }.surroundWithCircle(30f), skin
         )
 
         addIconsScroll { button, religionName ->
@@ -158,12 +212,11 @@ class ReligiousBeliefsPickerScreen (
         }
 
         val labelTable = Table()
-        if (UiNavigation.isAndroid) {
+        if (UiNavigation.isMobile) {
             descriptionLabel.wrap = true
-            labelTable.add(descriptionLabel).growX().minWidth(0f).pad(5f)
-            labelTable.add(changeReligionNameButton).minSize(UiNavigation.minimumTouchSize()).pad(5f).row()
-            topReligionIcons.add(labelTable)
-                .width((stage.width - OverviewUi.pt(24f) - 10f).coerceAtLeast(1f)).minWidth(0f).pad(5f).row()
+            labelTable.add(descriptionLabel).growX().minWidth(0f)
+            labelTable.add(changeReligionNameButton).minSize(OverviewUi.touch).padLeft(OverviewUi.pt(4f))
+            pickerPane.setNavigationContent(labelTable)
         } else {
             labelTable.add(descriptionLabel).pad(5f)
             labelTable.add(changeReligionNameButton).pad(5f).row()
@@ -175,7 +228,8 @@ class ReligiousBeliefsPickerScreen (
                 this,
                 label = "Choose a name for your religion",
                 icon = ImageGetter.getReligionPortrait(religionName!!, 80f),
-                defaultText = religionName!!,
+                defaultText = displayName ?: religionName!!,
+                fieldLabel = if (UiNavigation.isMobile) "" else "Choose a name for your religion",
                 validate = { religionName ->
                     religionName != Constants.noReligionName
                     && ruleset.religions.none { it == religionName }
@@ -185,7 +239,8 @@ class ReligiousBeliefsPickerScreen (
                 actionOnOk = { changeDisplayedReligionName(it) }
             ).open()
         }
-        changeReligionNameButton.disable()
+        if (religionName == null) changeReligionNameButton.disable()
+        else changeDisplayedReligionName(displayName ?: religionName!!)
     }
 
     private fun setupVisibleReligionIcons() {
@@ -193,6 +248,14 @@ class ReligiousBeliefsPickerScreen (
         religionName = currentReligion.name
         displayName = currentReligion.getReligionDisplayName()
         val descriptionLabel = displayName!!.toLabel(TextRole.Body)
+        if (UiNavigation.isMobile) {
+            pickerPane.setNavigationContent(Table().apply {
+                add(ImageGetter.getReligionPortrait(religionName!!, OverviewUi.pt(28f))).size(OverviewUi.pt(28f))
+                    .padRight(OverviewUi.pt(8f))
+                add(descriptionLabel.apply { wrap = true }).growX().minWidth(0f)
+            })
+            return
+        }
         addIconsScroll { button, _ ->
             button.disable()
         }
@@ -207,24 +270,37 @@ class ReligiousBeliefsPickerScreen (
         for (religionName in ruleset.religions) {
             if (religionName == this.religionName)
                 scrollTo = iconsTable.packIfNeeded().prefWidth
-            val button = Button(ImageGetter.getReligionPortrait(religionName, 60f), skin)
+            val button = Button(ImageGetter.getReligionPortrait(religionName,
+                if (UiNavigation.isMobile) OverviewUi.pt(28f) else 60f), skin)
             button.name = "ui-religion-icon:$religionName"
             buttonSetup(button, religionName)
-            if (religionName == this.religionName) button.disable(Color(greenDisableColor))
-            else if (gameInfo.religions.keys.any { it == religionName }) button.disable(
+            if (religionName == this.religionName) {
+                if (pickIconAndName) iconSelection.switch(button)
+                else button.disable(Color(greenDisableColor))
+            } else if (gameInfo.religions.keys.any { it == religionName }) button.disable(
                 redDisableColor
             )
-            iconsTable.add(button).pad(5f)
+            iconsTable.add(button).apply {
+                if (UiNavigation.isMobile) minSize(OverviewUi.touch)
+            }.pad(OverviewUi.pt(if (UiNavigation.isMobile) 2f else 5f))
         }
         iconsTable.row()
 
-        AutoScrollPane(iconsTable, skin).apply {
+        object : AutoScrollPane(iconsTable, skin) {
+            private var positioned = false
+            override fun layout() {
+                super.layout()
+                if (!positioned && width > 0f) {
+                    scrollX = scrollTo - (width - OverviewUi.touch) / 2
+                    updateVisualScroll()
+                    positioned = true
+                }
+            }
+        }.apply {
             setScrollingDisabled(false, true)
             setupFadeScrollBars(0f, 0f)  // only way to "remove" scrollbar
             setScrollbarsOnTop(true) // don't waste space on scrollbar
-            topReligionIcons.add(this).padBottom(10f).row()
-            layout()
-            scrollX = scrollTo - (width - 70f) / 2  // 70 = button width incl pad
+            topReligionIcons.add(this).growX().minWidth(0f).padBottom(if (UiNavigation.isMobile) 0f else 10f).row()
         }
     }
 
@@ -233,9 +309,10 @@ class ReligiousBeliefsPickerScreen (
         leftSelection.clear()
 
         for (belief in currentReligion.getAllBeliefsOrdered()) {
-            val beliefButton = getBeliefButton(belief)
-            leftChosenBeliefs.add(beliefButton).row()
-            beliefButton.disable(ExpeditionBlueTheme.color(Color.GREEN, ExpeditionBlueTheme.raised))
+            val beliefButton = getBeliefButton(belief, compact = UiNavigation.isMobile)
+            addChosenButton(beliefButton)
+            if (UiNavigation.isMobile) beliefButton.onClick { openCivilopedia(belief.makeLink()) }
+            else beliefButton.disable(ExpeditionBlueTheme.color(Color.GREEN, ExpeditionBlueTheme.raised))
         }
 
         for ((index, entry) in beliefsToChoose.withIndex()) {
@@ -246,23 +323,22 @@ class ReligiousBeliefsPickerScreen (
     }
 
     private fun loadRightTable(beliefType: BeliefType, leftButtonIndex: Int) {
-        var selectedButtonY = 0f
-        var selectedButtonHeight = 0f
+        beliefToReveal = null
         rightBeliefsToChoose.clear()
         rightSelection.clear()
-        rightPaneTitle.setText("Choose a [$beliefType] belief!".tr())
+        rightPaneTitle.setText((if (UiNavigation.isMobile) beliefType.name else "Choose a [$beliefType] belief!").tr())
+        setBeliefReference(beliefsToChoose[leftButtonIndex].belief)
         val availableBeliefs = ruleset.beliefs.values
             .filter { it.type == beliefType || beliefType == BeliefType.Any }
 
         val civReligionManager = currentReligion.foundingCiv.religionManager
 
         for (belief in availableBeliefs) {
-            val beliefButton = getBeliefButton(belief)
+            val beliefButton = getBeliefButton(belief, withTypeLabel = !UiNavigation.isMobile)
             beliefButton.name = "ui-belief:${belief.name}"
             when {
                 beliefsToChoose[leftButtonIndex].belief == belief -> {
-                    selectedButtonY = rightBeliefsToChoose.packIfNeeded().prefHeight
-                    selectedButtonHeight = beliefButton.packIfNeeded().prefHeight + 20f
+                    beliefToReveal = beliefButton
                     rightSelection.switch(beliefButton)
                 }
                 beliefsToChoose.any { it.belief == belief } ||
@@ -290,16 +366,17 @@ class ReligiousBeliefsPickerScreen (
                         checkAndEnableRightSideButton()
                     }
             }
-            rightBeliefsToChoose.add(beliefButton).row()
+            rightBeliefsToChoose.add(beliefButton).minWidth(0f).growX().minHeight(OverviewUi.touch).row()
         }
         equalizeAllButtons(rightBeliefsToChoose)
 
-        if (rightSelection.isEmpty()) return
-        rightScrollPane.layout()
-        rightScrollPane.scrollY = selectedButtonY - (rightScrollPane.height - selectedButtonHeight) / 2
+        rightScrollPane.scrollY = 0f
+        rightScrollPane.updateVisualScroll()
+        rightScrollPane.invalidateHierarchy()
     }
 
     private fun equalizeAllButtons(table: Table) {
+        if (UiNavigation.isMobile) return
         val minWidth = table.cells.maxOfOrNull { it.prefWidth }
             ?: return
 
@@ -309,17 +386,24 @@ class ReligiousBeliefsPickerScreen (
         }
     }
 
+    private fun addChosenButton(button: Button) {
+        leftChosenBeliefs.add(button).minWidth(0f).minHeight(OverviewUi.touch).apply {
+            if (horizontalSlots) width(OverviewUi.pt(164f)).growY()
+            else growX()
+        }
+        if (!horizontalSlots) leftChosenBeliefs.row()
+    }
+
     private fun addChoosableBeliefButton(belief: Belief?, beliefType: BeliefType, index: Int) {
-        val newBeliefButton = getBeliefButton(belief, beliefType)
+        val newBeliefButton = getBeliefButton(belief, beliefType, compact = UiNavigation.isMobile)
         newBeliefButton.name = "ui-belief-slot:$index"
 
+        addChosenButton(newBeliefButton)
         if (index == leftSelectedIndex) {
             leftSelection.switch(newBeliefButton)
-            leftScrollPane.scrollY = leftChosenBeliefs.packIfNeeded().prefHeight -
-                    (leftScrollPane.height - (newBeliefButton.prefHeight + 20f)) / 2
-            leftScrollPane.updateVisualScroll()
+            slotToReveal = newBeliefButton
+            leftScrollPane.invalidate()
         }
-        leftChosenBeliefs.add(newBeliefButton).row()
 
         newBeliefButton.onClickSelect(leftSelection, belief) {
             leftSelectedIndex = index
