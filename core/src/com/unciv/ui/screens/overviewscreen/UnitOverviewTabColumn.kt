@@ -3,6 +3,7 @@ package com.unciv.ui.screens.overviewscreen
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
 import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.view.isCivilian
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.utils.Align
@@ -103,7 +104,7 @@ enum class UnitOverviewTabColumn(
         }
         @Readonly
         private fun getClosestCityTile(item: MapUnitView): TileView? = item.getTile()
-            .getVisibleTilesInDistance(3).firstOrNull { it.isCityCenter() }
+            .getExploredTilesInDistance(3).firstOrNull { it.isCityCenter() }
     },
 
     Promotions(isNumeric = true) {

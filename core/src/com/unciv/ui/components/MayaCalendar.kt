@@ -2,6 +2,7 @@ package com.unciv.ui.components
 
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
+import com.unciv.view.GameView
 import com.badlogic.gdx.graphics.Color
 import com.unciv.Constants
 import com.unciv.UncivGame
@@ -92,7 +93,7 @@ object MayaCalendar {
         if (!isNewCycle(year, game.getYear(-1))) return
         civInfo.greatPeople.triggerMayanGreatPerson()
         if (civInfo.isAI() || UncivGame.Current.worldScreen?.autoPlay?.isAutoPlayingAndFullAutoPlayAI() == true)
-            NextTurnAutomation.chooseGreatPerson(civInfo)
+            NextTurnAutomation.chooseGreatPerson(GameView(civInfo.gameInfo, civInfo).civView)
     }
 
     // User interface to explain changed year display

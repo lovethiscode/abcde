@@ -2,6 +2,7 @@ package com.unciv.view
 
 import com.unciv.logic.civilization.Civilization
 import com.unciv.models.ImmutableColor
+import com.unciv.ui.screens.victoryscreen.RankingType
 import com.unciv.models.ruleset.nation.Nation
 import com.unciv.models.ruleset.tech.Era
 import com.unciv.models.ruleset.tile.ResourceSupplyList
@@ -33,10 +34,14 @@ open class ForeignCivView(protected open val civ: Civilization, viewer: Civiliza
     @Readonly fun getDiplomacyManagerWith(other: ForeignCivView): DiplomacyManagerView? =
         civ.getDiplomacyManager(other.civ)?.let { gameView.getDiplomacyManagerView(it) }
     @Readonly fun isBarbarian(): Boolean = civ.isBarbarian
+    @Readonly fun isMajorCiv(): Boolean = civ.isMajorCiv()
     @Readonly fun isDefeated(): Boolean = civ.isDefeated()
     @Readonly open fun cities(): List<ForeignCityView> =
         civ.cities.filter { it.getCenterTile().isExplored(viewer) }.map { gameView.getForeignCityView(it) }
     @Readonly fun getNation(): Nation = civ.nation
+    @Readonly fun knows(other: ForeignCivView): Boolean = civ.knows(other.civ)
+    @Readonly fun getCivsAtWarWith(): List<ForeignCivView> = civ.getCivsAtWarWith().map { gameView.getForeignCivView(it) }
+    @Readonly fun getStatForRanking(category: RankingType): Int = civ.getStatForRanking(category)
 
     @Readonly fun getGoldPerTurn(): Int = civ.stats.statsForNextTurn.gold.toInt()
     @Readonly fun getPerTurnResourcesWithOriginsForTrade(): ResourceSupplyList = civ.getPerTurnResourcesWithOriginsForTrade()

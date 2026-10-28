@@ -2,6 +2,9 @@ package com.unciv.ui.screens.cityscreen
 
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
+import com.unciv.view.currentConstructionName
+import com.unciv.view.isGrowing
+import com.unciv.view.isStarving
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.ui.Cell

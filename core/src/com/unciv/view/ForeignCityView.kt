@@ -21,7 +21,6 @@ open class ForeignCityView(protected open val city: City,
 
     val id: String get() = city.id
     val name: String get() = city.name
-    val location: HexCoord get() = city.location
 
     /** The owning civ's [CivView], as visible from [viewer]'s perspective. For the viewing player's full CivView, use [CityView.viewingCiv]. */
     val owningCivView: CivView get() = gameView.getCivView(city.civ)
@@ -52,7 +51,12 @@ open class ForeignCityView(protected open val city: City,
         val tile = city.getCenterTile()
         return gameView.tileMapView.getTile(tile)
     }
+    @Readonly fun getTiles(): Sequence<TileView> = city.getTiles().map { gameView.tileMapView.getTile(it) }
     @Readonly fun canBombard(): Boolean = city.canBombard()
+    @Readonly fun getBombardRange(): Int = city.getBombardRange()
+    /** Cities (of any civ) within [maxDistance] of this city */
+    @Readonly fun getNeighboringCities(maxDistance: Int = 12): List<ForeignCityView> =
+        city.getNeighboringCities(maxDistance).map { gameView.getForeignCityView(it) }
     @Readonly fun getPopulationCount(): Int = city.population.population
     @Readonly fun isCapital(): Boolean = city.isCapital()
     @Readonly fun isPuppet(): Boolean = city.isPuppet
@@ -61,15 +65,10 @@ open class ForeignCityView(protected open val city: City,
     @Readonly fun isWeLoveTheKingDayActive(): Boolean = city.isWeLoveTheKingDayActive()
     @Readonly fun isBlockaded(): Boolean = city.isBlockaded()
     @Readonly fun isConnectedToCapital(): Boolean = city.isConnectedToCapital()
-    @Readonly fun isSameCivAs(other: ForeignCityView): Boolean = city.civ === other.city.civ
     @Readonly fun getProductionMarkup(): FormattedLine = city.cityConstructions.getProductionMarkup(city.getRuleset())
 
-    @Readonly fun isCityState(): Boolean = city.civ.isCityState
-    @Readonly fun isMajorCiv(): Boolean = city.civ.isMajorCiv()
-    @Readonly fun getNationName(): String = city.civ.nation.name
     @Readonly fun getCityStateTypeName(): String = city.civ.cityStateType.name
     @Readonly fun isAtWarWith(civ: Civilization): Boolean = city.civ.isAtWarWith(civ)
-    @Readonly fun getNationOuterColor(): ImmutableColor = city.civ.nation.getOuterColor()
     @Readonly fun civKnows(civ: Civilization): Boolean = city.civ.knows(civ)
     @Readonly fun isKnownTo(civ: Civilization): Boolean = civ.knows(city.civ)
     @Readonly fun getDiplomacyManagerWith(civ: Civilization): DiplomacyManager? = city.civ.getDiplomacyManager(civ)
@@ -77,7 +76,6 @@ open class ForeignCityView(protected open val city: City,
     @Readonly fun isReligionEnabled(): Boolean = city.civ.gameInfo.isReligionEnabled()
     @Readonly fun spyIsSetUpAtCity(viewer: Civilization): Boolean =
         viewer.espionageManager.getSpyAssignedToCity(city)?.isSetUp() == true
-    @Readonly fun getCivInnerColor(): ImmutableColor = city.civ.nation.getInnerColor()
 
     // Religion
     @Readonly fun getMajorityReligion(): Religion? = city.religion.getMajorityReligion()
@@ -90,3 +88,9 @@ open class ForeignCityView(protected open val city: City,
     /** Wraps [city] as a [CityCombatantView] for battle purposes. */
     @Readonly fun asCombatant(): CityCombatantView = CityCombatantView(this, city, viewer, spectatorMode, gameView)
 }
+
+// Helpers built on top of the view API, rather than being part of it
+val ForeignCityView.location: HexCoord get() = getCenterTile().position()
+@Readonly fun ForeignCityView.isCityState(): Boolean = owningCiv().isCityState
+@Readonly fun ForeignCityView.getNationOuterColor(): ImmutableColor = owningCiv().getOuterColor()
+@Readonly fun ForeignCityView.getCivInnerColor(): ImmutableColor = owningCiv().getInnerColor()

@@ -1,5 +1,12 @@
 package com.unciv.ui.screens.worldscreen.worldmap
 
+import com.unciv.view.hasMovement
+import com.unciv.view.isAirUnit
+import com.unciv.view.isCivilian
+import com.unciv.view.isExploring
+import com.unciv.view.isMoving
+import com.unciv.view.isPreparingAirSweep
+import com.unciv.view.isPreparingParadrop
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
@@ -209,7 +216,7 @@ class WorldMapHolder(
         if (newSelectedUnit == null || newSelectedUnit.isCivilian()) {
             val unitsInTile = tileView.getVisibleUnits()
             if (previousSelectedCity != null && previousSelectedCity.canBombard()
-                    && tileView.getVisibleTilesInDistance(2).contains(previousSelectedCity.getCenterTile())
+                    && tileView.getExploredTilesInDistance(2).contains(previousSelectedCity.getCenterTile())
                     && unitsInTile.any()
                     && unitsInTile.first().civ().isAtWarWith(worldScreen.selectedGameView.civView)) {
                 // try to select the closest city to bombard this guy

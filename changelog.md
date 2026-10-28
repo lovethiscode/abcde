@@ -1,3 +1,44 @@
+## 4.22.14
+
+Fixed black flash when changing screens
+
+Fix map mirroring discrepancies
+
+Fixed "enter city button on click" problems
+
+Font icons no longer disappear on onPause
+
+Fix diplomacy access from cities with established spies - By Kilo-cy 
+
+More flexible diplomatic modifier math - By unciv-loof
+
+By ibrahim-iqbal:
+- Fix ConditionalBuildingBuiltAll ignoring its city filter 
+- Fix untranslatable Privateer plunder notification 
+
+Validate assembled uniques in the unique builder - By mvanhorn
+
+By SomeTroglodyte:
+- Allow keyboard-building improvements even if it needs a removal first
+- Add the forgotten console parameter type "tileFilter"
+- Fix Citadel notifications: Translatability, HP
+- Fix ruleset technology merge with unit tests
+
+## 4.22.13
+
+Correct civ for hotseat "player ready" screen
+
+Fixed cancelling "leave mapeditor" popup, allowing to to leave later without warning popup
+
+By SomeTroglodyte:
+- Tile info on city screen looks and behaves like the world screen one 
+- Allow `[]` / `<>` nesting to support typical UniqueType.Comment usecase 
+- Author exclusion file read correct on Android 
+
+Resigning clears turn time data - By unciv-loof
+
+Fix startup NPE in FasterUIDevelopment - By Kilo-cy
+
 ## 4.22.12
 
 Fix city status layout when city resources are shown - by kilo-cy (New contributor!)

@@ -1,7 +1,7 @@
 package com.unciv.logic.automation.civilization
 
 import com.unciv.logic.automation.AutomationPreview
-
+import com.unciv.view.GameView
 import com.unciv.logic.automation.unit.UnitAutomation
 import com.unciv.logic.city.City
 import com.unciv.logic.civilization.Civilization
@@ -21,7 +21,7 @@ object UseGoldAutomation {
     /** allow AI to spend money to purchase city-state friendship, buildings & unit */
     fun useGold(civ: Civilization) {
         for (unit in civ.units.getCivUnits())
-            AutomationPreview.withUnit(unit, reportIdle = false) { UnitAutomation.tryUpgradeUnit(unit) }
+            AutomationPreview.withUnit(unit, reportIdle = false) { UnitAutomation.tryUpgradeUnit(GameView(unit.civ.gameInfo, unit.civ).getMapUnitView(unit)) }
 
         if (civ.isMajorCiv())
             useGoldForCityStates(civ)
@@ -47,7 +47,7 @@ object UseGoldAutomation {
     private fun useGoldForCityStates(civ: Civilization) {
         // RARE EDGE CASE: If you ally with a city-state, you may reveal more map that includes ANOTHER civ!
         // So if we don't lock this list, we may later discover that there are more known civs, concurrent modification exception!
-        val knownCityStates = civ.getKnownCivs().filter { it.isCityState && MotivationToAttackAutomation.hasAtLeastMotivationToAttack(civ, it, 0f) <= 0 }.toList()
+        val knownCityStates = civ.getKnownCivs().filter { it.isCityState && MotivationToAttackAutomation.hasAtLeastMotivationToAttack(civ, GameView(civ.gameInfo, civ).getForeignCivView(it), 0f) <= 0 }.toList()
 
         // canBeMarriedBy checks actual cost, but it can't be below 500*speedmodifier, and the later check is expensive
         if (civ.gold >= 330 && civ.getHappiness() > 0 && civ.hasUnique(UniqueType.CityStateCanBeBoughtForGold)) {
@@ -61,7 +61,7 @@ object UseGoldAutomation {
         if (civ.gold < 500 || knownCityStates.none()) return // skip checks if tryGainInfluence will bail anyway
         val cityState = knownCityStates
             .filter { it.allyCiv != civ }
-            .associateWith { NextTurnAutomation.valueCityStateAlliance(civ, it, true) }
+            .associateWith { NextTurnAutomation.valueCityStateAlliance(GameView(civ.gameInfo, civ).civView, it, true) }
             .maxByOrNull { it.value }?.takeIf { it.value > 0 }?.key
         if (cityState != null) {
             tryGainInfluence(civ, cityState)
@@ -170,7 +170,7 @@ object UseGoldAutomation {
     private fun tryGainInfluence(civInfo: Civilization, cityState: Civilization) {
         if (civInfo.gold < 500) return // Save up, giving 500 gold in one go typically grants +5 influence compared to giving 2×250 gold
         val influence = cityState.getDiplomacyManager(civInfo)!!.getInfluence()
-        val stopSpending =  influence > 60 + 2 * NextTurnAutomation.valueCityStateAlliance(civInfo, cityState, true)
+        val stopSpending =  influence > 60 + 2 * NextTurnAutomation.valueCityStateAlliance(GameView(civInfo.gameInfo, civInfo).civView, cityState, true)
         // Don't go into a gold gift race: be content with friendship for cheap, or use the gold on more productive uses,
         // for example upgrading an army to conquer the player who's contesting our city states
         if (influence < 10 || stopSpending) return

@@ -1,5 +1,8 @@
 package com.unciv.ui.screens.worldscreen.worldmap
 
+import com.unciv.view.hasMovement
+import com.unciv.view.isPreparingParadrop
+import com.unciv.view.GameView
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Group
@@ -143,7 +146,7 @@ class ConnectRoadOverlayButtonData(val unitView: MapUnitView, val tileView: Tile
         selectedUnit.automatedRoadConnectionPath = null
         selectedUnit.action = Constants.connectRoadAction
         selectedUnit.automated = true
-        UnitAutomation.automateUnitMoves(selectedUnit)
+        UnitAutomation.automateUnitMoves(GameView(selectedUnit.civ.gameInfo, selectedUnit.civ).getMapUnitView(selectedUnit))
 
         SoundPlayer.play(UncivSound("wagon"))
 

@@ -1,5 +1,6 @@
 package com.unciv.ui.screens.worldscreen
 
+import com.unciv.view.isMilitary
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.math.Rectangle

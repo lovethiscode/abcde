@@ -21,7 +21,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable
 import com.badlogic.gdx.scenes.scene2d.utils.TransformDrawable
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.center
-import com.unciv.ui.images.IconCircleGroup
+import com.unciv.ui.components.widgets.IconCircleGroup
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.components.extensions.setFontColor
@@ -88,7 +88,7 @@ internal object OptionsPopupStyle {
             return
         }
         when (actor) {
-            is UncivSlider -> actor.children.filterIsInstance<IconCircleGroup>().forEach { stepButton ->
+            is UncivSlider -> actor.children.filterIsInstance<IconCircleGroup<*>>().forEach { stepButton ->
                 // The clickable group owns the full target; the circle stays quiet inside it.
                 val target = points(44f)
                 stepButton.setSize(target, target)

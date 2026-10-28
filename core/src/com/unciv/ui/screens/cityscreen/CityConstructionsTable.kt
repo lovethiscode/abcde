@@ -4,6 +4,7 @@ import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.view.isBeingConstructedOrEnqueued
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Group

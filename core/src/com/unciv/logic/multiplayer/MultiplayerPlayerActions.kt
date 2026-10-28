@@ -86,6 +86,8 @@ suspend fun Multiplayer.performPlayerAction(
                 MultiplayerPlayerAction.Resign, MultiplayerPlayerAction.ForceResign -> {
                     target.playerType = PlayerType.AI
                     target.playerId = ""
+                    target.turnsPlayedAsHuman = 0
+                    target.totalTurnTimeSeconds = 0
                     pending.nextTurn()
                     if (action == MultiplayerPlayerAction.Resign)
                         "[$targetName] resigned and is now controlled by AI"

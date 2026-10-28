@@ -117,7 +117,7 @@ extra["mainClassName"] = if (iosUiTestBuild)
 else
     providers.gradleProperty("iosMainClass").getOrElse("com.unciv.app.IOSLauncher")
 
-val expectedIosVersion = "4.22.12"
+val expectedIosVersion = "4.22.14"
 val expectedIosBundleId = "com.aishuati.unciv"
 val expectedIosAppName = "Hexes & Horizons"
 val expectedIosMinimumVersion = "15.0"

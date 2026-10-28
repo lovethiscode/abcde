@@ -6,6 +6,7 @@ import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.actions.Actions
 import com.unciv.GUI
 import com.unciv.models.metadata.GameSettings
 import com.unciv.models.metadata.GameSettings.ScreenSize
@@ -87,6 +88,11 @@ internal class DisplayTab(
                 Gdx.graphics.isContinuousRendering = it ||
                     (com.unciv.ui.components.widgets.UiNavigation.isMobile && game.screen is OptionsScreen)
             }
+            val rendererString = Gdx.graphics.glVersion.rendererString
+            fun fpsText() = "FPS: ${Gdx.graphics.framesPerSecond}\nRenderer: $rendererString"
+            val fpsLabel = fpsText().toLabel(TextRole.Supporting).apply { wrap = true }
+            fpsLabel.actions.add(Actions.forever(Actions.run { fpsLabel.setText(fpsText()) }))
+            add(fpsLabel).width(optionsPopup.tabs.prefWidth - 60f).colspan(2).padTop(10f).row()
 
             val continuousRenderingDescription = "When disabled, saves battery life but certain animations will be suspended"
             val continuousRenderingLabel = WrappableLabel(

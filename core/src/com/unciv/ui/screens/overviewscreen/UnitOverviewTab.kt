@@ -15,6 +15,7 @@ import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.pickerscreens.UnitRenamePopup
 import com.unciv.view.CivView
 import com.unciv.view.MapUnitView
+import com.unciv.view.isCivilian
 
 /** Inspect a unit in place; only the explicit location action leaves the overview. */
 class UnitOverviewTab(
@@ -135,7 +136,7 @@ class UnitOverviewTab(
         detail.add(title).colspan(2).growX().minHeight(pt(28f)).padBottom(pt(12f)).row()
         detail.detailRow("Action", UnitOverviewTabColumn.Action.getEntryString(unit) ?: "—")
         detail.detailRow("Movement", unit.getMovementString())
-        val city = unit.getTile().getVisibleTilesInDistance(3).firstOrNull { it.isCityCenter() }?.owningCity()
+        val city = unit.getTile().getExploredTilesInDistance(3).firstOrNull { it.isCityCenter() }?.owningCity()
         if (city?.tryGetCityView() == null) detail.detailRow("Closest city", city?.name ?: "—") else {
             val cityButton = OverviewUi.button(flat = true) {
                 overviewScreen.game.resetToWorldScreen().mapHolder.setCenterPosition(city.getCenterTile().position(), selectUnit = false)

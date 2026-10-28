@@ -2,6 +2,7 @@ package com.unciv.ui.screens.cityscreen
 
 import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.fonts.UiTypography
+import com.unciv.view.getCurrentConstruction
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.unciv.Constants
@@ -140,7 +141,7 @@ class BuyButtonFactory(val cityScreen: CityScreen) {
             val cityView = cityScreen.cityView
             val balance = cityView.getStatReserve(stat)
             val majorityReligion = cityView.getMajorityReligion()
-            val yourReligion = cityView.viewingCiv().getYourReligion()
+            val yourReligion = cityView.viewingCiv().getReligion()
             val isBuyingWithFaithForForeignReligion = construction.hasUnique(UniqueType.ReligiousUnit)
                 && !construction.hasUnique(UniqueType.TakeReligionOverBirthCity)
                 && majorityReligion != yourReligion

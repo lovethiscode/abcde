@@ -1,5 +1,6 @@
 package com.unciv.logic.endless
 
+import com.unciv.view.GameView
 import com.unciv.logic.automation.unit.UnitAutomation
 import com.unciv.logic.battle.Battle
 import com.unciv.logic.battle.MapUnitCombatant
@@ -29,7 +30,7 @@ object EndlessInvaderAI {
                 return true
             }
             if (attack()) continue
-            if (unit.name in setOf("Horseman", "Knight") && UnitAutomation.tryPillageImprovement(unit)) continue
+            if (unit.name in setOf("Horseman", "Knight") && UnitAutomation.tryPillageImprovement(GameView(game, civ).getMapUnitView(unit))) continue
             // Recompute every turn, including when congestion has changed. Search at most 18 goals.
             val destination = core.getTilesInDistance(2).filter { it != core && unit.movement.canMoveTo(it) }
                 .sortedWith(compareBy({ it.aerialDistanceTo(unit.currentTile) }, { it.aerialDistanceTo(core) }, { it.position.x }, { it.position.y }))
@@ -98,7 +99,7 @@ object EndlessInvaderAI {
                 return true
             }
             if (attack()) continue
-            if (unit.name in setOf("Horseman","Knight") && unit.currentTile.aerialDistanceTo(goal) <= 2 && UnitAutomation.tryPillageImprovement(unit)) continue
+            if (unit.name in setOf("Horseman","Knight") && unit.currentTile.aerialDistanceTo(goal) <= 2 && UnitAutomation.tryPillageImprovement(GameView(game, civ).getMapUnitView(unit))) continue
             val destination = goal.getTilesInDistance(2).filter { it != goal && it != unit.currentTile && unit.movement.canMoveTo(it) }
                 .sortedWith(compareBy({it.aerialDistanceTo(unit.currentTile)},{it.aerialDistanceTo(goal)},{it.position.x},{it.position.y}))
                 .firstOrNull { unit.movement.canReach(it) }

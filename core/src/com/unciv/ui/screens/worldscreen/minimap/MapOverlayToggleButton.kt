@@ -5,7 +5,7 @@ import com.unciv.GUI
 import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.ui.components.extensions.setSize
 import com.unciv.ui.components.input.onClick
-import com.unciv.ui.images.IconCircleGroup
+import com.unciv.ui.components.widgets.IconCircleGroup
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.worldscreen.WorldScreen
 
@@ -22,7 +22,7 @@ class MapOverlayToggleButton(
     iconSize: Float = 30f,
     private val getter: () -> Boolean,
     private val setter: (Boolean) -> Unit
-) : IconCircleGroup(
+) : IconCircleGroup<Image>(
     size = iconSize + 2f,
     actor = ImageGetter.getImage(iconPath).apply {
         setSize(iconSize)

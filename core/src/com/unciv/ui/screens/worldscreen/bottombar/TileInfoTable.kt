@@ -23,6 +23,7 @@ import com.unciv.ui.components.widgets.UiNavigation
 import com.unciv.utils.DebugUtils
 import com.unciv.view.CivView
 import com.unciv.view.TileView
+import kotlin.math.roundToInt
 
 class TileInfoTable(private val worldScreen: WorldScreen) : Table(BaseScreen.skin) {
     var civView: CivView = worldScreen.selectedGameView.civView
@@ -134,7 +135,7 @@ class TileInfoTable(private val worldScreen: WorldScreen) : Table(BaseScreen.ski
         table.defaults().pad(if (compactWidth != null) BattlefieldHud.points(2f) else 2f)
         var usedWidth = 0f
         for ((key, value) in tileView.getTileStats(civView)) {
-            val label = (key.character + value.toInt().toString()).toLabel(
+            val label = (key.character + value.roundToInt().toString()).toLabel(
                 fontSize = if (compactWidth != null) BattlefieldHud.font(TextRole.Supporting) else 18)
             val itemWidth = label.prefWidth + spacing + BattlefieldHud.points(4f)
             if (compactWidth != null && usedWidth > 0f && usedWidth + itemWidth > compactWidth) {

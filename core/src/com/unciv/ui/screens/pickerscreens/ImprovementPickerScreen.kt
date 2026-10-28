@@ -59,7 +59,7 @@ class ImprovementPickerScreen(
     private fun getRequiredTechColumn(improvement: TileImprovement) =
         ruleset.technologies[improvement.techRequired]?.column?.columnNumber ?: -1
 
-    fun accept(improvement: TileImprovement?, secondImprovement: TileImprovement? = null) {
+    private fun accept(improvement: TileImprovement?, secondImprovement: TileImprovement? = null) {
         if (improvement == null || tileMarkedForCreatesOneImprovement) return
         if (improvement.name == Constants.cancelImprovementOrder) {
             unit.tryStopWorkingOnImprovement()
@@ -177,7 +177,7 @@ class ImprovementPickerScreen(
         val statIcons = getStatIconsTable(provideResource, removeImprovement)
 
         // get benefits of the new improvement
-        val stats = tile.getStatDiffForImprovement(improvement, currentPlayerCiv)
+        val stats = tile.getStatDiffForAlternative(setImprovement = improvement)
 
         // Add per-turn maintenance costs as negative stats.
         stats.add(tile.getImprovementMaintenance(improvement, currentPlayerCiv))
@@ -189,7 +189,7 @@ class ImprovementPickerScreen(
             && !improvement.isRoad()
             && stats.max() > 0f
             && !improvement.name.startsWith(Constants.remove)
-            && !tile.getVisibleTilesInDistance(ruleset.modOptions.constants.cityWorkRange)
+            && !tile.getExploredTilesInDistance(ruleset.modOptions.constants.cityWorkRange)
                 .any { it.isCityCenter() && it.getCity()?.isOwnedByViewer() == true }
         )
             labelText += "\n" + "Not in city work range".tr()
@@ -237,6 +237,7 @@ class ImprovementPickerScreen(
                 // Shortcut keys trigger what onDoubleClick does, not equivalent to single Click:
                 improvementButton.keyShortcuts.add(shortcutKey) { accept(improvement) }
                 improvementButton.addTooltip(shortcutKey)
+                shortcutKey = null // So the explanation actor doesn't bind it again
             }
         }
 
@@ -245,7 +246,7 @@ class ImprovementPickerScreen(
             pad(OverviewUi.pt(if (UiNavigation.isMobile) 2f else 6f))
             add(improvementButton).growX().minWidth(0f).minHeight(OverviewUi.touch)
             add(statIcons).right().padLeft(OverviewUi.pt(8f))
-            getExplanationActor(improvement, problemReport)?.let { explanation ->
+            getExplanationActor(improvement, problemReport, shortcutKey)?.let { explanation ->
                 row()
                 add(explanation).colspan(2).growX().right().padTop(OverviewUi.pt(if (UiNavigation.isMobile) 2f else 6f))
             }
@@ -356,9 +357,14 @@ class ImprovementPickerScreen(
         return report
     }
 
-    private fun getExplanationActor(improvement: TileImprovement, report: ProblemReport): Actor? {
-        fun getPickNowButton(action: ()->Unit) = "Pick now!".toTextButton(SmallButtonStyle()).onClick(action)
-            // Formerly: "Pick now!".toLabel().onClick(action), with later fillY() to make it easier to hit (#3989)
+    private fun getExplanationActor(improvement: TileImprovement, report: ProblemReport, shortcutKey: Char?): Actor? {
+        fun getPickNowButton(action: ()->Unit) = "Pick now!".toTextButton(SmallButtonStyle()).apply {
+            onActivation(action)
+            if (shortcutKey != null) {
+                keyShortcuts.add(shortcutKey)
+                addTooltip(shortcutKey)
+            }
+        }
 
         if (report.isEmpty()) return when {
             tile.improvementInProgress == improvement.name -> "Current construction".toLabel(TextRole.Body)

@@ -1,8 +1,10 @@
 package com.unciv.ui.screens.worldscreen.status
 
+import com.unciv.view.GameView
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.unciv.logic.automation.civilization.AutomationCache
 import com.unciv.logic.automation.civilization.NextTurnAutomation
 import com.unciv.logic.automation.unit.UnitAutomation
 import com.unciv.logic.civilization.managers.TurnManager
@@ -69,10 +71,11 @@ class AutoPlayMenu(
         val civInfo = worldScreen.selectedGameView.civView.getCiv()
         val autoPlayMilitaryFunction = {
             val isAtWar = civInfo.isAtWar()
-            val sortedUnits = civInfo.units.getCivUnits().filter { it.isMilitary() }.sortedBy { unit -> NextTurnAutomation.getUnitPriority(unit, isAtWar) }
-            for (unit in sortedUnits) UnitAutomation.automateUnitMoves(unit)
+            val cache = AutomationCache()
+            val sortedUnits = civInfo.units.getCivUnits().filter { it.isMilitary() }.sortedBy { unit -> NextTurnAutomation.getUnitPriority(worldScreen.selectedGameView.getMapUnitView(unit), isAtWar, cache) }
+            for (unit in sortedUnits) UnitAutomation.automateUnitMoves(worldScreen.selectedGameView.getMapUnitView(unit), cache)
 
-            for (city in civInfo.cities) UnitAutomation.tryBombardEnemy(city)
+            for (city in worldScreen.selectedGameView.civView.cities()) UnitAutomation.tryBombardEnemy(city)
             worldScreen.shouldUpdate = true
         }
         if (civInfo.units.getCivUnitsSize() > 30) {
@@ -89,9 +92,10 @@ class AutoPlayMenu(
         val civInfo = worldScreen.selectedGameView.civView.getCiv()
         val autoPlayCivilainFunction = {
             val isAtWar = civInfo.isAtWar()
+            val cache = AutomationCache()
             val sortedUnits = civInfo.units.getCivUnits().filter { it.isCivilian() }
-                .sortedBy { unit -> NextTurnAutomation.getUnitPriority(unit, isAtWar) }
-            for (unit in sortedUnits) UnitAutomation.automateUnitMoves(unit)
+                .sortedBy { unit -> NextTurnAutomation.getUnitPriority(worldScreen.selectedGameView.getMapUnitView(unit), isAtWar, cache) }
+            for (unit in sortedUnits) UnitAutomation.automateUnitMoves(worldScreen.selectedGameView.getMapUnitView(unit), cache)
             worldScreen.shouldUpdate = true
         }
         if (civInfo.units.getCivUnitsSize() > 50) {
@@ -106,7 +110,7 @@ class AutoPlayMenu(
     private fun autoPlayEconomy() {
         if (!worldScreen.gameInfo.allowsPlayerAutoPlay()) return
         val civInfo = worldScreen.selectedGameView.civView.getCiv()
-        NextTurnAutomation.automateCities(civInfo)
+        NextTurnAutomation.automateCities(worldScreen.selectedGameView.civView)
         worldScreen.shouldUpdate = true
         worldScreen.render(0f)
     }

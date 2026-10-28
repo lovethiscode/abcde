@@ -39,12 +39,13 @@ import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.fonts.UiTypography
 import com.unciv.ui.components.input.ActorAttachments
-import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.input.VirtualMouseButtonKeys
-import com.unciv.ui.components.input.keyShortcuts
-import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onChange
-import com.unciv.ui.images.IconCircleGroup
+import com.unciv.ui.components.input.onActivation
+import com.unciv.ui.components.input.KeyCharAndCode
+import com.unciv.ui.components.input.keyShortcuts
+import com.unciv.ui.components.widgets.IconCircleButton
+import com.unciv.ui.components.widgets.IconCircleGroup
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.images.Portrait
 import com.unciv.ui.screens.basescreen.BaseScreen
@@ -140,16 +141,17 @@ fun Actor.centerY(parent: Stage) { y = parent.height / 2 - height / 2 }
 fun Actor.center(parent: Stage) { centerX(parent); centerY(parent) }
 
 
-fun Actor.surroundWithCircle(
+fun <T : Actor> T.surroundWithCircle(
     size: Float,
     resizeActor: Boolean = true,
     color: Color = Color.WHITE,
     circleImageLocation: String = ImageGetter.circleLocation
-): IconCircleGroup {
+): IconCircleGroup<T> {
     return IconCircleGroup(size, this, resizeActor, color, circleImageLocation)
 }
 
-fun Actor.surroundWithThinCircle(color: Color=ImageGetter.CHARCOAL): IconCircleGroup = surroundWithCircle(width+2f, false, color)
+fun <T : Actor> T.surroundWithThinCircle(color: Color = ImageGetter.CHARCOAL): IconCircleGroup<T> =
+    surroundWithCircle(width + 2f, false, color)
 
 
 fun Actor.addBorder(size: Float, color: Color, expandCell: Boolean = false): Table {
@@ -302,15 +304,8 @@ fun String.toTextButton(style: TextButtonStyle? = null, hideIcons: Boolean = fal
 
 /** Convert a texture path into an Image, make an ImageButton with a [tinted][overColor]
  *  hover version of the image from it, then [surroundWithCircle] it. */
-fun String.toImageButton(iconSize: Float, circleSize: Float, circleColor: Color, overColor: Color): Group {
-    val style = ImageButton.ImageButtonStyle()
-    val image = ImageGetter.getDrawable(this)
-    style.imageUp = image
-    style.imageOver = image.tint(overColor)
-    val button = ImageButton(style)
-    button.setSize(iconSize, iconSize)
-    return button.surroundWithCircle( circleSize, false, circleColor)
-}
+fun String.toImageButton(iconSize: Float, circleSize: Float, circleColor: Color, overColor: Color) =
+    IconCircleButton(this, iconSize, circleSize, circleColor, overColor)
 
 /** Return a "close" button, visually a circle with "x" icon that goes red on mouse-over.
  *

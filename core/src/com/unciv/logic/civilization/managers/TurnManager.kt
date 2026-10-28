@@ -1,7 +1,7 @@
 package com.unciv.logic.civilization.managers
 
 import com.unciv.logic.achievements.AchievementTracker
-
+import com.unciv.view.GameView
 import com.unciv.UncivGame
 import com.unciv.logic.VictoryData
 import com.unciv.logic.automation.civilization.NextTurnAutomation
@@ -37,8 +37,6 @@ class TurnManager(val civInfo: Civilization) {
 
         for (city in civInfo.cities) city.hasSoldBuildingThisTurn = false
 
-        civInfo.threatManager.clear()
-
         if (civInfo.cities.isNotEmpty() && civInfo.gameInfo.ruleset.technologies.isNotEmpty())
             civInfo.tech.updateResearchProgress()
 
@@ -52,7 +50,7 @@ class TurnManager(val civInfo: Civilization) {
 
         // Do this after updateStatsForNextTurn but before cities.startTurn
         if (civInfo.playerType == PlayerType.AI && civInfo.gameInfo.ruleset.modOptions.hasUnique(UniqueType.ConvertGoldToScience))
-            NextTurnAutomation.automateGoldToSciencePercentage(civInfo)
+            NextTurnAutomation.automateGoldToSciencePercentage(GameView(civInfo.gameInfo, civInfo).civView)
 
         // Generate great people at the start of the turn,
         // so they won't be generated out in the open and vulnerable to enemy attacks before you can control them
@@ -269,7 +267,7 @@ class TurnManager(val civInfo: Civilization) {
             return
         }
         if (!com.unciv.logic.PlayerDecisionControl.controls(civInfo) && UncivGame.Current.settings.citiesAutoBombardAtEndOfTurn)
-            NextTurnAutomation.automateCityBombardment(civInfo) // Bombard with all cities that haven't, maybe you missed one
+            NextTurnAutomation.automateCityBombardment(GameView(civInfo.gameInfo, civInfo).civView) // Bombard with all cities that haven't, maybe you missed one
 
         civInfo.forEachTriggeredUnique(UniqueType.TriggerUponTurnEnd, civInfo.state, ignoreCities = true) { unique ->
             UniqueTriggerActivation.triggerUnique(unique, civInfo)

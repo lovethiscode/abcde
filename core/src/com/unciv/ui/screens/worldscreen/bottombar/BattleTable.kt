@@ -5,6 +5,10 @@ import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.widgets.UiNavigation
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle
 import com.unciv.models.skins.ExpeditionBlueTheme
+import com.unciv.view.getNukeBlastRadius
+import com.unciv.view.isCivilian
+import com.unciv.view.isNuclearWeapon
+import com.unciv.view.isPreparingAirSweep
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.Interpolation
 import com.badlogic.gdx.scenes.scene2d.Touchable
@@ -429,11 +433,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
                         val cityView = attacker.getCityView()
                         val canBombard = cityView.getBombardableTiles().contains(defender.getTile())
                         if (canBombard) {
-                            val gameView = worldScreen.selectedGameView
-                            attackableTileView = attacker.buildBombardAttackableTile(
-                                defender.getTile(), defender,
-                                gameView.civView.getCiv(), gameView.spectatorMode, gameView
-                            )
+                            attackableTileView = attacker.buildBombardAttackableTile(defender.getTile(), defender)
                         }
                     }
                 }
@@ -498,7 +498,7 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
         val blastRadius = attackerView.getNukeBlastRadius()
 
         val defenderNameWrapper = Table()
-        for (tileView in targetTileView.getVisibleTilesInDistance(blastRadius)) {
+        for (tileView in targetTileView.getExploredTilesInDistance(blastRadius)) {
             val defender = tryGetDefenderAtTile(tileView, true) ?: continue
 
             val defenderLabel = defender.getCombatantName().toLabel(hideIcons = true, role = TextRole.Body)

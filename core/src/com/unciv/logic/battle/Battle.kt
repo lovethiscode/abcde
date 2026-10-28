@@ -1,9 +1,8 @@
 package com.unciv.logic.battle
 
 import com.unciv.logic.automation.AutomationPreview
-
 import com.unciv.logic.achievements.AchievementTracker
-
+import com.unciv.view.GameView
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.automation.civilization.NextTurnAutomation
@@ -543,7 +542,7 @@ object Battle {
             if (plunderedAmount == 0) continue
             civ.addStat(key, plunderedAmount)
             civ.addNotification(
-                "${plunderingUnit.getNotificationDisplay("your ")} plundered [${plunderedAmount}] [${key.name}] from [${plunderedUnit.getName()}]",
+                "${plunderingUnit.getNotificationDisplay("Your ")} plundered [${plunderedAmount}] [${key.name}] from [${plunderedUnit.getName()}]",
                 plunderedUnit.getTile().position,
                 NotificationCategory.War,
                 plunderingUnit.getName(), NotificationIcon.War, "StatIcons/${key.name}",
@@ -778,7 +777,7 @@ object Battle {
     fun automateCityConquer(civInfo: Civilization, city: City) {
         if (!city.hasDiplomaticMarriage()) {
             val foundingCiv = city.foundingCivObject!!
-            var valueAlliance = NextTurnAutomation.valueCityStateAlliance(civInfo, foundingCiv)
+            var valueAlliance = NextTurnAutomation.valueCityStateAlliance(GameView(civInfo.gameInfo, civInfo).civView, foundingCiv)
             if (civInfo.getHappiness() < 0)
                 valueAlliance -= civInfo.getHappiness() // put extra weight on liberating if unhappy
             if (foundingCiv.isCityState && city.civ != civInfo && foundingCiv != civInfo

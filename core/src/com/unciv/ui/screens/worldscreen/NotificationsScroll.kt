@@ -5,6 +5,7 @@ import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.scenes.scene2d.Actor
+import com.badlogic.gdx.scenes.scene2d.Group
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.actions.Actions
 import com.badlogic.gdx.scenes.scene2d.actions.TemporalAction
@@ -28,7 +29,7 @@ import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.widgets.ColorMarkupLabel
 import com.unciv.ui.components.widgets.WrappableLabel
-import com.unciv.ui.images.IconCircleGroup
+import com.unciv.ui.components.widgets.IconCircleGroup
 import com.unciv.ui.images.ImageGetter
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.basescreen.BaseScreen.Companion.skinStrings
@@ -443,7 +444,7 @@ class NotificationsScroll(
         restoreButton.checkScrollX(pixelsX)
     }
 
-    inner class RestoreButton : Container<IconCircleGroup>() {
+    inner class RestoreButton : Container<IconCircleGroup<Group>>() {
         private var blockCheck = true
         private var blockAct = true
         private var active = false
