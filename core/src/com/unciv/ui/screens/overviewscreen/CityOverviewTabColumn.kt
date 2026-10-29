@@ -181,7 +181,7 @@ enum class CityOverviewTabColumn : ISortableGridContentProvider<City, EmpireOver
         override fun getHeaderActor(iconSize: Float) = getCircledIcon("BuildingIcons/Walls", iconSize)
         override fun getEntryValue(item: City) = CityCombatant(item).getDefendingStrength()
         override fun getEntryActor(item: City, iconSize: Float, actionContext: EmpireOverviewScreen) =
-            "${getEntryValue(item)}/${item.getMaxHealth()}".toLabel(TextRole.Body)
+            getEntryValue(item).toString().toLabel(TextRole.Body)
         override fun getTotalsActor(items: Iterable<City>) = null  // an intended empty space
     },
 

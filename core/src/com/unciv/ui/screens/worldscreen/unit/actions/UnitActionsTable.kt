@@ -401,6 +401,7 @@ class UnitActionsTable(val worldScreen: WorldScreen) : Table() {
             if (BattlefieldHud.enabled) {
                 // disable() replaces the style; retain the native command's flat geometry.
                 BattlefieldGeometry.fitControl(actionButton, flat = true)
+                if (upgradeAction == null) actionButton.color.a = 0.5f
                 actionButton.touchable = Touchable.enabled
             }
         } else {

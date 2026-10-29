@@ -51,10 +51,10 @@ class OfferColumnsTable(
     private val ourAvailableOffersTable = OffersListScroll("OurAvail") {
         offerClickImplementation(it, false, tradeView.ourStagedOffers(), tradeView.theirStagedOffers(), ourCiv)
     }
-    private val ourOffersTable = OffersListScroll("OurTrade") {
+    private val ourOffersTable = OffersListScroll("OurTrade", groupByType = !screen.usesAdaptiveLayout) {
         offerClickImplementation(it, true, tradeView.ourStagedOffers(), tradeView.theirStagedOffers(), ourCiv)
     }
-    private val theirOffersTable = OffersListScroll("TheirTrade") {
+    private val theirOffersTable = OffersListScroll("TheirTrade", groupByType = !screen.usesAdaptiveLayout) {
         offerClickImplementation(it, true, tradeView.theirStagedOffers(), tradeView.ourStagedOffers(), theirCiv)
     }
     private val theirAvailableOffersTable = OffersListScroll("TheirAvail") {

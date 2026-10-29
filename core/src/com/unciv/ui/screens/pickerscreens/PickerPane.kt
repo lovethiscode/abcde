@@ -74,6 +74,7 @@ class PickerPane(
     val splitPane = SplitPane(scrollPane, bottomTable, true, BaseScreen.skin)
     private var sideDescriptionTitle: Label? = null
     private var horizontalDescription = false
+    private var stackedDescription = false
 
     init {
         if (UiNavigation.isMobile) {
@@ -101,16 +102,24 @@ class PickerPane(
 
     override fun layout() {
         val showSideDescription = sideDescriptionTitle != null && width > height
-        if (showSideDescription != horizontalDescription) {
+        val showStackedDescription = sideDescriptionTitle != null && UiNavigation.isMobile && !showSideDescription
+        if (showSideDescription != horizontalDescription || showStackedDescription != stackedDescription) {
             horizontalDescription = showSideDescription
+            stackedDescription = showStackedDescription
             splitPane.setVertical(!showSideDescription)
             bottomTable.clear()
-            rightSideGroup.expand(showSideDescription).fill(if (showSideDescription) 1f else 0f)
-            rightSideButton.label.wrap = showSideDescription
+            rightSideGroup.expand(showSideDescription || showStackedDescription)
+                .fill(if (showSideDescription || showStackedDescription) 1f else 0f)
+            rightSideButton.label.wrap = showSideDescription || showStackedDescription
             if (showSideDescription) {
                 bottomTable.pad(12f)
                 bottomTable.add(sideDescriptionTitle).minWidth(0f).growX().pad(10f).row()
                 bottomTable.add(descriptionScroll).minWidth(0f).grow().row()
+                bottomTable.add(rightSideGroup).minWidth(0f).growX().pad(10f)
+                descriptionScroll.setScrollingDisabled(true, false)
+            } else if (showStackedDescription) {
+                bottomTable.pad(0f)
+                bottomTable.add(descriptionScroll).minWidth(0f).minHeight(0f).grow().row()
                 bottomTable.add(rightSideGroup).minWidth(0f).growX().pad(10f)
                 descriptionScroll.setScrollingDisabled(true, false)
             } else {
@@ -129,7 +138,7 @@ class PickerPane(
         }
         super.layout()
         if (formActionsInHeader) splitPane.splitAmount = 1f
-        else if (!showSideDescription && useContentSizedFooter) {
+        else if (!showSideDescription && (useContentSizedFooter || showStackedDescription)) {
             splitPane.validate()
             val footerHeight = bottomTable.prefHeight.coerceAtMost(splitPane.height * .35f)
             if (splitPane.height > 0f) splitPane.splitAmount = 1f - footerHeight / splitPane.height

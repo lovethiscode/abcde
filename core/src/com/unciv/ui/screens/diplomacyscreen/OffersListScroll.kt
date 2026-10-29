@@ -31,6 +31,7 @@ import com.unciv.ui.components.widgets.AutoScrollPane as ScrollPane
  */
 class OffersListScroll(
     private val persistenceID: String,
+    private val groupByType: Boolean = true,
     private val onOfferClicked: (TradeOffer) -> Unit
 ) : ScrollPane(null) {
     val table = Table(BaseScreen.skin).apply { defaults().pad(5f) }
@@ -70,7 +71,7 @@ class OffersListScroll(
                 City -> "Cities"
             }
             val offersOfType = offersToDisplay.filter { it.type == offerType }
-            if (labelName.isNotEmpty() && offersOfType.any()) {
+            if (groupByType && labelName.isNotEmpty() && offersOfType.any()) {
                 expanderTabs[offerType] = ExpanderTab(labelName, persistenceID = "Trade.$persistenceID.$offerType") {
                     it.defaults().pad(5f)
                 }.apply { header.name = "ui-trade-category:${this@OffersListScroll.persistenceID}:$offerType" }
