@@ -284,6 +284,7 @@ open class UncivGame(val isConsoleMode: Boolean = false) : Game(), PlatformSpeci
             screenStack.addLast(screenToShow)
             setScreen(screenToShow) // Only here do we set the inputProcessor again 
             loadingScreen.dispose()
+            com.unciv.ui.components.fonts.Fonts.disposeRetiredFonts()
 
             return@withGLContext newWorldScreen
         }
@@ -332,6 +333,7 @@ open class UncivGame(val isConsoleMode: Boolean = false) : Game(), PlatformSpeci
         for (screen in screenStack) screen.dispose()
         screenStack.clear()
         screenStack.addLast(root)
+        com.unciv.ui.components.fonts.Fonts.disposeRetiredFonts()
         setScreen(root)
     }
     /** Adds a screen to be displayed instead of the current screen, with an option to go back to the previous screen by calling [popScreen]

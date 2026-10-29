@@ -32,11 +32,16 @@ open class PickerScreen(disableScroll: Boolean = false) : BaseScreen() {
     /** Form pages keep their existing actors and footer inside the keyboard's visible area. */
     protected var keyboardAwareForm = false
     private val formArea = com.badlogic.gdx.math.Rectangle()
-    private var revealFormInputFrames = 0
+    private var revealFormInputUntil = 0L
+    private var formFocus: com.badlogic.gdx.scenes.scene2d.Actor? = null
 
     override fun render(delta: Float) {
         if (keyboardAwareForm && com.unciv.ui.components.widgets.UiNavigation.isMobile) {
             val area = (stage as com.unciv.ui.screens.basescreen.UncivStage).lastKnownVisibleArea
+            if (formFocus !== stage.keyboardFocus) {
+                formFocus = stage.keyboardFocus
+                revealFormInputUntil = com.badlogic.gdx.utils.TimeUtils.millis() + 500L
+            }
             if (formArea != area) {
                 formArea.set(area)
                 pickerPane.setFillParent(false)
@@ -44,25 +49,34 @@ open class PickerScreen(disableScroll: Boolean = false) : BaseScreen() {
                 pickerPane.setCompactFormActions(area.height / com.unciv.ui.components.fonts.UiTypography.unitsPerPoint(stage) < 240f)
                 pickerPane.invalidateHierarchy()
                 pickerPane.validate()
-                revealFormInputFrames = 2
+                revealFormInputUntil = com.badlogic.gdx.utils.TimeUtils.millis() + 500L
             }
-            if (revealFormInputFrames > 0) {
-                revealFormInputFrames--
+
+        }
+        super.render(delta)
+        if (keyboardAwareForm && com.unciv.ui.components.widgets.UiNavigation.isMobile) {
+            if (com.badlogic.gdx.utils.TimeUtils.millis() < revealFormInputUntil) {
                 pickerPane.validate()
+                splitPane.validate()
                 scrollPane.validate()
                 topTable.validate()
                 scrollPane.invalidate()
                 scrollPane.validate()
                 val focus = stage.keyboardFocus
-                if (focus != null && focus.isDescendantOf(topTable)) {
-                    val point = focus.localToAscendantCoordinates(topTable, com.badlogic.gdx.math.Vector2())
-                    scrollPane.scrollY = (topTable.height - point.y - focus.height / 2f - scrollPane.scrollHeight / 2f)
-                        .coerceIn(0f, scrollPane.maxY)
+                if (focus != null && focus.isDescendantOf(topTable) && !scrollPane.isPanning) {
+                    val area = (stage as com.unciv.ui.screens.basescreen.UncivStage).lastKnownVisibleArea
+                    val point = focus.localToStageCoordinates(com.badlogic.gdx.math.Vector2())
+                    val panePoint = scrollPane.localToStageCoordinates(com.badlogic.gdx.math.Vector2())
+                    val bottom = maxOf(area.y, panePoint.y)
+                    val top = minOf(area.y + area.height, panePoint.y + scrollPane.scrollHeight)
+                    val target = bottom + (top - bottom - focus.height) / 2f
+                    scrollPane.fling(0f, 0f, 0f)
+                    scrollPane.scrollY = (scrollPane.scrollY + target - point.y).coerceIn(0f, scrollPane.maxY)
                     scrollPane.updateVisualScroll()
+                    com.badlogic.gdx.Gdx.graphics.requestRendering()
                 }
             }
         }
-        super.render(delta)
     }
 
     init {
