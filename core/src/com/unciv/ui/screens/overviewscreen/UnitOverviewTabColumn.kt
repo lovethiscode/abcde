@@ -91,7 +91,7 @@ enum class UnitOverviewTabColumn(
         override fun getComparator() = compareBy<MapUnitView> { it.getMaxMovement() }.thenBy { it.currentMovement }
     },
 
-    ClosestCity("Closest city") {
+    ClosestCity("Closest city", "Closest city") {
         //todo these overrides call a getTilesInDistance(3).firstOrNull loop independently and possibly repeatedly - caching?
         override fun getEntryString(item: MapUnitView) = getClosestCityTile(item)?.owningCity()?.name?.tr(hideIcons = true)
 
