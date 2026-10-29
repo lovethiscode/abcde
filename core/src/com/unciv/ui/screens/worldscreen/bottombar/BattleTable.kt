@@ -37,6 +37,7 @@ import com.unciv.ui.components.input.KeyCharAndCode
 import com.unciv.ui.components.widgets.AutoScrollPane
 import com.unciv.ui.components.widgets.UnitIconGroup
 import com.unciv.ui.images.ImageGetter
+import com.unciv.ui.popups.ConfirmPopup
 import com.unciv.ui.screens.basescreen.BaseScreen
 import com.unciv.ui.screens.worldscreen.UndoHandler.Companion.clearUndoCheckpoints
 import com.unciv.ui.screens.worldscreen.WorldScreen
@@ -522,7 +523,8 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
             attackButton.disable()
             attackButton.label.color = Color.GRAY
         } else {
-            attackButton.onClick(attacker.getAttackSound()) {
+            fun launchNuke() {
+                if (!worldScreen.canChangeState || !attackerView.canAttack() || !attackerView.mayUseNuke(targetTileView)) return
                 attackerView.tryNuke(targetTileView)
 
                 val nukeCircle = ImageGetter.getCircle()
@@ -546,6 +548,17 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
 
                 worldScreen.mapHolder.removeUnitActionOverlay() // the overlay was one of attacking
                 worldScreen.shouldUpdate = true
+            }
+            attackButton.onClick(attacker.getAttackSound()) {
+                if (UiNavigation.isMobile && worldScreen.gameInfo.campaign == null && worldScreen.gameInfo.endless == null) {
+                    val targetName = targetTileView.getCity()?.name ?: targetTileView.baseTerrain
+                    ConfirmPopup(worldScreen, "Launch nuclear strike?", "NUKE",
+                        presentation = ConfirmPopup.Presentation(
+                            title = "Launch nuclear strike?",
+                            subtitle = "{${attacker.getCombatantName()}} → {$targetName}",
+                            message = "{Nuclear blasts can kill units, reduce city population and leave fallout. Attacking neutral territory or units may declare war.}\n{Blast radius [$blastRadius]}"
+                        ), action = ::launchNuke).open()
+                } else launchNuke()
             }
         }
 

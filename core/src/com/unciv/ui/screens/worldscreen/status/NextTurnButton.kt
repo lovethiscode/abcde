@@ -82,6 +82,7 @@ class NextTurnButton(
         val primary = ExpeditionBlueTheme.enabled && nextTurnAction == NextTurnAction.NextTurn
         val foreground = if (primary) ExpeditionBlueTheme.primaryInk
             else if (ExpeditionBlueTheme.enabled && nextTurnAction == NextTurnAction.FoundReligion) ExpeditionBlueTheme.danger
+            else if (ExpeditionBlueTheme.enabled && nextTurnAction == NextTurnAction.WorldCongressVote) ExpeditionBlueTheme.text
             else ExpeditionBlueTheme.labelColor(nextTurnAction.color)
         if (ExpeditionBlueTheme.enabled) style = BaseScreen.skin.get(if (primary) "positive" else "default", TextButtonStyle::class.java)
         label.color = foreground
