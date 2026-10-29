@@ -63,7 +63,9 @@ internal interface OptionsPopupHelpers {
     /** Suggested minimum width for a right-hand cell in a typical 2-column label/widget row.
      *  Calculated by [OptionsPopup] constructor from stage size.
      */
-    val stackOptionRows get() = UiNavigation.isAndroid && com.unciv.utils.Display.getSafeArea(Gdx.graphics.width, Gdx.graphics.height).width / Gdx.graphics.density < 480f
+    val stackOptionRows get() = UiNavigation.isMobile &&
+        com.unciv.utils.Display.getSafeArea(Gdx.graphics.width, Gdx.graphics.height).width /
+        (if (UiNavigation.isAndroid) Gdx.graphics.density else 1f) < 480f
     val rightWidgetMinWidth: Float
 
     /** Access the active page of the TabbedPager in [OptionsPopup] */
@@ -266,7 +268,8 @@ internal interface OptionsPopupHelpers {
                 add(valueLabel).right().padLeft(OptionsPopupStyle.points(12f))
             }
             add(labelRow).colspan(2).growX().pad(OptionsPopupStyle.points(8f), OptionsPopupStyle.points(12f), 0f, OptionsPopupStyle.points(12f)).row()
-        } else add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).left().growX().apply { if (stackOptionRows) colspan(2).row() }.padTop(8f)
+        } else add(text.toLabel(TextRole.Control).apply { wrap = true }).minWidth(0f).left().growX()
+            .apply { if (ExpeditionBlueTheme.enabled || stackOptionRows) colspan(2).row() }.padTop(8f)
 
         // lateinit, otherwise the callback can't capture it, and by the time the callback fires this will be initialized
         lateinit var slider: UncivSlider

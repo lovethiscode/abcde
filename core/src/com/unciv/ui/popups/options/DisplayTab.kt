@@ -200,7 +200,11 @@ internal class DisplayTab(
             }
             add(description).minWidth(0f).growX().left()
                 .padRight(OptionsPopupStyle.points(16f)).spaceBottom(OptionsPopupStyle.points(8f))
-            add(autoSizeButton).width(rightWidgetMinWidth).fillX().right()
+                .apply { if (stackOptionRows) colspan(2).row() }
+            add(autoSizeButton).apply {
+                if (stackOptionRows) colspan(2).minWidth(0f).growX()
+                else width(rightWidgetMinWidth).fillX().right()
+            }
                 .minHeight(OptionsPopupStyle.points(44f)).pad(OptionsPopupStyle.points(6f))
                 .spaceBottom(OptionsPopupStyle.points(8f)).row()
             return
