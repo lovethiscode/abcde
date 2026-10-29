@@ -440,8 +440,8 @@ class PolicyPickerScreen(
     }
 
     private fun buildDetails(isOverlay: Boolean): Table = Table().apply {
-        if (isOverlay) add(overlayHeader("Policy details")).growX().padBottom(u(10f)).row()
-        else add(label("Policy details", 13, appearance.muted)).growX().left().height(u(44f)).row()
+        if (isOverlay) add(overlayHeader(if (UiNavigation.isMobile) "" else "Policy details")).growX().padBottom(u(10f)).row()
+        else if (!UiNavigation.isMobile) add(label("Policy details", 13, appearance.muted)).growX().left().height(u(44f)).row()
         val policy = selected
         if (policy == null) { add(label("Select a policy to view its effects",14,appearance.muted,true)).grow(); return@apply }
         val content = Table().apply {
@@ -450,15 +450,17 @@ class PolicyPickerScreen(
                 add(icon(policy)).size(u(if (metrics.compact) 32f else 42f)).padRight(u(12f))
                 val text = Table().apply {
                     add(label(if (policy.policyBranchType == PolicyBranchType.BranchComplete) "Completion reward" else policy.name,
-                        if (metrics.compact) 20 else 23, wrap = true)).growX().minWidth(0f).left().row()
-                    add(label(policy.branch.name,12,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(4f))
+                        UiTypography.size(TextRole.PageTitle, unit = 1f, legacySize = if (metrics.compact) 20 else 23), wrap = true)).growX().minWidth(0f).left().row()
+                    if (!UiNavigation.isMobile || policy.name != policy.branch.name)
+                        add(label(policy.branch.name,UiTypography.size(TextRole.Supporting, unit = 1f, legacySize = 12),appearance.muted,true))
+                            .growX().minWidth(0f).left().padTop(u(4f))
                 }
                 add(text).growX().minWidth(0f)
             }
             add(title).padTop(u(8f)).padBottom(u(14f)).row()
-            add(label(stateText(policy),12,appearance.gold,true)).padBottom(u(16f)).row()
+            add(label(stateText(policy),UiTypography.size(TextRole.Supporting, unit = 1f, legacySize = 12),appearance.gold,true)).padBottom(u(16f)).row()
             add(label(effects(policy),UiTypography.size(TextRole.Body, unit = 1f, legacySize = if(metrics.compact)14 else 15),wrap=true)).row()
-            fun heading(text: String) { add(label(text,12,appearance.muted)).padTop(u(20f)).padBottom(u(8f)).row() }
+            fun heading(text: String) { add(label(text,UiTypography.size(TextRole.SectionTitle, unit = 1f, legacySize = 12),appearance.muted)).padTop(u(20f)).padBottom(u(8f)).row() }
             val requires = if (policy.policyBranchType == PolicyBranchType.BranchComplete) members(policy.branch).map { it.name } else policy.requires.orEmpty()
             if (requires.isNotEmpty()) {
                 heading("Prerequisite policies")
@@ -475,9 +477,9 @@ class PolicyPickerScreen(
             }
             if (policy.policyBranchType != PolicyBranchType.BranchComplete) reward(policy.branch)?.let { completion ->
                 heading("Completion reward")
-                add(label(effects(completion),13,appearance.gold,true)).row()
+                add(label(effects(completion),UiTypography.size(TextRole.Body, unit = 1f, legacySize = 13),appearance.gold,true)).row()
                 val total = members(policy.branch).size
-                add(label("[${done(policy.branch)}] of [$total] policies adopted",12,appearance.muted,true)).padTop(u(5f)).row()
+                add(label("[${done(policy.branch)}] of [$total] policies adopted",UiTypography.size(TextRole.Supporting, unit = 1f, legacySize = 12),appearance.muted,true)).padTop(u(5f)).row()
             }
         }
         val scroll = verticalScroll(content,"ui-policy-detail-scroll")
@@ -485,7 +487,7 @@ class PolicyPickerScreen(
         add(scroll).grow().minWidth(0f).minHeight(0f).row()
         val controls = Table().apply {
             add(ruleLine()).growX().height(u(1f)).colspan(2).padTop(u(10f)).padBottom(u(10f)).row()
-            appearance.decorate(rightSideButton,primary=true)
+            appearance.decorate(rightSideButton,primary=true,size=UiTypography.size(TextRole.Control, unit = 1f, legacySize = 13))
             rightSideButton.setText(when {
                 busy -> "Adopting policy…".tr()
                 pickable(policy) -> (if (policies.freePolicies > 0) "Adopt free policy" else if (policy is PolicyBranch) "Adopt branch" else "Adopt policy").tr()
@@ -504,7 +506,7 @@ class PolicyPickerScreen(
                 policies.freePolicies > 0 -> "Uses 1 free policy — no Culture cost".tr()
                 else -> "Cost: [${policies.getCultureNeededForNextPolicy()}] Culture · Available: [${policies.storedCulture}]".tr()
             }
-            add(label(cost,11,appearance.muted,true)).colspan(if(metrics.compact)2 else 1).growX().padTop(u(6f))
+            add(label(cost,UiTypography.size(TextRole.Body, unit = 1f, legacySize = 11),appearance.muted,true)).colspan(if(metrics.compact)2 else 1).growX().padTop(u(6f))
         }
         add(controls).growX().minWidth(0f)
     }
