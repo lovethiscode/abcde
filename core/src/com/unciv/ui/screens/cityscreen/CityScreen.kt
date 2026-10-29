@@ -345,8 +345,14 @@ class CityScreen(
             annexCityButton.name = "ui-city-annex"
             annexCityButton.labelCell.pad(10f)
             annexCityButton.onClick {
-                cityView.tryAnnexCity()
-                updateAsync()
+                val consequences = "Annexed cities become part of your regular empire.".tr() + "\n\n" +
+                    "Their citizens generate 2x the unhappiness, unless you build a courthouse.".tr() + "\n\n" +
+                    "Annexed cities cannot be returned to a puppeted state.".tr()
+                ConfirmPopup(this, cityView.name.tr() + "\n\n" + consequences, "Annex city", true,
+                    presentation = ConfirmPopup.Presentation("Annex city", cityView.name, consequences)
+                ) {
+                    if (cityView.isPuppet() && cityView.tryAnnexCity()) updateAsync()
+                }.open()
             }
             if (!canChangeState) annexCityButton.disable()
             razeCityButtonHolder.add(annexCityButton) //.colspan(cityPickerTable.columns)
@@ -354,7 +360,14 @@ class CityScreen(
             val razeCityButton = "Raze city".toTextButton(unit = if (usesWorkbench) 1f else UiTypography.unitsPerPoint(stage))
             razeCityButton.name = "ui-city-raze"
             razeCityButton.labelCell.pad(10f)
-            razeCityButton.onClick { cityView.trySetRazing(true); updateAsync() }
+            razeCityButton.onClick {
+                val consequences = "The population will gradually dwindle until the city is destroyed.".tr()
+                ConfirmPopup(this, cityView.name.tr() + "\n\n" + consequences, "Raze city",
+                    presentation = ConfirmPopup.Presentation("Raze city", cityView.name, consequences)
+                ) {
+                    if (cityView.canBeDestroyed() && cityView.trySetRazing(true)) updateAsync()
+                }.open()
+            }
             if (!canChangeState || !cityView.canBeDestroyed() || !canAnnex) {
                 razeCityButton.disable()
             }
