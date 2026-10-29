@@ -5,6 +5,7 @@ import com.unciv.logic.MultiFilter
 import com.unciv.UncivGame
 import com.unciv.models.ruleset.unique.GameContext
 import com.unciv.models.ruleset.unique.UniqueTarget
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.tr
 import com.unciv.ui.objectdescriptions.FormattedLineListBuilder
 import com.unciv.ui.objectdescriptions.FormattedLineListBuilder.Companion.buildCivilopediaText
@@ -60,7 +61,9 @@ class Belief() : RulesetObject() {
             space()
         }
         if (type != BeliefType.None)
-            add("{Type}: {$type}", color = type.color, centered = withHeader)
+            add("{Type}: {$type}",
+                color = if (ExpeditionBlueTheme.enabled) "#${ExpeditionBlueTheme.muted}" else type.color,
+                centered = withHeader)
         addUniques(FormattedLineListBuilder.SeparatorType.None)
     }
 
