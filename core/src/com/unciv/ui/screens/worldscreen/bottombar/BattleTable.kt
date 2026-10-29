@@ -263,13 +263,18 @@ class BattleTable(val worldScreen: WorldScreen) : Table() {
             ("vs [" + key.drop(3) + "]").tr()
         else key.tr()
         val percentage = (if (value > 0) "+" else "") + value + "%"
-        val upOrDownLabel = if (value > 0f) "⬆".toLabel(fontColor = Color.GREEN, role = TextRole.Body) // U+2B06 UPWARDS BLACK ARROW
-        else "⬇".toLabel(fontColor = Color.RED, role = TextRole.Body) // U+2B07 DOWNWARDS BLACK ARROW
-        if (BattlefieldHud.enabled) upOrDownLabel.setFontSize(BattlefieldHud.font(TextRole.CompactData))
-
-        add(upOrDownLabel)
+        // Use the atlas icon instead of emoji glyphs, whose colored square fallback can
+        // overlap wrapped text when the compact HUD removes label minimum widths.
+        val iconSize = if (BattlefieldHud.enabled) BattlefieldHud.points(14f) else 14f
+        val iconGap = if (BattlefieldHud.enabled) BattlefieldHud.points(2f) else 2f
+        val directionIcon = ImageGetter.getArrowImage(if (value > 0) Align.top else Align.bottom).apply {
+            setSize(iconSize, iconSize)
+            setOrigin(Align.center)
+            color = ExpeditionBlueTheme.labelColor(if (value > 0) Color.GREEN else Color.RED)
+        }
+        add(directionIcon).size(iconSize).minWidth(iconSize).top().padRight(iconGap)
         val modifierLabel = "$percentage $description".toLabel(fontSize = UiTypography.size(TextRole.Supporting, legacySize = 14)).apply { wrap = true }
-        add(modifierLabel).width(quarterScreen - upOrDownLabel.minWidth)
+        add(modifierLabel).width(quarterScreen - iconSize - iconGap).top()
     }
 
     private fun createModifiersScroll(modifiers: Iterable<Table>): ScrollPane {
