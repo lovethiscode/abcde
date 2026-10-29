@@ -456,7 +456,7 @@ internal class PromotionAtlasView(
         target.add(identity).growX().minWidth(0f).row()
         val available = availableOpportunities()
         target.add(label("{XP} ${unit.xp}/${unit.xpForNextPromotion()} · {[$available] promotions available} · {Health} ${unit.unitHealth}/100",
-            if (compact) TextRole.Metadata else TextRole.Supporting, true, true)).growX().minWidth(0f).left().row()
+            TextRole.Supporting, true, true)).growX().minWidth(0f).left().row()
     }
     private fun refresh() {
         displayOptions.isChecked = prerequisitesOnly
@@ -486,9 +486,9 @@ internal class PromotionAtlasView(
         details.background = style.surface(style.panel)
         details.pad(u(14f))
         details.touchable = Touchable.enabled
-        val detailTitleRole = if (compact) TextRole.Body else TextRole.SectionTitle
-        val detailBodyRole = if (compact) TextRole.Supporting else TextRole.Body
-        val detailMetaRole = if (compact) TextRole.Metadata else TextRole.Supporting
+        val detailTitleRole = TextRole.SectionTitle
+        val detailBodyRole = TextRole.Body
+        val detailMetaRole = TextRole.Supporting
         if (portrait) {
             val top = Table()
             top.add().growX()
