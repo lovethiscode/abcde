@@ -364,7 +364,8 @@ class CityStateDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
                     diplomacyScreen.updateRightSide(otherCiv)
                 }
                 if (diplomacyScreen.usesAdaptiveLayout)
-                    ConfirmPopup(diplomacyScreen, "{${otherCiv.civName}}\n{Gift [$giftAmount] gold (+[$influenceAmount] influence)}", "Give a Gift") { give() }.open()
+                    ConfirmPopup(diplomacyScreen, "{${otherCiv.civName}}\n{Gift [$giftAmount] gold (+[$influenceAmount] influence)}", "Give a Gift",
+                        isConfirmPositive = true) { give() }.open()
                 else give()
             }
             diplomacyTable.add(giftButton).row()
