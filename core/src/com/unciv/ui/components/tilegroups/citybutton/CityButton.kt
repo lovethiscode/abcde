@@ -15,6 +15,8 @@ import com.badlogic.gdx.utils.Align
 import com.unciv.GUI
 import com.unciv.ui.components.extensions.center
 import com.unciv.ui.components.extensions.centerX
+import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.fonts.TextRole
 import com.unciv.ui.components.input.onClick
 import com.unciv.ui.components.input.onRightClick
 import com.unciv.ui.components.tilegroups.TileGroup
@@ -253,7 +255,13 @@ class CityButton(val foreignCityView: ForeignCityView, private val tileGroup: Ti
 
         val popup = Popup(GUI.getWorldScreen()).apply {
             name = "ForeignCityInfoPopup"
-            val title = CityTable(foreignCityView, true)
+            val title = if (UiNavigation.isMobile) Table().apply {
+                add(foreignCityView.name.toLabel(TextRole.PageTitle, hideIcons = true).apply { wrap = true })
+                    .growX().minWidth(0f).left().row()
+                add(("{${foreignCityView.owningCiv().civName}} · {Population} ${foreignCityView.getPopulationCount()}")
+                    .toLabel(TextRole.Supporting).apply { wrap = true })
+                    .growX().minWidth(0f).left()
+            } else CityTable(foreignCityView, true)
             if (UiNavigation.isMobile) addTitleWithCloseButton(title) {
                 GUI.getWorldScreen().nextTurnButton.update()
             }
