@@ -14,6 +14,7 @@ import com.unciv.logic.civilization.diplomacy.*
 import com.unciv.logic.trade.TradeOffer
 import com.unciv.logic.trade.TradeOfferType
 import com.unciv.models.ruleset.unique.UniqueType
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.fillPlaceholders
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.extensions.addSeparator
@@ -37,9 +38,16 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         VeryPositive(Color(0.15f, 1f, 0.15f, 1f), Int.MAX_VALUE); // lighter green
         
         companion object {
-            fun getColor(modifierValue: Int) = entries
-                .first { modifierValue <= it.upperValueThreshold }
-                .color
+            fun getColor(modifierValue: Int): Color {
+                val modifier = entries.first { modifierValue <= it.upperValueThreshold }
+                val themedColor = when (modifier) {
+                    VeryNegative -> ExpeditionBlueTheme.danger
+                    Negative -> ExpeditionBlueTheme.gold
+                    Insignificant -> ExpeditionBlueTheme.muted
+                    Positive, VeryPositive -> ExpeditionBlueTheme.success
+                }
+                return ExpeditionBlueTheme.color(modifier.color, themedColor)
+            }
         }
     }
     
