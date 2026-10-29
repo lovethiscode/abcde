@@ -45,7 +45,8 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
         layoutChrome()
     }
     private var lastStatus = ""
-    private var revealFocusFrames = 0
+    private var revealFocusUntil = 0L
+    private var inputFocus: com.badlogic.gdx.scenes.scene2d.Actor? = null
     private val visibleArea = com.badlogic.gdx.math.Rectangle()
 
     init {
@@ -162,27 +163,32 @@ class MapEditorChrome(private val editor: MapEditorScreen) : Group() {
 
     override fun act(delta: Float) {
         val area = (editor.stage as com.unciv.ui.screens.basescreen.UncivStage).lastKnownVisibleArea
-        if (visibleArea != area) {
+        if (visibleArea != area || inputFocus !== editor.stage.keyboardFocus) {
             visibleArea.set(area)
+            inputFocus = editor.stage.keyboardFocus
             layoutChrome()
-            revealFocusFrames = 2
+            revealFocusUntil = com.badlogic.gdx.utils.TimeUtils.millis() + 500L
         }
-        if (revealFocusFrames > 0) {
-            revealFocusFrames--
+        if (com.badlogic.gdx.utils.TimeUtils.millis() < revealFocusUntil) {
             val focus = editor.stage.keyboardFocus
             if (focus != null && focus.isDescendantOf(panel)) {
                 var ancestor = focus.parent
                 while (ancestor != null && ancestor !is com.badlogic.gdx.scenes.scene2d.ui.ScrollPane) ancestor = ancestor.parent
-                if (ancestor is com.badlogic.gdx.scenes.scene2d.ui.ScrollPane) {
+                if (ancestor is com.badlogic.gdx.scenes.scene2d.ui.ScrollPane && !ancestor.isPanning) {
                     editor.tabs.validate()
                     ancestor.validate()
                     (ancestor.actor as? com.badlogic.gdx.scenes.scene2d.utils.Layout)?.validate()
                     ancestor.invalidate()
                     ancestor.validate()
-                    val point = focus.localToAscendantCoordinates(ancestor.actor, com.badlogic.gdx.math.Vector2())
-                    ancestor.scrollY = (ancestor.actor.height - point.y - focus.height / 2f - ancestor.scrollHeight / 2f)
-                        .coerceIn(0f, ancestor.maxY)
+                    val point = focus.localToStageCoordinates(com.badlogic.gdx.math.Vector2())
+                    val panePoint = ancestor.localToStageCoordinates(com.badlogic.gdx.math.Vector2())
+                    val bottom = maxOf(area.y, panePoint.y)
+                    val top = minOf(area.y + area.height, panePoint.y + ancestor.scrollHeight)
+                    val target = bottom + (top - bottom - focus.height) / 2f
+                    ancestor.fling(0f, 0f, 0f)
+                    ancestor.scrollY = (ancestor.scrollY + target - point.y).coerceIn(0f, ancestor.maxY)
                     ancestor.updateVisualScroll()
+                    com.badlogic.gdx.Gdx.graphics.requestRendering()
                 }
             }
         }

@@ -450,6 +450,7 @@ class MapEditorScreen(map: TileMap? = null, val history: MapEditorHistory = MapE
         val paletteState = tabs.edit.saveState()
         val panelPage = chrome.openPanelPage
         val editingDescription = stage.keyboardFocus === descriptionTextField
+        val descriptionKeyboardVisible = (stage as com.unciv.ui.screens.basescreen.UncivStage).lastKnownVisibleArea.y > 0f
         val descriptionCursor = descriptionTextField.cursorPosition
         tileMap.description = descriptionTextField.text
         return MapEditorScreen(tileMap, history, resumed = true).also { recreated ->
@@ -461,6 +462,16 @@ class MapEditorScreen(map: TileMap? = null, val history: MapEditorHistory = MapE
             if (editingDescription) {
                 recreated.stage.keyboardFocus = recreated.descriptionTextField
                 recreated.descriptionTextField.cursorPosition = descriptionCursor
+                // The old stage is disposed on the next GL dispatch and hides its keyboard.
+                // Restore the new field's keyboard after that disposal, keeping hidden IME hidden.
+                recreated.descriptionTextField.addAction(com.badlogic.gdx.scenes.scene2d.actions.Actions.run {
+                    Gdx.app.postRunnable {
+                        if (game.getScreen() === recreated && recreated.stage.keyboardFocus === recreated.descriptionTextField) {
+                            if (descriptionKeyboardVisible) recreated.descriptionTextField.onscreenKeyboard.show(recreated.descriptionTextField)
+                            else recreated.descriptionTextField.onscreenKeyboard.close()
+                        }
+                    }
+                })
             }
         }
     }

@@ -56,8 +56,9 @@ object Fonts {
         }
     }
     private val uiFonts = HashMap<UiFontKey, BitmapFont>()
+    private val retiredMainFonts = ArrayList<BitmapFont>()
 
-    /** Skin rebuilds can leave live editor controls behind. Reuse fonts until game shutdown. */
+    /** Skin rebuilds can leave live editor controls behind. Retain their fonts until those screens are disposed. */
     private fun cachedUiFont(size: Int, reading: Boolean): BitmapFont {
         val settings = GUI.getSettings()
         val family = settings.fontFamilyData
@@ -83,6 +84,21 @@ object Fonts {
     fun disposeUiFonts() {
         uiFonts.values.forEach { it.dispose() }
         uiFonts.clear()
+        retiredMainFonts.forEach { it.dispose() }
+        retiredMainFonts.clear()
+    }
+
+    /** Only call after all screens from before the latest skin rebuild have been disposed. */
+    fun disposeRetiredFonts() {
+        val iterator = uiFonts.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (entry.key.generation == fontGeneration) continue
+            entry.value.dispose()
+            iterator.remove()
+        }
+        retiredMainFonts.forEach { it.dispose() }
+        retiredMainFonts.clear()
     }
 
     /** This resets all cached font data in object Fonts.
@@ -90,10 +106,12 @@ object Fonts {
      */
     fun resetFont() {
         // Ruleset-icon code points are reassigned when the skin/ruleset is rebuilt.
-        fontGeneration++
         val settings = GUI.getSettings()
         fontImplementation.setFontFamily(settings.fontFamilyData, settings.getFontSize())
-        font = fontImplementation.getBitmapFont()
+        val replacement = fontImplementation.getBitmapFont()
+        if (::font.isInitialized) retiredMainFonts.add(font)
+        fontGeneration++
+        font = replacement
         font.data.markupEnabled = true
     }
 

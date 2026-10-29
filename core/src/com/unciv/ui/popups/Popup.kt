@@ -322,6 +322,7 @@ open class Popup(
                         .coerceIn(0f, pane.maxY)
                     pane.scrollX = 0f
                     pane.updateVisualScroll()
+                    com.badlogic.gdx.Gdx.graphics.requestRendering()
                 }
             }
         }
