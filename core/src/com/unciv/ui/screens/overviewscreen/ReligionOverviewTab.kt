@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.Align
 import com.unciv.Constants
 import com.unciv.models.Religion
 import com.unciv.models.ruleset.Belief
+import com.unciv.models.skins.ExpeditionBlueTheme
 import com.unciv.models.translations.fillPlaceholders
 import com.unciv.models.translations.tr
 import com.unciv.ui.components.widgets.ExpanderTab
@@ -188,7 +189,12 @@ class ReligionOverviewTab(
 
     private fun createBeliefDescription(belief: Belief) =
         MarkupRenderer.render(
-            belief.getCivilopediaTextLines(withHeader = true),
+            belief.getCivilopediaTextLines(withHeader = true).map { line ->
+                // Belief categories are metadata, not danger or success states.
+                if (ExpeditionBlueTheme.enabled && line.text == "{Type}: {${belief.type}}")
+                    line.copy(color = "#${ExpeditionBlueTheme.muted}")
+                else line
+            },
             labelWidth = detailWidth
         ) {
             overviewScreen.openCivilopedia(it)
