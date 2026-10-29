@@ -231,7 +231,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
             table.line(title,width,ui.muted,TextRole.Supporting)
             for (bonus in CityStateFunctions.getCityStateBonuses(civ.cityStateType,level).filterNot { it.isHiddenToUsers() }) {
                 val active = relation >= level && bonus.conditionalsApply(GameContext(player))
-                table.line(bonus.getDisplayText(),width,if(active) ui.positive else ui.text,TextRole.Supporting)
+                table.line(bonus.getDisplayText(),width,if(active) ui.positive else ui.text)
             }
             table.add().height(ui.px(6f)).row()
         }

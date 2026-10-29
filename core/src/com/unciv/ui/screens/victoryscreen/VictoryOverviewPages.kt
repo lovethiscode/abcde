@@ -58,7 +58,9 @@ internal fun victoryStatisticsToolbar(controls: Table, information: Table?): Tab
         }
 
         override fun layout() {
-            val needsStack = width < information.minWidth + controls.prefWidth + pt(12f)
+            // Wrapped metadata has almost no intrinsic minimum width. Reserve a readable
+            // measure before sharing its row with the statistic controls.
+            val needsStack = width < maxOf(information.minWidth, pt(240f)) + controls.prefWidth + pt(12f)
             if (stacked != needsStack) {
                 stacked = needsStack
                 rebuild()
