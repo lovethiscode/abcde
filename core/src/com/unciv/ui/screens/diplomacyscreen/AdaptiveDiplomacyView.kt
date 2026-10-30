@@ -4,6 +4,7 @@ import com.unciv.ui.components.fonts.TextRole
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Group
+import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -93,6 +94,7 @@ internal class AdaptiveDiplomacyView(private val screen: DiplomacyScreen, privat
         for (civ in known.filter { layout.narrow || filter == "All" || it.isCityState == (filter == "City-States") }) {
             val row = Table().apply {
                 name = "ui-diplomacy-civ:${civ.civID}"
+                touchable = Touchable.enabled
                 if (selected == civ) background = ui.surface(ui.raised, 8f)
                 pad(ui.px(8f))
                 val icon = ImageGetter.getNationPortrait(civ.nation, ui.px(32f))
