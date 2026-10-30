@@ -334,7 +334,9 @@ class GameSettings {
         Huge(1500f,1000f),
         FullHD(1920f, 1280f),
         QuadHD(2560f, 1707f);
-        override fun toString() = name.tr() // Allow direct use in a SelectBox
+        override fun toString() = UncivGame.Current.translations.getText(
+            "UI size: $name", UncivGame.Current.settings.language, default = name.tr()
+        ) // Keep UI sizes separate from map-size translations with recommended player counts.
 
         /** Minimum virtual height of the stage. For [Auto] taken from the size guessed from the physical screen.
          *  (The actual stage width is determined by screen aspect ratio, see [getWidth]) */

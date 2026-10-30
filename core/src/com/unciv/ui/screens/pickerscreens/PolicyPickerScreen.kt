@@ -440,9 +440,11 @@ class PolicyPickerScreen(
     }
 
     private fun buildDetails(isOverlay: Boolean): Table = Table().apply {
-        if (isOverlay) add(overlayHeader("Policy details")).growX().padBottom(u(10f)).row()
-        else add(label("Policy details", 13, appearance.muted)).growX().left().height(u(44f)).row()
         val policy = selected
+        if (isOverlay) add(overlayHeader(
+            policy?.let { if (it.policyBranchType == PolicyBranchType.BranchComplete) "Completion reward" else it.name }
+                ?: "Select a policy to view its effects", policy?.let { icon(it) }
+        )).growX().padBottom(u(10f)).row()
         if (policy == null) { add(label("Select a policy to view its effects",14,appearance.muted,true)).grow(); return@apply }
         val content = Table().apply {
             top().left(); defaults().growX().minWidth(0f).left()
@@ -451,11 +453,14 @@ class PolicyPickerScreen(
                 val text = Table().apply {
                     add(label(if (policy.policyBranchType == PolicyBranchType.BranchComplete) "Completion reward" else policy.name,
                         if (metrics.compact) 20 else 23, wrap = true)).growX().minWidth(0f).left().row()
-                    add(label(policy.branch.name,12,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(4f))
+                    if (policy.name != policy.branch.name)
+                        add(label(policy.branch.name,12,appearance.muted,true)).growX().minWidth(0f).left().padTop(u(4f))
                 }
                 add(text).growX().minWidth(0f)
             }
-            add(title).padTop(u(8f)).padBottom(u(14f)).row()
+            if (!isOverlay) add(title).padTop(u(8f)).padBottom(u(14f)).row()
+            else if (policy.name != policy.branch.name)
+                add(label(policy.branch.name,12,appearance.muted,true)).padBottom(u(14f)).row()
             add(label(stateText(policy),12,appearance.gold,true)).padBottom(u(16f)).row()
             add(label(effects(policy),UiTypography.size(TextRole.Body, unit = 1f, legacySize = if(metrics.compact)14 else 15),wrap=true)).row()
             fun heading(text: String) { add(label(text,12,appearance.muted)).padTop(u(20f)).padBottom(u(8f)).row() }
@@ -530,7 +535,8 @@ class PolicyPickerScreen(
         catalogScroll.updateVisualScroll()
     }
 
-    private fun overlayHeader(title: String) = Table().apply {
+    private fun overlayHeader(title: String, headerIcon: Actor? = null) = Table().apply {
+        if (headerIcon != null) add(headerIcon).size(u(32f)).padRight(u(12f))
         add(label(title,18,wrap=true)).growX().minWidth(0f).left()
         val ordinary = UiNavigation.isMobile && viewingCiv.gameInfo.campaign == null && viewingCiv.gameInfo.endless == null
         val dismiss = if (ordinary)
