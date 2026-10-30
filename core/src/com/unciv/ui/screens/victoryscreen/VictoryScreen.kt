@@ -313,18 +313,22 @@ class VictoryScreen private constructor(
             metadataCell.setActor(if (merged) null else metadata).padBottom(if (merged) 0f else pt(5f))
             root.invalidateHierarchy()
         }
-        tabs.onSelection { _, _, _ ->
-            refreshNavigation()
-            refreshMetadata()
+        fun revealSelectedTab() {
             buttons.values.firstOrNull { it.isChecked }?.let {
                 root.validate(); navScroll.validate()
                 navScroll.scrollTo(it.x, it.y, it.width, it.height, false, false)
                 navScroll.updateVisualScroll()
             }
         }
+        tabs.onSelection { _, _, _ ->
+            refreshNavigation()
+            refreshMetadata()
+            revealSelectedTab()
+        }
         refreshNavigation()
         refreshMetadata()
         stage.addActor(root)
+        revealSelectedTab()
         if (ordinaryResult && !pageState.resultDetailsOpened) showOrdinaryResult()
     }
 
