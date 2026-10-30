@@ -653,8 +653,11 @@ class PolicyPickerScreen(
             (if (completes) "\n\n" + "Completes the [${policy.branch.name}] branch and grants its reward".tr() else "")
         ConfirmPopup(this,question,"Adopt",true,restoreDefault={ confirming=false },
             presentation = ConfirmPopup.Presentation("Are you sure you want to adopt [${policy.name}]?", "Social policies",
-                if (completes) "Completes the [${policy.branch.name}] branch and grants its reward" else "",
-                if (policies.freePolicies > 0) listOf("Cost" to "Uses 1 free policy — no Culture cost")
+                listOfNotNull(
+                    if (completes) "Completes the [${policy.branch.name}] branch and grants its reward".tr() else null,
+                    if (policies.freePolicies > 0) costText else null
+                ).joinToString("\n\n"),
+                if (policies.freePolicies > 0) emptyList()
                 else listOf("Culture cost" to policies.getCultureNeededForNextPolicy().toString(),
                     "Culture remaining" to (policies.storedCulture - policies.getCultureNeededForNextPolicy()).toString()),
                 confirmCaption = if (policies.freePolicies > 0) "Adopt free policy"
