@@ -77,7 +77,7 @@ open class TileGroup(
 
     fun isViewable(viewingCiv: CivView) = tileView.isForceVisible()
             || viewingCiv.canSeeTile(tileView)
-            || viewingCiv.isSpectator
+            || viewingCiv.isSpectator()
 
     private fun reset() {
         layerTerrain.reset()

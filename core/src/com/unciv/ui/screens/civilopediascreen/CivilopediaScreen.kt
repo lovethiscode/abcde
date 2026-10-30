@@ -87,7 +87,7 @@ class CivilopediaScreen(
     private val entrySelectScroll = ScrollPane(entrySelectTable)
     private val flavourTable = Table()
     private val flavourScroll = ScrollPane(flavourTable)
-    private var historyButton: Button? = null
+    private var historyButton: com.unciv.ui.components.widgets.IconCircleButton? = null
     private var restoringHistory = false
 
     private var currentCategory: CivilopediaCategories = CivilopediaCategories.Tutorial

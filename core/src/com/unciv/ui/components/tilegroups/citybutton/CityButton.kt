@@ -90,7 +90,7 @@ class CityButton(val foreignCityView: ForeignCityView, private val tileGroup: Ti
             key = key.mix(tileGroup.tileView.getVisibleUnits().count { it.isAirUnit() })
 
         // InfluenceTable
-        if (city.isCityState && city.civKnows(selectedCiv)) {
+        if (city.isCityState() && city.civKnows(selectedCiv)) {
             val diplomacyManager = city.getDiplomacyManagerWith(selectedCiv)!!
             key = key.mix(diplomacyManager.getInfluence()).mix(diplomacyManager.relationshipLevel())
         }
@@ -149,7 +149,7 @@ class CityButton(val foreignCityView: ForeignCityView, private val tileGroup: Ti
         add(cityTable).row()
 
         // If city state - add influence bar
-        if (foreignCityView.isCityState && foreignCityView.civKnows(selectedPlayer)) {
+        if (foreignCityView.isCityState() && foreignCityView.civKnows(selectedPlayer)) {
             val diplomacyManager = foreignCityView.getDiplomacyManagerWith(selectedPlayer)!!
             add(InfluenceTable(diplomacyManager.getInfluence(), diplomacyManager.relationshipLevel())).padTop(1f).row()
         }

@@ -190,7 +190,7 @@ object UnitAutomation {
     }
 
     private fun tryGoToRuin(unitView: MapUnitView): Boolean {
-        if (!unitView.civ().isMajorCiv) return false // barbs don't have anything to do in ruins
+        if (!unitView.civ().isMajorCiv()) return false // barbs don't have anything to do in ruins
 
         val tileWithRuin = unitView.getViewableTiles()
             .firstOrNull {

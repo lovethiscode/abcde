@@ -186,7 +186,7 @@ enum class NextTurnAction(protected val text: String, val color: Color) {
 
         @Readonly
         private fun WorldScreen.canMoveAutomatedUnits(): Boolean {
-            if (selectedGameView.civView.isSpectator) return false
+            if (selectedGameView.civView.isSpectator()) return false
             if (game.settings.automatedUnitsMoveOnTurnStart) return false
             if (selectedGameView.civView.hasMovedAutomatedUnitsThisTurn()) return false
             return selectedGameView.civView.getUnits().any {
