@@ -41,7 +41,7 @@ internal fun styleVictorySelect(select: TranslatedSelectBox) {
 }
 
 /** Context and statistic controls share one fixed row whenever their measured widths fit. */
-internal fun victoryStatisticsToolbar(controls: Table, information: Table?): Table {
+internal fun victoryStatisticsToolbar(controls: Table, information: Table?, compact: Boolean): Table {
     if (information == null) return controls
     return object : Table() {
         private var stacked = false
@@ -58,7 +58,7 @@ internal fun victoryStatisticsToolbar(controls: Table, information: Table?): Tab
         }
 
         override fun layout() {
-            val needsStack = width < information.minWidth + controls.prefWidth + pt(12f)
+            val needsStack = compact || width < information.minWidth + controls.prefWidth + pt(12f)
             if (stacked != needsStack) {
                 stacked = needsStack
                 rebuild()
@@ -277,7 +277,7 @@ internal class VictoryStatisticsPage(
                 add(select).height(U.touch).minWidth(pt(160f))
                 add().growX()
             }
-            add(victoryStatisticsToolbar(toolbar, gameInformation)).growX().minWidth(0f).padBottom(pt(4f)).row()
+            add(victoryStatisticsToolbar(toolbar, gameInformation, compact)).growX().minWidth(0f).padBottom(pt(4f)).row()
         }
         val scroll = U.scroll(rows)
         add(scroll).grow().minWidth(0f).minHeight(0f)

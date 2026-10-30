@@ -74,7 +74,7 @@ class VictoryScreenCharts internal constructor(
                 add().growX()
                 add(reset).minHeight(U.touch).minWidth(U.touch).padLeft(pt(8f))
             }
-            add(victoryStatisticsToolbar(toolbar, gameInformation)).growX().minWidth(0f).padBottom(pt(4f)).row()
+            add(victoryStatisticsToolbar(toolbar, gameInformation, compact)).growX().minWidth(0f).padBottom(pt(4f)).row()
             val chart = Table().apply {
                 background = U.rounded(U.panel)
                 pad(pt(8f))
