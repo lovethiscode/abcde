@@ -238,7 +238,7 @@ class PolicyManager : IsPartOfGameInfoSerialization {
     @Readonly
     fun canAdoptPolicy(): Boolean {
         if ((civInfo.gameInfo.endless != null || com.unciv.logic.campaign.CivilWarCampaign.isActive(civInfo.gameInfo))) return false
-        if (civInfo.isSpectator()) return false
+        if (civInfo.isSpectator) return false
         if (freePolicies == 0 && storedCulture < getCultureNeededForNextPolicy()) return false
         if (allPoliciesAdopted(true)) return false
         return true

@@ -93,10 +93,10 @@ object AirInterception {
             val damageDealt: Battle.DamageDealt = Battle.takeDamage(attacker, MapUnitCombatant(interceptor))
             if (attacker.isDefeated() && damageDealt.defenderDealt > 0)
                 AchievementTracker.killedMilitaryUnit(interceptor, attacker.unit.id,
-                    attacker.getCivInfo().isMajorCiv() && attacker.unit.isMilitary(), false)
+                    attacker.getCivInfo().isMajorCiv && attacker.unit.isMilitary(), false)
             if (interceptor.isDestroyed && damageDealt.attackerDealt > 0)
                 AchievementTracker.killedMilitaryUnit(attacker.unit, interceptor.id,
-                    interceptor.civ.isMajorCiv() && interceptor.isMilitary(), true)
+                    interceptor.civ.isMajorCiv && interceptor.isMilitary(), true)
 
             if (attacker.isDefeated() && damageDealt.defenderDealt > 0)
                 com.unciv.logic.campaign.CampaignRules.combatDefeat(MapUnitCombatant(interceptor), attacker.unit)
@@ -210,7 +210,7 @@ object AirInterception {
         attacker.takeDamage(damage)
         if (attacker.isDefeated() && damage > 0)
             AchievementTracker.killedMilitaryUnit(interceptor, attacker.unit.id,
-                attacker.getCivInfo().isMajorCiv() && attacker.unit.isMilitary(), false)
+                attacker.getCivInfo().isMajorCiv && attacker.unit.isMilitary(), false)
         if (attacker.isDefeated() && damage > 0)
             com.unciv.logic.campaign.CampaignRules.combatDefeat(MapUnitCombatant(interceptor), attacker.unit)
         if (damage > 0)

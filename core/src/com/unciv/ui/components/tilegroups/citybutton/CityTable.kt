@@ -140,7 +140,7 @@ internal class CityTable(
 
         if (city.isCapital()) {
             val capitalIcon = when {
-                city.isCityState() -> ImageGetter.getNationIcon("CityState")
+                city.isCityState -> ImageGetter.getNationIcon("CityState")
                     .apply { color = textColor }
                 else -> ImageGetter.getImage("OtherIcons/Capital")
             }

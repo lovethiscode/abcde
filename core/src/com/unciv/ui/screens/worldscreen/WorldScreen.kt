@@ -62,6 +62,8 @@ import com.unciv.ui.screens.worldscreen.bottombar.BattleTable
 import com.unciv.ui.screens.worldscreen.bottombar.TileInfoTable
 import com.unciv.ui.screens.worldscreen.chat.ChatButton
 import com.unciv.ui.screens.worldscreen.mainmenu.WorldScreenMusicPopup
+import com.unciv.ui.screens.worldscreen.minimap.MapOverlayToggleButton
+import com.unciv.ui.screens.worldscreen.minimap.Minimap
 import com.unciv.ui.screens.worldscreen.minimap.MinimapHolder
 import com.unciv.ui.screens.worldscreen.status.AutoPlayStatusButton
 import com.unciv.ui.screens.worldscreen.status.MultiplayerStatusButton
@@ -70,6 +72,10 @@ import com.unciv.ui.screens.worldscreen.status.NextTurnProgress
 import com.unciv.ui.screens.worldscreen.status.SmallUnitButton
 import com.unciv.ui.screens.worldscreen.status.StatusButtons
 import com.unciv.ui.screens.worldscreen.topbar.WorldScreenTopBar
+import com.unciv.ui.screens.worldscreen.topbar.WorldScreenTopBar.OverviewAndSupplyTable
+import com.unciv.ui.screens.worldscreen.topbar.WorldScreenTopBar.SelectedCivilizationTable
+import com.unciv.ui.screens.worldscreen.topbar.WorldScreenTopBarResources
+import com.unciv.ui.screens.worldscreen.topbar.WorldScreenTopBarStats
 import com.unciv.ui.screens.worldscreen.unit.AutoPlay
 import com.unciv.ui.screens.worldscreen.unit.UnitTable
 import com.unciv.ui.screens.worldscreen.unit.actions.UnitActionsTable
@@ -92,6 +98,33 @@ import kotlin.concurrent.timer
 @VisibleForTesting
 fun multiplayerUploadFailureReason(exception: Exception): String =
     if (exception is UncivShowableException) exception.localizedMessage else "Unknown".tr()
+
+/**
+ *  Layout overview
+ *  # CENTER
+ *  -   [WorldMapHolder]: Center / background
+ *  # TOP
+ *  -   [WorldScreenTopBar]: Top
+ *      -   [WorldScreenTopBarStats]
+ *      -   [WorldScreenTopBarResources]
+ *      -   [SelectedCivilizationTable] ... [OverviewAndSupplyTable]
+ *  -   `tutorialTaskTable`: on-demand, top center just below WorldScreenTopBarResources
+ *  # LEFT
+ *  -   [TechPolicyDiplomacyButtons]: Upper left
+ *  -   [ChatButton]: Left just below Tech & co
+ *  -   [UnitActionsTable]: Left just above Unit, dynamic height, tries to squeeze between Tech & Unit
+ *  -   [UnitTable]: Bottom left corner, displays what is selected (Unit or City)
+ *  # BOTTOM
+ *  -   [BattleTable]: Bottom center, only on demand
+ *  # RIGHT
+ *  -   [StatusButtons] contains [NextTurnButton], [AutoPlayStatusButton], [MultiplayerStatusButton], [SmallUnitButton] (Skip/Cycle):
+ *      dynamically switches to vertical to avoid collision with TechPolicyDiplomacyButtons
+ *  -   [NotificationsScroll]: Z-order **below** all other elements, can extend the whole right side,
+ *      but tries to ensure the entire content can be scrolled between StatusButtons and TileInfoTable/Minimap.
+ *  -   [TileInfoTable]: just above the Minimap
+ *  -   [MinimapHolder] contains the actual [Minimap] and the five [MapOverlayToggleButton]s
+ *  -   [ZoomButtonPair]: optional, just to the left of MinimapHolder
+ */
 
 /**
  * Do not create this screen without seriously thinking about the implications: this is the single most memory-intensive class in the application.
@@ -129,13 +162,13 @@ class WorldScreen(
         internal set
     /** The [selectedCiv]'s perspective. For non-spectators this this equals the viewingGameView.
      *  Only ever differs from [spectatorGameView] for spectators. */
-    var selectedGameView = GameView(gameInfo, selectedCiv, spectatorMode = viewingCiv.isSpectator())
+    var selectedGameView = GameView(gameInfo, selectedCiv, spectatorMode = viewingCiv.isSpectator)
         internal set
 
     /** The [viewingCiv]'s own perspective.
      * This should only ever be used A. for spectators B. when forOfWar is false, for specific UI elements */
     private val spectatorGameView by lazy {
-        if (!viewingCiv.isSpectator()) throw Exception("Managed to disable fog of war without being spectator?!")
+        if (!viewingCiv.isSpectator) throw Exception("Managed to disable fog of war without being spectator?!")
         GameView(gameInfo, viewingCiv, spectatorMode = true)
     }  
     fun getGameViewConsideringForOfWar() = if (fogOfWar) selectedGameView else spectatorGameView    
@@ -146,7 +179,7 @@ class WorldScreen(
 
     /** `true` when it's the player's turn unless he is a spectator */
     val canChangeState
-        get() = isPlayersTurn && !viewingCiv.isSpectator() && !com.unciv.logic.endless.EndlessRules.blocked(gameInfo) &&
+        get() = isPlayersTurn && !viewingCiv.isSpectator && !com.unciv.logic.endless.EndlessRules.blocked(gameInfo) &&
             gameInfo.campaign?.let { it.resultStars > 0 || it.failed } != true
 
     val mapHolder = WorldMapHolder(this, gameInfo.tileMap)
@@ -265,7 +298,7 @@ class WorldScreen(
         mapHolder.mapPanningSpeed = game.settings.mapPanningSpeed
 
         // Don't select unit and change selectedCiv when centering as spectator
-        mapHolder.setCenterPosition(tileToCenterOn, immediately = true, selectUnit = !viewingCiv.isSpectator())
+        mapHolder.setCenterPosition(tileToCenterOn, immediately = true, selectUnit = !viewingCiv.isSpectator)
 
         tutorialController.allTutorialsShowedCallback = { shouldUpdate = true }
 
@@ -399,7 +432,7 @@ class WorldScreen(
     @Readonly
     fun openDeveloperConsole() {
         // No cheating unless you're by yourself, ignoring a possible spectator
-        if (gameInfo.civilizations.count { it.isHuman() && !it.isSpectator() } > 1) return
+        if (gameInfo.civilizations.count { it.isHuman() && !it.isSpectator } > 1) return
         DevConsolePopup(this)
     }
 
@@ -703,16 +736,16 @@ class WorldScreen(
     }
 
     fun setSelectedCiv(civ: Civilization) {
-        if (!viewingCiv.isSpectator()) throw Exception("Tried to select a different civ when not spectator!")
+        if (!viewingCiv.isSpectator) throw Exception("Tried to select a different civ when not spectator!")
         selectedCiv = civ
-        selectedGameView = GameView(gameInfo, civ, viewingCiv.isSpectator())
+        selectedGameView = GameView(gameInfo, civ, viewingCiv.isSpectator)
     }
 
     private fun updateSelectedCiv() {
         // Only spectators/replays follow the selection's owner. For ordinary players selectedCiv must stay viewingCiv:
         // otherwise a selected unit that just changed owner (gifted to a city-state, captured) would switch the
         // whole view to its new owner, defeat UnitPresenter's "no longer ours" deselection, and leave a stale selection.
-        if (!viewingCiv.isSpectator()) return
+        if (!viewingCiv.isSpectator) return
         setSelectedCiv(when {
             bottomUnitTable.selectedUnit != null -> bottomUnitTable.selectedUnit!!.civ().getCiv()
             bottomUnitTable.selectedCity != null -> bottomUnitTable.selectedCity!!.owningCiv().getCiv()
@@ -746,7 +779,7 @@ class WorldScreen(
         mapHolder.scrollY = restoreState.scrollY
         mapHolder.updateVisualScroll()
 
-        if (!viewingCiv.isSpectator()) return
+        if (!viewingCiv.isSpectator) return
         setSelectedCiv(gameInfo.getCivilization(restoreState.selectedCivName))
         fogOfWar = restoreState.fogOfWar
     }

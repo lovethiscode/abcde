@@ -39,7 +39,7 @@ class QuickStartGameTests {
             val game = GameStarter.startNewGame(setup, reservedGameId = "quick-start-regression")
             assertEquals(0, game.turns)
             assertEquals(1, game.civilizations.count { it.isHuman() })
-            assertEquals(4, game.civilizations.count { it.isMajorCiv() })
+            assertEquals(4, game.civilizations.count { it.isMajorCiv })
             assertTrue(game.getCurrentPlayerCivilization().units.getCivUnits().any())
         } finally {
             Gdx.app = previousApp

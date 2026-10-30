@@ -77,7 +77,7 @@ class AchievementGameState : IsPartOfGameInfoSerialization {
                 baseRuleset = game.gameParameters.baseRuleset
                 speed = game.gameParameters.speed
                 mapType = game.tileMap.mapParameters.type
-                aiOpponents = game.civilizations.count { it.isAI() && it.isMajorCiv() }
+                aiOpponents = game.civilizations.count { it.isAI() && it.isMajorCiv }
                 cityStates = game.civilizations.count { it.isCityState }
                 religionEnabled = game.isReligionEnabled()
                 oneCityChallenge = game.gameParameters.oneCityChallenge

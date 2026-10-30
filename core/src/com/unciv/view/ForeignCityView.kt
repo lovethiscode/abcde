@@ -32,7 +32,7 @@ open class ForeignCityView(protected open val city: City,
     @Readonly open fun owningCiv(): ForeignCivView = gameView.getForeignCivView(city.civ)
     /** Get from a foreign view to an inner view */
     @Readonly fun tryGetCityView(): CityView? {
-        val canSeeCityData = viewer.isSpectator() // not posing, actual spectator
+        val canSeeCityData = viewer.isSpectator // not posing, actual spectator
                 || city.civ == viewer
                 || spyIsSetUpAtCity(viewer)
                 || DebugUtils.VISIBLE_MAP
@@ -91,6 +91,6 @@ open class ForeignCityView(protected open val city: City,
 
 // Helpers built on top of the view API, rather than being part of it
 val ForeignCityView.location: HexCoord get() = getCenterTile().position()
-@Readonly fun ForeignCityView.isCityState(): Boolean = owningCiv().isCityState
+@Readonly fun ForeignCityView.isCityState: Boolean = owningCiv().isCityState
 @Readonly fun ForeignCityView.getNationOuterColor(): ImmutableColor = owningCiv().getOuterColor()
 @Readonly fun ForeignCityView.getCivInnerColor(): ImmutableColor = owningCiv().getInnerColor()

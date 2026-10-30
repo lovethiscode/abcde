@@ -63,8 +63,8 @@ class DiplomaticVoteResultScreen(
             init {
                 addDecisionTitle(breakdown.title, "{Diplomatic voting results} · {${viewingCiv.civName}}")
                 addFactRow("Election threshold", "[${viewingCiv.victoryManager.votesNeededForDiplomaticVictory()}] votes")
-                val voters = orderedCivs.filterNot { it.isBarbarian || it.isSpectator() || it.isDefeated() }
-                for (civ in voters.filter { it.isMajorCiv() })
+                val voters = orderedCivs.filterNot { it.isBarbarian || it.isSpectator || it.isDefeated() }
+                for (civ in voters.filter { it.isMajorCiv })
                     addFactRow("{${civ.civName}} · {Votes received}", "[${results[civ.civID]}] votes")
                 breakdown.tieExplanation?.let { addGoodSizedLabel(it).row() }
                 addSeparator()
@@ -94,7 +94,7 @@ class DiplomaticVoteResultScreen(
                         .width(resultWidth - 24f * unit).padBottom(6f * unit).row()
                 }
                 line(civName, TextRole.SectionTitle)
-                if (civ.isMajorCiv()) line("Votes received: [$votesReceived]", TextRole.Body)
+                if (civ.isMajorCiv) line("Votes received: [$votesReceived]", TextRole.Body)
                 val held = if (civ.civID == civOwningUN && constructionNameUN != null) "Votes available: [2]" else "Votes available: [1]"
                 val target = votesCast[civ.civID]?.let { gameInfo.getCivilization(it) }?.takeUnless { it.isDefeated() }
                 line(held + " · " + if (target == null) "Abstained" else "{Voted for} {${target.civName}}", TextRole.Supporting)
@@ -103,7 +103,7 @@ class DiplomaticVoteResultScreen(
             return
         }
 
-        if (civ.isMajorCiv()) topTable.add(votesReceived.toLabel(TextRole.Body)) else topTable.add()
+        if (civ.isMajorCiv) topTable.add(votesReceived.toLabel(TextRole.Body)) else topTable.add()
 
         topTable.add(ImageGetter.getNationPortrait(civ.nation, 30f))
         topTable.add(civName.toLabel(hideIcons = true, role = TextRole.Body)).padLeft(20f).padRight(20f)

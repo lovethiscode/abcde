@@ -231,7 +231,7 @@ internal class VictoryProgressPage(
     }
 
     private fun addGlobal(body: Table, victory: Victory) {
-        val civs = world.gameInfo.civilizations.filter { it.isMajorCiv() && victory in it.victoryManager.getAvailableVictories() }
+        val civs = world.gameInfo.civilizations.filter { it.isMajorCiv && victory in it.victoryManager.getAvailableVictories() }
             .sortedWith(compareBy<Civilization> { it.isDefeated() }.thenBy { it.victoryManager.amountMilestonesCompleted(victory) })
         for (civ in civs) {
             val row = Table().apply {
@@ -303,7 +303,7 @@ internal class VictoryStatisticsPage(
             add(cell(state.ranking.label, true, true)).width(pt(110f))
         }
         rows.add(header).growX().minWidth(0f).row()
-        val civs = world.gameInfo.civilizations.filter { it.isMajorCiv() && VictoryScreen.canViewCivStats(world.gameInfo, viewer, it) }
+        val civs = world.gameInfo.civilizations.filter { it.isMajorCiv && VictoryScreen.canViewCivStats(world.gameInfo, viewer, it) }
             .map { VictoryScreen.CivWithStat(it, state.ranking) }.sortedBy { it.civ.civName }
             .sortedByDescending { if (it.civ.isDefeated()) Int.MIN_VALUE else it.value }
         for ((index, entry) in civs.withIndex()) {
@@ -321,7 +321,7 @@ internal class VictoryStatisticsPage(
 
     private fun demographics() {
         val category = state.demographicRanking
-        val sorted = world.gameInfo.civilizations.filter { it.isMajorCiv() && (it.isAlive() || it == viewer) }
+        val sorted = world.gameInfo.civilizations.filter { it.isMajorCiv && (it.isAlive() || it == viewer) }
             .map { civ ->
                 VictoryScreen.CivWithStat(civ, civ.getStatForDemographics(category))
             }.sortedByDescending { it.value }
@@ -339,7 +339,7 @@ internal class VictoryStatisticsPage(
         }
         addRow("Demographic", cell("Civilizations", muted = true), category.label, header = true)
         addRow("Rank", victoryCivIdentity(viewer, viewer), (sorted.indexOfFirst { it.civ == viewer } + 1).toString())
-        if (viewer.isMajorCiv() && !viewer.isDefeated())
+        if (viewer.isMajorCiv && !viewer.isDefeated())
             addRow("Value", victoryCivIdentity(viewer, viewer), sorted.first { it.civ == viewer }.value.toString(), mine = true)
         fun comparison(title: String, entry: VictoryScreen.CivWithStat) = addRow(title,
             victoryCivIdentity(entry.civ, viewer),

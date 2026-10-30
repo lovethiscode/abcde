@@ -156,7 +156,7 @@ class UnitOverviewTab(
         if (promotions != null) detail.detailRow("Promotions", promotions)
         val upgrade = UnitOverviewTabColumn.Upgrade.getEntryActor(unit, 28f, this)
         if (upgrade != null) detail.detailRow("Upgrade", upgrade)
-        if (!viewingPlayer.isSpectator()) detail.add(OverviewUi.iconButton("OtherIcons/Pencil", "Rename unit") {
+        if (!viewingPlayer.isSpectator) detail.add(OverviewUi.iconButton("OtherIcons/Pencil", "Rename unit") {
                 UnitRenamePopup(overviewScreen, unit) { update() }
             }).size(OverviewUi.touch).left().row()
         detail.add(UnitSupplyTable.create(overviewScreen, this, viewingPlayer.getCiv(),

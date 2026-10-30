@@ -19,6 +19,7 @@ import com.unciv.models.stats.Stats
 import com.unciv.ui.components.extensions.toPercent
 import yairm210.purity.annotations.LocalState
 import yairm210.purity.annotations.Readonly
+import java.util.PriorityQueue
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -50,7 +51,9 @@ class CivInfoStatsForNextTurn(val civInfo: Civilization) {
         // Each unit starts with 1f aka 100% of cost, and then the discount is added.
         // Note all discounts are in the form of -X%, such as -25 for 25% reduction
 
-        val costsToPay = ArrayList<Float>()
+        // Keep a running total and a small min-heap of the `freeUnits` most expensive costs - those are free
+        var totalCost = 0f
+        val freeCosts = PriorityQueue<Float>()
 
         // We IGNORE the conditionals when we get them civ-wide, so we won't need to do the same thing for EVERY unit in the civ.
         // This leads to massive memory and CPU time savings when calculating the maintenance!
@@ -67,13 +70,13 @@ class CivInfoStatsForNextTurn(val civInfo: Civilization) {
             for (unique in uniquesThatApply) {
                 unitMaintenance *= unique.params[0].toPercent()
             }
-            costsToPay.add(unitMaintenance)
+            totalCost += unitMaintenance
+            freeCosts.add(unitMaintenance)
+            if (freeCosts.size > freeUnits) freeCosts.poll()
         }
 
-        // Sort by descending maintenance, then drop most expensive X units to make them free
-        // If more free than units left, runs sum on empty sequence
-        costsToPay.sortDescending()
-        val numberOfUnitsToPayFor = max(0.0, costsToPay.asSequence().drop(freeUnits).sumOf { it.toDouble() } ).toFloat()
+        // If more free than units, everything is free
+        val numberOfUnitsToPayFor = max(0f, totalCost - freeCosts.sum())
 
         // as game progresses Maintenance cost rises
         val turnLimit = civInfo.gameInfo.speed.numTotalTurns().toFloat()
@@ -141,7 +144,7 @@ class CivInfoStatsForNextTurn(val civInfo: Civilization) {
         * In civ5, it seems population modifier is always 0.5, so i hardcoded it down below */
         var supply = getBaseUnitSupply() + getUnitSupplyFromCities() + getUnitSupplyFromPop()
 
-        if (civInfo.isMajorCiv() && civInfo.playerType == PlayerType.AI)
+        if (civInfo.isMajorCiv && civInfo.playerType == PlayerType.AI)
             supply = (supply*(1f + civInfo.getDifficulty().aiUnitSupplyModifier)).toInt()
         return supply
     }

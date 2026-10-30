@@ -269,9 +269,9 @@ class GlobalPoliticsOverviewTable(
             persistableData.includeCityStates && viewingPlayer.getCiv().hideCityStateCount()
         relevantCivsCount = if (hideCivsCount) "?"
             else gameInfo.civilizations.count {
-                !it.isSpectator() && !it.isBarbarian && (persistableData.includeCityStates || !it.isCityState)
+                !it.isSpectator && !it.isBarbarian && (persistableData.includeCityStates || !it.isCityState)
             }.tr()
-        undefeatedCivs = (if (viewingPlayer.isSpectator()) emptyList() else listOf(viewingPlayer.getCiv())) +
+        undefeatedCivs = (if (viewingPlayer.isSpectator) emptyList() else listOf(viewingPlayer.getCiv())) +
                 viewingPlayer.getCiv().diplomacyFunctions.getKnownCivsSorted(persistableData.includeCityStates)
         defeatedCivs = viewingPlayer.getCiv().diplomacyFunctions.getKnownCivsSorted(persistableData.includeCityStates, true)
             .filter { it.isDefeated() }.toList()
@@ -336,7 +336,7 @@ class GlobalPoliticsOverviewTable(
         table.add(civInfo.civName.toLabel(hideIcons = true, role = TextRole.Body)).left().padRight(10f)
         table.touchable = Touchable.enabled
         table.onClick {
-            if (civInfo.isDefeated() || viewingPlayer.isSpectator() || civInfo == viewingPlayer.getCiv()) return@onClick
+            if (civInfo.isDefeated() || viewingPlayer.isSpectator || civInfo == viewingPlayer.getCiv()) return@onClick
             UncivGame.Current.pushScreen{
                 DiplomacyScreen(viewingPlayer, viewingPlayer.gameView.getForeignCivView(civInfo))
             }
@@ -346,7 +346,7 @@ class GlobalPoliticsOverviewTable(
 
     private fun Table.addTitleInfo(columns: Int) {
         add("[$relevantCivsCount] Civilizations in the game".toLabel(TextRole.Body)).colspan(columns).row()
-        if (!viewingPlayer.isSpectator()) {
+        if (!viewingPlayer.isSpectator) {
             add("Our Civilization:".toLabel(TextRole.Body)).colspan(columns).left().padLeft(10f).padTop(10f).row()
             add(getCivMiniTable(viewingPlayer.getCiv())).left()
             val scoreText = if (viewingPlayer.getCiv().isDefeated()) Fonts.death.toString()

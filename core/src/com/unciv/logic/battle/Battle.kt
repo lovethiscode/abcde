@@ -122,8 +122,8 @@ object Battle {
     private fun resolveAttack(attacker: ICombatant, defender: ICombatant): DamageDealt {
         debug("%s %s attacked %s %s", attacker.getCivInfo().civID, attacker.getName(), defender.getCivInfo().civID, defender.getName())
         val attackedTile = defender.getTile()
-        val defenderWasMajorMilitary = defender is MapUnitCombatant && defender.unit.isMilitary() && defender.getCivInfo().isMajorCiv()
-        val attackerWasMajorMilitary = attacker is MapUnitCombatant && attacker.unit.isMilitary() && attacker.getCivInfo().isMajorCiv()
+        val defenderWasMajorMilitary = defender is MapUnitCombatant && defender.unit.isMilitary() && defender.getCivInfo().isMajorCiv
+        val attackerWasMajorMilitary = attacker is MapUnitCombatant && attacker.unit.isMilitary() && attacker.getCivInfo().isMajorCiv
         if (attacker is MapUnitCombatant) {
             attacker.unit.attacksSinceTurnStart.add(attackedTile.position)
         } else {
@@ -362,7 +362,7 @@ object Battle {
         }
 
         // CS friendship from killing barbarians
-        if (defeatedUnit.getCivInfo().isBarbarian && !defeatedUnit.isCivilian() && civUnit.getCivInfo().isMajorCiv()) {
+        if (defeatedUnit.getCivInfo().isBarbarian && !defeatedUnit.isCivilian() && civUnit.getCivInfo().isMajorCiv) {
             for (cityState in defeatedUnit.getCivInfo().gameInfo.getAliveCityStates()) {
                 if (civUnit.getCivInfo().knows(cityState) && defeatedUnit.unit.threatensCiv(cityState)) {
                     cityState.cityStateFunctions.threateningBarbarianKilledBy(civUnit.getCivInfo())
@@ -662,7 +662,7 @@ object Battle {
         promotions.XP += xpGained
         AchievementTracker.combatExperienceEarned(thisCombatant.unit, xpGained)
 
-        if (!otherIsBarbarian && civ.isMajorCiv()) { // Can't get great generals from Barbarians
+        if (!otherIsBarbarian && civ.isMajorCiv) { // Can't get great generals from Barbarians
             var greatGeneralUnits = civ.gameInfo.ruleset.greatGeneralUnits
                 .filter { it.hasUnique(UniqueType.GreatPersonFromCombat, gameContext) &&
                         // Check if the unit is allowed for the Civ, ignoring build constrants
@@ -688,7 +688,11 @@ object Battle {
             }
         }
 
-        if (!thisCombatant.isDefeated() && !unitCouldAlreadyPromote && promotions.canBePromoted()) {
+        // Post-battle auto-promote is never valid here: attackers have attacked,
+        // defenders are not on their turn. TurnManager handles auto-promote instead.
+        if (!thisCombatant.isDefeated() && !unitCouldAlreadyPromote && promotions.canBePromoted()
+            && !UncivGame.Current.settings.automatedUnitsChoosePromotions
+        ) {
             civ.addNotification("[${thisCombatant.unit.displayName()}] can be promoted!",
                 listOf(MapUnitAction(thisCombatant.unit), PromoteUnitAction(thisCombatant.unit)),
                 NotificationCategory.Units, thisCombatant.unit.name)

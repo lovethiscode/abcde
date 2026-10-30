@@ -1705,3 +1705,16 @@ UnitTypeIcons/DomainWater
   orig: 100, 100
   offset: 0, 0
   index: -1
+
+Icons-upstream-4.22.15.png
+size: 50, 50
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+OtherIcons/ArrowLeft
+  rotate: false
+  xy: 0, 0
+  size: 50, 50
+  orig: 50, 50
+  offset: 0, 0
+  index: -1

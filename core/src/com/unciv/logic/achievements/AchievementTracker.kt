@@ -164,7 +164,7 @@ object AchievementTracker {
     }
 
     fun tradeCompleted(first: Civilization, second: Civilization, trade: Trade) {
-        if (!first.isMajorCiv() || !second.isMajorCiv()) return
+        if (!first.isMajorCiv || !second.isMajorCiv) return
         val qualifying = (trade.ourOffers + trade.theirOffers).any {
             (it.type in setOf(TradeOfferType.Gold, TradeOfferType.Gold_Per_Turn,
                 TradeOfferType.Luxury_Resource, TradeOfferType.Strategic_Resource, TradeOfferType.Stockpiled_Resource)
@@ -184,7 +184,7 @@ object AchievementTracker {
             unitId = unit.id
             combatPromotions = history.units[unit.id.toString()]?.combatPromotions ?: 0
             turn = unit.civ.gameInfo.turns
-            foreign = city.foundingCivObject?.let { it != unit.civ && it.isMajorCiv() } == true
+            foreign = city.foundingCivObject?.let { it != unit.civ && it.isMajorCiv } == true
         }
     }
 

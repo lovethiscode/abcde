@@ -24,6 +24,7 @@ import com.unciv.ui.components.extensions.colorFromRGB
 import com.unciv.ui.components.extensions.getCloseButton
 import com.unciv.ui.components.extensions.toImageButton
 import com.unciv.ui.components.extensions.toLabel
+import com.unciv.ui.components.input.ActivationTypes
 import com.unciv.ui.components.input.KeyboardBinding
 import com.unciv.ui.components.input.onActivation
 import com.unciv.ui.components.input.onClick
@@ -85,6 +86,9 @@ class CivilopediaScreen(
     private val entrySelectTable = Table().apply { defaults().pad(6f).left() }
     private val entrySelectScroll = ScrollPane(entrySelectTable)
     private val flavourTable = Table()
+    private val flavourScroll = ScrollPane(flavourTable)
+    private var historyButton: Button? = null
+    private var restoringHistory = false
 
     private var currentCategory: CivilopediaCategories = CivilopediaCategories.Tutorial
     private var currentEntry: String = ""
@@ -195,6 +199,7 @@ class CivilopediaScreen(
      * @param category Category key
      */
     private fun selectCategory(category: CivilopediaCategories) {
+        if (!usesPages) CivilopediaHistory.updateScroll(currentCategory, currentEntry, flavourScroll.scrollY)
         if (usesPages && category !in visibleCategories) return
         currentCategory = category
         lastCategory = category
@@ -296,6 +301,7 @@ class CivilopediaScreen(
         selectEntry(entry)
     }
     private fun selectEntry(entry: CivilopediaEntry) {
+        if (!usesPages) CivilopediaHistory.updateScroll(currentCategory, currentEntry, flavourScroll.scrollY)
         currentEntry = entry.name
         lastEntryName = entry.name
         currentEntryPerCategory[currentCategory] = entry.name
@@ -305,6 +311,9 @@ class CivilopediaScreen(
             return
         }
         flavourTable.clear()
+        flavourScroll.scrollY = 0f
+        if (!restoringHistory) CivilopediaHistory.push(currentCategory, currentEntry, 0f)
+        historyButton?.isDisabled = !CivilopediaHistory.hasBack(::isValidHistoryEntry)
         if (entry.flavour != null) {
             flavourTable.isVisible = true
             flavourTable.add(
@@ -332,7 +341,23 @@ class CivilopediaScreen(
         selectEntry(name , noScrollAnimation = true)
     }
 
+    private fun isValidHistoryEntry(entry: CivilopediaHistory.Entry) =
+        categoryToEntries[entry.category]?.any { it.name == entry.entry } == true
+
+    private fun restoreHistory(entry: CivilopediaHistory.Entry) {
+        restoringHistory = true
+        try {
+            selectCategory(entry.category)
+            selectEntry(entry.entry, true)
+            flavourScroll.validate()
+            flavourScroll.scrollY = entry.scroll
+            flavourScroll.updateVisualScroll()
+        } finally { restoringHistory = false }
+        historyButton?.isDisabled = !CivilopediaHistory.hasBack(::isValidHistoryEntry)
+    }
+
     init {
+        CivilopediaHistory.setContext(ruleset)
         val imageSize = if (usesPages) 38f else 50f
 
         val religionEnabled = showReligionInCivilopedia(ruleset) // To filter the Belief Category only
@@ -382,9 +407,18 @@ class CivilopediaScreen(
                 onActivation { game.popScreen() }; keyShortcuts.add(KeyCharAndCode.BACK)
             } else getCloseButton(imageSize) { game.popScreen() }
 
+            val backButton = "OtherIcons/ArrowLeft".toImageButton(imageSize - 16f, imageSize, skinStrings.skinConfig.baseColor, Color.ROYAL)
+            historyButton = backButton
+            backButton.onActivation(binding = KeyboardBinding.PediaBack) {
+                CivilopediaHistory.back(::isValidHistoryEntry, ::restoreHistory)
+            }
+            fun openHistory() { CivilopediaHistoryMenu(stage, backButton, ::isValidHistoryEntry, ::restoreHistory) }
+            backButton.onActivation(ActivationTypes.RightClick, action = ::openHistory)
+            backButton.keyShortcuts.add(KeyboardBinding.PediaHistory, action = ::openHistory)
             val topTable = Table()
             if (UiNavigation.isMobile) topTable.add(closeButton).minSize(UiNavigation.minimumTouchSize()).pad(8f)
             topTable.add(buttonTableScroll).growX()
+            topTable.add(backButton).padLeft(10f)
             topTable.add(searchButton).padLeft(10f)
             if (!UiNavigation.isMobile) topTable.add(closeButton).padLeft(10f).padRight(10f)
             topTable.width = stage.width
@@ -401,15 +435,17 @@ class CivilopediaScreen(
             entrySelectTable.top()
             entrySelectScroll.setOverscroll(false, false)
             val descriptionTable = Table()
-            descriptionTable.add(flavourTable).padTop(7f).padBottom(5f).row()  // 2f of that 7f is used up by Portrait painting e.g. a Nation's outer border *outside its bounds*
-            val entrySplitPane = SplitPane(entrySelectScroll, ScrollPane(descriptionTable), false, skin)
+            descriptionTable.add(flavourScroll).grow().padTop(7f).padBottom(5f).row()  // 2f of that 7f is used up by Portrait painting e.g. a Nation's outer border *outside its bounds*
+            val entrySplitPane = SplitPane(entrySelectScroll, descriptionTable, false, skin)
             entrySplitPane.splitAmount = 0.3f
             entryTable.addActor(entrySplitPane)
             entrySplitPane.setFillParent(true)
             entrySplitPane.pack()  // ensure selectEntry has correct entrySelectScroll.height and maxY
         }
 
-        if (link.isEmpty()) {
+        if (!usesPages && link.isEmpty() && CivilopediaHistory.current()?.let(::isValidHistoryEntry) == true) {
+            restoreHistory(CivilopediaHistory.current()!!)
+        } else if (link.isEmpty()) {
             // Generic open (e.g. keyboard shortcut, menu button) - resume where we left off
             val resumeCategory = if (usesPages)
                 (lastCategory ?: category).takeIf { it in visibleCategories }
@@ -479,6 +515,7 @@ class CivilopediaScreen(
 
     override fun dispose() {
         if (searchPopupDelegate.isInitialized()) searchPopup.cancelSearch()
+        if (!usesPages) CivilopediaHistory.updateScroll(currentCategory, currentEntry, flavourScroll.scrollY)
         super.dispose()
     }
 

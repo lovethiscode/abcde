@@ -82,7 +82,7 @@ class PolicyPickerScreen(
     private fun members(branch: PolicyBranch) = branch.policies.filter { it.policyBranchType == PolicyBranchType.Member }
     private fun reward(branch: PolicyBranch) = branch.policies.lastOrNull { it.policyBranchType == PolicyBranchType.BranchComplete }
     private fun done(branch: PolicyBranch) = members(branch).count { policies.isAdopted(it.name) }
-    private fun readOnly() = !canChangeState || !viewingCiv.isCurrentPlayer() || viewingCiv.isDefeated() || viewingCiv.isSpectator()
+    private fun readOnly() = !canChangeState || !viewingCiv.isCurrentPlayer() || viewingCiv.isDefeated() || viewingCiv.isSpectator
     private fun modeRestricted() = viewingCiv.gameInfo.endless != null || CivilWarCampaign.isActive(viewingCiv.gameInfo)
     private fun pickable(policy: Policy) = !busy && !readOnly() && policy.policyBranchType != PolicyBranchType.BranchComplete &&
         !policies.isAdopted(policy.name) && policies.isAdoptable(policy) && policies.canAdoptPolicy()

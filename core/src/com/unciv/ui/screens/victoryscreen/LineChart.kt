@@ -296,7 +296,7 @@ class LineChart(
     }
 
     private fun useActualColor(civ: Civilization) : Boolean {
-        return viewingCiv.isSpectator() ||
+        return viewingCiv.isSpectator ||
             viewingCiv.isDefeated() ||
             viewingCiv.victoryManager.hasWon() ||
             viewingCiv == civ ||

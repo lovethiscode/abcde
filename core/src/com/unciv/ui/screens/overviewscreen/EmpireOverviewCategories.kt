@@ -27,7 +27,7 @@ enum class EmpireOverviewCategories(
     Stats("StatIcons/Gold", 'S', Align.top) {
         override fun createTab(viewingPlayer: CivView, overviewScreen: EmpireOverviewScreen, persistedData: EmpireOverviewTabPersistableData?) =
                 StatsOverviewTab(viewingPlayer, overviewScreen)
-        override fun showDisabled(viewingPlayer: CivView) = viewingPlayer.isSpectator()
+        override fun showDisabled(viewingPlayer: CivView) = viewingPlayer.isSpectator
     },
     Trades("StatIcons/Acquire", 'T', Align.top) {
         override fun createTab(viewingPlayer: CivView, overviewScreen: EmpireOverviewScreen, persistedData: EmpireOverviewTabPersistableData?) =

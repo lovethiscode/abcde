@@ -325,7 +325,7 @@ class AchievementEngineTest(private val baseRuleset: com.unciv.models.metadata.B
         f.game.gameParameters.maxTurns = 10
         assertEquals("Settler", f.state.difficulty)
         assertEquals(1, f.state.aiOpponents)
-        assertEquals(1, f.game.civilizations.count { it.isAI() && it.isMajorCiv() })
+        assertEquals(1, f.game.civilizations.count { it.isAI() && it.isMajorCiv })
         f.state.enabledVictories = hashSetOf("Time")
         f.capital.population.setPopulation(30)
         f.game.turns = 9

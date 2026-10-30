@@ -140,7 +140,7 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
     }
 
     private fun updateFogOfWarButton() {
-        if (viewingCiv.isSpectator()) {
+        if (viewingCiv.isSpectator) {
             fogOfWarButtonHolder.actor = fogOfWarButton
             fogOfWarButtonHolder.touchable = Touchable.enabled
         } else {
@@ -232,7 +232,7 @@ class TechPolicyDiplomacyButtons(val worldScreen: WorldScreen) : Table(BaseScree
     }
 
     private fun updateDiplomacyButton(): Boolean {
-        return if (worldScreen.gameInfo.endless != null || viewingCiv.isDefeated() || viewingCiv.isSpectator()
+        return if (worldScreen.gameInfo.endless != null || viewingCiv.isDefeated() || viewingCiv.isSpectator
                 || viewingCiv.getKnownCivs().none { it != viewingCiv && !it.isBarbarian() }
         ) {
             diplomacyButtonHolder.touchable = Touchable.disabled

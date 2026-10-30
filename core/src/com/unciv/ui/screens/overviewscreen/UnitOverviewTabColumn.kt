@@ -57,7 +57,7 @@ enum class UnitOverviewTabColumn(
         // Use the actual viewer, not gameInfo.currentPlayerCiv - that's whoever's turn it currently
         // is, which is not necessarily the person looking at this screen (e.g. spectating an AI's turn).
         override fun isVisible(viewingPlayer: CivView) =
-            !viewingPlayer.isSpectator()
+            !viewingPlayer.isSpectator
         override fun getEntryActor(item: MapUnitView, iconSize: Float, actionContext: UnitOverviewTab): Actor {
             val selectKey = item.id.toString()
             val editIcon = ImageGetter.getImage("OtherIcons/Pencil")

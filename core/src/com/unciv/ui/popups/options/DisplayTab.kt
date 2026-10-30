@@ -101,7 +101,10 @@ internal class DisplayTab(
             continuousRenderingLabel.wrap = true
             add(continuousRenderingLabel).colspan(2).padTop(10f).row()
 
-            addCheckbox("Enable alternative rendering", settings::alternativeRendering) { reloadWorldAndOptions() }
+            addCheckbox("Enable alternative rendering", settings.isAlternativeRenderingEnabled()) {
+                settings.alternativeRendering = it
+                reloadWorldAndOptions()
+            }
 
             val maxTextureUnitsText =
                 try {

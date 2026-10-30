@@ -62,7 +62,7 @@ object AchievementRules {
                 val religion = player.religionManager.religion
                 if (religion != null && religion.foundingCivName == player.civID && religion.isMajorReligion()) {
                     val cities = game.getCities().filter { it.religion.getMajorityReligionName() == religion.name }.toList()
-                    val foreign = cities.filter { it.civ != player && it.civ.isMajorCiv() }
+                    val foreign = cities.filter { it.civ != player && it.civ.isMajorCiv }
                     add("N14", cities.count { it in ownCities } >= 3)
                     add("N24", religion.isEnhancedReligion() && foreign.count { it.isCapital() } >= 3)
                     add("N33", cities.size >= 15 && foreign.size >= 5 && foreign.map { it.civ.civID }.toSet().size >= 3)
