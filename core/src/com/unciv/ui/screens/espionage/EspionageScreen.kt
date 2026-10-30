@@ -156,7 +156,12 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
     override fun resize(width: Int, height: Int) {
         super.resize(width, height)
         if (isPortrait() == isPortrait) return
-        game.replaceCurrentScreen { EspionageScreen(civInfo, worldScreen) }
+        val movingSpy = selectedSpy
+        game.replaceCurrentScreen {
+            EspionageScreen(civInfo, worldScreen).apply {
+                if (movingSpy != null) moveSpyButtons[movingSpy]?.let { onSpyClicked(it, movingSpy) }
+            }
+        }
     }
 
     //region Update
