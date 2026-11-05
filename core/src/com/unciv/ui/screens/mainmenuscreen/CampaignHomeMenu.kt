@@ -135,7 +135,7 @@ internal class CampaignHomeMenu(
         val headingWidth = width - markWidth - px(10f) - touchSize
         header.add(artwork.icon()).size(markWidth).padRight(px(10f))
         val heading = Table()
-        heading.add(label("Unciv", TextRole.PageTitle)).width(headingWidth).left().row()
+        heading.add(label("CivFront", TextRole.PageTitle)).width(headingWidth).left().row()
         val version = game.displayBuildNumber?.let { "v${UncivGame.VERSION.text} ($it)" }
             ?: "v${UncivGame.VERSION.text}"
         heading.add(label(version, TextRole.Metadata, muted).apply { name = "ui-home-version" })

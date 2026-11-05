@@ -119,7 +119,7 @@ else
 
 val expectedIosVersion = "4.22.14"
 val expectedIosBundleId = "com.aishuati.unciv"
-val expectedIosAppName = "Hexes & Horizons"
+val expectedIosAppName = "CivFront"
 val expectedIosMinimumVersion = "15.0"
 val verifyIosConfiguration by tasks.registering {
     group = "verification"
