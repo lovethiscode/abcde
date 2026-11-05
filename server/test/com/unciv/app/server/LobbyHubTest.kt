@@ -38,13 +38,13 @@ class LobbyHubTest {
     }
     private fun create(humans: Int = 2) = service.create(LobbyCommand().apply {
         playerId = host; createKey = UUID.randomUUID().toString(); gameServerUrl = saves
-        rulesHash = service.rulesHash; baseRuleset = LobbyProtocol.rulesets[1]
+        rulesHash = "a".repeat(64); baseRuleset = LobbyProtocol.rulesets[1]
         seats = ArrayList(List(humans) { LobbySeat() })
         setup = """{"gameParameters":{"isOnlineMultiplayer":true,"multiplayerServerUrl":"$saves","baseRuleset":"$baseRuleset","players":[${List(humans) { "{\"playerType\":\"Human\"}" }.joinToString()}]},"mapParameters":{"seed":0}}"""
     })
     private fun command(room: LobbyRoom, player: String) = LobbyCommand().apply {
         playerId = player; occupancy = room.seats.firstOrNull { it.playerId == player }?.occupancy.orEmpty()
-        gameServerUrl = saves; rulesHash = service.rulesHash; configurationVersion = room.configurationVersion
+        gameServerUrl = saves; rulesHash = room.rulesHash; configurationVersion = room.configurationVersion
         seatRevision = room.seats.firstOrNull { it.playerId == player }?.revision ?: 0L
         startOperation = room.startOperation; frozenVersion = room.frozenVersion; saveHash = room.saveHash
     }

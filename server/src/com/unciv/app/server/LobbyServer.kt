@@ -13,10 +13,15 @@ import com.unciv.logic.multiplayer.lobby.protocol.LobbyProtocol
 
 /** Independent room API. This process has no save-file, password or chat endpoints. */
 object LobbyServer {
+    // The rule fingerprint shipped by the original lobby, for clients that predate room-scoped checks.
+    private const val LEGACY_RULES_HASH = "f95cac0ff3b49f98494758fa19a19226271d1f303a7fe01ab84d74558d17f464"
+
     @JvmStatic fun main(args: Array<String>) {
         val uri = requireNotNull(System.getenv("UncivLobbyMongoUri")) { "UncivLobbyMongoUri is required" }
         val gameServer = (System.getenv("UncivLobbyGameServer") ?: "https://uncivserver.xyz").trimEnd('/')
         require(java.net.URI(gameServer).let { it.scheme == "https" && it.host != null && it.userInfo == null && it.query == null && it.fragment == null })
+        val legacyRulesHash = System.getenv("UncivLobbyLegacyRulesHash") ?: LEGACY_RULES_HASH
+        require(LobbyProtocol.isRulesFingerprint(legacyRulesHash)) { "Invalid legacy lobby fingerprint" }
         LobbyService(uri, System.getenv("UncivLobbyMongoDatabase") ?: "unciv_lobby", gameServer).use { service ->
             LobbyHub(service).use { hub ->
             embeddedServer(Netty, host = "127.0.0.1", port = (System.getenv("UncivLobbyPort") ?: "8768").toInt()) {
@@ -28,7 +33,7 @@ object LobbyServer {
                     get("/isalive") {
                         call.respondText("""{"protocolVersion":1,"transport":"websocket","gameServerUrl":"$gameServer"}""", ContentType.Application.Json)
                     }
-                    lobbyRoutes(service,hub)
+                    lobbyRoutes(service,hub,legacyRulesHash)
                 }
                 launch(Dispatchers.IO) {
                     while (isActive) {

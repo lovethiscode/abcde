@@ -10,11 +10,16 @@ class TestLobbyTransport(val server: String, var reply: (LobbyMessage) -> LobbyR
     val urls = CopyOnWriteArrayList<String>()
     val requests = CopyOnWriteArrayList<LobbyMessage>()
     val sockets = CopyOnWriteArrayList<Socket>()
+    var helloRulesScope = ""
+    var helloRulesHash: String? = null
     override suspend fun connect(url: String): LobbyConnection {
         urls += url
         return Socket().also {
             sockets += it
-            it.emit(LobbyMessage().apply { type = "hello"; gameServerUrl = server; rulesHash = LobbyClient.rulesHash() })
+            it.emit(LobbyMessage().apply {
+                type = "hello"; gameServerUrl = server
+                rulesScope = helloRulesScope; rulesHash = helloRulesHash ?: LobbyClient.rulesHash()
+            })
         }
     }
     inner class Socket : LobbyConnection {

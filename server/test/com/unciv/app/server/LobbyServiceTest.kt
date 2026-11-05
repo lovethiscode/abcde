@@ -32,9 +32,9 @@ class LobbyServiceTest {
         if (::service.isInitialized) { service.close(); MongoClients.create(uri).use { it.getDatabase(db).drop() } }
         folder.deleteRecursively()
     }
-    private fun create(humans: Int = 2): LobbyRoom {
+    private fun create(humans: Int = 2, fingerprint: String = "a".repeat(64)): LobbyRoom {
         val c = LobbyCommand().apply {
-            gameServerUrl = gameServer; playerId = host; createKey = UUID.randomUUID().toString(); rulesHash = service.rulesHash; baseRuleset = LobbyProtocol.rulesets[1]
+            gameServerUrl = gameServer; playerId = host; createKey = UUID.randomUUID().toString(); rulesHash = fingerprint; baseRuleset = LobbyProtocol.rulesets[1]
             seats = ArrayList((0 until humans).map { LobbySeat() })
             setup = """{"gameParameters":{"isOnlineMultiplayer":true,"multiplayerServerUrl":"$gameServer","baseRuleset":"$baseRuleset","players":[${(0 until humans).joinToString { "{\"playerType\":\"Human\"}" }}]},"mapParameters":{"seed":42}}"""
         }
@@ -43,7 +43,7 @@ class LobbyServiceTest {
         return r
     }
     private fun c(r: LobbyRoom, id: String) = LobbyCommand().apply {
-        gameServerUrl=gameServer; playerId=id; occupancy=r.seats.firstOrNull { it.playerId==id }?.occupancy.orEmpty(); rulesHash=service.rulesHash
+        gameServerUrl=gameServer; playerId=id; occupancy=r.seats.firstOrNull { it.playerId==id }?.occupancy.orEmpty(); rulesHash=r.rulesHash
         startOperation=r.startOperation; frozenVersion=r.frozenVersion; saveHash=r.saveHash; seatRevision=r.seats.firstOrNull { it.playerId==id }?.revision ?: 0L
         configurationVersion=r.configurationVersion
     }
@@ -307,6 +307,35 @@ class LobbyServiceTest {
         assertThrows(LobbyFailure::class.java) { service.command(r.gameId,"close",c(r,guest)) }
         assertEquals("CLOSED",service.command(r.gameId,"close",c(r,host)).state)
         assertThrows(LobbyFailure::class.java) { join(r) }
+    }
+    @Test fun fingerprintsAreStoredAndCheckedPerRoom() {
+        val oldHash = "a".repeat(64)
+        val newHash = "b".repeat(64)
+        val oldRoom = create(fingerprint = oldHash)
+        val newRoom = create(fingerprint = newHash)
+        assertThrows(LobbyFailure::class.java) { create(fingerprint = "") }
+        service.close(); service = newService()
+        for ((room, otherHash) in listOf(oldRoom to newHash, newRoom to oldHash)) {
+            assertEquals(room.rulesHash, service.find(room.gameId)!!.rulesHash)
+            assertThrows(LobbyFailure::class.java) {
+                service.create(configuration(room).apply { createKey = room.createKey; rulesHash = otherHash })
+            }
+            assertThrows(LobbyFailure::class.java) {
+                service.command(room.gameId, "join", c(room,guest).apply { rulesHash = otherHash })
+            }
+            assertTrue(service.find(room.gameId)!!.seats[1].playerId.isEmpty())
+            val joined = service.command(room.gameId, "join", c(room,guest).apply { requestId = "join" })
+            for (action in listOf("resume", "recoverJoin")) {
+                assertThrows(LobbyFailure::class.java) {
+                    service.command(room.gameId, action, c(joined,guest).apply {
+                        rulesHash = otherHash; originalRequestId = "join"
+                    })
+                }
+                assertEquals(guest, service.command(room.gameId, action, c(joined,guest).apply {
+                    originalRequestId = "join"
+                }).seats[1].playerId)
+            }
+        }
     }
     @Test fun externalUploadUncertaintyKeepsOriginalStartRecoverable() {
         var r=join(create()); for (id in listOf(host,guest)) r=service.command(r.gameId,"ready",c(r,id).apply { ready=true })

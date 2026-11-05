@@ -81,6 +81,7 @@ class LobbyMessage {
     var room: LobbyRoom? = null
     var gameServerUrl = ""
     var rulesHash = ""
+    var rulesScope = ""
     var code = ""
     var message = ""
     var checkId = ""
@@ -88,6 +89,7 @@ class LobbyMessage {
 
 object LobbyProtocol {
     const val VERSION = 1
+    const val ROOM_RULES_SCOPE = "room"
     const val MAX_MESSAGE_BYTES = 512 * 1024
     const val HEARTBEAT_MILLIS = 10_000L
     const val CONNECTION_TIMEOUT_MILLIS = 30_000L
@@ -114,6 +116,7 @@ object LobbyProtocol {
     fun sha256(value: ByteArray): String = MessageDigest.getInstance("SHA-256")
         .digest(value).joinToString("") { "%02x".format(it.toInt() and 255) }
     fun sha256(value: String) = sha256(value.toByteArray(Charsets.UTF_8))
+    fun isRulesFingerprint(value: String) = value.length == 64 && value.all { it in '0'..'9' || it in 'a'..'f' }
     /** The existing game server appends civilization notifications without updating checksum. */
     fun saveFingerprint(plain: String): String {
         val data = JsonReader().parse(plain)
@@ -132,15 +135,4 @@ object LobbyProtocol {
             append(path).append(':').append(read(path)?.let { sha256(it) } ?: "absent").append('\n')
         }
     })
-    fun civilizations(base: String, read: (String) -> ByteArray?): Set<String> {
-        val names = linkedSetOf<String>()
-        for (ruleset in rulesets.take(if (base == rulesets[0]) 1 else 2)) {
-            val bytes = read("jsons/$ruleset/Nations.json") ?: continue
-            for (nation in JsonReader().parse(bytes.toString(Charsets.UTF_8))) {
-                val name = nation.getString("name")
-                if (!nation.has("cityStateType") && name !in listOf("Barbarians", "Spectator")) names.add(name)
-            }
-        }
-        return names
-    }
 }

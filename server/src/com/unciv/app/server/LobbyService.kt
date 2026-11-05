@@ -19,8 +19,6 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                    private val clock: () -> Long = System::currentTimeMillis) : AutoCloseable {
     private val mongo = MongoClients.create(uri)
     private val rooms = mongo.getDatabase(database).getCollection("lobbies")
-    private val readAsset: (String) -> ByteArray? = { javaClass.classLoader.getResourceAsStream(it)?.use { s -> s.readBytes() } }
-    val rulesHash = LobbyProtocol.fingerprint(readAsset)
     init {
         mongo.getDatabase(database).runCommand(Document("ping", 1))
         rooms.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("nextMaintenanceAt")))
@@ -57,7 +55,9 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
             .append("payload", LobbyProtocol.json().toJson(room))
     }
     fun find(id: String): LobbyRoom? = rooms.find(eq("_id", id)).first()?.let { decode(it) }
-    private fun checkRules(c: LobbyCommand) { if (c.rulesHash != rulesHash) fail("The room rules differ from this app. Update the app or server.") }
+    private fun checkRules(room: LobbyRoom, c: LobbyCommand) {
+        if (c.rulesHash != room.rulesHash) fail("The room rules differ from this app. Use a build with the same rules as the host.")
+    }
     private fun validateConfiguration(c: LobbyCommand): com.badlogic.gdx.utils.JsonValue {
         if (c.baseRuleset !in LobbyProtocol.rulesets) fail("Rooms support built-in rules only", 400)
         val setup = try { JsonReader().parse(c.setup) } catch (_: Exception) { fail("Invalid game setup", 400) }
@@ -78,15 +78,15 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
     }
     fun create(c: LobbyCommand): LobbyRoom {
         if (!uuid(c.playerId) || !uuid(c.createKey)) fail("Invalid player or creation ID", 400)
-        checkRules(c)
+        if (!LobbyProtocol.isRulesFingerprint(c.rulesHash)) fail("Invalid rules fingerprint", 400)
         val setup = validateConfiguration(c)
         val players = setup.get("gameParameters").get("players")
         val gameId = UUID.nameUUIDFromBytes((c.playerId + ":" + c.createKey).toByteArray()).toString()
-        find(gameId)?.let { return it }
+        find(gameId)?.let { checkRules(it,c); return it }
         val room = LobbyRoom().apply {
             this.gameId = gameId; hostId = c.playerId; createKey = c.createKey
             gameServerUrl = this@LobbyService.gameServerUrl
-            this.setup = c.setup; baseRuleset = c.baseRuleset; rulesHash = this@LobbyService.rulesHash
+            this.setup = c.setup; baseRuleset = c.baseRuleset; rulesHash = c.rulesHash
             seats = c.seats
         }
         var hostBound = false
@@ -104,7 +104,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         }
         room.seats.forEach { checkCiv(room,it,it.civilization) }
         try { rooms.insertOne(document(room)) } catch (e: MongoWriteException) { if (e.error.code != 11000) throw e }
-        return find(gameId)!!
+        return find(gameId)!!.also { checkRules(it,c) }
     }
     private fun mutate(id: String, action: (LobbyRoom) -> Unit): LobbyRoom {
         repeat(100) {
@@ -198,12 +198,12 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
     }
     private fun checkCiv(r: LobbyRoom, s: LobbySeat, civ: String) {
         if (civ == "Random") return
-        if (civ !in LobbyProtocol.civilizations(r.baseRuleset, readAsset)) fail("Civilization is unavailable", 400)
+        if (civ.isBlank() || civ in setOf("Barbarians", "Spectator")) fail("Civilization is unavailable", 400)
         val allowDuplicates = JsonReader().parse(r.setup).get("gameParameters").getBoolean("allowDuplicateCivilizations", false)
         if (!allowDuplicates && r.seats.any { it !== s && it.civilization == civ }) fail("Civilization is already selected")
     }
     private fun updateConfiguration(r: LobbyRoom, c: LobbyCommand) {
-        waiting(r); host(r,c); checkRules(c)
+        waiting(r); host(r,c); checkRules(r,c)
         if (c.configurationVersion != r.configurationVersion) fail("Room settings changed. Refresh and retry.")
         val setup = validateConfiguration(c)
         val existingIds = c.seats.filter { it.seatId >= 0 }.map { it.seatId }
@@ -214,7 +214,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         for (occupied in r.seats.filter { it.playerId.isNotEmpty() })
             if (c.seats.none { it.seatId == occupied.seatId && it.human })
                 fail("Remove the player before changing an occupied seat")
-        val nations = LobbyProtocol.civilizations(c.baseRuleset, readAsset)
+        val baseRulesetChanged = c.baseRuleset != r.baseRuleset
         val players = setup.get("gameParameters").get("players")
         val next = ArrayList(c.seats.mapIndexed { index, requested ->
             val old = r.seats.firstOrNull { it.seatId == requested.seatId }
@@ -223,8 +223,9 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                 if (human && old?.playerId?.isNotEmpty() == true) {
                     playerId = old.playerId; occupancy = old.occupancy; lastSeen = old.lastSeen
                     manual = old.manual
-                    civilization = old.civilization.takeIf { it == "Random" || it in nations } ?: "Random"
-                } else civilization = if (human) "Random" else requested.civilization
+                    // Existing choices are safe to carry across settings changes within the same ruleset.
+                    civilization = if (baseRulesetChanged) "Random" else old.civilization
+                } else civilization = if (human || baseRulesetChanged) "Random" else requested.civilization
                 revision = (old?.revision ?: 0L) + 1L
                 val player = players[index]
                 for ((key,value) in mapOf("playerId" to playerId, "chosenCiv" to civilization, "playerType" to if(human) "Human" else "AI")) {
@@ -248,9 +249,13 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
         return mutate(id) { r ->
             when (verb) {
                 "configuration" -> updateConfiguration(r,c)
-                "resume" -> if (r.state != "CLOSED") member(r,c).lastSeen = clock()
+                "resume" -> if (r.state != "CLOSED") {
+                    val seat = member(r,c)
+                    checkRules(r,c)
+                    seat.lastSeen = clock()
+                }
                 "recoverJoin" -> {
-                    checkRules(c)
+                    checkRules(r,c)
                     if (c.gameServerUrl != r.gameServerUrl) fail("The invitation game server differs from this room.",400)
                     val receipt = r.joinReceipts.firstOrNull { it.requestId == c.originalRequestId && it.playerId == c.playerId }
                         ?: fail("The join result is unavailable. Open the invitation to join again.",410)
@@ -259,7 +264,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                     r.seats.first { it.occupancy == receipt.occupancy }.lastSeen = clock()
                 }
                 "join" -> {
-                    checkRules(c)
+                    checkRules(r,c)
                     if (c.gameServerUrl != r.gameServerUrl) fail("The invitation game server differs from this room.",400)
                     val receipt = r.joinReceipts.firstOrNull { it.requestId == c.requestId && c.requestId.isNotEmpty() }
                     if (receipt != null) {
@@ -328,7 +333,7 @@ class LobbyService(uri: String, database: String, val gameServerUrl: String,
                     if (s.ready != ready) { s.ready = ready; s.revision++ }
                 }
                 "start" -> {
-                    host(r,c); checkRules(c)
+                    host(r,c); checkRules(r,c)
                     if (r.state == "STARTING" || r.state == "STARTED") return@mutate
                     waiting(r)
                     if (c.configurationVersion >= 0L && c.configurationVersion != r.configurationVersion)

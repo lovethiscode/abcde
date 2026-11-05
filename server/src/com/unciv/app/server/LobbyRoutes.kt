@@ -9,7 +9,7 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.atomic.AtomicInteger
 
 /** Only WebSocket business routes. /isalive remains an operational deployment probe. */
-fun Route.lobbyRoutes(service: LobbyService, hub: LobbyHub) {
+fun Route.lobbyRoutes(service: LobbyService, hub: LobbyHub, legacyRulesHash: String) {
     webSocketRaw("/ws") {
         val session = this
         val parent = coroutineContext[Job]!!
@@ -34,7 +34,10 @@ fun Route.lobbyRoutes(service: LobbyService, hub: LobbyHub) {
         }
         peer.send(LobbyMessage().apply {
             type = "hello"; protocolVersion = LobbyProtocol.VERSION
-            gameServerUrl = service.gameServerUrl; rulesHash = service.rulesHash
+            gameServerUrl = service.gameServerUrl
+            rulesScope = LobbyProtocol.ROOM_RULES_SCOPE
+            // Older clients require a single hash in hello. Room commands never use this value.
+            rulesHash = legacyRulesHash
         })
         val fragments = ByteArrayOutputStream()
         try {

@@ -64,6 +64,24 @@ class LobbyClientTest {
         assertEquals("",LobbySession.current()!!.pendingAction)
         client.close()
     }
+    @Test fun roomScopedHandshakeUsesLocalRulesOnTheJoinCommand() = runBlocking {
+        val localRules = LobbyClient.rulesHash()
+        val socket = TestLobbyTransport(saves) { request ->
+            assertEquals("join", request.action)
+            assertEquals(localRules, request.command!!.rulesHash)
+            room
+        }.apply {
+            helloRulesHash = "0".repeat(64)
+        }
+        val client = LobbyClient(api, socket)
+        val rejected = runCatching { client.open(session, join = true) }.exceptionOrNull()
+        assertEquals("RULES_MISMATCH", (rejected as? LobbyConnectionException)?.code)
+        assertTrue(socket.requests.isEmpty())
+        socket.helloRulesScope = LobbyProtocol.ROOM_RULES_SCOPE
+        client.open(session, join = true)
+        assertEquals("seat", session.occupancy)
+        client.close()
+    }
     @Test fun lostJoinAckRecoversOriginalRequestWithoutAnotherJoin() = runBlocking {
         val socket = TestLobbyTransport(saves) { null }
         val first = LobbyClient(api,socket,requestTimeoutMillis = 100)

@@ -93,7 +93,9 @@ class LobbyHub(private val service: LobbyService, private val clock: () -> Long 
         }
         peer.gameId = room.gameId; peer.playerId = seat.playerId; peer.occupancy = seat.occupancy; peer.lastSignal = clock()
         state.peers[key] = peer
-        return service.command(room.gameId,"resume",LobbyCommand().apply { playerId = peer.playerId; occupancy = peer.occupancy },presence = presence(state))
+        return service.command(room.gameId,"resume",LobbyCommand().apply {
+            playerId = peer.playerId; occupancy = peer.occupancy; rulesHash = room.rulesHash
+        },presence = presence(state))
     }
     private fun result(peer: LobbyPeer, request: LobbyMessage, room: LobbyRoom) = peer.send(LobbyMessage().apply {
         type = "result"; requestId = request.requestId; gameId = room.gameId; this.room = LobbyProtocol.snapshot(room)

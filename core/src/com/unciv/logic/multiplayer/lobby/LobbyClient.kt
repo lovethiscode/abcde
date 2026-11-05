@@ -62,7 +62,7 @@ class LobbyClient(val roomApiUrl: String, private val transport: LobbyTransport 
                 throw LobbyConnectionException("PROTOCOL_MISMATCH","The room connection version does not match. Please try again later.")
             if (hello.gameServerUrl != current.gameServerUrl)
                 throw LobbyConnectionException("SERVER_MISMATCH","The invitation game server differs from this room.")
-            if (hello.rulesHash != rulesHash())
+            if (hello.rulesScope != LobbyProtocol.ROOM_RULES_SCOPE && hello.rulesHash != rulesHash())
                 throw LobbyConnectionException("RULES_MISMATCH","The room rules differ from this app. Update the app or server.")
             connection = socket
             reader = scope.launch {
@@ -106,6 +106,12 @@ class LobbyClient(val roomApiUrl: String, private val transport: LobbyTransport 
         if (current.pendingAction == "join") return command(current.gameId,"recoverJoin",identity().apply { originalRequestId = current.pendingRequestId })
         if (current.pendingAction == "create") {
             val c = LobbyProtocol.json().fromJson(LobbyCommand::class.java,current.pendingCommand)
+            if (c.rulesHash != rulesHash()) {
+                current.rejectPending(current.pendingRequestId)
+                current.createKey = UUID.randomUUID().toString()
+                current.saveIfCurrent()
+                return create(json().fromJson(GameSetupInfo::class.java,current.setup),current.createKey)
+            }
             return request("","create",c,current.pendingRequestId).room!!
         }
         if (current.pendingAction == "leave") {
@@ -141,6 +147,7 @@ class LobbyClient(val roomApiUrl: String, private val transport: LobbyTransport 
                     onConnection(false,if (e is LobbyConnectionException) e.message ?: "Room request failed. Please retry." else "Connection failed. Retrying...")
                     if (e is LobbyConnectionException && e.code != "RETRY") {
                         if (e.code in setOf("MEMBERSHIP_EXPIRED","ROOM_NOT_FOUND","ROOM_CLOSED")) current.clearIfCurrent()
+                        if (e.code == "RULES_MISMATCH" && current.gameId.isNotEmpty()) current.clearIfCurrent()
                         if (e.code == "MEMBERSHIP_EXPIRED") current.occupancy = ""
                         break
                     }
