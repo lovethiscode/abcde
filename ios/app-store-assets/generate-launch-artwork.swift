@@ -7,7 +7,6 @@ let root = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
 let output = root.appendingPathComponent("android/assets/ExtraImages")
 let blue = NSColor(srgbRed: 23/255, green: 52/255, blue: 63/255, alpha: 1)
 let appIcon = NSImage(contentsOf: root.appendingPathComponent("ios/app-store-assets/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"))!
-let text = NSColor(srgbRed: 243/255, green: 243/255, blue: 234/255, alpha: 1)
 let muted = NSColor(srgbRed: 189/255, green: 208/255, blue: 212/255, alpha: 1)
 
 func render(_ name: String, width: Int, height: Int, draw: (CGContext) -> Void) throws {
@@ -36,21 +35,19 @@ func hexagon(_ rect: CGRect) -> CGPath {
     return path
 }
 
-try render("LaunchMark", width: 252, height: 214) { context in
-    let iconRect = CGRect(x: 74, y: 1, width: 104, height: 104)
-    context.saveGState()
-    NSBezierPath(roundedRect: iconRect, xRadius: 22, yRadius: 22).addClip()
+// Keep the square mark shared by UIKit, GameStartScreen and the home header.
+// No legacy name, slogan or independently drawn logo can reappear on regeneration.
+try render("LaunchMark", width: 252, height: 252) { context in
+    let iconRect = CGRect(x: 0, y: 0, width: 252, height: 252)
     appIcon.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1,
         respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high])
-    context.restoreGState()
-    let paragraph = NSMutableParagraphStyle()
-    paragraph.alignment = .center
-    NSAttributedString(string: "Unciv4iOS", attributes: [.font: NSFont(name: "Georgia", size: 42)!,
-        .foregroundColor: text, .kern: 1.47, .paragraphStyle: paragraph])
-        .draw(in: CGRect(x: 0, y: 125, width: 252, height: 49))
-    NSAttributedString(string: "文明，由你书写", attributes: [.font: NSFont(name: "PingFangSC-Regular", size: 14)!,
-        .foregroundColor: muted, .kern: 4.2, .paragraphStyle: paragraph])
-        .draw(in: CGRect(x: 0, y: 192, width: 252, height: 22))
+}
+
+try render("LaunchMarkTransparent", width: 252, height: 252) { context in
+    let iconRect = CGRect(x: 0, y: 0, width: 252, height: 252)
+    NSBezierPath(roundedRect: iconRect, xRadius: 52, yRadius: 52).addClip()
+    appIcon.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1,
+        respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high])
 }
 
 try render("LaunchBackground", width: 1024, height: 512) { context in

@@ -23,7 +23,14 @@ Flag Icons made by [Freepik](https://www.flaticon.com/authors/freepik) from [www
 -   [Hindi flag] made from [wikipedia asset for India's flag](https://en.wikipedia.org/w/index.php?curid=23473510): (public domain)
 -   [Navajo flag] gimped by Sometroglodyte, inspired by [Seal of the Navajo Nation](https://en.wikipedia.org/wiki/Seal_of_the_Navajo_Nation) (public domain, [XCF available here](https://github.com/user-attachments/files/29069491/Great_Seal_of_the_Navajo_Nation.xcf.zip)
 
-Unciv logo (e.g. `extraImages/Icons/Unciv icon v6.png`, `android/assets/ExtraImages/Icons/Unciv128.png` and other files) by yairm210 and u-ndefine, licensed under CC BY 4.0. This logo includes the following icons:
+The current full-color app branding uses the project owner's approved cavalry
+illustration, generated and edited with OpenAI image generation. Its canonical
+source and exported copies are documented in [App branding assets](../extraImages/BRANDING.md).
+It replaces the former app logo and startup banners; it does not replace the
+in-game icons credited below.
+
+The original Unciv logo, retained in upstream history and historical material,
+was by yairm210 and u-ndefine, licensed under CC BY 4.0. It includes the following icons:
 - [Gear](https://thenounproject.com/term/gear/29368) by Alex Bickov (CC BY 3.0)
 - [Apple](https://thenounproject.com/term/apple/1139396) by Pedro Gonçalves (CC BY 3.0)
 - [gold](https://thenounproject.com/term/gold/25438) by Eliricon (CC BY 3.0)
@@ -32,7 +39,7 @@ Unciv logo (e.g. `extraImages/Icons/Unciv icon v6.png`, `android/assets/ExtraIma
 - [Smiley](https://thenounproject.com/term/smiley/1024026) by Alexander Skowalsky (CC BY 3.0)
 - [City](https://thenounproject.com/icon/city-1765370/) by Muhajir ila Robbi (CC BY 3.0)
 
-The following files include the Unciv logo:
+Historical renderings of that logo included:
 
 - Various files in `extraImages` contain different renderings of the same logo
 - `android/assets/ExtraImages/banner.png` by letstalkaboutdune; includes work by The Bucketeer / @GeneralWadaling (tiles) and yairm210 and u-ndefine (Unciv logo), released under CC BY-SA 3.0
