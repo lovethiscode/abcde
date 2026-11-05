@@ -156,7 +156,12 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
     override fun resize(width: Int, height: Int) {
         super.resize(width, height)
         if (isPortrait() == isPortrait) return
-        game.replaceCurrentScreen { EspionageScreen(civInfo, worldScreen) }
+        val movingSpy = selectedSpy
+        game.replaceCurrentScreen {
+            EspionageScreen(civInfo, worldScreen).apply {
+                if (movingSpy != null) moveSpyButtons[movingSpy]?.let { onSpyClicked(it, movingSpy) }
+            }
+        }
     }
 
     //region Update
@@ -422,7 +427,7 @@ class EspionageScreen(val civInfo: Civilization, val worldScreen: WorldScreen) :
         override fun clickHandler() {
             if (location != null
                 && location.civ.civName != civInfo.civName
-                && location.civ.isMajorCiv()
+                && location.civ.isMajorCiv
                 && location.civ.knows(civInfo) // ensures the !! below won't crash
                 && location.civ.getDiplomacyManager(civInfo)!!.hasFlag(DiplomacyFlags.AgreedToNotSendSpies)) {
                 ConfirmPopup(

@@ -224,7 +224,7 @@ class CityStateFunctions(val civInfo: Civilization) {
 
     @Readonly
     fun getProtectorCivs() : List<Civilization> {
-        if(civInfo.isMajorCiv()) return emptyList()
+        if(civInfo.isMajorCiv) return emptyList()
         return civInfo.diplomacy.values
             .filter{ !it.otherCiv.isDefeated() && it.diplomaticStatus == DiplomaticStatus.Protector }
             .map{ it.otherCiv }
@@ -252,7 +252,7 @@ class CityStateFunctions(val civInfo: Civilization) {
     @Readonly
     fun otherCivCanPledgeProtection(otherCiv: Civilization): Boolean {
         // Must be a known city state
-        if(!civInfo.isCityState || !otherCiv.isMajorCiv() || otherCiv.isDefeated() || !civInfo.knows(otherCiv))
+        if(!civInfo.isCityState || !otherCiv.isMajorCiv || otherCiv.isDefeated() || !civInfo.knows(otherCiv))
             return false
         val diplomacy = civInfo.getDiplomacyManager(otherCiv)!!
         // Can't pledge too soon after withdrawing
@@ -273,7 +273,7 @@ class CityStateFunctions(val civInfo: Civilization) {
     @Readonly
     fun otherCivCanWithdrawProtection(otherCiv: Civilization): Boolean {
         // Must be a known city state
-        if(!civInfo.isCityState || !otherCiv.isMajorCiv() || otherCiv.isDefeated() || !civInfo.knows(otherCiv))
+        if(!civInfo.isCityState || !otherCiv.isMajorCiv || otherCiv.isDefeated() || !civInfo.knows(otherCiv))
             return false
         val diplomacy = civInfo.getDiplomacyManager(otherCiv)!!
         // Can't withdraw too soon after pledging
@@ -291,7 +291,7 @@ class CityStateFunctions(val civInfo: Civilization) {
         var newAlly: Civilization? = null
 
         val maxInfluence = civInfo.diplomacy
-            .filter { it.value.otherCiv.isMajorCiv() && !it.value.otherCiv.isDefeated() }
+            .filter { it.value.otherCiv.isMajorCiv && !it.value.otherCiv.isDefeated() }
             .maxByOrNull { it.value.getInfluence() }
         if (maxInfluence != null && maxInfluence.value.getInfluence() >= 60) {
             newAlly = maxInfluence.value.otherCiv
@@ -552,7 +552,7 @@ class CityStateFunctions(val civInfo: Civilization) {
         // Check if city-state invaded by other civs
         if (getNumThreateningBarbarians() > 0) return // Assume any players are there to fight barbarians
 
-        for (otherCiv in civInfo.getKnownCivs().filter { it.isMajorCiv() }.toList()) {
+        for (otherCiv in civInfo.getKnownCivs().filter { it.isMajorCiv }.toList()) {
             if (civInfo.isAtWarWith(otherCiv)) continue
             if (otherCiv.hasUnique(UniqueType.CityStateTerritoryAlwaysFriendly)) continue
             val diplomacy = civInfo.getDiplomacyManager(otherCiv)!!
@@ -790,7 +790,7 @@ class CityStateFunctions(val civInfo: Civilization) {
             return
 
         for (thirdCiv in civInfo.getKnownCivs()
-            .filter { it != attacker && it.isAlive() && it.knows(attacker) && !it.isAtWarWith(attacker) && it.isMajorCiv() }
+            .filter { it != attacker && it.isAlive() && it.knows(attacker) && !it.isAtWarWith(attacker) && it.isMajorCiv }
         ) {
             thirdCiv.addNotification(
                 "[${civInfo.civName}] is being attacked by [${attacker.civName}] and asks all major civilizations to help them out by gifting them military units.",

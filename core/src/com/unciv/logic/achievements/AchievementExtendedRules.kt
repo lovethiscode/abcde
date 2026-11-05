@@ -48,7 +48,7 @@ object AchievementExtendedRules {
     }
     class LuxuryExchange(val player: Civilization, val exported: String, val imported: String)
     fun beforeTrade(first: Civilization, second: Civilization, trade: Trade): List<LuxuryExchange> {
-        if (!first.isMajorCiv() || !second.isMajorCiv()) return emptyList()
+        if (!first.isMajorCiv || !second.isMajorCiv) return emptyList()
         first.cache.updateCivResources(); second.cache.updateCivResources()
         if (!com.unciv.logic.trade.TradeEvaluation().isTradeValid(trade, first, second)) return emptyList()
         val result = arrayListOf<LuxuryExchange>()
@@ -79,7 +79,7 @@ object AchievementExtendedRules {
         f.captures[city.id] = AchievementNewCapture().apply {
             actor = unit.civ.civID; defender = city.civ.civID; previouslyOwned = city.id in f.ownedCities
             warEpoch = f.warEpochs[defender] ?: 0
-            coordinated = city.civ.isMajorCiv() && unit.civ.isAtWarWith(city.civ) && unit.baseUnit.isMelee() &&
+            coordinated = city.civ.isMajorCiv && unit.civ.isAtWarWith(city.civ) && unit.baseUnit.isMelee() &&
                 support != null && support.defender == defender && support.warEpoch == warEpoch &&
                 support.ownershipEpoch == (f.ownershipEpochs[city.id] ?: 0) && support.supporters.any { it != unit.id.toString() }
         }
@@ -89,14 +89,14 @@ object AchievementExtendedRules {
         val capture = f.captures.remove(city.id) ?: return
         f.ownedCities.add(city.id)
         if (capture.coordinated && capture.warEpoch == (f.warEpochs[capture.defender] ?: 0)) done(city.civ, "F08")
-        if (city.foundingCivObject?.let { it != city.civ && it.isMajorCiv() } == true)
+        if (city.foundingCivObject?.let { it != city.civ && it.isMajorCiv } == true)
             f.recovery[city.id] = AchievementRecovery().apply { if (!city.isInResistance()) baseline = city.population.population }
     }
     fun liberated(city: City, conqueror: Civilization) {
         val f = facts(conqueror) ?: return
         val capture = f.captures.remove(city.id) ?: return
         if (!capture.previouslyOwned && capture.actor == conqueror.civID && city.civ == city.foundingCivObject &&
-            city.civ != conqueror && (city.civ.isMajorCiv() || city.civ.isCityState)) done(conqueror, "F06")
+            city.civ != conqueror && (city.civ.isMajorCiv || city.civ.isCityState)) done(conqueror, "F06")
     }
     fun ownershipChanged(city: City, from: Civilization, to: Civilization?) {
         com.unciv.logic.endless.EndlessAchievementRules.cityLost(from.gameInfo, city.id, from.civID, to?.civID)
@@ -119,7 +119,7 @@ object AchievementExtendedRules {
         }
     }
     private fun enemies(city: City, player: Civilization) = city.getCenterTile().neighbors.mapNotNull { it.militaryUnit }
-        .filter { it.civ.isMajorCiv() && player.isAtWarWith(it.civ) && it.isVisibleTo(player) }.map { it.id.toString() }.toSet()
+        .filter { it.civ.isMajorCiv && player.isAtWarWith(it.civ) && it.isVisibleTo(player) }.map { it.id.toString() }.toSet()
     fun visibleTurnStart(civ: Civilization) {
         val f = facts(civ) ?: return
         if (f.observedTurn == civ.gameInfo.turns) { resistanceChanged(civ); return }
@@ -155,7 +155,7 @@ object AchievementExtendedRules {
     fun activeAttack(attacker: ICombatant, defender: ICombatant, damage: Int) {
         val combatant = attacker as? MapUnitCombatant ?: return
         val unit = combatant.unit; val civ = unit.civ; val f = facts(civ) ?: return
-        if (damage <= 0 || !civ.isCurrentPlayer() || !defender.getCivInfo().isMajorCiv() || !civ.isAtWarWith(defender.getCivInfo())) return
+        if (damage <= 0 || !civ.isCurrentPlayer() || !defender.getCivInfo().isMajorCiv || !civ.isAtWarWith(defender.getCivInfo())) return
         if (defender is CityCombatant && (unit.baseUnit.unitType == "Siege" || unit.baseUnit.unitType == "Ranged Water")) {
             val city = defender.city
             val support = f.siege.getOrPut(city.id) { AchievementSiege().apply {

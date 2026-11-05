@@ -24,7 +24,7 @@ internal class AutomationTab(
         section("Units and defense") {
             addCheckbox("Automated units move on turn start", settings::automatedUnitsMoveOnTurnStart, updateWorld = true)
             addCheckbox("Automated units can upgrade", settings::automatedUnitsCanUpgrade)
-            addCheckbox("Automated units choose promotions", settings::automatedUnitsChoosePromotions)
+            addCheckbox("Units automatically choose promotions", settings::automatedUnitsChoosePromotions)
             addCheckbox("Cities auto-bombard at end of turn", settings::citiesAutoBombardAtEndOfTurn)
         }
 

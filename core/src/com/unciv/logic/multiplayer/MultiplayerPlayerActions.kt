@@ -75,7 +75,7 @@ suspend fun Multiplayer.performPlayerAction(
             val target = pending.getCurrentPlayerCivilization()
             val targetName = target.civName
             val actorName = pending.civilizations.first {
-                it.playerId == userId && it.playerType == PlayerType.Human && !it.isSpectator()
+                it.playerId == userId && it.playerType == PlayerType.Human && !it.isSpectator
             }.civName
             val text = when (action) {
                 MultiplayerPlayerAction.SkipTurn -> {

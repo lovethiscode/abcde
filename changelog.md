@@ -1,3 +1,23 @@
+## 4.22.15
+
+Performance improvements on map refresh
+
+Change alternativeRendering to default to true for Mali-G68 GPUs
+
+Adjust thresholds for modifier colors in diplomacy screen - By unciv-loof
+
+Auto-choose unit promotions for player units - By DavidZal (new contributor!)
+
+By SomeTroglodyte:
+- Civilopedia navigation history
+- Add a button to help finding those cities missing a required building
+- Avoid overlay toggle buttons pushing TileInfoTable up above the Minimap top edge
+
+By ibrahim-iqbal:
+- Fix Citadel attack notification missing the minus on damage
+- Fix "new categories" result not being translated
+
+
 ## 4.22.14
 
 Fixed black flash when changing screens

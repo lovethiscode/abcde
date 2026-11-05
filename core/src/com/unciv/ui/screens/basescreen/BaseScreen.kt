@@ -81,7 +81,11 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
     private val fpsLabel: Label? = if (this !is GameStartScreen && this !is CrashScreen) "".toLabel(TextRole.Metadata) else null
     private val fpsLabelContainer: Table? = fpsLabel?.let {
         Table().apply {
+            try {
             background = ImageGetter.getWhiteDotDrawable().tint(ExpeditionBlueTheme.color(Color(0f, 0f, 0.4f, 1f), ExpeditionBlueTheme.panel))
+            } catch (_: Exception) {
+                // Images may be unavailable while displaying CrashScreen.
+            }
             pad(4f)
             add(it)
         }
@@ -257,7 +261,7 @@ abstract class BaseScreen(private val useFullScreenLayout: Boolean = false) : Sc
             private set
 
         /** Creates a new [batch] according to current settings, replacing the old one.
-         *  The old one is NOT disposed - call [Batch.dispose] on the returned value once no stage uses it anymore.
+         *  The old one is NOT disposed - screens still showing may draw with it until replaced, so disposing risks "No buffer allocated!" crashes.
          *  @return the previous batch, or `null` if there was none */
         fun recreateBatch(): Batch? {
             val old = if (::batch.isInitialized) batch else null

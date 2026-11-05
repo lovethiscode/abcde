@@ -201,7 +201,7 @@ internal class WorldScreenTopBarStats(topbar: WorldScreenTopBar) : ScalingTableW
             for (stat in nativeStats) {
                 add(stat).pad(0f).minWidth(0f).minHeight(UiNavigation.minimumTouchSize()).padRight(BattlefieldHud.points(4f)).growX()
             }
-        } else scaleTo(worldScreen.stage.width)
+        } else scaleToWidth(worldScreen.stage.width)
     }
 
     private fun getCultureText(civInfo: Civilization, nextTurnStats: Stats): String {

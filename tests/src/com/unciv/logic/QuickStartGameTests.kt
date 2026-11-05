@@ -16,7 +16,7 @@ import org.junit.runner.RunWith
 @RunWith(BaseTestRunner::class)
 class QuickStartGameTests {
     @Test fun `defeat can be checked during map generation before game info is assigned`() {
-        val civilization = Civilization().apply { nation = Nation().apply { name = "Rome" } }
+        val civilization = Civilization().apply { setNation(Nation().apply { name = "Rome" }) }
         assertTrue(civilization.isDefeated())
     }
 
@@ -39,7 +39,7 @@ class QuickStartGameTests {
             val game = GameStarter.startNewGame(setup, reservedGameId = "quick-start-regression")
             assertEquals(0, game.turns)
             assertEquals(1, game.civilizations.count { it.isHuman() })
-            assertEquals(4, game.civilizations.count { it.isMajorCiv() })
+            assertEquals(4, game.civilizations.count { it.isMajorCiv })
             assertTrue(game.getCurrentPlayerCivilization().units.getCivUnits().any())
         } finally {
             Gdx.app = previousApp

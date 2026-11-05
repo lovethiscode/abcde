@@ -87,7 +87,8 @@ class GameSettings {
 
     //// Performance
     var continuousRendering = false
-    var alternativeRendering = false
+    /** User override for using a plain SpriteBatch; null = automatic, see [isAlternativeRenderingEnabled] */
+    var alternativeRendering: Boolean? = null
 
     //// Experimental
     var unitMovementButtonAnimation = false
@@ -217,6 +218,12 @@ class GameSettings {
 
     //region <Methods>
 
+    /** Resolves [alternativeRendering]: an explicit user choice wins, otherwise auto-detect.
+     *  See https://github.com/carlislefox/libgdx-texture-array-batch/issues/1 -
+     *  TL;DR the Mali-G68 GPU gives horrendous results with TextureArrayBatch, all other GPUs should default to false. */
+    fun isAlternativeRenderingEnabled() =
+        alternativeRendering ?: (Gdx.graphics?.glVersion?.rendererString == "Mali-G68")
+
     fun save() {
         if (Gdx.app == null) return // Simulation mode from ConsoleLauncher
         refreshWindowSize()
@@ -327,7 +334,9 @@ class GameSettings {
         Huge(1500f,1000f),
         FullHD(1920f, 1280f),
         QuadHD(2560f, 1707f);
-        override fun toString() = name.tr() // Allow direct use in a SelectBox
+        override fun toString() = UncivGame.Current.translations.getText(
+            "UI size: $name", UncivGame.Current.settings.language, default = name.tr()
+        ) // Keep UI sizes separate from map-size translations with recommended player counts.
 
         /** Minimum virtual height of the stage. For [Auto] taken from the size guessed from the physical screen.
          *  (The actual stage width is determined by screen aspect ratio, see [getWidth]) */

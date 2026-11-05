@@ -27,7 +27,7 @@ class TurnManager(val civInfo: Civilization) {
 
 
     fun startTurn(progressBar: NextTurnProgress? = null):Unit = timeThis("TurnManager.startTurn") {
-        if (civInfo.isSpectator()) return
+        if (civInfo.isSpectator) return
         if (com.unciv.logic.endless.EndlessRules.isInvader(civInfo)) {
             civInfo.cache.updateViewableTiles()
             civInfo.units.getCivUnits().forEach { UnitTurnManager(it).startTurn() }
@@ -104,7 +104,10 @@ class TurnManager(val civInfo: Civilization) {
         val promotableUnits = civInfo.units.getCivUnits()
             .filter { it.promotions.canBePromoted() }
             .toList()
-        if (promotableUnits.size <= 3) {
+        if (UncivGame.Current.settings.automatedUnitsChoosePromotions) {
+            val gameView = GameView(civInfo.gameInfo, civInfo)
+            for (unit in promotableUnits) NextTurnAutomation.applyPromotions(gameView.getMapUnitView(unit))
+        } else if (promotableUnits.size <= 3) {
             for (unit in promotableUnits) {
                 civInfo.addNotification(
                     "[${unit.displayName()}] can be promoted!",
@@ -287,7 +290,7 @@ class TurnManager(val civInfo: Civilization) {
         civInfo.notifications.clear()
         civInfo.notificationCountAtStartTurn = null
 
-        if (civInfo.isDefeated() || civInfo.isSpectator()) return  // yes they do call this, best not update any further stuff
+        if (civInfo.isDefeated() || civInfo.isSpectator) return  // yes they do call this, best not update any further stuff
         
         var nextTurnStats =
             if (civInfo.isBarbarian)
@@ -340,7 +343,7 @@ class TurnManager(val civInfo: Civilization) {
 
         civInfo.espionageManager.endTurn()
 
-        if (civInfo.gameInfo.endless == null && civInfo.isMajorCiv()) // City-states don't get great people!
+        if (civInfo.gameInfo.endless == null && civInfo.isMajorCiv) // City-states don't get great people!
             civInfo.greatPeople.addGreatPersonPoints()
 
         // To handle tile's owner issue (#8246), we need to run cities being razed first.
